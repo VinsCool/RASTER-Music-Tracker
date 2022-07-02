@@ -1,0 +1,169 @@
+;
+;	RMT_MSX
+;
+RASTERMUSICTRACKER	equ $3400
+video equ $3f00	
+video4th equ video+3*40
+video5th equ video+4*40
+color equ video+200
+vcaddition equ video+201		;natvrdo pripravi RMTracker
+MODUL equ $4000
+;
+VCOUNT	equ $d40b				;vertical screen lines counter address
+NTSC	equ 53268          		;PAL=0/NTSC=$e
+;
+	org $3e00
+start
+;
+	ldx #0
+	stx 559
+;	stx 54272	;neni potreba smankote (!)
+;
+	jsr Pau
+;
+;	ldx #0
+	;x=0 z drivejska
+	stx 712
+	stx 710
+	ldx #12
+	stx 709
+;
+	mwx #dl 560
+;
+	ldx #<MODUL
+	ldy #>MODUL
+	lda #0					;radek v songu 0-255
+	jsr RASTERMUSICTRACKER	;vraci v A kolikrat volat behem 1 vbi (1,2,3,4)
+;	tay
+;	lda tabpp-1,y
+;	pha
+;	rol @
+;	rol @				;nejvyssi bit pretoci na spodni
+;	and #$01
+;	sta xwaimultip			;0 nebo 1
+;	pla
+;	and #$7f			;bez nejvyssiho bitu
+;	sta acpapx2+1		;sync counter spacing
+	ldx #0
+	lda vcaddition		;natvrdo pripravi uz RMTracker	
+;	cmp #133
+;	bcc via1	;<133 =>skok
+	bpl via1	;<128 => skok
+	;napr. pro 156
+	inx			;x=1
+	lsr @		;A=78
+via1
+	stx xwaimultip		;0 nebo 1
+	sta acpapx2+1		;sync counter spacing
+	ldx #16+0
+	stx acpapx1+1		;sync counter init
+;
+	ldx #34
+	stx 559
+
+	ldx #100
+uvop
+	jsr Pau
+	dex
+	bne uvop
+;
+	ldx #156		;pro PAL computer
+	lda NTSC
+	and #$0e
+	beq ispal
+	ldx #132		;naschval o 1 vic kvuli delitelnosti 2,3,4 ; spravne ma byt 131 ;pro NTSC computer
+ispal
+	stx xscreenlines1
+	stx xscreenlines2
+;
+	sei			;zakaz IRQ
+	ldx #0
+	stx 54286	;zakaz NMI  (vyp OS VBI !)
+;
+	;ldx #255
+; neni potreba, sleduje se horni (je vypnute VBI)
+;	dex ;x=255
+;	stx 764
+;
+lop
+	ldx #$00			;prepis.par
+xwaimultip equ *-1
+loopmulti
+acpapx1	lda #$ff				;par.je prepisovan
+	clc
+acpapx2	adc #$ff				;par.je prepisovan
+;	bcs lop3	;>255 (preteklo) (pricita se max 78, takze nepretece)
+xscreenlines1 equ *+1
+	cmp #$ff	;156 nebo 132 (misto 131)	;par.je prepisovan
+	bcc lop4
+lop3
+xscreenlines2 equ *+1
+	sbc #$ff	;156 nebo 132 (misto 131)	;par.je prepisovan
+lop4
+	sta acpapx1+1
+	ldy color					;nachysta si do Y
+waipap
+	cmp VCOUNT
+	bne waipap
+	dex
+	bpl loopmulti
+;
+	sty $d01a					;Y ma nachystano kousek vyse
+	sty $d018
+;
+	jsr RASTERMUSICTRACKER+3
+	;vratilo v A actual instrspeed
+;	
+	ldx #0					;cerna
+	stx $d01a
+	stx $d018
+;vbi je vypnute; 	sta 77					;Attract (i kdyz je CRITIC tak je potreba to nulovat)
+;
+	ldx #<video4th
+	lda $d20f				;SKCTL
+	and #$08				;je shift?
+	bne noshift				;1=> neni =>skok
+;je shift
+	ldx #<video5th
+noshift
+	stx dlx			;prepise db video pro 4ty radek	
+;
+	lda $d209		;musi horni, IRQ je vypnute (drive 764)
+	cmp #28					;ESC?
+	bne lop
+;
+escape
+	jsr RASTERMUSICTRACKER+9			;SILENCE
+	ldx #64
+	stx 54286	;zap NMI (OS VBI !)
+	cli
+	ldx #0
+	stx 559
+	dex	;#255
+	stx 764
+	jsr Pau
+	jmp (10)			;DOS
+;
+;tabpp	dta 156,78,52,39	;song urcen pro PAL
+;		dta 131,66,44,33	;song urcen pro NTSC
+;line counter spacing table for instrument speed from 1 to 4
+;
+;Hodnotu pro posun hodnoty synchronizace VCOUNT pripravi primo RMTracker!
+;
+;tabpp  dta $80+78,$00+78,$00+52,$00+39		;$00+ jednou, $80+ dvakrat
+;
+;
+Pau	lda 20
+pa2	cmp 20
+	beq pa2
+	rts
+;
+dl
+	dta 112,112,112
+	dta 112,112,112,112,112,112,112,112,112,112
+	dta 64+2,a(video)
+	dta 2,2
+	dta 64+2
+dlx dta a(video4th)	
+	dta 65,a(dl)
+;

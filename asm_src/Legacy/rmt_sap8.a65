@@ -1,0 +1,26 @@
+;
+;	RMT_SAP8
+;
+STEREOMODE	equ 1			;kompilace pro stereo modul
+	icl "rmt.a65"
+	
+MODUL equ $4000
+;
+	org $3a5a		;$3a6d	;$3a72		;$3a6c		;$3a94		;$3aaa		;$3aa8
+start
+	ert start!=RMTPLAYEREND ;SAP8 inicializacni rutina nenavazuje presne za RMT rutinou
+	;NUTNO OPRAVIT A POZOR - START ADRESA SAP RUTINY JE UVEDENA V Ccku UVNITR RMT TRACKERU
+;
+	tax												;POZOR: Prvni 4 byty prepisuje tracker instrukcemi
+	lda subsongs,x			;radek v songu 0-255	;NOP NOP LDA#hodnota     pokud neni vice subsonguu
+	ldx #<MODUL
+	ldy #>MODUL
+	jmp RASTERMUSICTRACKER	;jsrrts!
+	;sta vbinspeed			;kolikrat volat behem 1 vbi
+	;rts
+;
+subsongs
+;POZOR: sem pripisuje tracker eventualni pozice subsonguu
+;takze pokud se zmeni delka teto rutiny, je nutno upravit v trackeru
+;na zacatku rutiny int CSong::Export hodnotu
+;int adr_subsongs = adr_init+11;

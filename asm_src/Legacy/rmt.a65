@@ -1,0 +1,1809 @@
+;*
+;* Raster Music Tracker, RMT Atari routine version 1.20090108
+;* (c) Radek Sterba, Raster/C.P.U., 2002 - 2009
+;* http://raster.atari.org
+;*
+;* Warnings:
+;*
+;* 1. RMT player routine needs 19 itself reserved bytes in zero page (no accessed
+;*    from any other routines) as well as cca 1KB of memory before the "PLAYER" 
+;*    address for frequency tables and functionary variables. It's:
+;*	  a) from PLAYER-$03c0 to PLAYER for stereo RMTplayer 
+;*    b) from PLAYER-$0320 to PLAYER for mono RMTplayer
+;*
+;* 2. RMT player routine MUST (!!!) be compiled from the begin of the memory page.
+;*    i.e. "PLAYER" address can be $..00 only!
+;*
+;* 3. Because of RMTplayer provides a lot of effects, it spent a lot of CPU time.
+;*
+;10.12.2002 - oprava zmeny rychlosti - Zmenena rychlost se do v_speed zapisuje az po dokonceni 4 (resp.8) tracku.
+;tj. pokud je zmena v prvnim radku tracku a dojde v nem vlivem goto k prechodu na prvni radek, 
+;ale v druhem tracku je end (=> vsechny akce
+;v tomto taktu jsou neplatne a jde se na dalsi radek songu), tak se ani ta zmena rychlosti z prvniho
+;radku prvniho tracku neprojevi
+
+;14.12.2002 - rozsireni poctu tracku - Misto puvodnich tracku 0-$7f rozsireno na 0-$fd (fe je jump, ff empty track)
+;v hlavicce modulu pribyly 2 byty - ted je tam ukazatel na pole dolnich bytu ukazatelu na tracky a (navic) ukazatel na pole
+;hornich bytu ukazatelu na tracky
+
+;14.12.2002 - uprava pro filtrovani a 16bit bassy - Pokud je vysledna hlasitost tracku 0 (bez sumove slozky), filtrovani
+;ani 16bit bassy se pro dany generator neprovadi => neblokuje se dalsi generator (pro filtr ci pro dolni byte 16bit bassu)
+;a muze si hrat normalne to svoje podle obsahu tracku
+;(pozn. stalo to 56 bytu kodu (pro stereo 56=8x7 bytu, pro mono 28=4x7 bytu))
+
+;14.12.2002 - posun basstab1 - posunuto o 8 tonu a doplneno nejspodnejsich 8 o oktavu vyssimi
+;tim jsou sladeny bassy1 se vsim ostatnim
+;(pozn. bassy 2 jsou spravne tak jak jsou) 
+
+;21.12.2002 - opraven command 2 - posun frekvence (chyba byla, ze se neprojevoval v kombinaci s table posunama)
+
+;21.12.2002 - predelana rutina SetPokey pro stereo a pro mono zvlast
+
+;25.12.2002 - zmeneno poradi parametru v hlavicce:
+;p_instrstable	org *+2		;203-4
+;p_trackslbstable	org *+2		;205-6
+;p_trackshbstable	org *+2		;207-8
+;p_song			org *+2		;209-210
+
+;28.12.2002 - rozsireni u specifikace pauzy. Jsou-li horni dva bity 00, pak se to chova stejne jako doposud
+;a pauza je dana dalsim bytem, pokud jsou ty dva bity >00, pak udavaji primo pauzu 1,2 nebo 3 takty a dalsi
+;byte se nepouziva (=> znacna uspora na velikosti vyslednych RMT souboru!!!)
+
+;14.1.2003 - oprava definice cisla radku songu (nasobilo se *4 i pro STEREO, ted uz je pro MONO *4, pro STEREO *8)
+
+;18.1.2003 - pridan envelope command $7 - BaseNote = $XY
+
+;3.2.2003 - upraveno formatovani frq a volume tables
+
+;8.2.2003 - MODIFIKACE PLAYER RUTINY - INSTRUMENT VERZE 1
+;podpora delsich table, delsich envelope, moznost plneho rizeni AUDCTL
+;pri upravach doslo k ruznym optimalizacim => zkraceni o 52 byte!!!
+
+;12.2.2003 - OPRAVA BUGu v RMT - table speed (prvni prvek table se hral o 1/50 kratsi dobu => posun ostatnich tez o 1/50)
+;pri oprave optimalizace => zkraceni o 3 byte!
+
+;22.2.2003 - pridana variace commandu $7. Je-li parametr $80, pak se pouzije "volume only" rezim.
+
+;17.4.2003 - snaha o opravu bugu s vynechanym jednim zpracovanim obalek na zacatku (17.4.2003)
+;ale nepomohlo, tak zaremovano (jsr rmt_p3)
+
+;27.4.2003 - opetovny pokus o opravu (viz. 17.4.2003), opet pridanim onoho jsr rmt_p3 (odremovanim)
+;			 OK! Funguje to, ale musela se udelat i souvisejici oprava v RMTrackeru
+
+;19.1.2004 - pridana moznost 4TRACKY STEREO L1 R2 R3 L4 a 4TRACKY STEREO L1 L2 R3 R4
+
+;31.1.2004 - opravena chyba v pricitani (carry u horniho byte) pri spousteni songu od N-teho songline.
+;          - opravene STEREOMODE 2 a 3, aby spravne fungovaly i filtry a 16bit bassy
+
+;11.2.2004 - pridano FEAT_VOLUMEMIN a vylepseno FEAT_AUDCTLMANUALSET (o 2 takty) pri kazdem SetUpInstrumentY2
+;		   - pridano FEAT_TABLEGO
+
+;15.2.2004 - ruzne speed/size optimalizace (22 bytes uspora)
+
+;16.2.2004-21.2.2004 - ruzne speed/size optimalizace podle rad od Jaskiera + nejake dalsi moje vlastni brutalne drsne optimalizace :-)
+;		   - uspora dalsich 40 (!) bytes oproti 15.2.2004
+
+;13.4.2005 - uprava kontroly jestli se ma pouzivat table
+
+;26.12.2005 - FEAT_INSTRSPEED	  (=0 =>pro moduly s ruznou instr.speed 1 az 4; jinak natvrdo jen pro jednu instr.speed)
+;			- FEAT_CONSTANTSPEED  (jestlize _VUBEC_ neobsahuje zadny speed command, pak je nenulove a obsahuje hlavni nemennou rychlost)
+;			- vylepseni pomoci samoprepisujicich promennych
+;			( v_instrspeed, v_maxtracklen, v_audctl, v_audctl2, v_bspeed )
+
+;17.2.2006 - FEAT_SFX
+
+;2.4.2006 - FEAT_EFFECTVIBRATO a FEAT_EFFECTFSHIFT
+
+;16.4.2006 - optimalizace vibrato effektu
+
+;13.9.2007  - oprava FEAT optimalizace pro Command5 a soucasne vubec nikde nepouzite portamento
+;			- oprava FEAT optimalizace pro Command6 a soucasne vunec nikde nepouzity filter
+;			- ultrabrutalni velikostni i rychlostni FEAT optimalizace pro rozeskakovani podle cisel commandu
+;			- vylepseni optimalizace - trackn_command se nekdy vubec nekompiluje/neinicializuje u kazdeho commandu !
+
+;30.8.2008  - podpora pro FEAT_GLOBALVOLUMEFADE pro RMTGLOBALVOLUMEFADE
+
+;8.1.2009 - label pro RMTSFXVOLUME (idea by Tebe)
+
+;filtry maji vetsi prioritu nez 16 bit bassy, pripadne nez jiny track
+;napr. a) pokud by se krizilo filtrovani s nizsim generatorem z dvojice spojenych pro 16bit bassy,
+;tak se pouzije filtrovani a misto 16bit bassu jen normalni 8bit bassy
+;napr. b) pokud je zapnuto filtrovani v g0, preplacne se g3 filtrovanou frekvenci (a vynuluje hlasitost g3)
+
+;16 bit bassy maji vyssi prioritu nez jiny track (s vyjimkou filtrovaneho, viz. vyse)
+;napr. pouzije-li se v g1 16bit bass, bude prepisovat g0 dolnim bytem 16bit frekvence (a nulovat hlasitost g0)
+
+;pri portamento efektu se pouziva prechodova frekvence 
+;mezi vychozim a cilovym tonem + effvibrato/shift
+;(ne vsak tablenote/shift posuny, krome povelu setportamento 00, tam se tablenote/shift pricita pri vypoctu cilove portamento frekvence)
+
+
+;TODO
+;(ok) * frekvence pro 0 notu a horni noty 61-63 (60 je posledni - u sumu =0)
+;(ok) * neinicializovane instrumenty na zacatku u empty tracku (hb instrumentu==0 ? preskocit instrument)
+;(ok) * inicializace na 0 vsech track promennych
+;(ok) * inicializacni rychlost v hlavicce modulu (misto te defaultni #8)
+;(ok) * bity $80 a $01 pro AUDCTL
+
+;* STEREOMODE	equ 0..3			;0 => compile RMTplayer for 4 tracks mono
+;*									;1 => compile RMTplayer for 8 tracks stereo
+;*									;2 => compile RMTplayer for 4 tracks stereo L1 R2 R3 L4
+;*									;3 => compile RMTplayer for 4 tracks stereo L1 L2 R3 R4
+;*
+	IFT STEREOMODE==1
+TRACKS		equ 8
+	ELS
+TRACKS		equ 4
+	EIF
+;*
+PLAYER		equ $3400					;zacatek playeru (ale pouziva se pamet pred nim cca $400 (1kb))
+;*
+;* RMT FEATures definitions file
+;* For optimizations of RMT player routine to concrete RMT modul only!
+	icl "rmt_feat.a65"
+;*
+;* RMT ZeroPage addresses
+	org 203
+
+p_tis
+p_instrstable	org *+2		;203-4
+p_trackslbstable	org *+2		;205-6
+p_trackshbstable	org *+2		;207-8
+p_song			org *+2		;209-210
+;
+ns				org *+2		;211-12
+nr				org *+2		;213-14
+nt				org *+2		;215-16
+reg1			org *+1		;217
+reg2			org *+1		;218
+reg3			org *+1		;219
+tmp				org *+1		;220
+	IFT FEAT_COMMAND2
+frqaddcmd2		org *+1		;221
+	EIF
+;
+
+	IFT TRACKS>4
+	org PLAYER-$400+$40				;$3040
+	ELS
+	org PLAYER-$400+$e0				;$30e0
+	EIF
+
+track_variables
+trackn_db	org *+TRACKS			;db
+trackn_hb	org *+TRACKS			;hb
+trackn_idx	org *+TRACKS			;track index
+trackn_pause	org *+TRACKS		;track pause (v taktech)
+trackn_note	org *+TRACKS			;0-59
+trackn_volume	org *+TRACKS		;vvvv0000
+trackn_distor 	org *+TRACKS		;dddd0000
+trackn_shiftfrq	org *+TRACKS
+;
+	IFT FEAT_PORTAMENTO
+trackn_portafrqc org *+TRACKS		;cilova portamento frq
+trackn_portafrqa org *+TRACKS		;aktualni portamento frq
+trackn_portaspeed org *+TRACKS		;portamento speed
+trackn_portaspeeda org *+TRACKS		;aktualni portamento speed
+trackn_portadepth org *+TRACKS		;portamento depth
+	EIF
+trackn_instrx2	org *+TRACKS		;xiii iii0 ; x=$80(nenastavovat)
+trackn_instrdb	org *+TRACKS
+trackn_instrhb	org *+TRACKS
+trackn_instridx	org *+TRACKS		;0,3,6,..,45  (3*16-3)
+;
+trackn_instrlen	org *+TRACKS		;delka instrumentu
+trackn_instrlop	org *+TRACKS		;opakovani zacina tam
+trackn_instrreachend	org *+TRACKS		;nastavi se na $80 pri prvnim dosazeni konce instrumentu (od te chvile ubyva volume)
+trackn_volumeslidedepth org *+TRACKS		;ubyvani volume
+trackn_volumeslidevalue org *+TRACKS		;aktualni stav pro ubyvani volume
+	IFT FEAT_VOLUMEMIN
+trackn_volumemin		org *+TRACKS		;minimalni hodnota volume pri ubyvani
+	EIF
+FEAT_EFFECTS equ FEAT_EFFECTVIBRATO||FEAT_EFFECTFSHIFT
+	IFT FEAT_EFFECTS
+trackn_effdelay			org *+TRACKS
+	EIF
+	IFT FEAT_EFFECTVIBRATO
+trackn_effvibratoa		org *+TRACKS		;aktualni index vibrata
+	EIF
+	IFT FEAT_EFFECTFSHIFT
+trackn_effshift		org *+TRACKS
+	EIF
+trackn_tabletypespeed org *+TRACKS			;table type $00=noty,$80=frekvence ; 0-$3f table speed
+	IFT FEAT_TABLEMODE
+trackn_tablemode	org *+TRACKS			;table mode $00=set,$40=add
+	EIF
+trackn_tablenote	org *+TRACKS			;table posun not
+trackn_tablea		org *+TRACKS			;aktualni index
+trackn_tableend		org *+TRACKS			;delka table
+	IFT FEAT_TABLEGO
+trackn_tablelop		org *+TRACKS			;opakovani table
+	EIF
+trackn_tablespeeda	org *+TRACKS			;aktualni table speed
+;
+	IFT FEAT_FILTER||FEAT_BASS16
+trackn_command		org *+TRACKS			;aktualne provadeny instrument command povel
+	EIF
+	IFT FEAT_BASS16
+trackn_outnote		org *+TRACKS			;vysledna nota (po vsech posunech)
+	EIF
+	IFT FEAT_FILTER
+trackn_filter		org *+TRACKS			;posun frekvence fitrujiciho generatoru
+	EIF
+;
+trackn_audf	org *+TRACKS
+trackn_audc	org *+TRACKS
+	IFT FEAT_AUDCTLMANUALSET
+trackn_audctl	org *+TRACKS
+	EIF
+;v_audctl		org *+1						;prepisuje se primo v kodu parametr lda #...
+;v_audctl2		org *+1						;prepisuje se primo v kodu parametr lda #...
+;
+;	IFT FEAT_CONSTANTSPEED==0
+;v_speed			org *+1					;prepisuje se primo v kodu parametr u lda #$ff
+;	EIF
+v_aspeed		org *+1
+;v_bspeed		org *+1						;buffer speed (nez je jiste, ze plati zmenena rychlost)
+;											;prepisuje se primo v kodu parametr u lda #$ff
+;	IFT FEAT_INSTRSPEED==0||FEAT_INSTRSPEED>1
+;v_instrspeed	org *+1						;prepisuje se primo v kodu parametr u lda #$ff
+;v_ainstrspeed	org *+1						;prepisuje se primo v kodu parametr u lda #$ff
+;	EIF
+;v_maxtracklen	org *+1						;prepisuje se primo v kodu parametr u cmp #$ff
+;v_abeat			org *+1					;prepisuje se primo v kodu parametr u lda #$ff
+track_endvariables
+;	dta $ff
+
+
+		org PLAYER-$100-$140-$40+2
+
+INSTRPAR	equ 12				;pocet "main" parametru instrumentu => table zacina na 12.bytu, obalka za koncem table
+
+tabbeganddistor ;zacatky v tabfrq a hodnoty distortion pro jednotlive instrument distortion
+ dta frqtabpure-frqtab,$00				;sum 0
+ dta frqtabpure-frqtab,$20				;sum 2
+ dta frqtabpure-frqtab,$40				;sum 4
+ dta frqtabbass1-frqtab,$c0				;bassy 16bit (pokud to neni g1 ci g3, tak bass tab 1)
+ dta frqtabpure-frqtab,$80				;sum 8
+ dta frqtabpure-frqtab,$a0				;ciste tony
+ dta frqtabbass1-frqtab,$c0				;bassy tab1
+ dta frqtabbass2-frqtab,$c0				;bassy tab2
+;
+		IFT FEAT_EFFECTVIBRATO
+vibtabbeg dta 0,vib1-vib0,vib2-vib0,vib3-vib0
+vib0	dta 0						;zadne vibrato
+vib1	dta 1,-1,-1,1				;small vibrato
+vib2	dta 1,0,-1,-1,0,1			;middle vibrato
+vib3	dta 1,1,0,-1,-1,-1,-1,0,1,1	;big vibrato
+vibtabnext
+		dta vib0-vib0+0
+		dta vib1-vib0+1,vib1-vib0+2,vib1-vib0+3,vib1-vib0+0
+		dta vib2-vib0+1,vib2-vib0+2,vib2-vib0+3,vib2-vib0+4,vib2-vib0+5,vib2-vib0+0
+		dta vib3-vib0+1,vib3-vib0+2,vib3-vib0+3,vib3-vib0+4,vib3-vib0+5,vib3-vib0+6,vib3-vib0+7,vib3-vib0+8,vib3-vib0+9,vib3-vib0+0
+;		
+		EIF
+;
+;emptytrack											;OPTIMALIZACE: empty track se nepouziva
+;	dta 62,0			;pause, nekonecna pauza		;OPTIMALIZACE: empty track se nepouziva
+;
+;
+		org PLAYER-$100-$140		;5tabulek*$40 = $140
+;
+;regulerni jsou noty 0-59
+;noty 60,61,62,63 pouzivaji frekvenci noty 63 ale HLASITOST=0 => nejsou slyset
+;
+;
+	IFT FEAT_BASS16
+frqtabbasslo
+	dta $F2,$33,$96,$E2,$38,$8C,$00,$6A,$E8,$6A,$EF,$80,$08,$AE,$46,$E6
+	dta $95,$41,$F6,$B0,$6E,$30,$F6,$BB,$84,$52,$22,$F4,$C8,$A0,$7A,$55
+	dta $34,$14,$F5,$D8,$BD,$A4,$8D,$77,$60,$4E,$38,$27,$15,$06,$F7,$E8
+	dta $DB,$CF,$C3,$B8,$AC,$A2,$9A,$90,$88,$7F,$78,$70,$6A,$64,$5E,$00
+;horni byty (basshi) jsou az za tabulkami frqtab, to proto aby frqtab lezelo na hranici stranky
+	EIF
+;
+		org PLAYER-$100-$100		;4tabulky*$40 = $100
+frqtab
+	ERT [<frqtab]!=0	;* frqtab must begin at the memory page bound! (i.e. $..00 address)
+;BASS 1 (0c)
+;pridavek 8 tonu o oktavu vys kvuli srovnani ladeni
+frqtabbass1
+	dta $BF,$B6,$AA,$A1,$98,$8F,$89,$80,$F2,$E6,$DA,$CE,$BF,$B6,$AA,$A1
+	dta $98,$8F,$89,$80,$7A,$71,$6B,$65,$5F,$5C,$56,$50,$4D,$47,$44,$3E
+	dta $3C,$38,$35,$32,$2F,$2D,$2A,$28,$25,$23,$21,$1F,$1D,$1C,$1A,$18
+	dta $17,$16,$14,$13,$12,$11,$10,$0F,$0E,$0D,$0C,$0B,$0A,$09,$08,$07
+;a zde tech 8 hornich bylo odebrano 
+;-------------------
+;BASS 2 (0e)
+frqtabbass2
+	dta $FF,$F1,$E4,$D8,$CA,$C0,$B5,$AB,$A2,$99,$8E,$87,$7F,$79,$73,$70
+	dta $66,$61,$5A,$55,$52,$4B,$48,$43,$3F,$3C,$39,$37,$33,$30,$2D,$2A
+	dta $28,$25,$24,$21,$1F,$1E,$1C,$1B,$19,$17,$16,$15,$13,$12,$11,$10
+	dta $0F,$0E,$0D,$0C,$0B,$0A,$09,$08,$07,$06,$05,$04,$03,$02,$01,$00
+;
+;ciste tony (0a) a pro sum 0,2,4,8
+frqtabpure
+	dta $F3,$E6,$D9,$CC,$C1,$B5,$AD,$A2,$99,$90,$88,$80,$79,$72,$6C,$66
+	dta $60,$5B,$55,$51,$4C,$48,$44,$40,$3C,$39,$35,$32,$2F,$2D,$2A,$28
+	dta $25,$23,$21,$1F,$1D,$1C,$1A,$18,$17,$16,$14,$13,$12,$11,$10,$0F
+	dta $0E,$0D,$0C,$0B,$0A,$09,$08,$07,$06,$05,$04,$03,$02,$01,$00,$00
+;
+	IFT FEAT_BASS16
+frqtabbasshi
+	dta $0D,$0D,$0C,$0B,$0B,$0A,$0A,$09,$08,$08,$07,$07,$07,$06,$06,$05
+	dta $05,$05,$04,$04,$04,$04,$03,$03,$03,$03,$03,$02,$02,$02,$02,$02
+	dta $02,$02,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$00,$00
+	dta $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	EIF
+;
+;
+		org PLAYER-$0100			;256bytu pred playerem
+
+;prevod hlasitosti
+volumetab
+	dta $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+	dta $00,$00,$00,$00,$00,$00,$00,$00,$01,$01,$01,$01,$01,$01,$01,$01
+	dta $00,$00,$00,$00,$01,$01,$01,$01,$01,$01,$01,$01,$02,$02,$02,$02
+	dta $00,$00,$00,$01,$01,$01,$01,$01,$02,$02,$02,$02,$02,$03,$03,$03
+	dta $00,$00,$01,$01,$01,$01,$02,$02,$02,$02,$03,$03,$03,$03,$04,$04
+	dta $00,$00,$01,$01,$01,$02,$02,$02,$03,$03,$03,$04,$04,$04,$05,$05
+	dta $00,$00,$01,$01,$02,$02,$02,$03,$03,$04,$04,$04,$05,$05,$06,$06
+	dta $00,$00,$01,$01,$02,$02,$03,$03,$04,$04,$05,$05,$06,$06,$07,$07
+	dta $00,$01,$01,$02,$02,$03,$03,$04,$04,$05,$05,$06,$06,$07,$07,$08
+	dta $00,$01,$01,$02,$02,$03,$04,$04,$05,$05,$06,$07,$07,$08,$08,$09
+	dta $00,$01,$01,$02,$03,$03,$04,$05,$05,$06,$07,$07,$08,$09,$09,$0A
+	dta $00,$01,$01,$02,$03,$04,$04,$05,$06,$07,$07,$08,$09,$0A,$0A,$0B
+	dta $00,$01,$02,$02,$03,$04,$05,$06,$06,$07,$08,$09,$0A,$0A,$0B,$0C
+	dta $00,$01,$02,$03,$03,$04,$05,$06,$07,$08,$09,$0A,$0A,$0B,$0C,$0D
+	dta $00,$01,$02,$03,$04,$05,$06,$07,$07,$08,$09,$0A,$0B,$0C,$0D,$0E
+	dta $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0A,$0B,$0C,$0D,$0E,$0F
+;
+;
+;
+	org PLAYER			;$3400
+;*
+;* Set of RMT main vectors:
+;*
+RASTERMUSICTRACKER
+	jmp rmt_init		;x=db,y=hb,a=songline(0-255), vraci instrument speed (1=normal 1vbi, 2= 2xvbi, 3= 3xvbi,...)
+	jmp rmt_play		;kazdou 1/50 sec, vraci ainstrument speed (1 pro 1vbi, 2az1 pro 2vbi, 3az2az1 pro 3vbi,...)
+	jmp rmt_p3			;(bez SetPokey a bez Songu a bez Tracku) az od zpracovavani instrumentu
+	jmp rmt_silence		;ticho
+	jmp SetPokey
+	IFT FEAT_SFX
+	jmp rmt_sfx			;* A=note(0,..,60),X=channel(0,..,3 or 0,..,7),Y=instrument*2(0,2,4,..,126)
+	EIF
+;
+;
+;
+rmt_init
+	stx ns
+	sty ns+1
+	IFT FEAT_NOSTARTINGSONGLINE==0
+	pha					;song line					;PHA 1!!!
+	EIF
+;
+;nulovani track_variables
+	IFT track_endvariables-track_variables>255		;trackn promennych je vice nez 255
+	ldy #0
+	tya
+ri0	sta track_variables,y
+	sta track_endvariables-$100,y
+	iny
+	bne ri0
+	ELS
+	ldy #track_endvariables-track_variables
+	lda #0
+ri0	sta track_variables-1,y
+	dey
+	bne ri0				;je o 1 posunuty, takze staci od n do 1
+	EIF	
+;	
+	ldy #4
+	lda (ns),y
+	sta v_maxtracklen	;maximalni delka tracku
+	iny	;#5
+	IFT FEAT_CONSTANTSPEED==0
+	lda (ns),y
+	sta v_speed			;default track speed
+	EIF
+	IFT FEAT_INSTRSPEED==0
+	iny	;#6
+	lda (ns),y
+	sta v_instrspeed	;instrument speed
+	sta v_ainstrspeed
+	ELI FEAT_INSTRSPEED>1
+	lda #FEAT_INSTRSPEED
+	sta v_ainstrspeed
+	EIF
+	;#7 rezervovano
+	ldy #8
+ri1	lda (ns),y		;8,9 10,11 12,13 14,15
+	sta p_tis-8,y
+	iny
+	cpy #8+8		;8bytu
+	bne ri1
+;
+	IFT FEAT_NOSTARTINGSONGLINE==0
+	pla				;songline						;PLA 1!!!
+	pha												;PHA 2A/B!!!
+	IFT TRACKS>4
+	asl @			;stereo 8 tracku => kazdy radek songu ma 8 bytu
+	asl @
+	asl @			;=*8
+	clc
+	adc p_song
+	sta p_song
+	pla												;PLA 2A!!!
+	php												;PHP 3A!!! (schova si carry)
+	and #$e0		;nejvyssi 3 bity
+	asl @			;do carry
+	rol @			;1.bit
+	rol @			;2.bit
+	rol @			;3.bit
+	ELS
+	asl @			;mono 4 tracky => kazdy radek songu ma 4 byty
+	asl @			;=*4
+	clc
+	adc p_song
+	sta p_song
+	pla												;PLA 2B!!!
+	php												;PHP 3B!!! (schova si carry)	
+	and #$c0		;nejvyssi 2 bity
+	asl @			;do carry
+	rol @			;1.bit
+	rol @			;2.bit
+	EIF
+	plp												;PLP 3A/B!!! (obnovi si carry)
+	adc p_song+1	;(carry je nastaveno podle scitani dolniho byte)
+	sta p_song+1
+	EIF ;/ IFT FEAT_NOSTARTINGSONGLINE==0
+;
+;	jsr GetSongLine
+;	jsr GetTrackLine
+;	jsr InitOfNewSetInstrumentsOnly	;prvni nastaveni instrumentu
+;	jsr rmt_p3						;oprava 27.4.2003 (vynechano prvni volani p3 casti => posun o 1/50 na zacatku)
+	jsr GetSongLineTrackLineInitOfNewSetInstrumentsOnlyRmtp3
+;
+;	jsr rmt_silence										;OPTIMALIZACE: Pokracuje primo na rmt_silence
+;	lda v_instrspeed			;instrument speed		;OPTIMALIZACE: <--toto nacteni hodnoty je na konci rmt_silence
+;	rts													;OPTIMALIZACE: pred rts instrukci.
+;
+;a pokracuje
+rmt_silence
+	IFT STEREOMODE>0			;i pro 1 i pro 2 i pro 3
+	lda #0
+	sta $d208
+	sta $d218
+	ldy #3
+	sty $d20f
+	sty $d21f
+	ldy #8
+si1	sta $d200,y
+	sta $d210,y
+	dey
+	bpl si1
+	ELS
+	lda #0
+	sta $d208
+	ldy #3
+	sty $d20f
+	ldy #8
+si1	sta $d200,y
+	dey
+	bpl si1
+	EIF
+	IFT FEAT_INSTRSPEED==0
+	lda v_instrspeed			;instrument speed (urceno pro navrat z rmt_init, ale nevadi to i po rmt_silence)
+	ELS
+	lda #FEAT_INSTRSPEED
+	EIF
+	rts
+;
+;
+GetSongLineTrackLineInitOfNewSetInstrumentsOnlyRmtp3		;spojeno do jedne funkce
+GetSongLine						;dela get songline, pak get track line, pak init instrumentu
+	ldx #0
+	stx v_abeat					;aktualni beat
+nn0	;pred skokem z jinych mist na nn0 musi udelat ldx #0
+;dalsi radek v songu
+;	ldx #0						;musi zacinat od 0.sloupce a pokracovat 0->7, protoze tam muze byt goto
+;   pri prvnim pruchodu (pres GetSongLine...) je x=0, pri skoku na nn0 odjinud musi pred tim skokem udelat ldx #0
+nn1	txa
+	tay
+	lda (p_song),y
+	cmp #$fe					;>=$fe?
+	bcs nn2						;Ano, => skok
+;cislo tracku 0-fd
+	tay
+	lda (p_trackslbstable),y
+	sta trackn_db,x
+	lda (p_trackshbstable),y
+nn1a sta trackn_hb,x
+	lda #0
+	sta trackn_idx,x
+	lda #1						
+nn1a2 sta trackn_pause,x		;OPTIMALIZACE: aby mohl skakat na nn1a2 pro prazdny track (tj. musi byt vcetne $80 -> instrx2,x nize)
+	lda #$80					;inicializace
+	sta trackn_instrx2,x		;pokud to nezmeni pri "note 0-60", zustane tam $80
+	inx
+xtracks01	cpx #TRACKS
+	bne nn1
+	lda p_song
+	clc
+xtracks02	adc #TRACKS
+	sta p_song
+	bcc GetTrackLine			;nn1b	(muze rovnou na GetTrackLine)
+	inc p_song+1
+nn1b
+;	rts							;KONEC GetSongLine
+	jmp GetTrackLine			;KONEC GetSongLine => prechod na GetTrackLine
+nn2
+;cislo tracku >=$fe
+;	cmp #$fe		;<---jiz provedeno pred tim nez sem skocil
+	beq nn3			;ano, je to #$fe, => skok
+;cislo tracku =ff (empty track)
+nn2a ;lda #<emptytrack			;OPTIMALIZACE: misto empty tracku primo nastavi trackn_pause na 0 (maximalni pauza)
+;	sta trackn_db,x				;OPTIMALIZACE
+;	lda #>emptytrack			;OPTIMALIZACE
+	lda #0						;0 je maximalni delka pauzy (256)
+	beq nn1a2		;! jmp nn1a2
+nn3
+;cislo tracku =fe (jump)
+	ldy #2			;0.b=fe(go),1.b=line(nepouzije se),2.b=dbadr,3.b=hbadr
+	lda (p_song),y
+	tax
+	iny
+	lda (p_song),y
+	sta p_song+1
+	stx p_song
+	ldx #0			;musi byt x=0 pred skokem na nn0, aby zacal zpracovavat novy radek songu od #0 (az po 7)
+	beq nn0			;! jmp nn0			;znovu na dalsi radek songu
+;
+;
+GetTrackLine		;dela get trackline (pripadne si zpetne zavola GetSongline), pak init instrumentu
+;dalsi radek v trackach
+oo0
+oo0a
+	IFT FEAT_CONSTANTSPEED==0
+	lda #$ff			;rychlost (parametr je prepisovan)
+v_speed equ *-1
+	sta v_bspeed		;do buffer speed
+	EIF
+;
+	ldx #-1				;musi se delat od 0 do TRACKS (a ne naopak), protoze se jednak preplacavaji speedy na stejnem trackline
+						;a druhak ENDofTRACK to muze zastavit v kteremkoliv sloupci a tim padem by se provedla opacna strana
+oo1
+	inx					;x=0 to TRACKS-1
+;	lda trackn_pause,x								;OPTIMALIZACE: byla-li to 0, pak se bude odcitat od 255 do 1
+;	beq oo1x			;=0 => nekonecna pauza		;OPTIMALIZACE: coz vyjde nastejno jako nekonecna pauza, protoze nejdelsi track muze mit 256 taktu
+	dec trackn_pause,x
+	bne oo1x			;>0 => pauza 1-255
+;OPTIMALIZACE:	inc trackn_pause,x	;trackn_pause=1
+;OPTIMALIZACE: je to o 1 takt rychlejsi pres lda #1 sta...
+;OPTIMALIZACE: a presunuto jen pro notu nebo zmenu volume (kdyz se nastavuje volume)
+;	lda #1
+;	sta trackn_pause,x	
+oo1b
+	lda trackn_db,x
+	sta ns
+	lda trackn_hb,x
+	sta ns+1
+oo1i
+	ldy trackn_idx,x		;34             12
+	inc trackn_idx,x		;pro priste	
+	lda (ns),y				;vvnnnnnn iiiiiivv		(v=volume,n=note,i=instrument)
+	sta reg1
+	and #$3f
+	cmp #61
+	beq oo1a				;=61 =>empty note (nenastavi notu a instrument, ale jen volume)
+	bcs oo2					;>61
+;nota 0-60
+	sta trackn_note,x		;nastavi trackn_note
+	IFT FEAT_BASS16	
+	sta trackn_outnote,x	;(pokud by ji uz nicim nezmenil, zustane stejna jako note)
+	EIF
+	iny
+	lda (ns),y
+;	sta reg2
+;	lda reg2				;iiiiiiXX
+	lsr @					;0iiiiiiX
+	and #$3f*2				;0iiiiii0
+	sta trackn_instrx2,x	;nastavi instrument
+;
+oo1a
+	lda #1					;po note (nebo po zmene volume) bude pauza 1 takt
+	sta trackn_pause,x		;
+	ldy trackn_idx,x
+	inc trackn_idx,x
+;	lda reg2				;iiiiiivv
+	lda (ns),y
+	lsr @
+	ror reg1
+	lsr @
+	ror reg1
+	lda reg1
+	IFT FEAT_GLOBALVOLUMEFADE
+	sec
+	sbc #$00				;par.je prepisovan
+RMTGLOBALVOLUMEFADE equ *-1
+	bcs voig	;>=0
+	lda #0		;<0 => musi vynulovat
+voig
+	EIF
+	and #$f0				;vvvv0000
+	sta trackn_volume,x		;nastavi volume
+oo1x
+;	inx						;presunuto nahoru (X se inicializuje na -1, pak se dela vzdy nejdriv inx a pak teprve veci pro X (tj.X=0 to TRACKS-1)
+xtracks03sub1	cpx #TRACKS-1
+	;X zustava na hodnote #TRACKS-1, cehoz se vyuzije nize
+	bne oo1
+	IFT FEAT_CONSTANTSPEED==0
+	lda #$ff			;rychlost z bufferu (parametr je prepisovan)
+v_bspeed equ *-1	;parametr je prepisovan
+	sta v_speed				;teprve ted (po dokonceni zpracovani vsech tracku) zapise do celkove rychlosti
+	ELS
+	lda #FEAT_CONSTANTSPEED
+	EIF
+	sta v_aspeed			;i do aktualni
+;	rts						;KONEC GetTrackLine
+	;KONEC GetTrackLine => prechod na Inicializaci instrumentu
+;xtracks04sub1	ldx #TRACKS-1	;toto se musi nastavit pred skokem na InitOfNewSetInstrumentsOnly
+	;X = #TRACKS - 1 !
+	jmp InitOfNewSetInstrumentsOnly		;X musi byt rovno #TRACKS-1
+oo2
+;nota>61
+	cmp #63
+	beq oo63				;=63 => skok
+;nota=62 (00pause, byte ; resp. 01pause =1takt, 10pause =2takty, 11pause =3takty )
+	lda reg1
+	and #$c0				;horni dva bity
+	beq oo62_b				;nulove => dalsi byte je velikost pauzy => skok
+;	clc						;neni nutno, par radku zpatky je tam cmp #63, coz pro 62 nastavi C=0
+	asl @					;xy000000 => C y0000000
+	rol @					;C y0000000 => C 0000000x
+	rol @					;C 0000000x => 000000xy
+	sta trackn_pause,x
+;	dec trackn_idx,x		;druhy byte se nepouzije (idx byl jiz posunut o 2, takze ted 1 zpatky)
+	jmp oo1x
+oo62_b
+;	lda reg2
+	iny
+	lda (ns),y
+	sta trackn_pause,x
+	inc trackn_idx,x		;pro priste	
+	jmp oo1x
+oo63
+	lda reg1
+	IFT FEAT_CONSTANTSPEED==0
+	bmi oo63_1X
+;oo63_0X
+;nota=63 (+nejvyssi bit 0) (speed, byte)
+;	lda reg2		;vezme novou rychlost
+	iny
+	lda (ns),y
+	sta v_bspeed	;novou rychlost pouze do bufferu
+	inc trackn_idx,x		;pro priste		
+	jmp oo1i	;ihned jde na dalsi dvojici v tracku
+oo63_1X
+	EIF
+	cmp #255		;192+63(go) => 255 (=END, ukonci vsechny tracky a posouva se v songu)
+	beq oo63_11
+;oo63_10
+;nota=63 (nejvyssi dva bity 10)
+;	lda reg2		;go byte
+	iny
+	lda (ns),y
+	sta trackn_idx,x
+	jmp oo1i		;ihned jde na dalsi dvojici v tracku
+oo63_11
+;nota=63 (nejvyssi dva bity 11) (=>byte1=255)
+;	jsr GetSongLine		;dalsi radek v songu
+;	jmp oo0				;znovu na zpracovani tracku
+	jmp GetSongLine
+;
+;
+p2xrmtp3	jmp rmt_p3			;vyuziva bmi p2xrmt_p3 kousek nize
+;
+;InitOfNewSetInstrumentsOnly			;OPTIMALIZACE: Posunuto dolu.
+;inicializace instrumentuuu, ale jen tech
+;u nichz je to ted potreba (tj. jenz prave ted zacali hrat regulerni notu (0-59))
+;xtracks04	ldx #TRACKS					;OPTIMALIZACE: Inicializace X registru se musi provest pred skokem na InitOfNewSetInstrumentsOnly hodnotou #TRACKS-1
+p2x0 dex							;sem skace az pri dalsim prubehu smyckou pro X od 7->0
+	 bmi p2xrmtp3					;KONEC casti InitOfNewSetInstrumentsOnly => prechod na rmt_p3
+InitOfNewSetInstrumentsOnly			;POZOR! Pred skokem na InitOfNewSetInstrumentsOnly musi naplnit ldx #TRACKS-1
+p2x1 ldy trackn_instrx2,x			;c.instrumentu *2
+	bmi p2x0						;je-li bit $80, pak nenastavovat
+;	jsr SetUpInstrumentY2			;odskok na nastavovani instrumentu
+	IFT FEAT_SFX
+	jsr SetUpInstrumentY2
+	jmp p2x0
+rmt_sfx
+	sta trackn_note,x		;nastavi trackn_note
+	IFT FEAT_BASS16	
+	sta trackn_outnote,x	;(pokud by ji uz nicim nezmenil, zustane stejna jako note)
+	EIF
+	lda #$f0				;* sfx note volume*16
+RMTSFXVOLUME equ *-1		;* label for sfx note volume parameter overwriting
+	sta trackn_volume,x		;nastavi volume	
+	;jsr SetUpInstrumentY2	;v y je cislo instrumentu *2, v x je cislo tracku
+	;pokracuje...
+	EIF
+;je to vlozeno primo sem
+SetUpInstrumentY2	;v y je cislo instrumentu *2, v x je cislo tracku
+	lda (p_instrstable),y
+	sta trackn_instrdb,x	;nastavi instrument
+	sta nt
+	iny
+	lda (p_instrstable),y
+	sta trackn_instrhb,x
+	sta nt+1
+;----------OPTIMALIZACE--- tento blok posunut kus niz kde zustava A=0 a C=1, cehoz se da vyuzit pro Y=0 pres TAY, a Carry pro pricitani
+;	ldy #0
+;y=0
+;	lda (nt),y
+;	sta trackn_tableend,x
+;	clc
+;	adc #1
+;	sta trackn_instridx,x			;obalka envelope zacina 1 byte za table
+;y=0 porad
+	IFT FEAT_FILTER	
+	lda #1
+	sta trackn_filter,x						;default posun pro filtrovani
+	EIF
+	IFT FEAT_TABLEGO	;TABLEGO
+	IFT FEAT_FILTER
+	tay		;y=1		;pokud je FEAT_FILTER, vyuzije A=1 pro TAY (=> Y=1)
+	ELS
+	ldy #1	;y=1		;neni-li FEAT_FILTER, musi udelat ldy #1
+	EIF
+	lda (nt),y
+	sta trackn_tablelop,x
+	iny ;#2
+	ELS					;/TABLEGO else
+	ldy #2
+	EIF					;/TABLEGO
+;y=2
+	lda (nt),y
+	sta trackn_instrlen,x
+;y=2 porad
+	iny ;#3
+	lda (nt),y
+	sta trackn_instrlop,x
+;y=3
+	iny ;#4
+	lda (nt),y
+	sta trackn_tabletypespeed,x			;tmss ssss (type mode speed)
+	IFT FEAT_TABLETYPE||FEAT_TABLEMODE
+	and #$3f							;00ss ssss -tablespeed $00-$3f
+	EIF
+	sta trackn_tablespeeda,x
+	IFT FEAT_TABLEMODE	
+	lda (nt),y
+	and #$40							;0m00 0000 (pouze mode)
+	sta trackn_tablemode,x
+	EIF
+;y=4
+	IFT FEAT_AUDCTLMANUALSET
+	iny	;#5	
+	lda (nt),y
+	sta trackn_audctl,x					;audctl
+	iny ;#6
+	ELS
+	ldy #6
+	EIF
+;y=6
+	lda (nt),y
+	sta trackn_volumeslidedepth,x			;ubyvani hlasitosti pri kazdem "goto" v instrumentu
+;y=6 porad
+	IFT FEAT_VOLUMEMIN
+	iny ;#7
+	lda (nt),y								;mmmm 0000 volume minimum pri ubyvani hlasitosti
+;	and #$f0						;v dolni pulce nic neni
+	sta trackn_volumemin,x
+	IFT FEAT_EFFECTS
+	iny	;#8
+	EIF ;/FEAT_EFFECTS
+	ELS ;else FEAT_VOLUMEMIN
+	IFT FEAT_EFFECTS
+	ldy #8
+	EIF ;/FEAT_EFFECTS
+	EIF
+;y=8 (pozor, Y=8 jen pokud je FEAT_EFFECTS !!! (jinak to neni potreba)
+	IFT FEAT_EFFECTS
+	lda (nt),y								;effdelay
+	sta trackn_effdelay,x
+	IFT FEAT_EFFECTVIBRATO
+	iny ;#9
+	lda (nt),y								;effvibrato  0000 00vv  ($0-$3)
+;	and #$03								;v horni casti nic neni
+	tay
+	lda vibtabbeg,y
+	sta trackn_effvibratoa,x
+	EIF
+	IFT FEAT_EFFECTFSHIFT
+	ldy #10									;10 byte
+	lda (nt),y								;effshift
+	sta trackn_effshift,x
+	EIF ;/FEAT_EFFECTFSHIFT
+	EIF	;/FEAT_EFFECTS
+;ted uz ma Y kdovijakou hodnotu ;-)
+	;pozn. 11.byte je volny, rezervovan pro dalsi rozsireni
+	lda #128								;ubyvani hlasitosti se "zaokrouhluje" (tj. zacina se od +128/256)
+	sta trackn_volumeslidevalue,x
+;	lda #$80						;OPTIMALIZACE: presunuto sem zespodu, protoze je zrovna A=128 = $80 !
+	sta trackn_instrx2,x			;OPTIMALIZACE: instrument byl prave nastaven takze opet nahodi $80 aby se nenastavoval opakovane
+;	lda #0							;OPTIMALIZACE
+	asl @							;OPTIMALIZACE: a=0 (predtim bylo a=128, asl z toho udela 0)
+	sta trackn_instrreachend,x				;pak pri prvnim instrument "go" se nastavi na $80 (od te doby zacne ubyvat hlasitost)
+	sta trackn_shiftfrq,x
+;	carry je tedka vzdy C=1 (po asl hodnoty 128)
+;	ldy #0
+	tay			;y=0	     (carry zustava C=1)
+;y=0
+	lda (nt),y			    ;(carry zustava C=1)
+	sta trackn_tableend,x   ;(carry zustava C=1)
+;	clc						;(carry zustava C=1) uspora 2 cycles
+	adc #0					;a=a+1 (carry zustava C=1)		;drive tu bylo clc a adc #1
+	sta trackn_instridx,x				;obalka envelope zacina 1 byte za table
+;
+;a ted dalsi parametry
+	lda #INSTRPAR							;12
+	sta trackn_tablea,x						;zacina se od 0. polozky v table (=12.byte)
+	tay	;ldy #INSTRPAR	
+	lda (nt),y								;0.nota v table instrumentu	(=12.byte)
+	sta trackn_tablenote,x					;pokud je tableend=0 => zustane porad jen toto
+;	IFT FEAT_FILTER			;OPTIMALIZACE: presunuto nahoru kvuli uspore pameti
+;	lda #1					;OPTIMALIZACE: presunuto
+;	sta trackn_filter,x		;OPTIMALIZACE: presunuto  (default posun pro filtrovani)
+;	EIF						;OPTIMALIZACE: presunuto
+xata_rtshere				;na toto navesti si rmt_ata.a65 zapisuje "rts" instrukci aby mohla
+;	rts						;volat rutinu JSR SetUpInstrumentY2 jako podprogram.
+;
+;	lda #$80						;instrument byl prave nastaven							;OPTIMALIZACE: presunuto kousek vyse
+;	sta trackn_instrx2,x			;takze opet nahodi $80 aby se nenastavoval opakovane	;OPTIMALIZACE: kde je A=128
+;p2x2
+;	dex
+;	bpl p2x1
+;	rts
+	IFT FEAT_SFX
+	rts
+	ELS
+	jmp p2x0
+	EIF
+;
+;
+;
+;
+;
+;
+;
+;
+;vola se kazdou 1/50 sec.
+rmt_play
+;
+rmt_p0
+;------------------------------------------------------------------------------------------
+;nastaveni pokey registru
+;
+	jsr SetPokey
+;
+rmt_p1
+;------------------------------------------------------------------------------------------
+;zrychlene instrumenty oproti VBI
+;
+	IFT FEAT_INSTRSPEED==0||FEAT_INSTRSPEED>1
+	dec v_ainstrspeed
+	bne rmt_p3						;prechod na zpracovani obalovych krivek instrumentu
+									;(vynechani klasickeho zpracovani tracku)
+	EIF
+	IFT FEAT_INSTRSPEED==0
+	lda #$ff						;parametr je prepisovan
+v_instrspeed	equ *-1
+	sta v_ainstrspeed
+	ELI FEAT_INSTRSPEED>1
+	lda #FEAT_INSTRSPEED
+	sta v_ainstrspeed
+	EIF
+;
+rmt_p2
+;------------------------------------------------------------------------------------------
+;zpracovani tracku
+	dec v_aspeed
+	bne rmt_p3			;skok (az za inicializaci nove nastavenych instrumentu)
+;
+	inc v_abeat			;aktualni beat++
+	lda #$ff			;parametr je prepisovan   v_abeat
+v_abeat equ *-1
+	cmp #$ff			;je to maximalni delka tracku?
+v_maxtracklen equ *-1	;prepis parametru
+	beq p2o3			;je => skok
+;neni, takze prechod na dalsi track line
+;p2o2
+	jmp GetTrackLine	;(ten si sam v pripade potreby vola GetSongLine)
+						;a vola si pak i InitOfNewSetInstrumentsOnly a pote jde na rmt_p3
+p2o3
+;je => dalsi song line
+;;	jsr GetSongLine		;dalsi radek v songu (inicializuje se tam v_abeat)
+;	jsr GetSongLineTrackLineInitOfNewSetInstrumentsOnly
+;	jmp rmt_p3
+	jmp GetSongLineTrackLineInitOfNewSetInstrumentsOnlyRmtp3
+;
+;
+;
+;
+go_ppnext	jmp ppnext	;jen FAR skok pro beq co je kousek niz ktere ma branch out of range
+;
+rmt_p3
+;------------------------------------------------------------------------------------------
+;zpracovani obalek
+	lda #>frqtab
+	sta nr+1
+;	ldx #0						;OPTIMALIZACE z 0->7 (x++)
+xtracks05sub1	ldx #TRACKS-1	;OPTIMALIZACE na 7->0 (x--)  ...u zpracovani obalek se poradi zpracovani muze prehodit
+;	stx nr			(dolni byte je nastavovan pri zpracovani obalek)
+pp1
+	lda trackn_instrhb,x
+	beq go_ppnext						;kousek nahoru je go_ppnext jmp ppnext
+	sta ns+1
+	lda trackn_instrdb,x
+	sta ns
+	ldy trackn_instridx,x
+	lda (ns),y
+	sta reg1
+	iny
+	lda (ns),y
+	sta reg2
+	iny
+	lda (ns),y
+	sta reg3
+	iny
+	tya
+	cmp trackn_instrlen,x
+	bcc pp2
+	beq pp2
+	;provadi se goto instrumentu => nastavi trackn_instrreachend
+	lda #$80
+	sta trackn_instrreachend,x	
+pp1b
+	lda trackn_instrlop,x	
+pp2	sta trackn_instridx,x
+	lda reg1				;obalova krivka hlasitosti v instrumentu [rrrr llll] (Rpravy Llevy)
+	IFT TRACKS>4
+	cpx #4					;je to 4-7 kanal?
+	bcc pp2s				;ne, je to 0-3 => skok a pouzije primo 0000 llll
+	lsr @					;ano => posun rrrrllll
+	lsr @
+	lsr @
+	lsr @					;=>0000rrrr
+pp2s
+	EIF	
+	and #$0f				;0000llll (dolni 4bity)
+	ora trackn_volume,x		;vvvv0000
+	tay
+	lda volumetab,y
+	sta tmp				;schova do tmp (finalni hlasitost 0-15)	(je to rychlejsi nez PHA a pak PLA)
+	lda reg2
+	and #$0e			;distortion 0000 ddd0
+	tay					;sude hodnoty
+	lda tabbeganddistor,y		;posun v tabulce tabfrq 0,64,128,192
+	sta nr				;dolni byte pro nast.frekvenci z tabulky
+	lda tmp				;vezme z tmp (finalni hlasitost 0-15) (je to rychlejsi nez PHA a pak PLA)
+	ora tabbeganddistor+1,y		;hodnota sumu pro prislusne instrument distortion $00,$20,$..
+	sta trackn_audc,x
+;
+;	jmp InstrumentsEffects
+;returnfromInstrumentsEffects
+;<InstrumentsEffects>
+InstrumentsEffects				;v x je cislo tracku 7-0
+	IFT FEAT_EFFECTS
+	lda trackn_effdelay,x
+	beq ei2						;=0 => zadne efekty
+	cmp #1						;delay se snizuje maximalne na jednicku
+	bne ei1						;delay se snizuje maximalne na jednicku
+	lda trackn_shiftfrq,x
+	IFT FEAT_EFFECTFSHIFT
+	clc
+	adc trackn_effshift,x
+	EIF
+	IFT FEAT_EFFECTVIBRATO
+	clc
+	ldy trackn_effvibratoa,x	;aktivni index vibrata
+	adc vib0,y
+	EIF
+	sta trackn_shiftfrq,x
+	IFT FEAT_EFFECTVIBRATO
+	lda vibtabnext,y			;posun vibrata
+	sta trackn_effvibratoa,x
+	EIF
+	jmp ei2
+ei1
+	dec trackn_effdelay,x		;delay je vetsi nez 1, takze ho snizi
+ei2
+	EIF ;/FEAT_EFFECTS
+;table
+	ldy trackn_tableend,x
+	cpy #INSTRPAR+1				;<13?
+	bcc ei3						;ano => delka table je mensi nebo rovna 0 => preskoci to cele
+	;speed
+	lda trackn_tablespeeda,x
+	bpl ei2f					;>=0  => neposunuje se v table
+ei2c
+	;posun table aktualniho indexu
+	tya
+	cmp trackn_tablea,x
+	bne ei2c2					;jeste neni na konci
+	IFT FEAT_TABLEGO
+	lda trackn_tablelop,x		;table lop
+	ELS
+	lda #INSTRPAR				;vsechny loopy skacou vzdycky na 0 => pevne dany zacatek vsech loopu (12.byte)
+	EIF
+	sta trackn_tablea,x
+	bne ei2a					;! skok vzdy
+ei2c2
+	inc trackn_tablea,x			;posun na dalsi
+ei2a
+;
+	lda trackn_instrdb,x
+	sta nt
+	lda trackn_instrhb,x
+	sta nt+1
+	ldy trackn_tablea,x		;0-7
+	lda (nt),y
+	IFT FEAT_TABLEMODE	
+	ldy trackn_tablemode,x	;table mod? ($00/$40)
+	beq ei2e				;==$00 => nastavi tablenotu/tableshift
+	clc						;==$40 => pricte k tablenote/tableshiftu
+	adc trackn_tablenote,x
+ei2e
+	EIF
+	sta trackn_tablenote,x
+	lda trackn_tabletypespeed,x	;tmss ssss
+	IFT FEAT_TABLETYPE||FEAT_TABLEMODE	
+	and #$3f					;00ss ssss - jen speed
+	EIF
+ei2f
+	sec
+	sbc #1
+	sta trackn_tablespeeda,x
+;
+ei3
+	lda trackn_instrreachend,x			;uz bylo nekdy dosazeno konce instrumentu?
+	bpl ei4								;bit $80 == 0 =>jeste ne => skok
+	;ano => odecita se volumeslide
+	lda trackn_volume,x					;horni 4 bity
+	beq ei4								;uz je nulova hlasitost => skok
+	IFT FEAT_VOLUMEMIN
+	cmp trackn_volumemin,x				;je minimalni?
+	beq ei4								;ano => skok (uz nebude ubyvat)
+	bcc ei4								;je dokonce mensi => skok (uz nebude ubyvat)
+	EIF
+	tay									;schova si volume do Y
+	lda trackn_volumeslidevalue,x
+	clc
+	adc trackn_volumeslidedepth,x
+	sta trackn_volumeslidevalue,x
+	bcc ei4								;carry==0 => skok
+	tya									;(carry=1)
+	sbc #16								;trackn_volume pouziva 4 horni bity (jsou to nasobky 16)
+	sta trackn_volume,x
+;
+ei4
+;	jmp returnfromInstrumentsEffects
+;</InstrumentsEffects>
+	IFT FEAT_COMMAND2
+	lda #0
+	sta frqaddcmd2				;Inicializace posunu frekvence commandem 2
+	EIF
+;	<1>
+	IFT FEAT_COMMAND1||FEAT_COMMAND2||FEAT_COMMAND3||FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY
+;	jsou tady vubec nejake jine commandy nez COMMAND 0 ?
+;	ano, jsou!
+	lda reg2
+	IFT FEAT_FILTER||FEAT_BASS16
+	sta trackn_command,x		;pouziva se jen pro filtrovani a/nebo 16bit bassy
+	EIF
+	and #$70			;command 0ccc 0000
+;	<2>
+	IFT 1==[FEAT_COMMAND1+FEAT_COMMAND2+FEAT_COMMAND3+FEAT_COMMAND4+FEAT_COMMAND5+FEAT_COMMAND6+[FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY]]
+;	je tam jediny jiny nez command 0
+	beq cmd0		;je-li to po and #$70 nulove, pak jde resit cmd0 (ktere je az za vsemi commandy)
+	;a za toto se zkompiluje prave uz jen ten jediny command co tam je (jediny jiny nez command 0)
+	ELS ;jsou tam dva nebo vic commandu krome commandu 0 (tj. celkem 3 nebo vic)
+	lsr @
+	lsr @				;/4 (=>0,4,8,...)
+	sta jmx+1
+jmx	bcc *
+	jmp cmd0
+	nop
+	jmp cmd1
+	IFT FEAT_COMMAND2||FEAT_COMMAND3||FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY
+	nop
+	jmp cmd2
+	EIF
+	IFT FEAT_COMMAND3||FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY
+	nop
+	jmp cmd3
+	EIF
+	IFT FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY
+	nop
+	jmp cmd4
+	EIF
+	IFT FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY
+	nop
+	jmp cmd5
+	EIF
+	IFT FEAT_COMMAND6||FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY
+	nop
+	jmp cmd6
+	EIF
+	IFT FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY
+	nop
+	jmp cmd7
+	EIF
+	EIF ;</2>
+	ELS ;<1ELSE> ne, nejsou tam vubec zadne jine commandy nez COMMAND 0, takze se nezkompiluje nic az po cmd0
+	;jeste musi pridat naplneni trackn_command,x ,pokud je to potreba
+	IFT FEAT_FILTER||FEAT_BASS16
+	lda reg2
+	sta trackn_command,x		;pouziva se jen pro filtrovani a/nebo 16bit bassy
+	EIF
+	EIF ;</1>
+;
+;~~~~~~~~
+;cmd0 je az jako posledni command kvuli optimalizaci, aby mohl pokracovat rovnou na pp9
+;~~~~~~~~
+cmd1	;play FRQ n
+	IFT FEAT_COMMAND1
+	lda reg3
+;	sta trackn_audf,x			;OPTIMALIZACE
+;	jmp pp9						;OPTIMALIZACE
+	jmp cmd0c					;OPTIMALIZACE: za cmd0c dela sta trackn_audf,x a pokracuje rovnou bez jumpu na pp9
+	EIF
+;~~~~~~~~
+cmd2	;play NOTE + FRQ_n		[+shiftfrq]
+	IFT FEAT_COMMAND2
+	lda reg3
+	sta frqaddcmd2				;posun frekvence commandem 2
+	lda trackn_note,x
+	jmp cmd0a
+	EIF
+;~~~~~~~~
+cmd3	;NOTE = NOTE + NOTE_n	;play CMD 0 00
+	IFT FEAT_COMMAND3
+	lda trackn_note,x
+	clc
+	adc reg3
+	sta trackn_note,x
+	jmp cmd0a
+	EIF
+;~~~~~~~~
+cmd4	;shiftfrq = shiftfrq + FRQ_n	;play CMD 0 00
+	IFT FEAT_COMMAND4
+	lda trackn_shiftfrq,x
+	clc
+	adc reg3
+	sta trackn_shiftfrq,x
+	lda trackn_note,x
+	jmp cmd0a
+	EIF
+;~~~~~~~~
+cmd5	;set destination portamento XY (X-speed, Y-depth), XY==00 =>set actual_portamento_frq=destination_portamento_frq
+	IFT FEAT_COMMAND5&&FEAT_PORTAMENTO
+	IFT FEAT_TABLETYPE	
+	lda trackn_tabletypespeed,x		;jaky je typ?
+	bpl cmd5a1						;bit $80 je 0 => notovy posun => skok
+	ldy trackn_note,x				;bit $80 je 1 => frekvencni posun
+	lda (nr),y
+	clc
+	adc trackn_tablenote,x			;zde jako frekvence
+	jmp cmd5ax
+	EIF		;FEAT_TABLETYPE
+cmd5a1
+	lda trackn_note,x
+	clc
+	adc trackn_tablenote,x
+	cmp #61
+	bcc cmd5a2						;ok 0-60 => skok
+	lda #63
+cmd5a2
+	tay
+	lda (nr),y
+cmd5ax
+	sta trackn_portafrqc,x			;cilova portamento frq
+	ldy reg3						;=00?
+	bne cmd5a						;ne => skok
+	sta trackn_portafrqa,x			;aktualni portamento frq
+cmd5a
+	tya
+	lsr @
+	lsr @
+	lsr @
+	lsr @
+	sta trackn_portaspeed,x
+	sta trackn_portaspeeda,x
+	lda reg3
+	and #$0f
+	sta trackn_portadepth,x
+	lda trackn_note,x
+	jmp cmd0a
+	ELI FEAT_COMMAND5
+;	je tam sice command 5, ale portamento se nikdy nepouzije
+;	jmp pp9					;<--tohle nebylo to prave orechove (zpusobovalo vykmit na zacatku tonu)
+	lda trackn_note,x		;chova se jako standardni command 0
+	jmp cmd0a				;bez posunu noty o parametr
+	EIF
+;~~~~~~~~
+cmd6	;filtershiftfrq = filtershiftfrq + FRQ_n
+	IFT FEAT_COMMAND6&&FEAT_FILTER
+	lda reg3
+	clc
+	adc trackn_filter,x
+	sta trackn_filter,x
+	lda trackn_note,x
+	jmp cmd0a
+	ELI FEAT_COMMAND6
+;	je tam sice command 6, ale filter se nikdy nepouzije	
+;	jmp pp9					;<--tohle neni to prave bananove
+	lda trackn_note,x		;chova se jako standardni command 0
+	jmp cmd0a				;bez posunu noty o parametr
+	EIF	
+;~~~~~~~~
+cmd7	;NOTE = NOTE_n		;play CMD 0 00
+	IFT FEAT_COMMAND7SETNOTE||FEAT_COMMAND7VOLUMEONLY
+	IFT FEAT_COMMAND7SETNOTE
+	lda reg3
+	IFT FEAT_COMMAND7VOLUMEONLY
+	cmp #$80				;$80 => volume only?
+	beq cmd7a
+	EIF
+	sta trackn_note,x
+	jmp cmd0a
+	EIF
+	IFT FEAT_COMMAND7VOLUMEONLY
+cmd7a
+	lda trackn_audc,x
+	ora #$f0				;111 1 vvvv
+	sta trackn_audc,x
+	lda trackn_note,x
+	jmp cmd0a
+	EIF
+	EIF
+;~~~~~~~~
+;cmd0 je az jako posledni command kvuli optimalizaci, aby mohl pokracovat rovnou na pp9
+cmd0	;play NOTE + NOTE_n		[+shiftfrq]
+	lda trackn_note,x
+	clc
+	adc reg3
+cmd0a
+	IFT FEAT_TABLETYPE
+	ldy trackn_tabletypespeed,x	;type? (rozhoduje nejvyssi bit)
+	bmi cmd0b					;=$80 => frekvence => skok
+	EIF
+	clc
+	adc trackn_tablenote,x		;table posuv not
+	cmp #61						;rozsah not 0-60 (vcetne 60)
+	bcc cmd0a1					;ok (0-60) => skok
+	lda #0
+	sta trackn_audc,x			;ticho
+	lda #63						;vic nez 60 => nota 63
+cmd0a1
+	IFT FEAT_BASS16
+	sta trackn_outnote,x		;vysledna nota
+	EIF
+	tay
+	lda (nr),y					;tabulka frekvenci not
+	clc
+	adc trackn_shiftfrq,x
+	IFT FEAT_COMMAND2
+	clc
+	adc frqaddcmd2				;pripadny posun commandem 2
+	EIF
+;	sta trackn_audf,x			;ulozeni do audf;  OPTIMALIZACE: posunuto dolu za cmd0c
+	IFT FEAT_TABLETYPE		
+;	jmp pp9						;OPTIMALIZACE: pokud neni FEAT_TABLETYPE, pak neni potreba ani ten jmp pp9 (resp. jmp cmd0c)
+	jmp cmd0c					;OPTIMALIZACE: za cmd0c dela sta trackn_audf,x a pokracuje rovnou bez jumpu na pp9
+;	IFT FEAT_TABLETYPE			;presunuto o 2 nahoru
+cmd0b
+	cmp #61						;rozsah not 0-60
+	bcc cmd0b1					;ok (0-60) => skok
+	lda #0
+	sta trackn_audc,x			;ticho
+	lda #63						;vic nez 60 => nota 63
+cmd0b1
+	tay
+	lda trackn_shiftfrq,x
+	clc
+	adc trackn_tablenote,x		;zde jako frekvence
+	clc
+	adc (nr),y					;tabulka frekvenci not
+	IFT FEAT_COMMAND2
+	clc
+	adc frqaddcmd2				;pripadny posun commandem 2
+	EIF
+;	sta trackn_audf,x			;OPTIMALIZACE: posunuto kousek nize za cmd0c
+;	jmp pp9						;OPTIMALIZACE: pokracuje rovnou dal (pres cmd0c)
+	EIF		;/FEAT_TABLETYPE
+;~~~~~~~~ POZOR! neni ukonceno, ale pokracuje dal (jmp pp9 bylo odstraneno)
+cmd0c
+	sta trackn_audf,x			;ulozeni do audf
+;a pokracuje dal
+pp9
+;portamento efektovani
+	IFT FEAT_PORTAMENTO
+	lda trackn_portaspeeda,x		;portamento effekt?
+	beq pp10			;0 => ne => skok
+;	sec								;OPTIMALIZACE 2
+;	sbc #1							;OPTIMALIZACE 2
+;	sta trackn_portaspeeda,x		;OPTIMALIZACE 5 (2+2+5=9)
+	dec trackn_portaspeeda,x		;OPTIMALIZACE 7 (=> -2 cyc)
+	bne pp10
+	lda trackn_portaspeed,x
+	sta trackn_portaspeeda,x
+	lda trackn_portafrqa,x
+	cmp trackn_portafrqc,x			;akualni portamento frq == cilova ?
+	beq pp10						;ano => neni co resit => skok
+	bcs pps1						;je vetsi => skok
+;aktualni portamento frq < cilova
+	adc trackn_portadepth,x			;aktualni porta frq += depth
+	bcs pps8						;po pricteni preteklo dole pres 255 =>skok
+	cmp trackn_portafrqc,x			;porovnani s cilovou porta frq
+	bcs pps8						;po pricteni uz je vetsi nebo rovno =>skok
+	jmp pps9						;po pricteni je porad jeste mensi
+pps1
+;aktualni porta frq > cilova
+	sbc trackn_portadepth,x			;aktualni porta frq -= depth
+	bcc pps8						;po odecteni podteklo nahore pod 0 =>skok
+	cmp trackn_portafrqc,x			;porovnani s cilovou porta frq
+	bcs pps9						;po odecteni je porad jeste vetsi nebo rovno
+									;po odecteni je uz mensi
+pps8
+	lda trackn_portafrqc,x
+pps9
+	sta trackn_portafrqa,x
+pp10
+;
+	lda reg2
+	and #$01						;portamento bit 0000 000s
+	beq pp11						;=0 => skok
+	lda trackn_portafrqa,x
+	clc
+	adc trackn_shiftfrq,x			;portamento je taky ovlivneno shiftingem
+	sta trackn_audf,x
+pp11
+	EIF
+;
+ppnext								;sem skace kdyz neni inicializovan instrument
+;	inx								;OPTIMALIZACE (x++)
+;xtracks05	cpx #TRACKS				;OPTIMALIZACE
+;	beq rmt_p4						;OPTIMALIZACE
+	dex								;OPTIMALIZACE (x--)
+	bmi rmt_p4						;OPTIMALIZACE
+	jmp pp1
+;
+;
+rmt_p4
+;------------------------------------------------------------------------------------------
+;nejdrive si da dohromady AUDCTL
+	IFT FEAT_AUDCTLMANUALSET
+	lda trackn_audctl+0		;vzdy pouze TRACKS: 0-3 (pro 1.POKEY)
+	ora trackn_audctl+1
+	ora trackn_audctl+2
+	ora trackn_audctl+3
+	tax
+	ELS
+	ldx #0					;kdyz neni FEAT_AUDCTLMANUALSET, tak si primo nastavi X=0	
+	EIF
+qq1
+	stx v_audctl			;hotove audctl -> inicializuje v_audctl (bude ho pak porovnavat kvuli priorite filtru nad 16bit bassy)
+;dodatecne operace pro filtry a 16bit bassy
+;filtry
+	IFT FEAT_FILTER
+	IFT FEAT_FILTERG0L
+	lda trackn_command+0	;track0
+	bpl qq2					;nejvyssi bit==0 => bez filtrovani
+	lda trackn_audc+0		;vezmi audc
+	and #$0f				;jen hlasitost 0-15
+	beq qq2					;nulova => bez filtrovani
+	;s filtrovanim
+	lda trackn_audf+0		;frekvence g0
+	clc
+	adc trackn_filter+0		;posun pro filtrovani
+	sta trackn_audf+2		;g0 je filtrovan pres g2
+	IFT FEAT_COMMAND7VOLUMEONLY&&FEAT_VOLUMEONLYG2L
+	lda trackn_audc+2		;stav hlasitosti g2?
+	and #$10				;volume only?
+	bne qq1a				;ano => skok
+	EIF
+	lda #0
+	sta trackn_audc+2		;g2 nulovou hlasitost
+qq1a
+	txa
+	ora #4					;bit2 audctl (filter g0-g2)
+	tax
+	EIF		;FEAT_FILTERG0L
+qq2
+	IFT FEAT_FILTERG1L
+	lda trackn_command+1	;track1
+	bpl qq3					;nejvyssi bit==0 => bez filtrovani
+	lda trackn_audc+1		;vezmi audc
+	and #$0f				;jen hlasitost 0-15
+	beq qq3					;nulova => bez filtrovani
+	;s filtrovanim
+	lda trackn_audf+1		;frekvence g1
+	clc
+	adc trackn_filter+1		;posun pro filtrovani
+	sta trackn_audf+3		;g1 je filtrovan pres g3
+	IFT FEAT_COMMAND7VOLUMEONLY&&FEAT_VOLUMEONLYG3L	
+	lda trackn_audc+3		;stav hlasitosti g3?
+	and #$10				;volume only?
+	bne qq2a				;ano => skok
+	EIF
+	lda #0
+	sta trackn_audc+3		;g3 nulovou hlasitost
+qq2a
+	txa
+	ora #2					;bit1 audctl (filter g1-g3)
+	tax
+	EIF		;FEAT_FILTERG1L
+qq3
+	IFT FEAT_FILTERG0L||FEAT_FILTERG1L
+	cpx v_audctl			;zmenilo se? (je aktivovan filtr g0-g2 nebo g1-g3) ?
+	bne qq5					;ano => skok (16 bit bassy nebudou)
+	EIF
+	EIF		;FEAT_FILTER
+;16 bit bassy
+	IFT FEAT_BASS16
+	IFT FEAT_BASS16G1L	
+	lda trackn_command+1	;track1
+	and #$0e				;0000 ddd0
+	cmp #6					;typ6 => 16bit bass
+	bne qq4
+	lda trackn_audc+1		;vezmi audc
+	and #$0f				;jen hlasitost 0-15
+	beq qq4					;nulova => bez 16bit bassu
+	ldy trackn_outnote+1
+	lda frqtabbasslo,y
+	sta trackn_audf+0		;lo g0
+	lda frqtabbasshi,y
+	sta trackn_audf+1		;hi g1
+	IFT FEAT_COMMAND7VOLUMEONLY&&FEAT_VOLUMEONLYG0L	
+	lda trackn_audc+0		;stav hlasitosti g0?
+	and #$10				;volume only?
+	bne qq3a				;ano => skok
+	EIF
+	lda #0
+	sta trackn_audc+0		;g0 nulovou hlasitost
+qq3a
+	txa
+	ora #$50				;spoji g0-g1 16bit
+	tax
+	EIF		;FEAT_BASS16G1L
+qq4
+	IFT FEAT_BASS16G3L
+	lda trackn_command+3	;track3
+	and #$0e				;0000 ddd0
+	cmp #6					;typ6 => 16bit bass
+	bne qq5
+	lda trackn_audc+3		;vezmi audc
+	and #$0f				;jen hlasitost 0-15
+	beq qq5					;nulova => bez 16bit bassu
+	ldy trackn_outnote+3
+	lda frqtabbasslo,y
+	sta trackn_audf+2		;lo g2
+	lda frqtabbasshi,y
+	sta trackn_audf+3		;hi g3
+	IFT FEAT_COMMAND7VOLUMEONLY&&FEAT_VOLUMEONLYG2L	
+	lda trackn_audc+2		;stav hlasitosti g2?
+	and #$10				;volume only?
+	bne qq4a				;ano => skok
+	EIF
+	lda #0
+	sta trackn_audc+2		;g2 nulovou hlasitost
+qq4a
+	txa
+	ora #$28				;spoji g2-g3 16bit
+	tax
+	EIF		;FEAT_BASS16G3L	
+	EIF		;FEAT_BASS16
+qq5
+;
+	stx v_audctl
+;
+	IFT TRACKS>4
+;to samo ve variaci pro druhy Pokey
+;nejdrive si da dohromady AUDCTL
+	IFT FEAT_AUDCTLMANUALSET
+	lda trackn_audctl+4		;vzdy pouze TRACKS: 4-7 (pro 2.POKEY)
+	ora trackn_audctl+5
+	ora trackn_audctl+6
+	ora trackn_audctl+7
+	tax
+	ELS
+	ldx #0					;kdyz neni FEAT_AUDCTLMANUALSET, tak si primo nastavi X=0	
+	EIF
+	stx v_audctl2			;hotove audctl2 -> inicializuje v_audctl (bude ho pak porovnavat kvuli priorite filtru nad 16bit bassy)
+;dodatecne operace pro filtry a 16bit bassy
+;filtry
+	IFT FEAT_FILTER
+	IFT FEAT_FILTERG0R
+	lda trackn_command+0+4	;track0R
+	bpl qs2					;nejvyssi bit==0 => bez filtrovani
+	lda trackn_audc+0+4		;vezmi audc
+	and #$0f				;jen hlasitost 0-15
+	beq qs2					;nulova => bez filtrovani
+	;s filtrovanim
+	lda trackn_audf+0+4		;frekvence g0R
+	clc
+	adc trackn_filter+0+4	;posun pro filtrovani
+	sta trackn_audf+2+4		;g0R je filtrovan pres g2R
+	IFT FEAT_COMMAND7VOLUMEONLY&&FEAT_VOLUMEONLYG2R
+	lda trackn_audc+2+4		;stav hlasitosti g2R?
+	and #$10				;volume only?
+	bne qs1a				;ano => skok
+	EIF
+	lda #0
+	sta trackn_audc+2+4		;g2R nulovou hlasitost
+qs1a
+	txa
+	ora #4					;bit2 audctl (filter g0-g2)
+	tax
+	EIF		;FEAT_FILTERG0R
+qs2
+	IFT FEAT_FILTERG1R
+	lda trackn_command+1+4	;track1R
+	bpl qs3					;nejvyssi bit==0 => bez filtrovani
+	lda trackn_audc+1+4		;vezmi audc
+	and #$0f				;jen hlasitost 0-15
+	beq qs3					;nulova => bez filtrovani
+	;s filtrovanim
+	lda trackn_audf+1+4		;frekvence g1R
+	clc
+	adc trackn_filter+1+4	;posun pro filtrovani
+	sta trackn_audf+3+4		;g1R je filtrovan pres g3R
+	IFT FEAT_COMMAND7VOLUMEONLY&&FEAT_VOLUMEONLYG3R
+	lda trackn_audc+3+4		;stav hlasitosti g3R?
+	and #$10				;volume only?
+	bne qs2a				;ano => skok
+	EIF
+	lda #0
+	sta trackn_audc+3+4		;g3R nulovou hlasitost
+qs2a
+	txa
+	ora #2					;bit1 audctl (filter g1-g3)
+	tax
+	EIF		;FEAT_FILTERG1R
+qs3
+	IFT FEAT_FILTERG0R||FEAT_FILTERG1R
+	cpx v_audctl2			;zmenilo se? (je aktivovan filtr g0R-g2R nebo g1R-g3R) ?
+	bne qs5					;ano => skok (16 bit bassy nebudou)
+	EIF
+	EIF		;FEAT_FILTER
+;16 bit bassy
+	IFT FEAT_BASS16
+	IFT FEAT_BASS16G1R
+	lda trackn_command+1+4	;track1R
+	and #$0e				;0000 ddd0
+	cmp #6					;typ6 => 16bit bass
+	bne qs4
+	lda trackn_audc+1+4		;vezmi audc
+	and #$0f				;jen hlasitost 0-15
+	beq qs4					;nulova => bez 16bit bassu
+	ldy trackn_outnote+1+4
+	lda frqtabbasslo,y
+	sta trackn_audf+0+4		;lo g0R
+	lda frqtabbasshi,y
+	sta trackn_audf+1+4		;hi g1R
+	IFT FEAT_COMMAND7VOLUMEONLY&&FEAT_VOLUMEONLYG0R
+	lda trackn_audc+0+4		;stav hlasitosti g0R?
+	and #$10				;volume only?
+	bne qs3a				;ano => skok
+	EIF
+	lda #0
+	sta trackn_audc+0+4		;g0R nulovou hlasitost
+qs3a
+	txa
+	ora #$50				;spoji g0-g1 16bit
+	tax
+	EIF		;FEAT_BASS16G1R
+qs4
+	IFT FEAT_BASS16G3R
+	lda trackn_command+3+4	;track3R
+	and #$0e				;0000 ddd0
+	cmp #6					;typ6 => 16bit bass
+	bne qs5
+	lda trackn_audc+3+4		;vezmi audc
+	and #$0f				;jen hlasitost 0-15
+	beq qs5					;nulova => bez 16bit bassu
+	ldy trackn_outnote+3+4
+	lda frqtabbasslo,y
+	sta trackn_audf+2+4		;lo g2R
+	lda frqtabbasshi,y
+	sta trackn_audf+3+4		;hi g3R
+	IFT FEAT_COMMAND7VOLUMEONLY&&FEAT_VOLUMEONLYG2R
+	lda trackn_audc+2+4		;stav hlasitosti g2R?
+	and #$10				;volume only?
+	bne qs4a				;ano => skok
+	EIF
+	lda #0
+	sta trackn_audc+2+4		;g2R nulovou hlasitost
+qs4a
+	txa
+	ora #$28				;spoji g2-g3 16bit
+	tax
+	EIF		;FEAT_BASS16G3R
+	EIF		;FEAT_BASS16
+qs5
+;
+	stx v_audctl2			;R
+	EIF
+;
+;
+rmt_p5
+;------------------------------------------------------------------------------------------
+	IFT FEAT_INSTRSPEED==0||FEAT_INSTRSPEED>1
+	lda #$ff			;parametr je prepisovan   v_ainstrspeed	;vraci actual instrument speed (pro X vbi, countdown X to 1)
+v_ainstrspeed equ *-1
+	ELS
+	lda #1					;pro instrspeed 1 vraci vzdy #1
+	EIF
+	rts
+;	KONEC
+;
+;
+;
+;
+;
+;
+;
+;==========================================================================================
+SetPokey
+;
+	IFT STEREOMODE==1		;* L1 L2 L3 L4 R1 R2 R3 R4
+;zapis do dvou POKEYu stereo (nejdriv vzdy pravy a pak okamzite levy registr)
+;
+	ldy #$ff				;parametr je prepisovan
+v_audctl2 equ *-1
+;AUDF0
+	lda trackn_audf+0+4
+	ldx trackn_audf+0
+xstastx01	sta $d210
+	stx $d200
+;AUDC0
+	lda trackn_audc+0+4
+	ldx trackn_audc+0
+xstastx02	sta $d211
+	stx $d201
+;AUDF1
+	lda trackn_audf+1+4
+	ldx trackn_audf+1
+xstastx03	sta $d212
+	stx $d202
+;AUDC1
+	lda trackn_audc+1+4
+	ldx trackn_audc+1
+xstastx04	sta $d213
+	stx $d203
+;AUDF2
+	lda trackn_audf+2+4
+	ldx trackn_audf+2
+xstastx05	sta $d214
+	stx $d204
+;AUDC2
+	lda trackn_audc+2+4
+	ldx trackn_audc+2
+xstastx06	sta $d215
+	stx $d205
+;AUDF3
+	lda trackn_audf+3+4
+	ldx trackn_audf+3
+xstastx07	sta $d216
+	stx $d206
+;AUDC3
+	lda trackn_audc+3+4
+	ldx trackn_audc+3
+xstastx08	sta $d217
+	stx $d207
+;AUDCTL
+	lda #$ff						;parametr je prepisovan
+v_audctl equ *-1
+xstysta01	sty $d218				;Y bylo nastaveno kus nahore
+	sta $d208
+;
+	ELI STEREOMODE==0		;* L1 L2 L3 L4
+;zapis do POKEYe mono - jen leva strana
+;
+	ldy #$ff				;parametr je prepisovan
+v_audctl equ *-1
+;
+	lda trackn_audf+0
+	ldx trackn_audc+0
+	sta $d200
+	stx $d201
+;
+	lda trackn_audf+1
+	ldx trackn_audc+1
+	sta $d200+2
+	stx $d201+2
+;
+	lda trackn_audf+2
+	ldx trackn_audc+2
+	sta $d200+4
+	stx $d201+4
+;
+	lda trackn_audf+3
+	ldx trackn_audc+3
+	sta $d200+6
+	stx $d201+6
+;
+	sty $d208
+;
+	ELI STEREOMODE==2		;* L1 R2 R3 L4
+;zapis do L1 R2 R3 L4
+;
+	ldy #$ff				;parametr je prepisovan
+v_audctl equ *-1
+;
+	lda trackn_audf+0
+	ldx trackn_audc+0
+	sta $d200
+	stx $d201
+	sta $d210				;frekvenci i do praveho (kdyby R2 hralo 16bit bass 2+1)
+;
+	lda trackn_audf+1
+	ldx trackn_audc+1
+	sta $d210+2
+	stx $d211+2
+;
+	lda trackn_audf+2
+	ldx trackn_audc+2
+	sta $d210+4
+	stx $d211+4
+	sta $d200+4				;frekvenci i do leveho (kdyby L1 hralo filter 1+3 nebo kdyby L4 hralo 16bit bass 4+3)
+;
+	lda trackn_audf+3
+	ldx trackn_audc+3
+	sta $d200+6
+	stx $d201+6
+	sta $d210+6				;frekvenci i do praveho (kdyby R2 hralo filter 2+4)
+;
+	sty $d218
+	sty $d208
+;
+	ELI STEREOMODE==3		;* L1 L2 R3 R4
+;zapis do L1 L2 R3 R4
+;
+	ldy #$ff				;parametr je prepisovan
+v_audctl equ *-1
+;
+	lda trackn_audf+0
+	ldx trackn_audc+0
+	sta $d200
+	stx $d201
+;
+	lda trackn_audf+1
+	ldx trackn_audc+1
+	sta $d200+2
+	stx $d201+2
+;
+	lda trackn_audf+2
+	ldx trackn_audc+2
+	sta $d210+4
+	stx $d211+4
+	sta $d200+4				;frekvenci i do leveho (kdyby L1 hralo filter 1+3)
+;
+	lda trackn_audf+3
+	ldx trackn_audc+3
+	sta $d210+6
+	stx $d211+6
+	sta $d200+6				;frekvenci i do leveho (kdyby L2 hralo filter 2+4)
+;
+	sty $d218
+	sty $d208
+;
+	EIF
+;
+	rts
+RMTPLAYEREND
+;
+

@@ -1,0 +1,55 @@
+
+1.14
+7961 bytes written to the object file
+time 02C0 (704)				100%
+
+1.15 (moje optimalizace)
+7927 bytes written to the object file	-34
+time 02B0 (688)				97.73%
+
+1.16 (Jaskierovi a moje optimalizace)
+7890 bytes written to the object file	-71
+time 0297 (663)				94.18%
+
+RMF
+
+7768 bytes written to the object file	-193
+time 028D (653)				92.76%
+
+
+7749 bytes written to the object file	-212
+time 028C.73 (652)			92.61%
+
+7738 bytes written to the object file	-223
+time 028C.71 (652)			92.61%
+
+
+
+---------------------------------
+{
+NEPOUZITO - spotrebuje 8 zeropage
+trackn_instridx v zeropage
+7746 bytes written to the object file
+time 028A.4A (650)			92.33%
+}
+
+
+===========================================
+
+Standardni RMT
+
+full FEAT:
+
+8579 bytes written to the object file
+time 02FA.5E (762)
+
+8585 bytes written to the object file
+time 02F8.81 (760)
+
+spec FEAT:
+
+7890 bytes written to the object file
+time 0297.1F (663)
+
+7896 bytes written to the object file
+time 0294.51 (660)

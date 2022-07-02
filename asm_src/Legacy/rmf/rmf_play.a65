@@ -1,0 +1,159 @@
+;
+;
+STEREOMODE	equ 1				;aby zkompiloval RMT pro 4 tracky mono
+;
+	icl "rmtfast.a65"
+	opt h-
+	ins "test.rmf"
+	opt h+
+
+;	icl "../rmt.a65"
+;	opt h-
+;	ins "test.rmt"
+;	opt h+
+
+MODUL equ $4000	
+;
+	org $3e00
+start
+;
+	lda #33
+	sta 559
+	lda 560
+	sta 88
+	lda 561
+	sta 89
+	ldy #4
+	lda #<track_variables
+	sta (88),y
+	iny
+	lda #>track_variables
+	sta (88),y
+	ldy #0
+	lda #16
+	sta (88),y				;2 empty line misto 8
+	ldy #13+8
+	lda #65
+	sta (88),y
+	lda #0
+	sta rastermax
+;
+;
+;
+	ldx #<MODUL
+	ldy #>MODUL
+	lda #0					;radek v songu 0-255 (U RMF se nepouziva)
+	jsr RASTERMUSICTRACKER
+	sta vbinspeed			;kolikrat volat behem 1 vbi
+;
+	ldx #>vbi
+	ldy #<vbi
+	lda #7
+;	jsr $e45c
+
+;
+VLINE	equ 8+2*40
+loop
+;
+	lda vbinspeed
+	cmp #1
+	beq lo_norm 
+;vicenasobne volani vbi (doublespeed,triplespeed,...)
+;--------
+	lda #8
+lo2b	cmp 54283
+	bne lo2b
+;	
+lo2c
+	lda #10
+	sta $d01a
+;
+	jsr RASTERMUSICTRACKER+3
+	;vratilo v A actual instrspeed
+;	
+	ldx #0					;cerna
+	stx $d01a
+;
+	cmp #1					;A==1?
+	beq lo_norm
+	lda #8+40
+	jmp lo2b
+	
+;--------
+;
+lo_norm
+
+	lda #VLINE
+lo2	cmp 54283
+	bne lo2
+;	
+	lda #10
+	sta $d01a
+;
+	jsr RASTERMUSICTRACKER+3
+;	
+	lda #3*16+6					;cervena
+	sta $d01a
+;
+	lda 54283
+	sta rasteract
+	cmp rastermax
+	bcc lo3
+	sta rastermax	
+lo3
+	lda 54283
+	cmp rastermax
+	bcc lo3
+;
+	lda #0
+	sta $d01a
+;
+;
+
+	lda rasteract
+	sec
+	sbc #VLINE
+	asl @
+	jsr atoax
+	stx track_endvariables
+	sta track_endvariables+1
+	
+	lda rastermax
+	sec
+	sbc #VLINE
+	asl @
+	jsr atoax
+	stx track_endvariables+3
+	sta track_endvariables+4
+
+	jmp loop
+;
+	rts
+;
+;
+rasteract	dta 0
+rastermax	dta 0
+vbinspeed	dta 0
+;
+atoax
+	pha
+	lsr @
+	lsr @
+	lsr @
+	lsr @
+	ora #$10
+	tax
+	pla
+	and #$0f
+	ora #$10
+	rts
+;
+
+
+vbi
+;	jsr RASTERMUSICTRACKER+3
+	jmp $e462
+;
+;
+	run start
+;

@@ -1,0 +1,140 @@
+;
+;3000, 3400
+STEREOMODE	equ 1
+	icl "rmt.a65"	
+
+;3d00		a=note0-63,x=trackindex0-7,y=instrument0-63
+	org $3d00
+	sta trackn_note,x		;nastavi trackn_note
+	IFT FEAT_BASS16	
+	sta trackn_outnote,x	;(pokud by ji uz nicim nezmenil, zustane stejna jako note)
+	EIF
+	tya
+	asl @
+	sta trackn_instrx2,x
+	bmi usi1				;je-li cislo instrumentu*2 >127 => neprovede nastaveni instrumentu (kvuli kompatibilite s rutinou)
+	tay
+	jmp SetUpInstrumentY2	;v y je cislo instrumentu *2, v x je cislo tracku
+	;jsr-rts
+usi1
+	rts
+	
+	org xata_rtshere		;prepsani kodu RMT rutiny tak aby se SetUpInstrumentY2 dal volat jako podprogram
+	rts
+
+
+;3e00		a=volume0-15,x=trackindex0-7
+	org $3e00
+	asl @
+	asl @
+	asl @
+	asl @
+	sta trackn_volume,x		;nastavi volume
+	rts
+
+;3e80		x=trackindex0-7
+	org $3e80
+	lda #0
+	sta trackn_volume,x		;vynuluje volume
+	sta trackn_instrhb,x	;vynuluje HB instrumentu => vypne provadeni instrumentu
+	sta trackn_instrdb,x	;vynuluje i DB (navic, jen aby nezustaval nenulovy, ale neni to potreba)
+	sta trackn_audc,x		;ztisi prislusny sound generator
+	rts
+
+;modu 3f00
+	org $3f00
+;
+INSTR	equ $4000
+SONG	equ $8000
+MODUL
+;
+	dta c"RMT8"						;4b head "RMT" + "4" (4tracks mono) or "8" (8tracks stereo)
+	dta 64							;1b max track length 0-255; (0=256)
+	dta 64							;1b track speed
+	dta 1							;1b instr speed 1-4  (1=1x/vbi,2=2x/vbi,3=3x/vbi,4=4x4vbi)
+	dta 0							;1b reserved
+	dta a(instrumentsaddr)			;2b
+	dta a(0)						;(tracksaddrdbytes)				;2b
+	dta a(0)						;(tracksaddrhbytes)				;2b
+	dta a(songaddr)					;2b
+;									;======= 16b
+;
+instrumentsaddr						;(pouzivaji se nejcasteji, tak aby co mozna nejmin lezly pres hranu stranky)
+	dta a(INSTR+$0000)
+	dta a(INSTR+$0100)
+	dta a(INSTR+$0200)
+	dta a(INSTR+$0300)
+	dta a(INSTR+$0400)
+	dta a(INSTR+$0500)
+	dta a(INSTR+$0600)
+	dta a(INSTR+$0700)
+	dta a(INSTR+$0800)
+	dta a(INSTR+$0900)
+	dta a(INSTR+$0a00)
+	dta a(INSTR+$0b00)
+	dta a(INSTR+$0c00)
+	dta a(INSTR+$0d00)
+	dta a(INSTR+$0e00)
+	dta a(INSTR+$0f00)
+;
+	dta a(INSTR+$1000)
+	dta a(INSTR+$1100)
+	dta a(INSTR+$1200)
+	dta a(INSTR+$1300)
+	dta a(INSTR+$1400)
+	dta a(INSTR+$1500)
+	dta a(INSTR+$1600)
+	dta a(INSTR+$1700)
+	dta a(INSTR+$1800)
+	dta a(INSTR+$1900)
+	dta a(INSTR+$1a00)
+	dta a(INSTR+$1b00)
+	dta a(INSTR+$1c00)
+	dta a(INSTR+$1d00)
+	dta a(INSTR+$1e00)
+	dta a(INSTR+$1f00)
+;
+	dta a(INSTR+$2000)
+	dta a(INSTR+$2100)
+	dta a(INSTR+$2200)
+	dta a(INSTR+$2300)
+	dta a(INSTR+$2400)
+	dta a(INSTR+$2500)
+	dta a(INSTR+$2600)
+	dta a(INSTR+$2700)
+	dta a(INSTR+$2800)
+	dta a(INSTR+$2900)
+	dta a(INSTR+$2a00)
+	dta a(INSTR+$2b00)
+	dta a(INSTR+$2c00)
+	dta a(INSTR+$2d00)
+	dta a(INSTR+$2e00)
+	dta a(INSTR+$2f00)
+;
+	dta a(INSTR+$3000)
+	dta a(INSTR+$3100)
+	dta a(INSTR+$3200)
+	dta a(INSTR+$3300)
+	dta a(INSTR+$3400)
+	dta a(INSTR+$3500)
+	dta a(INSTR+$3600)
+	dta a(INSTR+$3700)
+	dta a(INSTR+$3800)
+	dta a(INSTR+$3900)
+	dta a(INSTR+$3a00)
+	dta a(INSTR+$3b00)
+	dta a(INSTR+$3c00)
+	dta a(INSTR+$3d00)
+	dta a(INSTR+$3e00)
+	dta a(INSTR+$3f00)
+;
+;...
+;
+;tracksaddr
+;	dta a(track00)
+;...
+;
+songaddr
+	dta 255,255,255,255,255,255,255,255
+	dta 254,0,a(songaddr)	;254=go,line=0,adrline0=songaddr
+;...

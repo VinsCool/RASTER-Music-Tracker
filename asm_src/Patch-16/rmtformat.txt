@@ -1,0 +1,209 @@
+
+; Raster Music Tracker -- .rmt file format
+;
+; Reverse-Engineered by Ivo van Poorten, June 2012
+; Additional infos by VinsCool, February 2022
+;
+; Described in pseudo-assembly
+
+; ----------------------------------------------------------------------------
+
+; saved as a normal $ffff Atari file
+
+    .org $4000
+
+header:
+    .text "RMT4"                ; or "RMT8" for stereo tunes
+
+song_info:
+    .byte max_track_length	; maximal number of rows per track patterns, this could be exploited to change on the fly
+    .byte song_speed		; default song speed value, which will be overwritten if a speed command is used in tracks
+    .byte instrument_speed	; xVBI speed, eg: 1 is 1xVBI, or once per frame. This is technically not limited, but a maximum of 16 is more than enough, else it will start to lag a lot
+    .byte module_version	; since no new version has been defined yet, this is always set to 1. If the version is not matching, RMT will return an error
+
+table_pointers:
+    .word instrument_table
+    .word track_table_lsbs
+    .word track_table_msbs
+    .word song
+
+instrument_table:
+    .word instrument00
+    .word 0                     ; unused instrument
+    .word instrument02
+
+track_table_lsbs:
+    .lowbyte    0               ; unused track
+    .lowbyte    track01
+
+track_table_msbs:
+    .highbyte   0
+    .highbyte   track01
+
+; ----------------------------------------------------------------------------
+
+instrument00:
+                                        ; table of notes:
+                                        ; offset of first note is always 12
+    .byte last_note_00 - instrument00   ; offset of last note in table
+    .byte tgo_00 - instrument00         ; offset of loop point
+
+                                        ; envelope:
+                                        ; offset of first entry is always
+                                        ;     last note plus 1
+    .byte last_entry_00 - instrument00  ; offset to last entry
+    .byte ego_00 - instrument00         ; offset of loop point
+
+    .byte table_type_and_speed      ; bit 7 = 0 --> notes
+                                    ;         1 --> frequencies
+                                    ; bit 6 = 0 --> add (+)
+                                    ;         1 --> accumulate (+=)
+                                    ; bit 5-0 = tspd-1 (speed)
+    .byte audctl_value
+    .byte vslide
+    .byte vmin
+
+    .byte effect_delay
+    .byte vibrato
+    .byte fshift
+    .byte unused                    ; always $00
+
+table_of_notes_00:                  ; ...or frequencies
+    .byte $00, $00
+tgo_00:
+    .byte $0c
+last_note_00:
+    .byte $00
+
+;
+; envelope, 3 values per line:
+;
+; $RL, $CD, $XY
+;
+; R = volume right (nibble)
+; L = volume left  (nibble)
+;
+; CD = command/distortion
+;     bit(s) 7   = filter
+;            6-4 = command
+;            3-1 = distortion
+;            0   = portamento
+;
+; XY = argument to command
+;
+
+envelope_00:
+    .byte $ff, $18, $12
+    .byte $aa, $0a, $00
+ego_00:
+    .byte $44, $0a, $00
+last_entry_00:
+    .byte $44, $0a, $00
+
+;------------
+instrument02:
+
+    ...... similar for all instruments
+
+; ----------------------------------------------------------------------------
+
+; byte 1:       bits 7-0    [v1 v0 n5 n4 n3 n2 n1 n0]
+; byte 2:       bits 7-0    [i5 i4 i3 i2 i1 i0 v3 v2]
+;
+; n = [n5 n4 n3 n2 n1 n0] = note
+; v = [      v3 v2 v1 v0] = volume
+; i = [i5 i4 i3 i2 i1 i0] = instrument
+;
+; notes $00-$3c --> (octave-1)*12 + offset (c=0, c#=1, etc...)
+;
+; special cases:
+;
+; note $3d: set volume
+;       byte 2: bits 7-0    [0 0 0 0 0 0 v3 v2]
+;
+; note $3e: rest (no notes)
+;       length = [0 0 0 0 0 0 v1 v0]
+;       if length equals 1, 2 or 3, there is no byte 2
+;       if length equals 0, length = byte 2
+;
+; note $3f: track command
+;       command = [0 0 0 0 0 0 v1 v0]
+;       if command equals 0, set speed to second byte
+;       if command equals 1, unused, effect same as 0
+;       if command equals 2, goto offset 'byte 2' of this track (loop)
+;       if command equals 3, (premature) end of this track
+;
+; unless $ff (end) or $ef (goto) is used, the length of all notes (1 each) and
+; all rests add up to max_track_length
+
+track01:
+    .byte $c0 + 12 + 2      ; D-2, partial volume $3
+    .byte $0b               ; instr. 2, partial volume $C, volume = 3+12=15
+
+    .byte $c0 + $3e         ; rest, 3 'lines'
+
+loop01:
+    .byte $c0 + 12 + 5      ; F-2, partial volume $3
+    .byte $08               ; instr. 2, partial volume $0, volume = 3+0=3
+
+    .byte $00 + $3e         ; rest, length is next byte
+    .byte $40 - 1 - 3 - 1   ; in case max_track_length is $40 (64)
+
+; goto would look like this:
+
+    .byte $80 + $3f
+    .byte loop01 - track01
+
+; premature end:
+    .byte $ff               ;-)
+
+; ----------------------------------------------------------------------------
+
+; each entry is 4 or 8 bytes long, except for the last one, which is
+; always 4 bytes if it's a jump/goto instruction
+
+song:
+    .byte $01, $ff, $ff, $ff    ; $ff: no track on that channel
+loop:
+    .byte $01, $ff, $ff, $01
+    .byte $fe, $00              ; $fe: goto "line"
+    .word loop
+    
+; ----------------------------------------------------------------------------
+
+; start new $ffff block, but without $ffff
+
+    .org *
+
+strings:
+    .textz "Song name"
+    .textz "Instrument 00"
+    .textz "Instrument 02"      ; unused instruments do not have an entry
+    
+; ----------------------------------------------------------------------------
+
+; Additions by Vin below... 
+
+; This is a feature not implemented yet, but planned to be used in the future. 
+; This might also require a bump to the module_version value for compatibility reasons.
+;
+; proof of concept:
+;
+; Manual Tuning Table Per Instrument
+;
+; format: .byte
+;
+;	$LM 	= LSB offset(s)/MSB offset
+;	bit(s) 	7-6	= LSB, for 4 possible values ($0x, $4x, $8x, $Cx,)
+;		5	= unused
+;		4	= unused
+;		3-0	= MSB, value from 0 to F (nybble)
+;
+; how to use:
+;
+; MSB offset: AND with $0F (%00001111), ORA with $B0, then write into nr+1
+; LSB offset: AND with $C0 (%11000000), then write into nr
+;
+; The steps of $40 fit nicely into a division of 4, 64 possible values per subpage, and 4 subpages (tables) per page
+; Bits 5 and 4 currently have no purpose but they could have some cool features too
+

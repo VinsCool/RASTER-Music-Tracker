@@ -1,0 +1,1420 @@
+;******************************************************;
+;* MUSIC init & play                                  *;
+;* Example by Raster/C.P.U., 2003-2004                *;
+;* RMT Visualizer by Pigu-A, 3-10-2018 (uncertain)    *;
+;* Additions and improvements by VinsCool, 22-09-2021 *;
+;* Version 0.7 - Work in Progress...                  *;
+;******************************************************;
+
+; starting line for songs when loaded, useful for playing from different lines or subtunes
+
+STARTLINE	equ 0
+
+; Stereo mode, copied over from 'rmtplayr.a65' for easier access during edit
+
+STEREOMODE	equ 0	; 0 => compile RMTplayer for 4 tracks Mono
+			; 1 => compile RMTplayer for 8 tracks Stereo --Visualizer broken (temporarily)
+			; 2 => compile RMTplayer for 4 tracks Stereo L1 R2 R3 L4 --Visualizer broken
+			; 3 => compile RMTplayer for 4 tracks Stereo L1 L2 R3 R4 --Visualizer broken
+			; 4 => compile RMTplayer for 8 tracks Dual Mono LR1 LR2 LR3 LR4
+
+; playback speed will be adjusted accordingly in the other region
+
+REGIONPLAYBACK  equ 0   ; 0 => PAL
+                        ; 1 => NTSC
+
+; screen line for synchronization, important to set with a good value to get smooth execution
+
+VLINE	        equ 12  ; 16 is the default according to Raster's example player
+
+; quick workaround for debugging purpose, not a permanent option. Will be removed in the future
+
+DISPLAYNOTES    equ 1
+
+; memory addresses for a bunch of stuff
+
+zARG0	equ $f0         ; screen position offset
+zARG1	equ $f2         ; screen position offset
+zTMP0	equ $f8         ; screen position offset
+zTMP1	equ $f9         ; POKEY channel offset, 0 is ch1, 1 is ch2, etc
+zTMP2	equ $fa         ; volume buffer for drawing the screen, also temporary printnote backup
+zTMP3	equ $fb         ; "does AUDCTL have the Poly9 bit?" backup between loops
+zTMP4	equ $fc         ; AUDCTL backup between loops
+zTMP5	equ $fd         ; "does AUDCTL have the 15khz bit?" backup between loops
+zINDEX  equ $fe         ; Channel number index, useful for Stereo POKEY
+VDSLST	equ $200        ; Vector to Display List Interrupt (DLI) routine
+VVBLKI	equ $222        ; Vertical Blank Immediate (VBI) register
+KEY	equ $2fc        ; internal hardware value for the last key pressed
+MODUL	equ $4000	; address of RMT module, hardcoded to the .rmt file itself
+pm	equ $a800       ; player
+mis	equ $a980       ; missile
+scr	equ $aa00       ; screen
+SETVBV	equ $e45c       ; set system timers during the VBLANK routine
+FONT    equ $bc00       ; custom font location
+VISDATA equ $9000       ; all the data like text strings, lookup tables for notes, etc
+
+;*******************************************************************;
+;* begin code for the visual player                                *;
+;* initialisation and clear memory before executing the next parts *;
+;*******************************************************************;
+
+	icl "hw.asm"                        ; a8 hardware registers
+	icl "rmtplayr.a65"	            ; include RMT player routines
+      
+        org $8000                           ; RMT Visualizer address, this leaves 16k for the RMT module, should be plenty for most cases
+start
+        mwa #dlist rDLISTL                  ; Display Lists address
+	;mva rRANDOM v_colour1              ; random colours, used during VBI, RASTERMUSICTRACKER, LOOP, etc
+	;mva rRANDOM v_colour2
+	;mva rRANDOM v_colour3
+	jsr rmt_silence                     ; flush all POKEY registers in case leftover data is present
+
+; make all old_ bytes non-zero to force drawing the screen at least once
+
+start_flush
+	lda #1                              ; #1 works fine since #$FF is the note off flag, and volume display could break with other values
+	ldx #0                              ; set index x to 0
+	IFT STEREOMODE==1                   ; if stereo mode is set to 1...
+	ldy #41                             ; ...set index y to #41 for the buffer
+	ELS                                 ; else...
+	ldy #23                             ; ...set index y to #23 for the buffer
+	EIF                                 ; endif
+flushloop
+	sta old_memory,x+                   ; write the value in memory, increment index x
+	dey                                 ; decremenet the buffer
+	bne flushloop                       ; repeat until all values are written
+	ldx #$FF                            ; will be useful for the next part
+
+; startloop is a pretty cheap screen effect with a simple text display
+; that whole loop is a big noob-tier level of programming but it works lol
+
+start_loop 
+        ldy #4                              ; index y is 4, the loop runs once every 4 frames
+start_loop2        
+        jsr wait_for_vblank                 ; wait for vblank, a simple subroutine but works
+        mwa #dlist rDLISTL                  ; for some reason, the display list address must be loaded each frame, or garbage is output...
+        ;mva v_colour2 rCOLBK
+        mva #0 rCOLBK                       ; black background colour, must also be written each frame for some reason, most likely related to DLIST...
+start_loop3 
+        stx rCOLPF2                         ; the value from index x is written in the playfield colour 2 register for a simple fadeing effect
+        dey                                 ; decrement index y, once per frame
+        bne start_loop2                     ; return to the wait for vblank part if index y is not 0
+        txa                                 ; copy the value of index x to the accumulator
+        sub #$11                            ; substract #$11 from it
+        tax                                 ; overwrite the value held in index x
+        cpx #0                              ; is the value of index x 0?
+        bne start_loop                      ; nope, start executing the loop again
+start_loop4
+        jsr wait_for_vblank                 ; start of the second subloop, start with a wait for vblank
+        mwa #dlist rDLISTL                  ; load the display list address again, for the reason mentioned above
+        mva #>FONT rCHBASE                  ; load the font address into the character register, same things apply to it
+        ;mva v_colour2 rCOLBK
+        mva #0 rCOLBK                       ; load the colour black, then write in the background colour register
+        sta rCOLPF2                         ; as well as the playfield colour 2 register
+        mva #15 rCOLPF1                     ; write the value 15 (or $0F), white colour, into the playfield colour register 1
+        cpy #40                             ; is the value of index y 40?
+        beq start_loop5                     ; yes, skip ahead, so no more than 40 characters are drawn on the screen
+        mva txt_start,y scr,y               ; draw the text from txt_start, index y is used for the position on screen, the pointer to the text, and the number of characters left
+        iny                                 ; once the above is done, increment index y
+start_loop5
+        inx                                 ; increment index x. Both indexes x and y were 0 before this subloop started
+        cpx #120                            ; is the value of index x 120?
+        bne start_loop4                     ; nope, start this subloop again. This lasts ~2 seconds in real time
+
+; load the RMT module
+
+start_rmt
+	mwa #dlist rDLISTL                  ; load the display list address again to not display garbage for 1 frame
+	ldx #<MODUL		            ; low byte of RMT module to index x
+	ldy #>MODUL		            ; high byte of RMT module to index y
+	lda #STARTLINE		            ; starting song line 0-255 to the accumulator
+	jsr rmt_init                        ; initialise the player routines
+	tay                                 ; initialisation returns instrument speed (1..4 => from 1/screen to 4/screen), transfer to index y
+screen_init	
+	mva tabpp-1,y acpapx2               ; sync counter spacing
+	mva #255 KEY		            ; no key pressed
+	mva #>pm rPMBASE                    ; player/missile base address
+	mva #$26 rDMACTL                    ; enable missile and dlist dma, normal playfield, double line player
+        mva #>FONT rCHBASE                  ; load the font in memory for the last time
+	mva #1 rPRIOR                       ; all players above playfield
+	sta rGRACTL                         ; and turn on missiles
+	mva #0 rNMIEN	                    ; write to NMI enable register (disable)
+	sta rCOLBK                          ; also write the colour black to background colour register
+	sta rCOLPF2                         ; and to the playfield colour register 2
+	;mva v_colour2 rCOLBK 
+	mva #$0F rCOLPF1                    ; colour white written to the playfield colour register 1 for characters on screen
+	ldx #$6C                            ; funny gradient purple colours on missiles, from brighter to darker
+	stx rCOLPM0                         ; write the value of index x in missile colour register 0
+	:2 dex                              ; decrement index x twice
+	stx rCOLPM1                         ; write again to the next missile, and so on
+	:2 dex
+	stx rCOLPM2
+	:2 dex
+	stx rCOLPM3
+
+; check for the machine region, for setting up playback speed and timer values
+	
+region_check 
+	ldy #156                            ; stable, default value, any region
+	ldx #4                              ; 4 characters
+	lda rPAL                            ; this register defines if PAL or NTSC hardware is used
+	and #14                             ; NTSC returns 14 (E), PAL returns 0
+	pha                                 ; quick push in stack for the next step
+	IFT REGIONPLAYBACK==0               ; if the player region defined for PAL...
+	seq:ldy #130                        ; ...and NTSC is detected, adjust the speed from PAL to NTSC
+	ELI REGIONPLAYBACK==1               ; else, if the player region defined for NTSC...
+	sne:ldy #187                        ; ...and PAL is detected, adjust the speed from NTSC to PAL
+	EIF                                 ; endif
+	pla                                 ; pull the accumulator from stack
+	beq region_is_pal                   ; zero flag still set from the previous AND operation
+	mva:rne txt_NTSC-1,x scr-1,x-       ; display 'NTSC' on the top left corner
+	ldx #60                             ; 60 frames per second
+	bne region_done                     ; not zero, skip to the next part
+region_is_pal
+	mva:rne txt_PAL-1,x scr-1,x-        ; display 'PAL' on the top left corner
+	ldx #50                             ; 50 frames per second
+region_done
+	stx v_region                        ; framerate used for the song timer
+	sty ppap                            ; value used for screen synchronisation
+	
+; graphical elements are now being loaded, includes most text strings and graphic tiles used for displaying a lot of information during playback
+
+graphic_infos
+	mva #$1A scr+37                     ; display ':' for the timer, may be nice to be more than that... like blinking every second...
+	ldx #$54                            ; the following is a mess... but saves many bytes over the older 'lda, sta' blocks
+	stx scr+77                          ; display all the graphic tiles for parts like AUDCTL, ORDER, ROW, etc
+	inx                                 ; todo: describe these with more clarity, but for now, it just works lol
+	stx scr+78 
+	inx
+	stx scr+79
+	inx
+	stx scr+158
+	inx
+	stx scr+159
+	inx
+	stx scr+317
+	inx
+	stx scr+318
+	inx 
+	stx scr+319
+	stx scr+399
+	inx
+	stx scr+237
+	stx scr+397
+	inx
+	stx scr+398
+	:2 inx
+	stx scr+238
+	inx
+	stx scr+239
+        IFT STEREOMODE==1                   ; 2nd POKEY, display an extra AUDCTL and SKCTL block at the bottom right
+	ldx #$59
+	stx scr+797
+	inx
+	stx scr+798
+	inx
+	stx scr+799
+	stx scr+879
+	inx
+	stx scr+877
+	inx
+	stx scr+878
+	EIF
+
+; text strings, for song title, credits, etc
+
+song_title
+	ldx #29                             ; 29 characters
+	mva:rne txt_top-1,x scr+4,x-        ; display the song title between the region and timer
+stereomode_info
+	ldx #40                             ; 40 characters
+	mva:rne txt_center-1,x scr+480,x-   ; Mono or Stereo modes information in the middle of the screen, could also be other stuff if wanted
+credits_info
+	ldx #40                             ; 40 characters
+	mva:rne txt_bot-1,x scr+959,x-      ; credits and version at the bottom of the screen
+
+; loop for displaying a bunch of repeated elements every few lines for each audio channel
+
+l0
+	mwa #scr zTMP0                      ; initialise the screen position for the next part	
+l1
+	ldy #40                             ; index y will be used for the screen position relative to the offset (zTMP0) here
+	mva #"C"-$20 (zTMP0),y+             ; draw character 'C', increment index y
+	mva #"H"-$20 (zTMP0),y+             ; draw character 'H', increment index y
+	IFT STEREOMODE!=1                   ; if not Stereo mode 1...
+	mva txt_chs,x+ (zTMP0),y+           ; ...draw channel 1,2,3,4, by incrementing index x and y for character and position
+	inx                                 ; skip the 'L/R' character by incrementing x again
+	ELS                                 ; else...
+	:2 mva txt_chs,x+ (zTMP0),y+        ; run this line twice in a row, once for the channel number then the side (L/R)
+	EIF                                 ; endif
+l1_a
+	ldy #57                             ; screen position relative to the offset (zTMP0)
+	lda #"<"-$20                        ; character to draw, here it's '<'
+	sta (zTMP0),y                       ; draw it to the screen position relative to the offset with index y
+	ldy #97	                            ; next position
+	sta (zTMP0),y                       ; draw it again there
+	ldy #73                             ; next position
+	lda #">"-$20                        ; character to draw, here it's '>'	
+	sta (zTMP0),y                       ; draw it there	
+	ldy #113                            ; next position
+	sta (zTMP0),y                       ; draw it again there	
+l1_b	
+	lda zTMP0                           ; load the nexy screen offset position to the accumulator
+	add #120                            ; skip 3 lines on the screen, 40 character per line, by adding 120 to it
+	sta zTMP0                           ; store the new offset in the zTMP0 variable again
+	scc:inc zTMP0+1                     ; skip this line on carry clear, or increment the high byte on carry set
+l1_c	
+	IFT STEREOMODE!=1                   ; if not Stereo mode 1...
+	cpx #8                              ; ...compare index x to 8, for 4 channels
+	ELS                                 ; else...
+	cpx #16                             ; ...compare index x to 16, for 8 channels
+	EIF                                 ; endif
+	bne l1                              ; continue drawing the screen elements until x is the wanted value
+	
+; initialise the missile position and appearance on the screen
+
+l2	
+	lda #1                              ; different values affect in strange ways, but 1 makes the missiles 1 pixel wide
+	ldx #$12                            ; vertical position on screen
+	ldy #4                              ; 4 missiles
+l2_a
+	:4 sta mis+#,x                      ; left channels
+        IFT STEREOMODE==1
+	:4 sta mis+48+#,x                   ; right channels
+	EIF
+	:2 asl @                            ; move to the correct lines
+l2_b	
+	pha                                 ; push in the stack temporarily
+	txa                                 ; copy index x to the accumulator
+	adc #12                             ; add the space between each missile (in pixels)
+	tax                                 ; overwrite index x with the new value
+	pla                                 ; pull the backup from the stack to the accumulator
+	dey                                 ; decrement index y
+	bne l2_a                            ; keep going until all missiles have been initialised with the parameters above
+
+;******************************************************;
+;* main code loop, everything has been initialised    *;
+;* execution will continue from this block infinitely *;
+;******************************************************;
+
+mainloop
+	mwa VVBLKI oldvbi    ; backup the old vbi address (could it be moved elsewhere if startloop uses it own?)
+	mwa #vbi VVBLKI      ; write our own vbi address to it
+	IFT STEREOMODE==1	
+	mwa #dli VDSLST      ; write our own dli address to the dli vector
+	mva #$c0 rNMIEN	     ; enable vbi and dli interrupts
+	ELS
+	mva #$40 rNMIEN	     ; enable vbi interrupts
+	EIF
+
+; loop running every frame between vbi and player calls... couldn't figure it out yet but it does its thing like expected :D
+
+loop
+	lda spap
+	ldx #0
+cku	equ *-1
+	bne keepup
+	lda rVCOUNT	     ; vertical line counter synchro
+	tax
+	sub #VLINE
+lastpap	equ *-1
+	scs:adc #$ff
+ppap	equ *-1
+	sta dpap
+	stx lastpap
+	lda #0
+spap	equ *-1
+	sub #0
+dpap	equ *-1
+	sta spap
+	bcs loop
+keepup
+	adc #$ff
+acpapx2	equ *-1
+	sta spap
+	ldx #0
+	scs:inx
+	stx cku
+
+; change the colour for the rasterbar, and run the player routines
+
+play_loop
+	;mva v_colour1 rCOLBK            ; random colour 1 for rasterbar
+	lda #$69                        ; a nice purpleish pink
+	sta rWSYNC                      ; wait for horizontal sync
+	sta rCOLBK                      ; background colour
+        jsr rmt_play                    ; setpokey then 1 play
+	;mva v_colour2 rCOLBK            ; random colour 2 for background 
+	lda #0                          ; black colour
+	sta rWSYNC                      ; wait for horizontal sync
+	sta rCOLBK                      ; background colour
+
+; check for keyboard input
+
+	lda KEY				; keyboard
+	cmp #28				; ESCape key?
+	bne loop			; no => loop
+
+; stop music and exit to DOS (or Self Test by default)
+
+stopmusic
+	mva #255 KEY			; no key pressed
+	jsr rmt_silence                 ; all sounds off
+	mva #0 rNMIEN                   ; disable interrupts
+	sta rGRACTL                     ; turn off players and missiles
+	:4 sta rHPOSM0+#                ; reset missiles position
+	mwa oldvbi VVBLKI               ; restore the old vbi address
+	mva #$40 rNMIEN                 ; enable vbi interrupts
+	jmp (10)			; DOSVEC => exit to DOS
+
+;************************************************************;
+;* begin vbi routines                                       *;
+;* most of the information to display on screen starts here *;
+;************************************************************;
+
+vbi
+        ;mva v_colour3 rCOLBK            ; funny rasterbar, during (extended) vbi
+        mva #$9F rCOLBK                 ; debug colour
+	:4 mva mistmp+# rHPOSM0+#       ; update missiles
+	mwa #dlist rDLISTL              ; update display list
+        jsr timecounterstart            ; update the time counter
+	jsr clear_volume                ; clear the volume bars when needed
+
+; VERY lazy tiles clear, temporary setup, stereo is not yet supported...	
+
+clear_tiles_1
+        ldx #0
+        ldy v_audctl
+        cpy old_audctl
+        beq clear_tiles_2 ; skip hpf clear
+clear_hpf_check_13
+        ;tya
+        ;and #4 ; hpf 1+3
+        ;beq clear_hpf_tiles_13
+clear_hpf_check_24
+        ;tya
+        ;and #2 ; hpf 2+4
+        ;beq clear_hpf_tiles_24
+        ;jmp clear_tiles_2
+
+clear_hpf_tiles_13	
+	
+	;ldx #17 ; 1
+	stx scr+114
+	stx scr+115
+	stx scr+155
+	stx scr+195
+	stx scr+235
+	stx scr+275
+	stx scr+315
+	stx scr+354
+	stx scr+355
+	;jmp clear_hpf_check_24
+
+clear_hpf_tiles_24	
+	;ldx #18 ; 2
+	stx scr+234
+	stx scr+235
+	stx scr+236
+	stx scr+276
+	stx scr+316
+	stx scr+356
+	stx scr+396
+	stx scr+436
+	stx scr+474
+	stx scr+475
+	stx scr+476
+
+clear_tiles_2	
+	;mwa #scr+97 clrt                ; clear the channel join junk from the 4 first channels
+	;jsr clrft                       ; screw this subroutine, never again LOL
+	;IFT STEREOMODE==1               ; 8 channels total, so the second half of the screen is cleared too
+	;mwa #scr+577 clrt
+	;jsr clrft
+	;EIF
+
+        mva #$98 rCOLBK                 ; debug colour
+	
+; print time (minutes:seconds)
+
+print_minute
+	ldy v_minute
+	cpy old_minute
+	beq print_second
+	sty old_minute
+	mwa #scr+35 zARG0	
+	tya
+	jsr printhex
+
+print_second
+	ldy v_second
+	cpy old_second
+	beq print_order
+	sty old_second
+	mwa #scr+38 zARG0	
+	tya
+	jsr printhex
+	
+; print pattern order and row
+
+print_order
+	ldy v_ord
+	cpy old_ord
+	beq print_row
+	sty old_ord
+	mwa #scr+118 zARG0	
+	tya
+	jsr printhex
+	
+print_row
+	ldy v_abeat
+	cpy old_abeat
+	beq print_speed
+	sty old_abeat
+	mwa #scr+198 zARG0	
+	tya
+	jsr printhex
+
+; print SPEED
+
+print_speed
+	ldy v_speed
+	cpy old_speed
+	beq print_skctl
+	sty old_speed
+	mwa #scr+278 zARG0	
+	tya
+	jsr printhex
+	        
+; print SKCTL
+
+print_skctl
+	ldy v_skctl
+	cpy old_skctl
+	beq print_skctl2
+	sty old_skctl
+	mwa #scr+438 zARG0	
+	tya
+	jsr printhex
+	lda v_skctl
+	cmp #$8B
+	bne print_skctl2
+        mwa #scr+80 zARG0
+        jsr print_joined_2T
+
+print_skctl2
+        IFT STEREOMODE==1
+	ldy v_skctl2
+	cpy old_skctl2
+	beq print_audctl
+	sty old_skctl2
+	mwa #scr+918 zARG0	
+	tya
+        jsr printhex
+	lda v_skctl2
+	cmp #$8B
+	bne print_audctl
+        mwa #scr+560 zARG0
+        jsr print_joined_2T          
+	EIF       
+
+; print AUDCTL and filter tiles
+
+print_audctl
+	ldy v_audctl
+	cpy old_audctl
+	beq print_filter
+	mwa #scr+358 zARG0
+	tya
+	jsr printhex
+	lda v_audctl
+	jmp print_filter_a
+print_filter	
+	tya
+print_filter_a 
+	and #4 ; highpass 1+3
+	beq print_filter_b ; nope
+	mwa #scr zARG0
+	mwa #scr+240 zARG1
+	jsr printhpf_13
+	lda v_audctl
+	jmp print_filter_c
+print_filter_b
+	tya
+print_filter_c
+        and #2 ; highpass 2+4
+        beq print_audctl2 ; nope
+	mwa #scr zARG0
+	mwa #scr+240 zARG1
+	jsr printhpf_24
+
+print_audctl2	
+	IFT STEREOMODE==1
+	ldy v_audctl2
+	cpy old_audctl2
+	beq print_filter2
+	mwa #scr+838 zARG0       
+        tya
+        jsr printhex
+	lda v_audctl2
+	jmp print_filter2_a
+print_filter2	
+        tya
+print_filter2_a	
+	and #4 ; highpass 1+3
+	beq print_filter2_b ; nope
+	mwa #scr+480 zARG0
+	mwa #scr+720 zARG1
+	jsr printhpf_13
+	lda v_audctl2
+	jmp print_filter2_c
+print_filter2_b
+	tya
+print_filter2_c
+        and #2 ; highpass 2+4
+        beq print_ch_infos ; nope
+	mwa #scr+480 zARG0
+	mwa #scr+720 zARG1
+	jsr printhpf_24
+        EIF
+        
+; print channel infos
+
+print_ch_infos
+	ldx #0                ; index x equals channel 1
+	stx zINDEX            ; channel number per POKEY chip
+	stx zTMP1             ; zTMP1 is the variable holding the value of index temporarily during the loop
+vbil1
+	lda infoposLo,x
+	sta zARG0
+	lda infoposHi,x
+	sta zARG0+1
+vbil1_a
+	cpx #0                ; x could NOT be 0 since a loop was executed at least once
+	bne vbil2_a           ; if index x is not 0, skip the entire AUDCTL block below, it's only done once per variable that way
+vbil1_b
+	lda v_audctl          ; start by loading the current v_audctl value
+	sta zTMP4             ; audctl backup for the next parts, this way each POKEY can efficiently rely on the same code
+	cmp old_audctl        ; compare with the old one in memory
+	beq print_audf_a      ; if they are the same value, skip the entire AUDCTL stuff, the same values used before will remain displayed on screen	
+vbil2
+	and #1 ; 15kHz mode   ; if this came from the end of vbis3, v_audctl2 is written in memory and continue the same was as before
+	:2 asl @ ; x4
+	sta zTMP5
+	lda zTMP4
+	ldy #0
+	and #$80 ; 9-bit poly
+	seq:ldy #$40 ; offset the pointer for Poly9 text
+	sty zTMP3
+vbil2_a
+	ldy zTMP5
+	lda zTMP4
+	and ctlcmp,x
+	seq:ldy ctlval,x
+	tya
+	tax
+vbil2_b
+	cpx #12
+	bne vbil2_c            ; not 16-bit, move to the remaining part
+	lda zARG0
+	pha
+	sub #80                ; set the correct position on the screen
+	sta zARG0              ; a cursed workaround, better than the older method
+	jsr print_joined_16
+	pla
+	sta zARG0
+vbil2_c
+	ldy #40                ; position on screen
+	mva #5 zTMP0           ; 5 characters
+        txa
+        asl @                  ; make the index 8 bytes long
+        tax
+print_vbil2_c	
+	mva txt_clock,x+ (zARG0),y+
+	dec zTMP0
+	bne print_vbil2_c
+
+; print AUDF
+
+print_audf
+	ldx zTMP1
+print_audf_a
+        lda trackn_audf,x
+        cmp old_audf,x
+        beq print_audc_a
+	ldy #12        
+        jsr printhex_direct
+
+; print AUDC
+
+print_audc
+	ldx zTMP1
+print_audc_a
+        lda trackn_audc,x
+        cmp old_audc,x
+        beq printnote_check_volume
+	ldy #14        
+        jsr printhex_direct
+
+printnote_checks
+
+        IFT DISPLAYNOTES==1
+
+; a bunch of hack code to display notes with questionable accuracy
+
+        ldx zTMP1                              ; channel index currently in use
+printnote_check_volume
+        lda trackn_audc,x                      ; AUDC value of the channel identified by x 
+        tay                                    ; backup the value for the first check
+        and #$0F                               ; clear the distortion bits
+        bne printnote_check_volume_c           ; not volume 0, continue like normal
+        lda #$FF                               ; 'note was off at least once' flag
+        cmp old_off,x                          ; was it off just before?      
+        bne printnote_check_volume_b           ; was not, continue
+        jmp print_other                        ; skip the entire print_note block otherwise
+printnote_check_volume_b        
+        sta old_off,x                          ; set the flag
+        jmp printnote_off                      ; volume 0, finish this block by printing 'off'
+printnote_check_volume_c
+        sta old_off,x                          ; reset the flag, it will never be #$FF here so anything works
+
+printnote_check_noise
+        tya                                    ; get the AUDC value back to accumulator
+        and #$E0                               ; clear most of the unecessary information
+        cmp #$80                               ; distortion 8
+        jeq printnote_noise
+        cmp #$00                               ; distortion 0
+        jeq printnote_noise
+        sta zTMP2                              ; temporary backup for later parts
+        
+printnote_check_channel_number
+        ldy zTMP4                              ; audctl backup made earlier
+        lda zINDEX                             ; channel number
+        cmp #0
+        beq printnote_check_179mhz_ch1
+        cmp #1
+        beq printnote_check_join_ch2
+        cmp #2
+        beq printnote_check_179mhz_ch3
+        cmp #3
+        beq printnote_check_join_ch4
+        jmp printnote_fallback                 ; failsafe     
+printnote_check_audctl
+
+printnote_check_179mhz_ch1
+        tya
+        and #$40 ; 1.79mhz ch1
+        beq printnote_check_15khz
+        bne printnote_179mhz
+printnote_check_179mhz_ch3
+        tya
+        and #$20 ; 1.79mhz ch3
+        beq printnote_check_15khz
+        bne printnote_179mhz
+printnote_check_join_ch2
+        tya
+        and #$10 ; Join 1+2
+        beq printnote_check_15khz
+        jmp printnote_fallback
+printnote_check_join_ch4
+        tya
+        and #$08 ; Join 3+4
+        beq printnote_check_15khz
+        jmp printnote_fallback
+printnote_check_15khz
+        tya
+        and #$01
+        beq printnote_64khz
+
+printnote_15khz
+        lda zTMP2                              ; distortion backup
+        cmp #$A0                               ; distortion A
+        beq printnote_dist_a_15khz
+        jmp printnote_fallback                 ; failsafe   
+
+printnote_179mhz
+        lda zTMP2                              ; distortion backup
+        cmp #$20                               ; distortion 2
+        beq printnote_dist_2_179mhz
+        jmp printnote_fallback                 ; failsafe  
+        
+printnote_64khz
+        lda zTMP2                              ; distortion backup
+        cmp #$C0                               ; distortion C
+        beq printnote_dist_c_64khz
+        cmp #$A0                               ; distortion A
+        beq printnote_dist_a_64khz
+        jmp printnote_fallback                 ; failsafe 
+
+printnote_dist_a_64khz
+        mva #4 zTMP0                           ; 4 characters to display
+        ldy #6                                 ; position on the screen        
+        lda trackn_audf,x                      ; frequency of the channel, 256 possible values
+        tax                                    ; the value becomes the new index x
+        lda txt_dist_a_64khz_freqs,x           ; seek for the note referenced by the previous table
+        bmi printnote_dist_a_15khz_a           ; seek for alternative notes if needed
+        :2 asl @                               ; shift right twice, so index entries are 4 bytes long 
+        tax                                    ; transfer to index x, will be used for looking up what musical note will be displayed on screen
+
+printnote_oct3
+	mva txt_notes_oct3,x+ (zARG0),y+
+	dec zTMP0
+	bne printnote_oct3
+	jmp print_other
+printnote_dist_a_64khz_a
+        ldx #0
+printnote_oct3_minus_4
+	mva txt_notes_oct3-4,x+ (zARG0),y+
+	dec zTMP0
+	bne printnote_oct3_minus_4
+	jmp print_other
+
+printnote_dist_c_64khz      
+        mva #4 zTMP0                           ; 4 characters to display
+        ldy #6                                 ; position on the screen  
+        lda trackn_audf,x                      ; frequency of the channel, 256 possible values
+        tax                                    ; the value becomes the new index x
+        lda txt_dist_c_64khz_freqs,x           ; seek for the note referenced by the previous table
+        :2 asl @                               ; shift right twice, so index entries are 4 bytes long 
+        tax                                    ; transfer to index x, will be used for looking up what musical note will be displayed on screen
+
+printnote_oct0
+	mva txt_notes_oct0,x+ (zARG0),y+
+	dec zTMP0
+	bne printnote_oct0
+	jmp print_other
+
+printnote_dist_2_179mhz
+        mva #4 zTMP0                           ; 4 characters to display
+        ldy #6                                 ; position on the screen 
+        lda trackn_audf,x
+        tax
+        lda txt_dist_2_179mhz_freqs,x 
+        :2 asl @                               ; shift right twice, so index entries are 4 bytes long 
+        tax                                    ; transfer to index x, will be used for looking up what musical note will be displayed on screen
+        jmp printnote_oct3  
+
+printnote_dist_a_15khz
+        mva #4 zTMP0                           ; 4 characters to display
+        ldy #6                                 ; position on the screen        
+        lda trackn_audf,x                      ; frequency of the channel, 256 possible values
+        tax                                    ; the value becomes the new index x
+        lda txt_dist_a_15khz_freqs,x           ; seek for the note referenced by the previous table
+        bmi printnote_dist_a_15khz_a           ; seek for alternative notes if needed
+        :2 asl @                               ; shift right twice, so index entries are 4 bytes long 
+        tax                                    ; transfer to index x, will be used for looking up what musical note will be displayed on screen
+
+printnote_oct1
+	mva txt_notes_oct1,x+ (zARG0),y+
+	dec zTMP0
+	bne printnote_oct1
+	jmp print_other
+printnote_dist_a_15khz_a
+        ldx #0
+printnote_oct1_minus_4
+	mva txt_notes_oct1-4,x+ (zARG0),y+
+	dec zTMP0
+	bne printnote_oct1_minus_4
+	jmp print_other      
+
+printnote_noise                                ; display "Noise" when called
+        mva #4 zTMP0                           ; 4 characters to display
+        ldy #6                                 ; position on the screen       
+        ldx #0                                 ; failsafe, since only 1 outcome is possible, this is to avoid garbage being read	
+printnote_noise_a	
+	mva txt_notes_noise,x+ (zARG0),y+
+	dec zTMP0
+	bne printnote_noise_a
+	jmp print_other
+
+printnote_off                                  ; display "Off" when called
+        mva #4 zTMP0                           ; 4 characters to display
+        ldy #6                                 ; position on the screen       
+        ldx #0                                 ; failsafe, since only 1 outcome is possible, this is to avoid garbage being read	        
+printnote_off_a
+	mva txt_notes_off,x+ (zARG0),y+
+	dec zTMP0
+	bne printnote_off_a
+	jmp print_other      
+
+printnote_fallback                             ; else, fallback to the original approach using 'trackn_note' values
+        mva #4 zTMP0                           ; 4 characters to display
+        ldy #6                                 ; position on the screen       
+        lda trackn_note,x                      ; this variable is the note visually output in the tracker itself
+        :2 asl @                               ; shift right twice, so index entries are 4 bytes long 
+        tax                                    ; transfer to index x, will be used for looking up what musical note will be displayed on screen
+	;jmp printnote_oct1                     ; by default RMT starts on octave 1, so this is visually matching
+
+printnote_oct4
+	mva txt_notes_oct4,x+ (zARG0),y+
+	dec zTMP0
+	bne printnote_oct4
+        
+        EIF
+
+; print other infos like poly or clock
+
+print_other
+	ldx zTMP1
+	lda trackn_audc,x
+	cmp old_audc,x
+	beq vbis1_b
+	tay
+	ldx #16*4
+	and #$10 ; vol only
+	bne vbis1
+	tya
+	and #$e0
+	:2 lsr @ ; x2 for indexes of 8 bytes each
+	add zTMP3
+	tax
+vbis1
+	ldy #46
+	mva #6 zTMP0 ; 6 characters
+print_vbis1	
+	mva txt_polys,x+ (zARG0),y+
+	dec zTMP0
+	bne print_vbis1
+	
+; print horizontal volume bars
+
+vbis1_a
+        ldx zTMP1                     ; load the index x for the channel offset
+	lda trackn_audc,x             ; load the AUDC value of the channel indexed by x
+	cmp old_audc,x                ; compare the old AUDC value to the current one
+vbis1_b	
+	beq vbis2                     ; the same AUDC value is used, skip
+	sta old_audc,x                ; save the old AUDC value for the next frame
+	and #$f                       ; clear the distortion bits
+	sta v_volume,x                ; save for the clear screen routine
+	beq vbis2                     ; volume 0, skip
+vbis1_c	
+	sub old_volume,x              ; substract the old volume value to the current one
+	bmi vbis2                     ; result is negative, skip
+	beq vbis2                     ; result is 0, skip
+	sta zTMP2                     ; save as the volume value buffer
+	lda old_volume,x              ; load the old volume value in the accumulator
+	add #58                       ; add the screen position relative to the offset (zARG0)
+	tay                           ; transfer to the index y for the next part
+	lda #$80                      ; inverted space character
+vbil3
+	sta (zARG0),y+                ; write a character on screen, increment the screen position
+	dec zTMP2                     ; decrement the buffer
+	bne vbil3                     ; repeat until the buffer is 0, meaning all characters were drawn
+
+; print pitch using missiles position
+
+vbis2	
+	lda trackn_audf,x
+	cmp old_audf,x
+	beq vbis2_a                   ; skip updating the missiles, they will use the same position
+	sta old_audf,x
+	
+	eor #$ff 
+	:2 lsr @
+	add #$75
+	sta mistmp,x
+vbis2_a
+	inc zINDEX
+	inx
+	stx zTMP1
+	cpx #4
+        
+        IFT STEREOMODE==1
+	bne vbis3 
+	mva #0 zINDEX
+	lda v_audctl2
+	sta zTMP4
+	jmp vbil2
+vbis3
+	cpx #8
+        EIF       
+
+        bne vbis4
+        jmp vbis4_b
+vbis4
+        lda v_audctl
+        cmp old_audctl
+        beq vbis4_a
+        jmp vbil1
+vbis4_a
+	lda infoposLo,x
+	sta zARG0
+	lda infoposHi,x
+	sta zARG0+1
+	jmp print_audf_a      ; skip the AUDCTL stuff 
+vbis4_b	
+	mva v_audctl old_audctl
+        IFT STEREOMODE==1
+        mva v_audctl2 old_audctl2
+        EIF	
+vbis4_c
+        mva #$64 rCOLBK   ; debug colour
+	;mva #0 rCOLBK
+	pla
+	tay
+	pla
+	tax
+	pla
+	rti
+
+; print the high pass filter tiles on the screen
+	
+printhpf_13
+	ldy #114
+	mva #$45 (zARG0),y+ ; horz line
+	mva #$41 (zARG0),y  ; dl corner
+	lda #$44 ; vert line
+	ldy #155
+	sta (zARG0),y
+	ldy #75
+	sta (zARG1),y
+	ldy #114
+	mva #$45 (zARG1),y+ ; horz line
+	mva #$40 (zARG1),y ; ul corner	
+	ldy #195
+	mva #$7B (zARG0),y ; H
+	ldy #235
+	mva #$7C (zARG0),y ; P
+	ldy #35
+	mva #$7D (zARG1),y ; F
+	rts
+	
+printhpf_24
+	ldy #234
+	mva #$45 (zARG0),y+ ; horz line
+	sta (zARG0),y+
+	mva #$41 (zARG0),y ; dl corner
+	ldy #234
+	mva #$45 (zARG1),y+ ; horz line
+	sta (zARG1),y+
+	mva #$40 (zARG1),y ; ul corner
+	lda #$44 ; vert line
+	ldy #36
+	sta (zARG1),y
+	ldy #196
+	sta (zARG1),y
+	ldy #76
+	mva #$7B (zARG1),y ; H
+	ldy #116
+	mva #$7C (zARG1),y ; P
+	ldy #156
+	mva #$7D (zARG1),y ; F
+	rts
+
+; print the 'Join' tiles, used by either 16-bit mode or Two-Tone filter	
+
+print_joined_2t
+	ldy #74
+	mva #$05 (zARG0),y ; 2
+	ldy #114
+	mva #$20 (zARG0),y ; T
+	bne print_joined_corners ; not zero, will branch to it every time
+
+print_joined_16
+	ldy #74
+	mva #$3E (zARG0),y ; 1
+	ldy #114
+	mva #$3F (zARG0),y ; 6
+
+print_joined_corners
+        ldy #34
+	mva #$41 (zARG0),y ; top right
+	ldy #154
+	mva #$40 (zARG0),y ; bottom right
+	rts
+
+; timer routines, took a bit of work but this works as is, no extra work necessary, call every vblank
+
+timecounterstart
+        ldx v_frame            ; load the frame count
+        ldy #0                 ; initialisation of timer, both for checks and reset of timer when needed
+        cpy v_abeat            ; are we on row 0?
+        bne secondcounter      ; no, continue counting time
+        cpy v_ord              ; are we on pattern order 0? This is assumed to be song start
+        beq timecountereset    ; yes, reset the entire timer, else, continue counting time
+        
+secondcounter
+        inx                    ; increment the frame count by 1, this should happen only once per vblank
+        stx v_frame            ; store the frame count in memory
+        cpx v_region           ; NTSC or PAL? Either 60 or 50 frames
+        bne timecounternext    ; not a second yet, continue
+        sty v_frame            ; resets the frame counter to 0, restarting the seconds timer
+        sed                    ; set decimal flag for the seconds and minutes counter
+        tya                    ; since index y has 0 in memory, copy to accumulator
+        adc v_second           ; increment the second count by 1, result in the accumulator
+        sta v_second           ; store the new value in memory
+        cmp #$60               ; we need 60 seconds to form a minute, must be a hex value to work properly!
+        bne timecounternext    ; not a minute yet, continue
+
+minutecounter
+        sty v_second           ; reset the second counter to zero, restarting the minutes timer
+        tya                    ; since index y has 0 in memory, copy to accumulator
+        adc v_minute           ; increment the minute count by 1, result in the accumulator.
+        sta v_minute           ; store the new value in memory, it will increment infinitely in looped tunes, except on pattern order 0
+
+timecounternext
+        cld                    ; clear decimal mode, things break if omitted! 
+        rts                    ; timer subroutine finished
+        
+timecountereset                ; store the values of 0 in all variables to reset them
+        sty v_frame            ; 0 frame, 60 of these are needed for 1 second in NTSC, 50 in PAL
+        sty v_second           ; 0 second, 60 are needed for a minute
+        sty v_minute           ; 0 minute, this one counts up to 99 then overflows back to 0 with the current code
+        rts                    ; since we're now set to 00:00, the timer initialisation is now finished
+
+; print text from data tables, useful for things like Polys, Clocks, Notes, etc
+
+printinfo	
+        lda $ffff,x
+infosrc equ *-2
+	sta (zARG0),y
+	inx
+	iny
+	dec zTMP0
+	bne printinfo
+	rts
+
+; print hex characters for several things, useful for displaying all sort of debugging infos
+	
+printhex
+	ldy #0
+printhex_direct     ; workaround to allow being addressed with y in different subroutines
+	pha
+	:4 lsr @
+	;beq ph1    ; comment out if you want to hide the leftmost zeroes
+	tax
+	lda hexchars,x
+ph1	
+        sta (zARG0),y+
+	pla
+	and #$f
+	tax
+	mva hexchars,x (zARG0),y
+	rts
+hexchars 
+        dta d"0123456789ABCDEF"
+
+; display list interrupt block
+
+        IFT STEREOMODE==1
+dli
+	pha
+	;mva #$3F rCOLBK    ; debug colour
+	:4 mva mistmp+4+# rHPOSM0+#
+	;mva #$78 rCOLBK    ; debug colour
+	pla
+	rti
+	EIF
+
+; wait for vblank subroutine
+
+wait_for_vblank
+        lda RTCLOK+2
+wait
+        cmp RTCLOK+2
+        beq wait
+        rts
+
+; clear horizontal volume bars
+
+clear_volume
+        mwa #scr zARG0                ; set initial screen position
+        ldx #0                        ; start with channel 1
+        beq clear_volume_start        ; go right to the first loop
+clear_volume_loop
+	lda zARG0                     ; load the nexy screen offset position to the accumulator
+	add #120                      ; skip 3 lines on the screen, 40 character per line, by adding 120 to it
+	sta zARG0                     ; store the new offset in the zARG0 variable again
+	scc:inc zARG0+1               ; skip this line on carry clear, or increment the high byte on carry set
+clear_volume_start
+	lda old_volume,x              ; load the last channel volume value
+	beq clear_volume_next         ; volume 0, nothing to clear
+	tay                           ; temporary backup to index y
+	sub v_volume,x                ; substract the current volume value
+	bmi clear_volume_next         ; result is negative, skip
+	beq clear_volume_next         ; result is 0, skip
+	sta zTMP2                     ; save as the volume value buffer
+	tya                           ; reload the old volume value in memory
+	add #97                       ; add the screen position relative to the offset (zARG0)
+	tay                           ; transfer back to index y for the next part
+	lda #0                        ; space (empty) character
+clear_volume_continue
+	sta (zARG0),y-                ; write a character on screen, decrement the screen position
+	dec zTMP2                     ; decrement the buffer
+	bne clear_volume_continue     ; repeat until the buffer is 0, meaning all characters were drawn
+clear_volume_next
+	mva v_volume,x old_volume,x   ; reload the current volume value and save it over the old value for the next frame
+        inx                           ; increment the index x to point the next channel
+        cpx #4                        ; were all 4 channels done?
+        bne clear_volume_loop         ; not yet, redo the same loop with the next channel
+        rts                           ; and done
+
+;******************************************************************************;
+;* Most of this part is data used to display text, and some other misc infos. *;
+;******************************************************************************;
+
+        org VISDATA
+
+; dumb shit again...
+
+txt_start
+        dta d"      Starting RMT Visualizer...        "        
+       ;dta d"00000FlololololololololololololoF0000000" ; template for 40 characters
+
+; song title, or anything that fits the purpose
+
+txt_top
+        dta d"   Generic Song Title.mp3    "
+       ;dta d"   Generic Song Title.mp3    " ; template for 29 characters
+        
+; region text, either one is picked automatically using a simple detection method
+        
+txt_NTSC
+        dta d"NTSC"*
+txt_PAL
+        dta d"PAL"*,d" "
+
+; some extra text, indicative of what setup is used, or just placeholder text
+
+txt_center
+	IFT STEREOMODE==0
+	dta d"  Mono Playback, 2nd POKEY Disabled.    "
+	ELI STEREOMODE==1
+	dta d" Stereo Playback, 2 POKEY Chips Used.   "
+	ELI STEREOMODE==4
+	dta d"Dual Mono Playback, 2 POKEY Chips Used. "
+	ELS
+	dta d"======THIS SPACE IS A PLACEHOLDER=======" ; template for 40 characters
+	EIF
+       
+; text used at the bottom for credits and version info
+
+txt_bot
+	dta d"RMT Visualizer by Pigu-A & VinsCool ",d"v0.7"*
+       ;dta d"00000FlololololololololololololoF0000000" ; template for 40 characters
+
+; text strings used for channel number and side when necessary
+
+txt_chs
+	dta d"1",d"L"*,d"2",d"L"*,d"3",d"L"*,d"4",d"L"*,d"1",d"R"*,d"2",d"R"*,d"3",d"R"*,d"4",d"R"*
+	
+; POKEY clock, and 16-bit text strings
+
+txt_clock
+	dta $16,$14,$48,$49,$00,$00,$00,$00 ; 64khz
+	dta $11,$15,$48,$49,$00,$00,$00,$00 ; 15khz
+	dta $11,$4A,$19,$47,$49,$00,$00,$00 ; 1.79mhz
+	dta $11,$16,$4B,$4C,$74,$00,$00,$00 ; 16-bit
+	
+; POKEY distortions (Poly), could be a little less ambiguous sometime later
+
+txt_polys    ; distortion 0, 2, 4... etc
+	dta $4D,$4E,$4F,$15,$7E,$7F,d"  " ; Poly 5+17
+	dta $4D,$4E,$4F,d"5    "          ; Poly 5
+	dta $4D,$4E,$4F,d"5+4  "          ; Poly 5+4
+	dta $4D,$4E,$4F,d"5    "          ; Poly 5
+	dta $4D,$4E,$4F,d"17   "          ; Poly 17
+	dta d"Pure    "                   ; Pure
+	dta $4D,$4E,$4F,d"4    "          ; Poly 4
+	dta d"Pure    "                   ; Pure
+	
+	dta $4D,$4E,$4F,d"5+9  "          ; Poly 5+9
+	dta $4D,$4E,$4F,d"5    "          ; Poly 5
+	dta $4D,$4E,$4F,d"5+4  "          ; Poly 5+4
+	dta $4D,$4E,$4F,d"5    "          ; Poly 5
+	dta $4D,$4E,$4F,d"9    "          ; Poly 9
+	dta d"Pure    "                   ; Pure
+	dta $4D,$4E,$4F,d"4    "          ; Poly 4
+	dta d"Pure    "                   ; Pure
+	
+	dta d"Vol Only"                   ; Volume Only mode
+
+; AUDCTL values used for some specific modes like 16-bit, clock, etc
+
+ctlcmp	
+        dta $40,$10,$20,$08,$40,$10,$20,$08
+ctlval	
+        dta 8,12,8,12,8,12,8,12
+
+; music notes and other text strings
+
+        IFT DISPLAYNOTES==1
+	
+txt_notes_noise
+        dta $50,$51,$52,$53 ; display 'Noise' when the notes cannot be identified from Distortion 0 or 8
+
+txt_notes_off
+        dta d"Off "         ; display 'Off' when silence is detected, useful for channels being unused
+	
+; musical notes, this could be a lot better but it works for now
+; ideally, note and octave are separate, but I don't know how to do this just yet
+	
+txt_notes_oct0
+	dta d"C-0 C#0 D-0 D#0 E-0 F-0 F#0 G-0 G#0 A-0 A#0 B-0 "
+txt_notes_oct1
+	dta d"C-1 C#1 D-1 D#1 E-1 F-1 F#1 G-1 G#1 A-1 A#1 B-1 "
+txt_notes_oct2
+	dta d"C-2 C#2 D-2 D#2 E-2 F-2 F#2 G-2 G#2 A-2 A#2 B-2 "
+txt_notes_oct3
+	dta d"C-3 C#3 D-3 D#3 E-3 F-3 F#3 G-3 G#3 A-3 A#3 B-3 "
+txt_notes_oct4
+	dta d"C-4 C#4 D-4 D#4 E-4 F-4 F#4 G-4 G#4 A-4 A#4 B-4 "
+txt_notes_oct5
+	dta d"C-5 C#5 D-5 D#5 E-5 F-5 F#5 G-5 G#5 A-5 A#5 B-5 "
+	dta d"C-6 C#6 D-6 D#6 E-6 F-6 F#6 G-6 G#6 A-6 A#6 B-6 "
+	dta d"C-7 C#7 D-7 D#7 E-7 F-7 F#7 G-7 G#7 A-7 A#7 B-7 "
+	dta d"C-8 C#8 D-8 D#8 E-8 F-8 F#8 G-8 G#8 A-8 A#8 B-8 "
+	dta d"C-9 C#9 D-9 D#9 E-9 F-9 F#9 G-9 G#9 A-9 A#9 B-9 "
+	dta d"C-10C#10D-10D#10" ; last frequency
+	
+	;dta d"C- C# D- D# E- F- F# G- G# A- A# B- "
+
+; lookup table for identifying AUDF values and its matching note to display, each dta line is 64 bytes long
+; notes and frequencies are in reverse order, so 00 is the highest frequency, but also the lowest note, usually C-1 in RMT
+
+        org VISDATA+$300
+
+txt_dist_2_179mhz_freqs	
+        
+        dta $3F,$3E,$3C,$3B,$38,$36,$34,$33,$31,$30,$2F,$2E,$2D,$2C,$2B,$2A ; 00 to 0F
+        dta $29,$29,$28,$27,$26,$25,$25,$24,$23,$23,$22,$22,$21,$21,$20,$20 ; 10 to 1F
+        dta $1F,$1F,$1E,$1E,$1E,$1D,$1D,$1C,$1C,$1B,$1B,$1B,$1A,$1A,$1A,$19 ; 20 to 2F
+        dta $19,$18,$18,$18,$17,$17,$17,$17,$16,$16,$16,$15,$15,$15,$15,$14 ; 30 to 3F
+        dta $14,$14,$14,$13,$13,$13,$13,$12,$12,$12,$12,$11,$11,$11,$11,$11 ; 40 to 4F
+        dta $10,$10,$10,$10,$10,$0F,$0F,$0F,$0F,$0F,$0E,$0E,$0E,$0E,$0E,$0E ; 50 to 5F
+        dta $0D,$0D,$0D,$0D,$0D,$0C,$0C,$0C,$0C,$0C,$0C,$0B,$0B,$0B,$0B,$0B ; 60 to 6F
+        dta $0B,$0B,$0A,$0A,$0A,$0A,$0A,$0A,$0A,$09,$09,$09,$09,$09,$09,$09 ; 70 to 7F
+        dta $08,$08,$08,$08,$08,$08,$08,$07,$07,$07,$07,$07,$07,$07,$07,$06 ; 80 to 8F
+        dta $06,$06,$06,$06,$06,$06,$06,$06,$05,$05,$05,$05,$05,$05,$05,$05 ; 90 to 9F
+        dta $05,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$03,$03,$03,$03,$03 ; A0 to AF
+        dta $03,$03,$03,$03,$02,$03,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02 ; B0 to BF
+        dta $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$00,$00,$00,$00 ; C0 to CF
+        dta $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00 ; D0 to DF
+        dta $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00 ; E0 to EF
+        dta $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00 ; F0 to FF
+
+txt_dist_a_64khz_freqs ; FF is used for the missing B-2
+        
+        dta $3F,$3F,$3F,$3F,$3F,$3F,$3D,$3A,$39,$37,$35,$34,$32,$31,$30,$2F ; 00 to 0F
+        dta $2E,$2D,$2C,$2B,$2A,$29,$29,$28,$27,$26,$26,$25,$25,$24,$24,$23 ; 10 to 1F
+        dta $23,$22,$22,$21,$21,$20,$20,$1F,$1F,$1E,$1E,$1E,$1D,$1D,$1C,$1C ; 20 to 2F
+        dta $1C,$1B,$1B,$1B,$1A,$1A,$1a,$19,$19,$19,$18,$18,$18,$17,$17,$17 ; 30 to 3F
+        dta $17,$16,$16,$16,$16,$15,$15,$15,$15,$14,$14,$14,$14,$13,$13,$13 ; 40 to 4F
+        dta $13,$13,$12,$12,$12,$12,$11,$11,$11,$11,$11,$11,$10,$10,$10,$10 ; 50 to 5F
+        dta $10,$0F,$0F,$0F,$0F,$0F,$0F,$0E,$0E,$0E,$0E,$0E,$0E,$0D,$0D,$0D ; 60 to 6F
+        dta $0D,$0D,$0D,$0C,$0C,$0C,$0C,$0C,$0C,$0C,$0B,$0B,$0B,$0B,$0B,$0B ; 70 to 7F
+        dta $0B,$0A,$0A,$0A,$0A,$0A,$0A,$0A,$0A,$09,$09,$09,$09,$09,$09,$09 ; 80 to 8F
+        dta $09,$08,$08,$08,$08,$08,$08,$08,$08,$07,$07,$07,$07,$07,$07,$07 ; 90 to 9F
+        dta $07,$07,$06,$06,$06,$06,$06,$06,$06,$06,$06,$06,$05,$05,$05,$05 ; A0 to AF
+        dta $05,$05,$05,$05,$05,$05,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04 ; B0 to BF
+        dta $04,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$02,$02,$02,$02 ; C0 to CF
+        dta $02,$02,$02,$02,$02,$02,$02,$02,$01,$01,$01,$01,$01,$01,$01,$01 ; D0 to DF
+        dta $01,$01,$01,$01,$01,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00 ; E0 to EF
+        dta $00,$00,$00,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; F0 to FF
+
+txt_dist_a_15khz_freqs ; FF is used for the missing B-0
+        
+        dta $3F,$3F,$3F,$3F,$3F,$3F,$3D,$3A,$39,$37,$35,$34,$32,$31,$30,$2F ; 00 to 0F
+        dta $2E,$2D,$2C,$2B,$2A,$29,$28,$28,$27,$26,$26,$25,$24,$24,$23,$23 ; 10 to 1F
+        dta $22,$22,$21,$21,$20,$20,$1F,$1F,$1F,$1E,$1E,$1D,$1D,$1C,$1C,$1C ; 20 to 2F
+        dta $1B,$1B,$1B,$1A,$1A,$1A,$19,$19,$19,$18,$18,$18,$17,$17,$17,$17 ; 30 to 3F
+        dta $16,$16,$16,$16,$15,$15,$15,$14,$14,$14,$14,$14,$13,$13,$13,$13 ; 40 to 4F
+        dta $12,$12,$12,$12,$12,$11,$11,$11,$11,$11,$10,$10,$10,$10,$10,$0F ; 50 to 5F
+        dta $0F,$0F,$0F,$0F,$0F,$0E,$0E,$0E,$0E,$0E,$0E,$0D,$0D,$0D,$0D,$0D ; 60 to 6F
+        dta $0D,$0C,$0C,$0C,$0C,$0C,$0C,$0C,$0B,$0B,$0B,$0B,$0B,$0B,$0B,$0A ; 70 to 7F
+        dta $0A,$0A,$0A,$0A,$0A,$0A,$09,$09,$09,$09,$09,$09,$09,$09,$08,$08 ; 80 to 8F
+        dta $08,$08,$08,$08,$08,$08,$08,$07,$07,$07,$07,$07,$07,$07,$07,$06 ; 90 to 9F
+        dta $06,$06,$06,$06,$06,$06,$06,$06,$06,$05,$05,$05,$05,$05,$05,$05 ; A0 to AF
+        dta $05,$05,$05,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$03,$03,$03 ; B0 to BF
+        dta $03,$03,$03,$03,$03,$03,$03,$03,$03,$02,$02,$02,$02,$02,$02,$02 ; C0 to CF
+        dta $02,$02,$02,$02,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01 ; D0 to DF
+        dta $01,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$FF ; E0 to EF
+        dta $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; F0 to FF
+
+txt_dist_c_64khz_freqs ; FF is placeholder for now...
+
+        dta $FF,$FF,$FF,$FF,$FF,$FF,$FF,$3C,$FF,$FF,$37,$FF,$34,$32,$FF,$30 ; 00 to 0F
+        dta $2F,$FF,$2D,$FF,$FF,$2B,$2A,$3C,$FF,$28,$3A,$27,$26,$FF,$25,$24 ; 10 to 1F
+        dta $37,$23,$FF,$35,$22,$21,$34,$FF,$20,$32,$1F,$FF,$FF,$1E,$FF,$30 ; 20 to 2F
+        dta $1D,$FF,$2F,$1C,$1B,$2E,$FF,$FF,$2D,$1A,$FF,$FF,$19,$FF,$2C,$18 ; 30 to 3F
+        dta $FF,$2B,$FF,$17,$2A,$FF,$FF,$29,$16,$FF,$FF,$FF,$15,$28,$FF,$FF ; 40 to 4F
+        dta $27,$14,$FF,$FF,$FF,$13,$26,$FF,$FF,$FF,$12,$FF,$25,$FF,$FF,$24 ; 50 to 5F
+        dta $11,$FF,$FF,$FF,$FF,$23,$10,$FF,$FF,$FF,$FF,$22,$0F,$FF,$FF,$FF ; 60 to 6F
+        dta $FF,$21,$FF,$0E,$FF,$FF,$FF,$FF,$FF,$0D,$20,$FF,$FF,$FF,$FF,$0C ; 70 to 7F
+        dta $1F,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$0B,$1E,$FF,$FF,$FF,$FF,$FF,$1D ; 80 to 8F
+        dta $FF,$0A,$FF,$FF,$FF,$FF,$FF,$FF,$1C,$09,$FF,$FF,$FF,$FF,$FF,$FF ; 90 to 9F
+        dta $FF,$1B,$08,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$1A,$07,$FF,$FF,$FF,$FF ; A0 to AF
+        dta $FF,$FF,$FF,$FF,$FF,$06,$19,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$18 ; B0 to BF
+        dta $05,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$17,$FF,$04,$FF,$FF ; C0 to CF
+        dta $FF,$FF,$FF,$FF,$FF,$FF,$FF,$16,$03,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; D0 to DF
+        dta $FF,$FF,$FF,$FF,$02,$FF,$15,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; E0 to EF
+        dta $FF,$FF,$14,$01,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$00 ; F0 to FF
+
+        EIF
+
+; infos position on screen
+
+infoposLo
+	:8 dta <[scr+#*120+40]
+infoposHi
+	:8 dta >[scr+#*120+40]
+
+; display lists related stuff
+
+dlist
+	dta $70,$70,$30
+	dta $42,a(scr)
+	:11 dta $02
+	dta $82
+	:12 dta $02
+	dta $41,a(dlist)
+
+; some extra vbi data
+
+tabpp  		dta 156,78,52,39,19,9,4		; line counter spacing table for instrument speed from 1 to 6
+
+;fixP 		dta 0
+
+;tabppFixP  	dta 0,0,0,0,$80,$c0,$e0         ; adjustments for music speed
+
+; old data used for buffered frame updates as references
+
+oldvbi	
+        dta a(0)
+
+old_memory
+
+old_ord		org *+1
+old_abeat       org *+1
+old_second	org *+1
+old_minute	org *+1
+old_audf     	org *+TRACKS
+old_audc     	org *+TRACKS
+;old_note     	org *+TRACKS
+old_off     	org *+TRACKS     ; yes that's shit but I cannot find a better way around for now...
+old_volume      org *+TRACKS
+old_speed	org *+1
+old_audctl      org *+1
+old_skctl	org *+1
+
+	IFT STEREOMODE==1
+old_audctl2     org *+1
+old_skctl2	org *+1
+        EIF
+
+; temporary missiles location
+
+mistmp	        org *+TRACKS
+
+; load font into memory, this was put at the very end to avoid overwriting other data
+
+        org FONT                ; characters set memory location
+        ins "font.fnt"          ; some cool looking font
+        run start
+	opt h-			; RMT module is standard Atari binary file already
+	ins "music.rmt"		; include music RMT module
+	opt h+
+
+; that's all... ;-)
+
