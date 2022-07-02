@@ -1,6 +1,7 @@
 ************************************************************************
 RASTER MUSIC TRACKER - RMT
 by Radek Sterba, Raster/C.P.U., 2002-2009
+currently maintained by Vin Samuel, VinsCool, 2021-2022
 http://raster.atari.org
 ************************************************************************
 
@@ -115,3 +116,6 @@ Sal Esquivel
 Nooly
 All the active "Atariarea" Polish Atarians (http://atariarea.krap.pl)
 ...and other 8bit Atarians all over the world! :-)
+
+TODO: Update README.md to reflect all the changes done since version 1.28
+
