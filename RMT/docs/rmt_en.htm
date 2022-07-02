@@ -1,0 +1,238 @@
+<html>
+<head>
+<title>RMT - RASTER MUSIC TRACKER - ATARI XE/XL</title>
+<STYLE>
+<!--
+font.k
+{
+ background-color: #E0E0E0;
+ white-space: nowrap;
+}
+-->
+</STYLE>
+</head>
+
+<body BGCOLOR="#FFFFFF">
+
+<p align="center"><img border="0" src="rmt.gif" width="325" height="51" alt="RMT - RASTER MUSIC TRACKER"></p>
+RASTER Music Tracker v1.28
+by Radek Sterba, RASTER/C.P.U. 2002-2009<br>
+operation manual version 1.28.001<br>
+<hr><h3>Disclaimer:</h3>
+RMT IS SOFTWARE WITHOUT WARRANTY OF ANY KIND. AUTHOR DOES NOT WARRANT, GUARANTEE, OR MAKE ANY REPRESENTATIONS REGARDING THE USE, OR THE RESULTS OF USE, OF THE SOFTWARE OR WRITTEN MATERIALS IN TERMS OF CORRECTNESS, ACCURACY, RELIABILITY, CURRENTNESS, OR OTHERWISE. THE ENTIRE RISK AS TO THE RESULTS AND PERFORMANCE OF THE SOFTWARE IS ASSUMED BY YOU.<br>
+<hr><h3>All edit modes</h3>
+<h4>Hotkeys</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ESC&nbsp;</font></nobr><td valign=top width="*">Stop playing song, mute all sounds. If PROVE mode is active, deactivate it.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F1&nbsp;</font></nobr><td valign=top width="*">Set bookmark to the current position (also current beat speed is stored).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F1&nbsp;</font></nobr><td valign=top width="*">Play song from the bookmark position (only if bookmark is set up) include beat speed initialization by stored bookmark beat speed.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F1&nbsp;</font></nobr><td valign=top width="*">Similar to F1, but with autofollow of the currently played position.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F2&nbsp;</font></nobr><td valign=top width="*">Play song from the begin include beat speed initialization by main speed.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F2&nbsp;</font></nobr><td valign=top width="*">Similar to F2, but with autofollow of the currently played position.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F3&nbsp;</font></nobr><td valign=top width="*">Play song from currently edited position.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F3&nbsp;</font></nobr><td valign=top width="*">Similar to F3, but with autofollow of the currently played position.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Cyclic playing of the currently edited set of tracks.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Similar to F4, but with autofollow of the currently played position.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Cyclic playing of the selected block.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F5&nbsp;</font></nobr><td valign=top width="*">Switch to TRACK EDIT.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F6&nbsp;</font></nobr><td valign=top width="*">Switch to INSTRUMENT EDIT.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F7&nbsp;</font></nobr><td valign=top width="*">Go to INFO EDIT.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F8&nbsp;</font></nobr><td valign=top width="*">Go to SONG EDIT.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F9&nbsp;</font></nobr><td valign=top width="*">PROVE mode 1 - mono / 2 - stereo / off.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F11&nbsp;</font></nobr><td valign=top width="*">RESPECT VOLUME mode on / off.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F12&nbsp;</font></nobr><td valign=top width="*">Switch to TRACK EDIT / INSTRUMENT EDIT.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SCROLL_LOCK&nbsp;</font></nobr><td valign=top width="*">Turn on / off autofollow mode.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;PAUSE&nbsp;</font></nobr><td valign=top width="*">Mute all sounds and reinitialize the Atari sound routine.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAUSE&nbsp;</font></nobr><td valign=top width="*">Similar to PAUSE, but with reinitialize of the sound output.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock /&nbsp;</font></nobr><td valign=top width="*">Move left to previous track (i.e. previous sound generator).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock *&nbsp;</font></nobr><td valign=top width="*">Move right to following track (i.e. following sound generator).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock -&nbsp;</font></nobr><td valign=top width="*">Decrease volume for newly entered notes.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock +&nbsp;</font></nobr><td valign=top width="*">Increase volume for newly entered notes.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;tonekeys&nbsp;</font></nobr><td valign=top width="*">Play note with current instrument and volume on the selected sound generator.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;tonekeys&nbsp;</font></nobr><td valign=top width="*">Play stereo note with current instrument and volume on the selected sound generator (i.e. on the both, left and right, sound generators).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Stop playing note on the selected sound generator.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Stop playing stereo note (i.e. on the both, left and right, sound generators).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;CAPSLOCK&nbsp;</font></nobr><td valign=top width="*">Turn on / off CapsLock mode (indicated by &quot;CAP&quot; in the statusbar). CapsLock mode is used while the text parameters are edited for entering uppercase and other special characters (!@#$%^&amp;*()_+:&quot;&lt;&gt;?|) by Shift key.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;1-8&nbsp;</font></nobr><td valign=top width="*">Turn on / off the sound generator (track) 1 to 8.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;9&nbsp;</font></nobr><td valign=top width="*">Turn on all the sound generators (tracks).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;0&nbsp;</font></nobr><td valign=top width="*">Turn off all the sound generators (tracks).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;BACKQUOTE&nbsp;</font></nobr><td valign=top width="*">Turn on / off the active sound generator (track).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;BACKQUOTE&nbsp;</font></nobr><td valign=top width="*">Inversion of on/off states of the all sound generators (tracks).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKQUOTE&nbsp;</font></nobr><td valign=top width="*">Solo play of the active sound generator (track) / turn on all the generators (tracks).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;NUMLOCK&nbsp;</font></nobr><td valign=top width="*">Increase parameter for cursor scroll down after entering note or space key.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;NUMLOCK&nbsp;</font></nobr><td valign=top width="*">Decrease parameter for cursor scroll down after entering note or space key.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;ALT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Undo last change.
+</table><hr><h3>TRACK EDIT</h3>
+<PRE>NNN TT VSS</PRE>
+<table border=0 cellspacing=4><tr><td valign=top width=150>NNN<td valign=top>Notes from C-1 to C-6.
+<tr><td valign=top width=150>TT<td valign=top>Number of instrument from $00 to $3F.
+<tr><td valign=top width=150>V<td valign=top>Volume from $0 to $F (also can be used without note and instrument).
+<tr><td valign=top width=150>SS<td valign=top>Beat speed from $01 to $FF (speed column).
+</table><h4>Hotkeys</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;SHIFT+TAB&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Move cursor.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Preset octave up / down.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;numblock 0-9&nbsp;</font></nobr><td valign=top width="*">Set current instrument.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr><td valign=top width="*">Move up / down in the song.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Set track number into the song at current possition.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;Z&nbsp;</font></nobr><td valign=top width="*">Go to the speed column.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;G&nbsp;</font></nobr><td valign=top width="*">Turn on / off &quot;go to line&quot; command in the song at current position.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Move cursor to begin of the track / begin of the &quot;track loop&quot;.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Set up / clear begin of the &quot;track loop&quot;.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Move cursor to the end of track.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Set up / clear the end of track.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr><td valign=top width="*">Move cursor to begin of subsong or begin of previous subsong.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Move cursor to begin of next subsong.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Replay note at the cursor position.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Replay note at the cursor position and get its instrument number and volume for preset values.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Replay all notes at the currently edited line.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr><td valign=top width="*">Insert / delete lines in the track.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;I&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;U&nbsp;</font></nobr><td valign=top width="*">Insert / delete lines in the song (with auto-change of the all relevant &quot;go to line&quot; values).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;P&nbsp;</font></nobr><td valign=top width="*">Insert new line with unused empty tracks.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;O&nbsp;</font></nobr><td valign=top width="*">Insert copy or clone of song line(s).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;N&nbsp;</font></nobr><td valign=top width="*">Put new empty unused track to actual song position.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;M&nbsp;</font></nobr><td valign=top width="*">Make track's duplicate and put it to actual song position. (Note: If track is used only once in song, messagebox with question appears.)
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Delete note, instrument, volume and speed values in the track at the cursor position.
+</table><h4>Note column</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;tonekeys&nbsp;</font></nobr><td valign=top width="*">Insert note and play it. (Note: If RESPECT VOLUME is active, previous volume value won't be replaced.)
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock 1-6&nbsp;</font></nobr><td valign=top width="*">Change octave of the note at the cursor position and play it.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Delete note and instrument values (volume and speed values will not be cleared).
+</table><h4>Instrument number column</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr><td valign=top width="*">Set up / change instrument number.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Delete note and instrument values (volume and speed values will not be cleared).
+</table><h4>Volume column</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr><td valign=top width="*">Set up / change volume.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Delete note, instrument and volume values (speed value will not be cleared).
+</table><h4>Speed column</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr><td valign=top width="*">Set up / change beat speed.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Delete beat speed.
+</table><h4>Block operations</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Select block.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;A&nbsp;</font></nobr><td valign=top width="*">Select all valid data in the currently edited track to block.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;C&nbsp;</font></nobr><td valign=top width="*">Copy block data to the clipboard.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SHIFT+INSERT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+V&nbsp;</font></nobr><td valign=top width="*">Paste data from the clipboard to the cursor position.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;E&nbsp;</font></nobr><td valign=top width="*">Exchange of block select data and the clipboard data.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;X&nbsp;</font></nobr><td valign=top width="*">Move block data to the clipboard.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr><td valign=top width="*">Delete block data.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;B&nbsp;</font></nobr><td valign=top width="*">Restore block data from backup. The backup is created when the block is getting start to select.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Go to the begin / the end of the block.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Cyclicly play all tracks in the area according to the block top-bottom.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Similar to CONTROL+F4, but with autofollow of the currently played position.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Replay notes step-by-step cyclicly inside the block.
+</table><h4>Block data modifications</h4>
+<table border=0 cellspacing=4><tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;A&nbsp;</font></nobr><td valign=top width="*">Block modifications mode. All changes are provided either on each line of the block, or only on lines with instrument numbers equal to preset instrument.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Transpose note up / down by semitones (5 octaves max.).
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr><td valign=top width="*">Instrument change (by $3F value max.).
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;numblock +&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;numblock -&nbsp;</font></nobr><td valign=top width="*">Volume up / down (by $F value max.).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F&nbsp;</font></nobr><td valign=top width="*">Block effects/tools.
+</table><h4>Mouse control</h4>
+<h4>Track head area (titles TRACK_L1 to TRACK_R4)</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LeftMouseButton&nbsp;</font></nobr><td valign=top width="*">Turn on / off the relevant sound generator (track).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;RightMouseButton&nbsp;</font></nobr><td valign=top width="*">Solo play of the relevant sound generator (track) / turn on all the generators (tracks).
+</table><hr><h3>INSTRUMENT EDIT</h3>
+<table border=0 cellspacing=4><tr><td valign=top width=150>NAME<td valign=top>Name of the instrument, 32 chars max.
+<tr><td valign=top width=150>ENVELOPE LEN<td valign=top>Length of the envelope, from $01 to $20 (i.e. 32 max.).
+<tr><td valign=top width=150>ENVELOPE GO<td valign=top>Jump to given envelope column when envelope end reached.
+<tr><td valign=top width=150>VSLIDE<td valign=top>Volume slide when end of envelope reached for the first time. $00 = no volume slide, $FF = maximal volume slide.
+<tr><td valign=top width=150>VMIN<td valign=top>Minimal volume value reached by VSLIDE parameter.
+<tr><td valign=top width=150>TABLE LEN<td valign=top>Length of the table, from $01 to $20 steps (i.e. 32 max.).
+<tr><td valign=top width=150>TABLE GO<td valign=top>Jump to given table line when table end reached.
+<tr><td valign=top width=150>TABLE SPD<td valign=top>Speed for the each table step, from $01 to $40 vbi.
+<tr><td valign=top width=150>TABLE TYPE<td valign=top>Table type. 0 = notes, 1 = frequencies
+<tr><td valign=top width=150>TABLE MODE<td valign=top>Table mode. 0 = add note (or frequency) to base note, 1 = add note (or frequency) to last calculated note (or frequency). Notice: If resulting note by reason of note adding is out of C-1 to C-6 range (hex values $00 to $3D), then output volume will be zero. But frequency addings are not limited.
+<tr><td valign=top width=150>EFFECT DELAY<td valign=top>Delay before start of VIBRATO and FSHIFT effects by $01 to $FF vbi, $00 = no effects.
+<tr><td valign=top width=150>EFFECT VIBRATO<td valign=top>Effect vibrato, 3 levels from $01 to $03, $00 = no vibrato.
+<tr><td valign=top width=150>EFFECT FSHIFT<td valign=top>Effect &quot;frequency shifting&quot; from $00 to $FF for each vbi.
+<tr><td valign=top width=150>AUDCTL 15KHZ<td valign=top>Turn on / off AUDCTL bit &quot;main clock base 15khz&quot;.
+<tr><td valign=top width=150>AUDCTL FI2+4<td valign=top>Turn on / off AUDCTL bit &quot;high pass filter to channel 2 clocked by channel 4&quot;.
+<tr><td valign=top width=150>AUDCTL FI1+3<td valign=top>Turn on / off AUDCTL bit &quot;high pass filter to channel 1 clocked by channel 3&quot;.
+<tr><td valign=top width=150>AUDCTL CH4+3<td valign=top>Turn on / off AUDCTL bit &quot;join channels 4 and 3.
+<tr><td valign=top width=150>AUDCTL CH2+1<td valign=top>Turn on / off AUDCTL bit &quot;join channels 2 and 1.
+<tr><td valign=top width=150>AUDCTL 1.79CH3<td valign=top>Turn on / off AUDCTL bit &quot;clock channel 3 with 1.79MHz.
+<tr><td valign=top width=150>AUDCTL 1.79CH1<td valign=top>Turn on / off AUDCTL bit &quot;clock channel 1 with 1.79MHz.
+<tr><td valign=top width=150>AUDCTL POLY9<td valign=top>Turn on / off AUDCTL bit &quot;9 bit poly counter&quot;.
+</table><h4>Table of notes / freqs</h4>
+<table border=0 cellspacing=4><tr><td valign=top width=150>TABLE $00 - $1F<td valign=top>From 1 to 32 parameters for table. It contains array of note (in halftones) or frequency addings according to TABLE TYPE value. For negative values there are complementary numbers used, for example -1 = $FF.
+</table><h4>Envelope</h4>
+<table border=0 cellspacing=4><tr><td valign=top width=150>VOLUME R<td valign=top>Volume from $0 to $F for right channels. It will be used for stereo songs in tracks R1 to R4.
+<tr><td valign=top width=150>VOLUME L<td valign=top>Volume from $0 to $F. It will be used on tracks L1 to L4.
+<tr><td valign=top width=150>DISTORTION<td valign=top>Sound type from $0 to $E, even values only.
+<tr><td valign=top width=150>COMMAND<td valign=top>Envelope command, from $0 to $7.
+<tr><td valign=top width=150>X, Y<td valign=top>Two parameters from $0 to $F for special command. It can be used as a two separate parameters or as one hexadecimal value $XY.
+<tr><td valign=top width=150>FILTER<td valign=top>Filter. $0 = no active, $1 = acitve. It works with sound generator 1 or 2 only. It engage two generators: 1+3 or 2+4. It has higher priority than 16bit bass tones and non filtered voices, therefore it can occupy their sound generators or it can switch 16bit bass tones to 8bit and use its high byte for filtering. If resulting volume is zero, filtering won't be used (and no occupation of other generators arrive).
+<tr><td valign=top width=150>PORTAMENTO<td valign=top>Portamento. $0 = no active, $1 = acitve. If active, then &quot;portamento volatile frequency&quot; is used instead of current frequency.
+</table><h4>Sound type (DISTORTION parameter)</h4>
+<table border=0 cellspacing=4><tr><td valign=top width=150>0<td valign=top>Distortion 0. (AUDC $0v)
+<tr><td valign=top width=150>2<td valign=top>Distortion 2. (AUDC $2v)
+<tr><td valign=top width=150>4<td valign=top>Distortion 4. (AUDC $4v)
+<tr><td valign=top width=150>6<td valign=top>Distortion 12 (AUDC $Cv) plus join of two sound generators for 16bit resolution bass tones. It works with generator 2 or 4 only, It engage two generators: 2+1 or 4+2. On other generators it works as a distortion 12 with bass table 1.
+<tr><td valign=top width=150>8<td valign=top>Distortion 8. (AUDC $8v)
+<tr><td valign=top width=150>A<td valign=top>Distortion 10, pure tones. (AUDC $Av)
+<tr><td valign=top width=150>C<td valign=top>Distortion 12, bass tones - bass table 1. (AUDC $Cv)
+<tr><td valign=top width=150>E<td valign=top>Distortion 12, bass tones - bass table 2. (AUDC $Cv)
+</table><h4>Envelope command (COMMAND parameter)</h4>
+<table border=0 cellspacing=4><tr><td valign=top width=150>0<td valign=top>Play the base note shifted by $XY semitones. If resulting note by reason of note shifting is out of C-1 to C-6 range (hex values $00 to $3D), then output volume will be zero.
+<tr><td valign=top width=150>1<td valign=top>Play the frequency $XY directly.
+<tr><td valign=top width=150>2<td valign=top>Play the base note shifted by frequency $XY.
+<tr><td valign=top width=150>3<td valign=top>Add $XY semitones to base note. Play base note (new value). If resulting note by reason of note shifting is out of C-1 to C-6 range (hex values $00 to $3D), then output volume will be zero.
+<tr><td valign=top width=150>4<td valign=top>Add frequency $XY to FSHIFT register. Play base note.
+<tr><td valign=top width=150>5<td valign=top>Set up portamento speed $X, step $Y (each $X vbi will be &quot;volatile portamento frequency&quot; shifted up or down by $Y value in a direction of actual frequency). If $XY=$00, then set current frequency directly to volatile portamento frequency.
+<tr><td valign=top width=150>6<td valign=top>Add $XY value to FILTER_SHFRQ. (Whenever the new note in track is getting started, FILTER_SHFRQ is initialized to $01, so that default join filter generator frequency is higher by 1.)
+<tr><td valign=top width=150>7<td valign=top>Set the base note to $XY value directly. Play base note (new value). If $XY=$80, then use the current volume for VOLUME ONLY forced output.
+</table><h4>Hotkeys</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr><td valign=top width="*">Move cursor.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr><td valign=top width="*">Move cursor to set up the instrument parameters / the envelope parameters.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr><td valign=top width="*">Move cursor to set up the name of the instrument.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+DOWN&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Settings of the parameter values (in a valid ranges only).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Preset octave up / down.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;numblock 0-9&nbsp;</font></nobr><td valign=top width="*">Select current instrument.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;numblock +&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;numblock -&nbsp;</font></nobr><td valign=top width="*">Change the R+L volume envelopes up/down. If cursor is at line &quot;VOLUME L&quot; or &quot;VOLUME R&quot;, then volume envelope for left or right channel only is changed.
+</table><h4>Table of notes / freqs changes</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Move cursor to the begin of the table / to the begin of &quot;table loop&quot;.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Set up the begin of &quot;table loop&quot;.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Move cursor to the end of the table.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Set up the end of the table.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr><td valign=top width="*">Insert empty items to the table (shift to the right).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr><td valign=top width="*">Duplicate the current table item.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr><td valign=top width="*">Delete the current table item (shift to the left).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Clear the current table item and move cursor to the right.
+</table><h4>Envelope parameters</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Move cursor to the begin of the envelope / to the begin of &quot;envelope loop&quot;.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Set up the begin of &quot;envelope loop&quot;.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Move cursor to the end of the envelope.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Set up the end of the envelope / set up a maximal length of the envelope.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr><td valign=top width="*">Insert columns into the envelope (shift to the right).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr><td valign=top width="*">Duplicate the current envelope column.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr><td valign=top width="*">Delete columns into the envelope (shift to the left).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Clear the current envelope column values and move cursor to the right.
+</table><h4>Mouse control</h4>
+<h4>Volume envelope area</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LeftMouseButton&nbsp;</font></nobr><td valign=top width="*">Draw the volume curve.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;RightMouseButton&nbsp;</font></nobr><td valign=top width="*">Set the zero volume.
+</table><hr><h3>INFO EDIT</h3>
+<table border=0 cellspacing=4><tr><td valign=top width=150>NAME<td valign=top>Name of the song and author, 64 chars max.
+</table><PRE>MUSIC SPEED: AA/MM/S</PRE>
+<table border=0 cellspacing=4><tr><td valign=top width=150>AA<td valign=top>Current beat speed, from $01 to $FF.
+<tr><td valign=top width=150>MM<td valign=top>Main speed, from $01 to $FF. Actual beat speed is initialized by main speed when whole song is getting started to play.
+<tr><td valign=top width=150>S<td valign=top>Speed of the instruments, from $1 to $4. (X times per 1 frame.)
+</table><h4>Hotkeys</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr><td valign=top width="*">Move cursor.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr><td valign=top width="*">Move cursor to set up name of the song.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+DOWN&nbsp;</font></nobr><td valign=top width="*">Settings of parameter values (in valid ranges only).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Exit from INFO EDIT.
+</table><hr><h3>SONG EDIT</h3>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Move cursor.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Move cursor to begin of the song.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Move cursor to last no empty song line.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr><td valign=top width="*">Move cursor to begin of subsong or begin of previous subsong.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Move cursor to begin of next subsong.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Set up number of track or &quot;go to line&quot; value in the song.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;G&nbsp;</font></nobr><td valign=top width="*">Turn on / off &quot;go to line&quot; command in the song.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+I&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+U&nbsp;</font></nobr><td valign=top width="*">Insert / delete lines in the song (with auto-change of all relevant &quot;go to line&quot; values).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;P&nbsp;</font></nobr><td valign=top width="*">Prepare song line with unused empty tracks.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;O&nbsp;</font></nobr><td valign=top width="*">Insert copy or clone of song line(s).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;N&nbsp;</font></nobr><td valign=top width="*">Put new empty unused track to actual song position.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;M&nbsp;</font></nobr><td valign=top width="*">Make track's duplicate and put it to actual song position. (Note: If track is used only once in song, messagebox with question appears.)
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Exit from SONG EDIT.
+</table><hr><h3>PROVE mode 1 - mono / 2 - stereo</h3>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;tonekeys&nbsp;</font></nobr><td valign=top width="*">Play note only (without tracks modify).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Stop playing note on the selected sound generator.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ESC&nbsp;</font></nobr><td valign=top width="*">Mute all sounds, deactivate PROVE mode.

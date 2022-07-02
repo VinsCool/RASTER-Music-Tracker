@@ -1,0 +1,239 @@
+<html>
+<head>
+<title>RMT - RASTER MUSIC TRACKER - ATARI XE/XL</title>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1250">
+<STYLE>
+<!--
+font.k
+{
+ background-color: #E0E0E0;
+ white-space: nowrap;
+}
+-->
+</STYLE>
+</head>
+
+<body BGCOLOR="#FFFFFF">
+
+<p align="center"><img border="0" src="rmt.gif" width="325" height="51" alt="RMT - RASTER MUSIC TRACKER"></p>
+RASTER Music Tracker v1.28
+vytvořil Radek Štěrba, RASTER/C.P.U. 2002-2009<br>
+manuál verze 1.28.001<br>
+<hr><h3>Důležité upozornění:</h3>
+PROGRAM RMT JE BEZ ZÁRUK A SPOUŠTÍTE HO NA SVÉ VLASTNÍ NEBEZPEČÍ. AUTOR SE ZŘÍKÁ VEŠKERÉ ODPOVĚDNOSTI ZA CHOVÁNÍ PROGRAMU A ZA JAKÉKOLIV PŘÍPADNÉ ŠKODY PROGRAMEM ZPŮSOBENÉ.<br>
+<hr><h3>Všechny editační módy</h3>
+<h4>Klávesy</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ESC&nbsp;</font></nobr><td valign=top width="*">Stop přehrávání, vypnutí všech zvuků. Pokud byl aktivní PROVE mód, zrušení PROVE módu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F1&nbsp;</font></nobr><td valign=top width="*">Nastavení záložky na aktuální pozici (včetně uložení aktuální rychlosti taktu).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F1&nbsp;</font></nobr><td valign=top width="*">Start přehrávání z místa záložky (pouze byla-li nastavena) včetně inicializace rychlosti taktu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F1&nbsp;</font></nobr><td valign=top width="*">Jako F1, ale s autoposunem na aktuálně přehrávané místo.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F2&nbsp;</font></nobr><td valign=top width="*">Start přehrávání celého songu od začátku včetně inicializace rychlosti taktu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F2&nbsp;</font></nobr><td valign=top width="*">Jako F2, ale s autoposunem na aktuálně přehrávané místo.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F3&nbsp;</font></nobr><td valign=top width="*">Start přehrávání songu od aktuálně editovaného místa.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F3&nbsp;</font></nobr><td valign=top width="*">Jako F3, ale s autoposunem na aktuálně přehrávané místo.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Cyklické přehrávání aktuálně editované sady tracků.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Jako F4, ale s autoposunem na aktuálně přehrávané místo.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Cyklické přehrávání části vybrané do bloku.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F5&nbsp;</font></nobr><td valign=top width="*">Přechod na editaci TRACKů.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F6&nbsp;</font></nobr><td valign=top width="*">Přechod na editaci INSTRUMENTů.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F7&nbsp;</font></nobr><td valign=top width="*">Přechod na editaci INFOrmací o songu a nastavování rychlostí.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F8&nbsp;</font></nobr><td valign=top width="*">Přechod na editaci SONGu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F9&nbsp;</font></nobr><td valign=top width="*">PROVE mód 1-mono / 2-stereo / vypnutí PROVE módu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F11&nbsp;</font></nobr><td valign=top width="*">RESPECT VOLUME mód zapnutí / vypnutí.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;F12&nbsp;</font></nobr><td valign=top width="*">Přechod na editaci TRACKů / INSTRUMENTů.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SCROLL_LOCK&nbsp;</font></nobr><td valign=top width="*">Zapnutí / vypnutí režimu autoposunu na aktuálně přehrávané místo.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;PAUSE&nbsp;</font></nobr><td valign=top width="*">Vypnutí všech zvuků a reinicializace Atari zvukové rutiny.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAUSE&nbsp;</font></nobr><td valign=top width="*">Jako PAUSE, ale s reinicializací zvukového výstupu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock /&nbsp;</font></nobr><td valign=top width="*">Přechod doleva na vedlejší track (respektive zvukový generátor).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock *&nbsp;</font></nobr><td valign=top width="*">Přechod doprava na vedlejší track (respektive zvukový generátor).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock -&nbsp;</font></nobr><td valign=top width="*">Snižování hlasitosti pro nově zapisované noty.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock +&nbsp;</font></nobr><td valign=top width="*">Zvyšování hlasitosti pro nově zapisované noty.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;tonekeys&nbsp;</font></nobr><td valign=top width="*">Přehrání noty aktuálním nástrojem, aktuální hlasitostí na aktuálním zvukovém generátoru.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;tonekeys&nbsp;</font></nobr><td valign=top width="*">Přehrání noty aktuálním nástrojem, aktuální hlasitostí ve stereo provedení (tj. levý a pravý zvukový generátor).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Ukončení přehrávání noty na aktuálním zvukovém generátoru.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Ukončení přehrávání noty ve stereo provedení (tj. na levém i na pravém generátoru).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;CAPSLOCK&nbsp;</font></nobr><td valign=top width="*">Zapnutí / vypnutí CapsLock režimu (je indikováno vpravo dole ve statusbaru &quot;CAP&quot;). CapsLock režim se používá při editaci textových parametrů (názvy instrumentů, songu) pro zadávání velkých písmen a znaků !@#$%^&amp;*()_+:&quot;&lt;&gt;?| přes klávesu Shift.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;1-8&nbsp;</font></nobr><td valign=top width="*">Zapnutí / vypnutí zvukového generátoru (tracku) 1 až 8.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;9&nbsp;</font></nobr><td valign=top width="*">Zapnutí všech zvukových generátorů (tracků).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;0&nbsp;</font></nobr><td valign=top width="*">Vypnutí všech zvukových generátorů (tracků).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;BACKQUOTE&nbsp;</font></nobr><td valign=top width="*">Zapnutí / vypnutí aktivního zvukového generátoru (tracku).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;BACKQUOTE&nbsp;</font></nobr><td valign=top width="*">Negace zap/vyp stavů všech zvukových generátorů (tracků).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKQUOTE&nbsp;</font></nobr><td valign=top width="*">Sólová hra pouze aktivního zvukového generátoru (tracku) / zapnutí všech generátorů (tracků).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;NUMLOCK&nbsp;</font></nobr><td valign=top width="*">Zvýšení hodnoty posunu kurzoru po vložení noty nebo po stisku klávesy SPACE
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;NUMLOCK&nbsp;</font></nobr><td valign=top width="*">Snížení hodnoty posunu kurzoru po vložení noty nebo po stisku klávesy SPACE
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;ALT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Zrušení posledně provedené změny.
+</table><hr><h3>Editace TRACKů</h3>
+<PRE>NNN TT VSS</PRE>
+<table border=0 cellspacing=4><tr><td valign=top width=150>NNN<td valign=top>Nota C-1 až C-6.
+<tr><td valign=top width=150>TT<td valign=top>Číslo instrumentu $00 až $3F.
+<tr><td valign=top width=150>V<td valign=top>Úroveň hlasitosti $0 až $F (může být použita i bez noty a instrumentu).
+<tr><td valign=top width=150>SS<td valign=top>Rychlost 1 taktu $01 až $FF (speed sloupec).
+</table><h4>Klávesy</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;SHIFT+TAB&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Posun kurzoru.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Nastavení akuální oktávy.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;numblock 0-9&nbsp;</font></nobr><td valign=top width="*">Výběr aktuálního instrumentu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr><td valign=top width="*">Posun v songu nahoru / dolů.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Nastavení čísla tracku do songu na aktuální pozici.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;Z&nbsp;</font></nobr><td valign=top width="*">Přechod do speed sloupce.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;G&nbsp;</font></nobr><td valign=top width="*">Zapnutí / vypnutí &quot;go to line&quot; v songu na aktuální pozici.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Přechod na začátek tracku / na začátek &quot;track loop&quot;.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Nastavení / zrušení začátku &quot;track loop&quot;.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Přechod na konec tracku.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Nastavení / zrušení konce tracku.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr><td valign=top width="*">Přechod na začátek subsongu nebo na začátek předchozího subsongu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Přechod na začátek následujícího subsongu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Přehrání noty na aktuální pozici kurzoru.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Přehrání noty na aktuální pozici kurzoru a přebrání jejího instrumentu a hlasitosti pro předvolené hodnoty.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Přehrání not všech tracků na aktuálně editovaném řádku.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr><td valign=top width="*">Vkládání / mazání řádku v tracku.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;I&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;U&nbsp;</font></nobr><td valign=top width="*">Vkládání / mazání řádku v songu (s odpovídajícím automatickým posunem všech &quot;go to line&quot; hodnot).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;P&nbsp;</font></nobr><td valign=top width="*">Vložení řádku s nepoužitými prázdnými tracky do songu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;O&nbsp;</font></nobr><td valign=top width="*">Vložení kopie nebo klonování řádků v songu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;N&nbsp;</font></nobr><td valign=top width="*">Umístění nového prázdného nepoužitého tracku do songu na aktuální pozici.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;M&nbsp;</font></nobr><td valign=top width="*">Vytvoření kopie tracku a její vložení do songu na aktuální pozici. (Poznámka: Nejdříve se prověří, zda je track v songu použit vícekrát. Není-li, zobrazí dotaz zda se má kopie opravdu vytvářet.)
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Smazání noty, instrumentu, hlasitosti i rychlosti v tracku na pozici kurzoru.
+</table><h4>Sloupec not</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;tonekeys&nbsp;</font></nobr><td valign=top width="*">Vložení noty, aktuálního instrumentu a hlasitosti, a její přehrání. (Poznámka: Je-li aktivní mód RESPECT VOLUME, nedojde k přepsání dříve nastavené hlasitosti.)
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;numblock 1-6&nbsp;</font></nobr><td valign=top width="*">Změna oktávy u aktuální noty (je-li kurzor na nějaké notě) a její přehrání.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Smazání noty a instrumentu (ponechání hlasitosti a rychlosti).
+</table><h4>Sloupec čísel instrumentů</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr><td valign=top width="*">Zapsání / změna čísla instrumentu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Smazání noty a instrumentu (ponechání hlasitosti a rychlosti).
+</table><h4>Sloupec hlasitostí</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr><td valign=top width="*">Zapsání / změna hlasitosti.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Smazání noty, instrumentu a hlasitosti (ponechání rychlosti).
+</table><h4>Sloupec rychlostí</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr><td valign=top width="*">Zapsání/změna rychlosti.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Smazání rychlosti.
+</table><h4>Blokové operace</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Výběr bloku.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;A&nbsp;</font></nobr><td valign=top width="*">Výběr všech platných dat v aktuálním tracku do bloku.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;C&nbsp;</font></nobr><td valign=top width="*">Kopírování obsahu bloku do clipboardu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SHIFT+INSERT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+V&nbsp;</font></nobr><td valign=top width="*">Vložení dat z clipboardu do tracku na aktuální pozici. (Poznámka: Pokud je označen nějaký blok, data budou vložena pouze do oblasti jím vymezené.)
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;E&nbsp;</font></nobr><td valign=top width="*">Výměna dat v bloku s daty v clipboardu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;X&nbsp;</font></nobr><td valign=top width="*">Přesun dat z bloku do clipboardu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr><td valign=top width="*">Vymazání dat v bloku.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;B&nbsp;</font></nobr><td valign=top width="*">Obnovení dat v bloku ze zálohy. Záloha je vytvářena vždy v okamžiku kdy se zahájí výběr bloku.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Přechod na začátek, konec bloku.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Cyklické přehrávání všech tracků v oblasti shora-zdola vymezené blokem.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F4&nbsp;</font></nobr><td valign=top width="*">Jako CONTROL+F4, ale s autoposunem na aktuálně přehrávané místo.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Krokové přehrávání not cyklicky uvnitř bloku.
+</table><h4>Úpravy dat v bloku</h4>
+<table border=0 cellspacing=4><tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;A&nbsp;</font></nobr><td valign=top width="*">Přepínání módu úprav. Úpravy se provádějí buďto na všech řádcích v bloku, nebo pouze na řádcích používajících aktuálně vybraný instrument.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Transpozice not nahoru či dolů po půltónech (maximálně o 5 oktáv).
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr><td valign=top width="*">Změna instrumentů (maximálně o $3F).
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;numblock +&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;numblock -&nbsp;</font></nobr><td valign=top width="*">Zvyšování / snižování hlasitostí (maximálně o $F).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;F&nbsp;</font></nobr><td valign=top width="*">Blokové efekty/nástroje.
+</table><h4>Ovládání myší</h4>
+<h4>Oblast hlaviček tracků (nápisy TRACK_L1 až TRACK_R4)</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LeftMouseButton&nbsp;</font></nobr><td valign=top width="*">Zapnutí / vypnutí příslušného zvukového generátoru (tracku).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;RightMouseButton&nbsp;</font></nobr><td valign=top width="*">Sólová hra pouze příslušného zvukového generátoru (tracku) / zapnutí všech generátorů (tracků).
+</table><hr><h3>Editace INSTRUMENTů</h3>
+<table border=0 cellspacing=4><tr><td valign=top width=150>NAME<td valign=top>Název instrumentu, max. 32 znaků.
+<tr><td valign=top width=150>ENVELOPE LEN<td valign=top>Délka &quot;envelope&quot; $01 až $20 (tj. maximálně 32).
+<tr><td valign=top width=150>ENVELOPE GO<td valign=top>Skok na příslušný sloupec po dosažení konce &quot;envelope&quot;.
+<tr><td valign=top width=150>VSLIDE<td valign=top>Ubývání hlasitosti od okamžiku prvního dosažení konce &quot;envelope&quot;. $00 = vůbec, $FF = nejrychleji.
+<tr><td valign=top width=150>VMIN<td valign=top>Minimální úroveň hlasitosti, na kterou hlasitost klesne parametrem VSLIDE, $0 až $F.
+<tr><td valign=top width=150>TABLE LEN<td valign=top>Délka &quot;table&quot; $01 až $20 kroků (tj. maximálně 32).
+<tr><td valign=top width=150>TABLE GO<td valign=top>Skok na příslušný řádek po dosažení konce &quot;table&quot;.
+<tr><td valign=top width=150>TABLE SPD<td valign=top>Rychlost 1 kroku, $01 až $40 vbi.
+<tr><td valign=top width=150>TABLE TYPE<td valign=top>Typ &quot;table&quot;. 0 = noty, 1 = frekvence
+<tr><td valign=top width=150>TABLE MODE<td valign=top>Mód &quot;table&quot;. 0 = přičítání noty (respektive frekvence) k výchozí notě, 1 = přičítání noty (respektive frekvence) k posledně vypočítané notě (respektive frekvenci). Poznámka: Pokud se vlivem notových posunů dostane výsledná nota mimo rozsah C-1 (hex $00) až C-6 (hex $3D), pak bude výstupní hlasitost nulová. Toto neplatí u frekvenčních posunů.
+<tr><td valign=top width=150>EFFECT DELAY<td valign=top>Zpoždění efektů VIBRATO a FSHIFT o $01 až $FF vbi, $00 = efekty se vůbec nebudou provádět.
+<tr><td valign=top width=150>EFFECT VIBRATO<td valign=top>Efekt vibrato, tři úrovně $01 až $03, $00 = žádné vibrato.
+<tr><td valign=top width=150>EFFECT FSHIFT<td valign=top>Efekt posunování frekvence o $00 až $FF každé vbi.
+<tr><td valign=top width=150>AUDCTL 15KHZ<td valign=top>Nastavení / nulová hodnota bitu &quot;hlavní taktovací frekvence 15khz&quot; pro AUDCTL řídící registr.
+<tr><td valign=top width=150>AUDCTL FI2+4<td valign=top>Nastavení / nulová hodnota bitu &quot;filtrování kanálu 2 kanálem 4&quot; pro AUDCTL řídící registr.
+<tr><td valign=top width=150>AUDCTL FI1+3<td valign=top>Nastavení / nulová hodnota bitu &quot;filtrování kanálu 1 kanálem 3&quot; pro AUDCTL řídící registr.
+<tr><td valign=top width=150>AUDCTL CH4+3<td valign=top>Nastavení / nulová hodnota bitu &quot;spojení kanálů 4 a 3&quot; pro AUDCTL řídící registr.
+<tr><td valign=top width=150>AUDCTL CH2+1<td valign=top>Nastavení / nulová hodnota bitu &quot;spojení kanálů 2 a 1&quot; pro AUDCTL řídící registr.
+<tr><td valign=top width=150>AUDCTL 1.79CH3<td valign=top>Nastavení / nulová hodnota bitu &quot;vstupní frekvence 1.79MHz pro kanál 3&quot; pro AUDCTL řídící registr.
+<tr><td valign=top width=150>AUDCTL 1.79CH1<td valign=top>Nastavení / nulová hodnota bitu &quot;vstupní frekvence 1.79MHz pro kanál 1&quot; pro AUDCTL řídící registr.
+<tr><td valign=top width=150>AUDCTL POLY9<td valign=top>Nastavení / nulová hodnota bitu &quot;9 bitový polyčítač&quot; pro AUDCTL řídící registr.
+</table><h4>Tabulka not / frekvencí</h4>
+<table border=0 cellspacing=4><tr><td valign=top width=150>TABLE $00 - $1F<td valign=top>1 až 32 parametrů pro jednotlivé &quot;table&quot; kroky. Dle TABLE TYPE obsahuje buďto řadu notových posunů (v půltónech), nebo řadu frekvenčních posunů. Pro záporné posuny použijte doplňkovou hodnotu do $100, tj. například -1 = $FF.
+</table><h4>Obalová křivka</h4>
+<table border=0 cellspacing=4><tr><td valign=top width=150>VOLUME R<td valign=top>Hlasitost $0 až $F pro pravé kanály. Bude se používat ve stereo módu u instrumentů použitých v tracku R1 až R4.
+<tr><td valign=top width=150>VOLUME L<td valign=top>Hlasitost $0 až $F. Bude se používat u tracků L1 až L4.
+<tr><td valign=top width=150>DISTORTION<td valign=top>Typ zvuku $0 až $E (pouze sudé hodnoty).
+<tr><td valign=top width=150>COMMAND<td valign=top>Povel obalové křivky $0 až $7.
+<tr><td valign=top width=150>X, Y<td valign=top>Dva parametry v rozsahu $0 až $F pro speciální povel. Mohou mít význam buď samostatný, nebo jako jedna spojené hexa hodnota $XY.
+<tr><td valign=top width=150>FILTER<td valign=top>Filtr. $0 = neaktivní, $1 = aktivní. Funguje jen na generátorech 1 nebo 2, obsadí 2 generátory: 1+3 nebo 2+4. Má vyšší prioritu než 16bitové basové tóny a nefiltrované hlasy, takže si dle vlastní potřeby zabírá jejich zvukové generátory či přepíná kolizní 16bitový bas na 8bitový a využívá pro filtrování jeho horní byte. Je-li výsledná hlasitost zvuku nulová, filtrování (a tedy ani zabírání dalších zvukových generátorů) se neprovádí.
+<tr><td valign=top width=150>PORTAMENTO<td valign=top>Portamento. $0 = neaktivní, $1 = aktivní. Je-li aktivní, pak je pro výstup místo aktuálně přichystané frekvence použita &quot;portamento přechodová frekvence&quot;.
+</table><h4>Typy zvuků (parametr DISTORTION)</h4>
+<table border=0 cellspacing=4><tr><td valign=top width=150>0<td valign=top>Zkreslení 0. (AUDC $0v)
+<tr><td valign=top width=150>2<td valign=top>Zkreslení 2. (AUDC $2v)
+<tr><td valign=top width=150>4<td valign=top>Zkreslení 4. (AUDC $4v)
+<tr><td valign=top width=150>6<td valign=top>Zkreslení 12 (AUDC $Cv) + sloučení 2 generátorů pro 16bitové basové tóny. Funguje jen na generátorech 2 nebo 4 (obsadí generátory 2+1 nebo 4+3), na ostatních se chová jako normální zkreslení 12 s basovou tabulkou 1.
+<tr><td valign=top width=150>8<td valign=top>Zkreslení 8. (AUDC $8v)
+<tr><td valign=top width=150>A<td valign=top>Zkreslení 10, čisté tóny. (AUDC $Av)
+<tr><td valign=top width=150>C<td valign=top>Zkreslení 12, basové tóny - tabulka basů 1. (AUDC $Cv)
+<tr><td valign=top width=150>E<td valign=top>Zkreslení 12, basové tóny - tabulka basů 2. (AUDC $Cv)
+</table><h4>Povely obalové křivky (parametr COMMAND)</h4>
+<table border=0 cellspacing=4><tr><td valign=top width=150>0<td valign=top>Hraj základní tón posunutý o $XY půltónů. Pokud se vlivem posunů dostane výsledná nota mimo rozsah C-1 (hex $00) až C-6 (hex $3D), pak bude výstupní hlasitost nulová.
+<tr><td valign=top width=150>1<td valign=top>Hraj přímo udanou frekvenci $XY.
+<tr><td valign=top width=150>2<td valign=top>Hraj základní tón posunutý o frekvenci $XY.
+<tr><td valign=top width=150>3<td valign=top>Zvyš základní tón o $XY půltónů. Hraj základní tón (novou hodnotu). Pokud se vlivem posunů dostane výsledná nota mimo rozsah C-1 (hex $00) až C-6 (hex $3D), pak bude výstupní hlasitost nulová.
+<tr><td valign=top width=150>4<td valign=top>Zvyš FSHIFT hodnotu o $XY. Hraj základní tón.
+<tr><td valign=top width=150>5<td valign=top>Nastav portamento rychlostí $X, úroveň $Y (tj. každých $X vbi bude posunuta &quot;portamento přechodová frekvence&quot; o $Y směrem k aktuální frekvenci). Je-li $XY=$00, pak nastav portamento přechodovou frekvenci přímo na aktuální frekvenci.
+<tr><td valign=top width=150>6<td valign=top>Zvyš FILTER_SHFRQ o hodnotu $XY. (Na začátku každé nové noty v tracku se FILTER_SHFRQ inicializuje na $01, tj. implicitně má spojený filtrovací generátor frekvenci o 1 vyšší.)
+<tr><td valign=top width=150>7<td valign=top>Nastav základní tón na hodnotu $XY. Hraj základní tón (novou hodnotu). Je-li $XY==$80, pak použij aktuální úroveň hlasitosti pro VOLUME ONLY přímý výstup.
+</table><h4>Klávesy</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr><td valign=top width="*">Posun kurzoru mezi parametry.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr><td valign=top width="*">Přechod na provádění změn parametrů instrumentu / parametrů obalové křivky.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr><td valign=top width="*">Přechod na změnu názvu instrumentu. (Ukončí se ENTERem nebo TABelátorem.)
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+DOWN&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Změna hodnoty parametru (každý parametr jen v jemu povoleném rozsahu).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Nastavení akuální oktávy.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;numblock 0-9&nbsp;</font></nobr><td valign=top width="*">Výběr aktuálního instrumentu.
+<tr><td valign=top><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;numblock +&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;numblock -&nbsp;</font></nobr><td valign=top width="*">Editace hlasitostních křivek R a L. Je-li kurzor v řádku VOLUME R nebo VOLUME L, mění se pouze jedna příslušná křivka, v jiném případě se mění obě křivky.
+</table><h4>Změny v tabulce not / frekvencí</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Nastavení kurzoru na začátek table / na začátek &quot;table loop&quot;.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Nastavení začátku &quot;table loop&quot;.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Nastavení kurzoru na konec table.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Nastavení konce table.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr><td valign=top width="*">Vkládání prázdných hodnot do table (posun doprava).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr><td valign=top width="*">Duplikace hodnoty v aktuálním sloupci v table.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr><td valign=top width="*">Mazání hodnoty na aktuální pozici v table (posun doleva).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Vynulování hodnoty na aktuální pozici v table a posun kurzoru vpravo.
+</table><h4>Změny parametrů obalové křivky</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Nastavení kurzoru na začátek envelope / na začátek &quot;envelope loop&quot;.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Nastavení začátku &quot;envelope loop&quot;.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Nastavení kurzoru na konec envelope.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Nastavení konce envelope / nastavení maximální délky envelope.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr><td valign=top width="*">Vkládání sloupců do envelope (posun doprava).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr><td valign=top width="*">Duplikace aktuálního sloupce v envelope.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr><td valign=top width="*">Mazání sloupců v envelope (posun doleva).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Vynulování hodnot v aktuálním sloupci envelope a posun kurzoru vpravo.
+</table><h4>Ovládání myší</h4>
+<h4>Oblast hlasitostní křivky instrumentu</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LeftMouseButton&nbsp;</font></nobr><td valign=top width="*">Kreslení hlasitostní křivky.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;RightMouseButton&nbsp;</font></nobr><td valign=top width="*">Nastavení nulové hlasitosti.
+</table><hr><h3>Editace INFO parametrů</h3>
+<table border=0 cellspacing=4><tr><td valign=top width=150>NAME<td valign=top>Název skladby a autor, max. 64 znaků.
+</table><PRE>MUSIC SPEED: AA/MM/S</PRE>
+<table border=0 cellspacing=4><tr><td valign=top width=150>AA<td valign=top>Právě aktuální rychlost taktu, $01 až $FF.
+<tr><td valign=top width=150>MM<td valign=top>Hlavní rychlost taktu, $01 až $FF. Při startu přehrávání celého songu se hodnota MM přepíše do aktuální rychlosti AA.
+<tr><td valign=top width=150>S<td valign=top>Rychlost instrumentů, $1 až $4. (X-krát během 1 obrazového snímku.)
+</table><h4>Klávesy</h4>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr><td valign=top width="*">Posun kurzoru mezi parametry.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;SHIFT&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;TAB&nbsp;</font></nobr><td valign=top width="*">Přechod na změnu názvu songu. (Ukončí se ENTERem nebo TABelátorem.)
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+DOWN&nbsp;</font></nobr><td valign=top width="*">Změna hodnoty parametru (každý parametr jen v jemu povoleném rozsahu).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Opuštění editace INFO parametrů.
+</table><hr><h3>Editace SONGu</h3>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DOWN&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Posun kurzoru.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;HOME&nbsp;</font></nobr><td valign=top width="*">Přechod na začátek songu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;END&nbsp;</font></nobr><td valign=top width="*">Přechod na poslední neprázdný řádek songu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE UP&nbsp;</font></nobr><td valign=top width="*">Přechod na začátek subsongu nebo na začátek předchozího subsongu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;PAGE DOWN&nbsp;</font></nobr><td valign=top width="*">Přechod na začátek následujícího subsongu.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;0-F&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+LEFT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+RIGHT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;BACKSPACE&nbsp;</font></nobr><td valign=top width="*">Nastavení čísla tracku v songu nebo &quot;go to line&quot; hodnoty.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;G&nbsp;</font></nobr><td valign=top width="*">Nastavení / zrušení song &quot;go to line&quot; řádku.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;INSERT&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+I&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;DELETE&nbsp;</font></nobr>, <nobr><font class=k>&nbsp;CONTROL+U&nbsp;</font></nobr><td valign=top width="*">Vkládání / mazání řádků v songu (s odpovídajícím automatickým posunem všech &quot;go to line&quot; hodnot).
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;P&nbsp;</font></nobr><td valign=top width="*">Vložení řádku s nepoužitými prázdnými tracky do songu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;O&nbsp;</font></nobr><td valign=top width="*">Vložení kopie nebo klonování řádků v songu.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;N&nbsp;</font></nobr><td valign=top width="*">Umístění nového prázdného nepoužitého tracku do songu na aktuální pozici.
+<tr><td colspan=2 valign=top align=right><nobr><font class=k>&nbsp;CONTROL&nbsp;</font></nobr><td valign=top width="50"><nobr><font class=k>&nbsp;M&nbsp;</font></nobr><td valign=top width="*">Vytvoření kopie tracku a její vložení do songu na aktuální pozici. (Poznámka: Nejdříve se prověří, zda je track v songu použit vícekrát. Není-li, zobrazí dotaz zda se má kopie opravdu vytvářet.)
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ENTER&nbsp;</font></nobr><td valign=top width="*">Opuštění editace SONG parametrů.
+</table><hr><h3>PROVE mód 1 - mono / 2 - stereo</h3>
+<table border=0 cellspacing=4><tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;tonekeys&nbsp;</font></nobr><td valign=top width="*">Přehrání noty aktuálním instrumentem a hlasitostí na aktuálním zvukovém generátoru (bez zapisování do tracku).
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;SPACE&nbsp;</font></nobr><td valign=top width="*">Ukončení přehrávání noty na aktuálním zvukovém generátoru.
+<tr><td colspan=2 valign=top align=right><td valign=top width="50"><nobr><font class=k>&nbsp;ESC&nbsp;</font></nobr><td valign=top width="*">Ukončení všech zvuků a vypnutí PROVE módu.

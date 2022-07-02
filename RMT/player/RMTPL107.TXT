@@ -1,0 +1,48 @@
+---------------------------------------
+RMT PLAYER v1.07
+by Radek Sterba, raster/c.p.u., 2006-9
+---------------------------------------
+
+This program allows playing of *.RMT
+(Raster Music Tracker) song files
+on Atari XE/XL computers.
+It is possible to play mono and stereo
+module files with instrument speed
+up to 4 times per frame.
+Program supports PAL/NTSC systems,
+playing speed is adjusted to 50Hz
+always (on PAL also on NTSC systems).
+
+Keyboard shortcuts:
+ESC - exit to DOS
+D - device Dx:
+H - device Hx: (for Atari emu only)
+1..9 - device number
+0 - device D: (or H:) directly
+SPACE - refresh directory
+CURSOR ARROWS - select song file
+TAB - manual entering Device:Fname
+RETURN - play selected song file
+
+If music is playing:
+ESC - stop playing song file
+1-9,A-Z - play subsong (if exists)
+SPACE - play next song file
+RETURN - turn on/off autoplay mode
+In autoplay mode the next song file
+will be played after 5 minutes
+or after 5 seconds of silence.
+
+While music is playing there are
+showed some info items on the screen:
+FILENAME or SONG INFOTEXT
+Volume analyzer
+AUTOPL - if autoplay is turned on
+1/1 - subsong / number of subsongs
+4CH/8CH - mono or stereo
+50-200Hz - instrument speed
+Size X - file size (decimal value)
+
+---------------------------------------
+http://raster.atari.org
+---------------------------------------

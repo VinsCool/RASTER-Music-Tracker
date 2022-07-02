@@ -1,0 +1,34 @@
+************************************************************************
+RASTER MUSIC TRACKER - RMT
+by Radek Sterba, Raster/C.P.U., 2002-2009
+http://raster.atari.org
+************************************************************************
+
+
+Player speed/size optimizations
+-------------------------------
+
+Are you an Atari coder? Yes, then you can read below...
+
+If you will export song as "RMT stripped song file (*.rmt)", you can specify
+address for required memory location of this exported RMT module (RMT file
+is standard Atari binary file with set of heading data). You can take also 
+a RMT FEATures definitions text and move it into rmt_feat.a65 source
+code file by clipboard. (You have to replace a part between the "--BEGIN--"
+and the "--END--" marks.)
+
+If you do it and compile such modified player source, you obtain optimized
+player routine for this concrete RMT module.
+
+Optimized player routine contains only features used by this RMT module,
+that's why it is more or less smaller and quicker. Of course, you can't 
+use it with any other RMT module and every time you change the RMT module,
+it's very recommended to take RMT FEATures definitions text again
+and recompile RMT player routine.
+
+This technique is very useful for background music in your demos, games, etc.
+
+Example:
+You can see the example of this method in "asm_src/optim" directory.
+Optimized player for "music.rmt" module only is smaller about 832 bytes (!)
+and surely much faster than standard full-features providing player.

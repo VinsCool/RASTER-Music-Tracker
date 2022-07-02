@@ -1,0 +1,46 @@
+;
+;	Example of simple player routine
+;
+	org $3000
+;
+	icl "easy.asm"		;Export of easy.rmt as "ASM simple notation source"
+						;Eport type: Tracks
+						;Note values: Note frequencies...
+						;Note durations: Notes only
+						;Generate labels with prefix: MUSIC
+;
+;
+	org $4000
+;
+start
+	lda #0				;pokey sound initialization
+	sta $d208
+	lda #3
+	sta $d20f
+na0
+	ldy #0				;index 0-63
+na1
+	lda MUSIC_track00,y
+	cmp #XXX			;empty note?
+	bne na2
+	lda #0
+na2
+	sta $d200			;note frequency
+	ldx #$a7			;distortion+volume
+na3
+	stx $d201
+	lda 20
+na4
+	cmp 20
+	beq na4				;pause 1/50 sec
+	dex
+	cpx #$a3
+	bne na3
+;
+	iny					;index++
+	cpy #64
+	bne na1
+	jmp na0
+;
+	run start
+;

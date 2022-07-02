@@ -1,0 +1,880 @@
+************************************************************************
+RASTER MUSIC TRACKER - RMT
+by Radek Sterba, Raster/C.P.U., 2002-2009
+http://raster.atari.org
+************************************************************************
+
+
+Changes in RMT 1.28
+-------------------
+
+- Recognition of any changes (indicated by '*' mark after filename in title bar)
+  and dialog with "Save current changes?" question (when new song, load song,
+  import song and/or when tracker goes to exit).
+- Hotkey for "Cursor go to the track speed column" changed to Control+Z.
+  (There is also new menu item "Track - Cursor go to the speed column".)
+- Control+S is new hotkey for "File - Save" from now.
+  (If this hotkey is used, messagebox with query "Save song to file '...'?"
+  appears and you have to confirm your request. Also you can disable this
+  query messagebox in Config dialog (menu View - Configuration)).
+- New hotkey Control+L for "File - Load...".
+- New hotkey ScrollLock for autofollow mode turn on/off.
+- Sound click when "Undo" hotkey is pressed but undo is not possible.
+- Handling of track events with zero volume during manual step replaying
+  (by Shift+/Control+/Enter hotkey) corrected.
+- Vertical line separator added between left and right tracks.
+- View menu items settings are stored to rmt.ini configuration file.
+- New functions in menu Instrument - submenu Paste special:
+  * Volume envelopes and Envelope parameters only
+  * Insert Volume envelopes and Envelope parameters to cursor position
+    (Note: Cursor has to be in some column of volume or parameters envelope.)
+  * Volume R to L envelope only
+  * Volume L to R envelope only
+- New function in menu "Song - Song change maximal length of tracks".
+  It also compute effective maximal length value for current song.
+  Warning: All tracks can be prolonged or truncated!
+  (Note: Computing and setting of effective maximal length is also added
+   to function "Song - All size optimizations".)
+- Routine in exported XEX Atari executable msx file improved.
+  Now it works well on PAL/NTSC computers and playing speed
+  is adjusted automatically to 50Hz on PAL and also on NTSC systems.
+  (If configuration is set to NTSC system speed, then 60Hz.
+   Note: RMT and SAP files doesn't contain any NTSC type, so playing speed 60Hz
+   is supported only in exported XEX Atari executable msx files.)
+- NumLock handling improved (I hope ;-)).
+- Other small corrections and bugfixes. 
+
+RMT routine changes
+- New variable RMTSFXVOLUME for sfx volume settings (volume * 16).
+  Example "/asm_src/sfx/sfx.a65" has been modified.
+  (suggested by Tebe)
+  (Coders, you have to use new rmtplayr.a65)
+
+Accessories
+- Atari RMT player RMTPL107.XEX (new version 1.07) is in "player" directory.
+  New features:
+  * Support for manual entering Device:Filename by TAB hotkey.
+    (requested by Baktra)
+  * Support for up to 35 subsongs by hotkeys 1-9 and A-Z.
+  * Support for PAL/NTSC computer systems. Playing speed is adjusted
+    to 50Hz on PAL and also on NTSC systems.
+  (There is short description in RMTPL107.TXT file.)
+
+New songs
+- Song "wyjasnijmy_to_sobie.rmt" (by LiSU)
+  in "songs/lisu/" directory.
+- Song "bomb_jack.rmt" (by Miker)
+  in "songs/miker/" directory.
+- Song "amelie.rmt" (by Nooly)
+  Song "summer.rmt" (by Nooly)
+  in "songs/nooly/" directory.
+- Song "vietnamska_mise.rmt" (by PG)
+  Song "summerdays.rmt" (by PG)
+  Song "deflektor.rmt" (by PG)
+  Song "xmasmix.rmt" (by PG)
+  Song "gpc.rmt" (by PG)
+  Song "kaviar.rmt" (by PG)
+  in "songs/pg/" directory.
+- Song "mab.rmt" (by Raster/c.p.u.)
+  Song "indianajones4.rmt" (by Raster/c.p.u.)
+  Song "3d.rmt" (by Raster/c.p.u.)
+  in "songs/raster/" directory.
+- Song "sunset_on_the_moon.rmt" (by XLent)
+  Song "4tk35.rmt" (by Caruso)
+  Song "ilusia.rmt" (by StRing)
+  Song "naue.rmt" (by StRing)
+  in "songs/" directory.
+
+
+Changes in RMT 1.27
+-------------------
+
+- Support for another external Pokey sound emulation provided by apokeysnd.dll
+  by Fox/Taquart (http://asap.sourceforge.net/apokeysnd.dll).
+  Description of apokeysnd.dll functions is in the readme.txt file.
+  Note: If both Pokey DLLs are placed to RMT directory, usage of apokeysnd.dll
+  has higher priority than sa_pokey.dll.
+- New menu "Undo" with support for Undo/Redo (up to 100 steps) and ClearHistory.
+  (There is Alt+Backspace hotkey for undo operation.)
+  (requested by LiSU)
+- New options in Config dialog (menu View - Configuration):
+  * TrackEdit cursor vertical range ... there can be selected value from 0 to 8
+    for vertical cursor movement in trackedit area. (default is 6)
+  * Reset of Atari sound routine when ESC is pressed. (default is off)
+    (suggested by Miker)
+- New TrackEdit and SongEdit hotkeys:
+  * Control+PageUp ... Move cursor to begin of subsong or begin of previous subsong.
+  * Control+PageDown ... Move cursor to begin of next subsong.
+  (suggested by Miker)
+- New buttons in block effect/tool dialog (menu Block - Effect/tools or Control+F):
+  * "Try" ... Perform the selected effect but no close effect dialog (Alt+T)
+  * "Restore" ... Restore block to original state (Alt+R)
+  * "Play/Stop" ... Play the selected block repeatedly / stop playing (Alt+P)
+  (suggested by LiSU)
+- Function "Change all the instrument occurences" improved:
+  * Checkbox "Only in some channels"
+    with special dialog box for L1..R4 channels selection.
+  * Checkbox "Only in songlines" for songlines from/to selection.
+  Important note: If some tracks are used inside and outside of selected
+  channels+songlines area and instrument changes should be performed,
+  new tracks will be created for changes in selected area only
+  and song will be adjusted automatically.
+  (suggested by Sal Esquivel)
+- New function "Reload" in menu Project.
+  After confirmation it discards all changes since your last save.
+- Prepared last used filename in "Save As" dialog.
+- Support for new FEAT options.
+  "File - Export As - RMT stripped song file (*.rmt)" there are two new checkboxes:
+  * "GlobalVolumeFade support" (RMTGLOBALVOLUMEFADE variable)
+    (requested by Dely)
+  * "No starting songline" (start from songline 0 always)
+- Bugfix of Path setting for loading/saving of songs/instruments/tracks.
+- Bugfix of lines' coordinates in "Song columns' order change/copy/clear" dialog.
+- Bugfix of default extensions addition.
+- Other small corrections and bugfixes.
+
+RMT routine changes
+- New rmt_feat option FEAT_GLOBALVOLUMEFADE (+7 bytes).
+  If it is activated, there is possible to control global song volume
+  via RMTGLOBALVOLUMEFADE variable ($00-$f0, step $10):
+  $00=normal volume (100%) ... $f0=minimal volume (0%).
+  Example is in "/asm_src/volume/" directory.
+- New size optimalization option supported:
+  FEAT_NOSTARTINGSONGLINE (it can save 22 or 24 bytes) for song starting
+  from songline 0 always (no support for songline init by A-register).
+  For example "/asm_src/optim/musico.xex" is 22 bytes shorter now.
+  (Coders, you have to use new rmtplayr.a65 and rmt_feat.a65)
+
+New songs
+- Song "acidjazzed_evening.rmt" (by Miker)
+  Song "jetboy.rmt" (by Miker)
+  Song "7_gates_of_jambala.rmt" (by Miker)
+  Song "astaroth.rmt" (by Miker)
+  Song "easter_chickens.rmt" (by Miker)
+  Song "enchanted_lands.rmt" (by Miker)
+  Song "ghosts_n_goblins.rmt" (by Miker)
+  Song "logical_3.rmt" (by Miker)
+  Song "menace_song.rmt" (by Miker)
+  Song "torvak_level_2.rmt" (by Miker)
+  Song "flimbo.rmt" (by Miker)
+  in "songs/miker/" directory.
+- 57 (!) songs by Kjmann (Sal Esquivel)
+  in "songs/kjmann/" directory.
+- Song "imsure.rmt" (by Raster/c.p.u.)
+  Song "whoknows.rmt" (by Raster/c.p.u.)
+  in "songs/raster/" directory.
+- Song "funny.rmt" (by LiSU)
+  Song "przyrada.rmt" (by LiSU)
+  in "songs/lisu/" directory.
+- Song "brainless.rmt" (by PG)
+  Song "hammastahna.rmt" (by PG)
+  Song "happy_sundays.rmt" (by PG)
+  Song "jozin_z_bazin.rmt" (by PG)
+  Song "radixex.rmt" (by PG)
+  in "songs/pg/" directory.
+- Song "aoki.rmt" (by Nooly)
+  Song "hightide.rmt" (by Born/LaResistance)
+  Song "astrosphere.rmt" (by Kozyca)
+  Song "30minutes.rmt" (by Elan)
+  Song "bazalt.rmt" (by Yerzmyey/HOOY-PROGRAM)
+  Song "m4700rk4.rmt" (by Epi/Trs)
+  in "songs/" directory.
+
+New instruments
+- "sharp_ch1.rti" (Sharp channel 1)
+  in "instruments" directory.
+
+
+Changes in RMT 1.26
+-------------------
+
+- Song path is memorized if song filename is used in command line.
+- Cursor is scrolling down for preselected number of lines also after
+  track editing of note volume and/or octave. (suggested by Elan)
+- New instrument edit hotkeys/functions:
+  Instrument envelope edit:
+  * Shift+Insert ... Duplicate the current envelope column. (suggested by LiSU)
+  * Space ... Clear the current envelope column values and move cursor to the right.
+  Instrument table edit:
+  * Shift+Insert ... Duplicate the current table item.
+  * Space ... Clear the current table item and move cursor to the right.
+
+Bugfixes
+- Occasional unhandled exception error with clone track function.
+- Bug in Effect/tools "Expand/shrink lines".
+
+RMT routine changes
+- Correction of crazy FEAT optimalization bug with used FEAT_COMMAND5
+  and unused FEAT_PORTAMENTO. (Thanks to Wrathchild for notice.)
+- Correction of crazy FEAT optimalization bug with used FEAT_COMMAND6
+  and unused FEAT_FILTER.
+- Some additional super-ultra-hard ;-) improvements of FEAT speed/size optimizations.
+  For example "/asm_src/optim/musico.xex" is 39 bytes shorter now (and there is saved
+  a lot of CPU cycles, of course).
+  (Coders, you have to use new rmtplayr.a65)
+
+New songs
+- Song "shorty_noises.rmt" (by Elan /unfinished party version/ 17.3.2007)
+  Song "kurczak.rmt" (by LiSU)
+  in "songs/" directory.
+  Song "disturbance.rmt" (by Miker)
+  Song "flowers_mania.rmt" (by Miker)
+  Song "my_first_one_in_rmt.rmt" (by Miker)
+  Song "tempest2000_blue_level.rmt" (by Miker)
+  Song "the_last_ninja_2_central_park.rmt" (by Miker)
+  Song "tyrian_zanac5.rmt" (by Miker)
+  Song "wings_of_death_lv2.rmt" (by Miker)
+  in "songs/miker/" directory.
+  Song "delight.rmt" (by Nils Feske)
+  Song "nothing.rmt" (by Nils Feske)
+  Song "takeoff.rmt" (by Nils Feske)
+  in "songs/nilsfeske/" directory.
+  Song "against_time.rmt" (by PG)
+  Song "stardust_memories.rmt" (by PG)
+  Song "strangled_mind.rmt" (by PG)
+  in "songs/pg/" directory.
+  Song "gearup.rmt" (Gear up, Forever 8 msx by raster/c.p.u. 2007)
+  Song "l45tm1nut3.rmt" (L45T M1NUT3, Glucholazy 2007 msx by raster/c.p.u. 26.7.2007)
+  in "songs/raster/" directory.
+
+
+Changes in RMT 1.25
+-------------------
+
+- Maximal length of instrument envelope increased to 48 (ELEN=$01..$30).
+  Overall size (decadic value in bytes) of Atari instrument data there is shown.
+  (Note: One instrument with full envelope and note/frq table has size 188 bytes.)
+  Warning: If you will load instrument files with longer envelope than 32
+  (or RMT modules containing such instruments) to older RMT tracker program versions,
+  it can cause totally unpredictable results (inclusive of program crash).
+  Please, use the latest RMT tracker program versions always to avoid this kind of problems.
+  Previous Atari RMT player programs and Atari RMT assembler player routines
+  are working well all along (there isn't problem with longer instrument envelope).
+- Cursor background color was improved (better visibility). (suggested by PG)
+- menu Instrument - Info about using of actual instrument - Track listing
+  info added and volume range detection improved (standalone volume lines are processed too).
+- menu Instrument - Change all the instrument occurences - new options:
+  * "From/To instrument" ranges comboboxes.
+  * "One instrument only" checkbox.
+  * "Changes only in current track" checkbox. (suggested by PG)
+  * "Default ranges" button.
+  * "All instruments" button.
+  * "The same instrument range" checkbox.
+  Change process improved for standalone volume lines.
+- Mouse control of turn on/off the channels in song head area (L1-R4 title)
+  * LeftMouseButton ... turn on/off relevant channel.
+  * RightMouseButton ... solo play of relevant channel / turn on all channels.
+  (suggested by PG)
+- New features in Config dialog (menu View - Configuration):
+  * Remembering octaves and volumes for each instrument separately
+    (default is on). (suggested by LiSU)
+    Note: Instruments' octaves and volumes are also stored to RMW working file.
+  * "Paths..." button.
+    There is possible to define default paths for loading and saving of songs,
+    instruments and tracks. Each path type is remembered separately.
+    (suggested by LiSU & Miker)
+- Some improvements in block effect/tool (menu Block - Effect/tools or Control+F)
+  for "Echo" effect:
+  Fade out level can be defined as percentage value for proportional volume degression
+  or as integer value for linear volume substraction.
+  Support for echo ending on minimal volume. (suggested by LiSU)
+- Some configuration parameters are stored to RMW working file.
+- Suppression of Atari "Attract mode" in exported "XEX Atari executable msx".
+- Other internal improvements and small bugfixes.
+
+New songs
+- Song "devils.rmt" (Atari version by PG, 2006)
+  Song "krakout.rmt" (Atari version by PG, 2006)
+  Song "lcd3cd3.rmt" (Atari version by PG, 2006)
+  Song "somewhere.rmt" (Atari version by PG, 2006)
+  in "songs/pg/" directory.
+  Song "astro4road.rmt" (Astro4road game music by raster/c.p.u. 2006)
+  in "songs/raster/" directory.
+
+
+Changes in RMT 1.24
+-------------------
+
+- New options in Config dialog (menu View - Configuration):
+  * Alternative trackline numbering
+    (in accordance with trackline highlight step).
+  * Swap "replay note / replay all notes" functions
+    (Enter / Control+Enter hotkeys).
+  (both options requested by LiSU)
+- Support for mouse-wheel control (according to the current
+  mouse cursor position):
+  * Song scroll up/down
+  * Tracks scroll up/down
+  * Instrument prev/next
+  * Volume up/down
+  * Octave up/down
+- Bookmark support - toolbar button "Play from bookmark".
+  (Button is disabled if bookmark is not set up).
+  New hotkeys:
+  * Control+F1 ... Set bookmark to the current position
+    (also current beat speed is stored).
+  * F1 ... Play song from the bookmark position (only if bookmark is set up)
+    include beat speed initialization by stored bookmark beat speed.
+  * Shift+F1 ... Similar to F1, but with autofollow of the currently played position.
+  Note: If insert/delete songline operations are performed,
+  bookmark is moved down/up automatically.
+- Other small corrections and bugfixes.
+
+RMT routine changes
+- New speed/size optimalization options supported:
+  FEAT_EFFECTVIBRATO (it can save 65 bytes and quite a lot of CPU cycles).
+  FEAT_EFFECTFSHIFT (it can save 11 bytes and quite a lot of CPU cycles).
+  btw - if no one from this two effects is used, it can save 102 bytes
+  and a lot of CPU cycles. If FEAT_VOLUMEMIN isn't used too, another 2 bytes
+  will be saved.
+- Other speed optimizations with vibrato effect and with RMT working registers
+  (19 bytes shorter code and a lot of CPU cycles saved).
+  (Coders, you have to use new rmtplayr.a65 and rmt_feat.a65)
+
+Accessories
+- Atari RMT player RMTPL106.XEX (new version 1.06) with playing of subsongs
+  feature is in "player" directory.
+  (There is also short description in RMTPL106.TXT file.)
+
+New songs
+- Song "satellit.rmt" (Satellite One by Purple Motion, Atari version by raster/c.p.u. 2006)
+  Song "threeht.rmt" (Three Hundred Thirteen - raster/c.p.u., 2006)
+  Song "glu.rmt" (GLU - raster/c.p.u., 2006)
+  Song "gerappaa.rmt" (Gerappppaa - LiSU, 2006)
+  Song "thrust.rmt" (T'H'R'U'S'T - Centy Brown, 2006)
+  in "songs" directory.
+
+
+Changes in RMT 1.23
+-------------------
+
+- Improvements in MODule import function (with tone-portamento effect).
+- Support for SFX effects.
+  "File - Export As - RMT stripped song file (*.rmt)" there is improved
+  export dialog with "SFX support" checkbox.
+  You can use instruments for sound effects in your programs -
+  - example is in "/asm_src/sfx/" directory.
+- Better playmode switching to "Play from currently edited position"
+  if song is playing with "follow song" already. (Sounds aren't breaked.)
+- Some internal improvements.
+  (rmt_ata.sys,rmt_msx.sys,rmt_sap4.sys and rmt_sap8.sys system data files
+  are included in RMT tracker executable.)
+
+RMT routine changes
+- New option FEAT_SFX for SFX support feature. RMT routine is a bit longer
+  and slower with SFX support enabled, so, enable it only if you will
+  use RMT routine also for SFX effects.
+  (Coders, you have to use new rmtplayr.a65 and rmt_feat.a65)
+
+New song
+- Song "commando.rmt" (Commando - sack/cosine, 2003. original by Rob Hubbard)
+  in "songs/sack_cosine" directory.
+
+
+Changes in RMT 1.22
+-------------------
+
+- Block effect/tool "Volume humanize" improved - better random values. ;-)
+- New block effect/tool (menu Block - Effect/tools or Control+F
+  or toolbar button "FX") function: "Volume set/remove".
+  It allows to set volumes or remove whole note events
+  according to the current volume values.
+- New function in Song menu:
+  * Make track's duplicate and put it to actual song pos. (Control+M)
+    (It also check if track is used more times in song. If doesn't, message box
+    with question appears.)
+
+RMT routine changes
+- Several improvements of RMT Atari assembler routine - it is 5 bytes shorter now
+  and save some a few CPU cycles.
+- New speed/size optimalization options FEAT_INSTRSPEED (it can save up to 21 bytes
+  and some CPU cycles) and FEAT_CONSTANTSPEED (it can save 28 bytes and some CPU cycles).
+  (Coders, you have to use new rmtplayr.a65 and rmt_feat.a65)
+
+
+Changes in RMT 1.21
+-------------------
+
+- Enhanced mouse control:
+  * Set cursor position in trackedit area, songedit area,
+    instrument parameters / envelope / table area, info / speed area.
+  * Octave selection by mouse (click to "OCTAVE x-y" text).
+  * Volume selection by mouse (click to "VOLUME x" text).
+    (Also you can turn on/off "respect volume" option there.)
+  * Instrument selection by mouse (click to "XX: instrument name" text).
+  * Envelope GO/LEN parameter setting area (click to mouse L/R button).
+  * Table GO/LEN parameter setting area (click to mouse L/R button).
+    (Areas' locations - see the screenshots.)
+- New hotkeys:
+  SongEdit:
+  * Enter ... Exit from SongEdit section.
+  * Home ... Move cursor to first songline.
+  * End ... Move cursor to last songline.
+  * PageUp ... Move cursor 4 songlines up.
+  * PageDown ... Move cursor 4 songlines down.
+- New option in Config dialog (menu View - Configuration):
+  * Don't use hardware soundbuffer
+    (default is off).
+    (Maybe it could help if you have some system sound related problems.)
+
+
+Changes in RMT 1.20
+-------------------
+
+- Automatic notes' start-time quantization to the nearest beat
+  during the real-time recording. (Note events incoming after half of beat
+  are delayed and stored to the next track line.)
+- "File - Export As" contains new type "ASM simple notation source (*.asm)".
+  You can adjust a lot of options in dialog box will be showed there.
+  It's useful for some easy music and/or sounds effects in your tiny programs -
+  - example is in "/asm_src/simple/" directory.
+- Some other small internal corrections.
+
+Accessories
+- Atari RMT player RMTPL105.XEX (new version 1.05) is in "player" directory.
+  (There is also short description in RMTPL105.TXT file.)
+
+RMT routine changes
+- Some corrections and speed optimizations in RMT assembler routine.
+  It is 6 bytes longer now, but quicker about 20 CPU cycles..
+
+New songs
+- Song "ramaja.rmt" from Tatqoo/Taquart in "songs/tatqoo" directory.
+- Song "itdoesnt.rmt" (It Doesn't Matter, raster/c.p.u., 2005)
+  Song "paulthep.rmt" (Paul the penguin by radix, Atari version by raster/c.p.u., 2005)
+  Song "cervi2.rmt" (Cervi2, by raster/c.p.u., 2005)
+  Song "cubico.rmt" (Cubico music & sfx, Atari version by raster/c.p.u., 2004)
+  in "songs" directory.
+
+
+Changes in RMT 1.19
+-------------------
+
+- New combobox in main toolbar for setting number of lines (from 0 to 8)
+  cursor will scroll down after entering notes or pressing space key.
+  Also new hotkeys for control of this parametr:
+  NumLock ... +1, Shift+NumLock ... -1
+- Function "Song - Song columns' order change"
+  was changed to "Song - Song columns' order change/copy/clear"
+  and now there is possible to use it also for copying or clearing
+  of song columns. There are also some new options:
+  * button "Copy left-->right"
+  * button "Copy left<--right"
+  * button "Clear all"
+  * range parameters "From songline $:__" and "To songline $:__"
+
+New songs
+- 11 songs from Tatqoo/Taquart in "songs/tatqoo" directory.
+- Song "smells.rmt" (Smells like teen spirit, Atari version by sack/c0s, 2004)
+  in "songs/sack_cosine" directory.
+
+
+Changes in RMT 1.18
+-------------------
+
+Important bugfix
+- Bad keys recognition when Numblock keys autorepeat function was active.
+
+New songs
+- Song "timett.rmt" (Time to turn, raster/c.p.u., 2004)
+  in "songs" directory.
+  (SAP file "timett.sap" is in "exports/sap" directory.)
+
+
+Changes in RMT 1.17
+-------------------
+
+- Menu Track:
+  * Load and paste to actual track.
+  * Save actual track as...
+  * Clear all duplicated tracks, adjust song.
+    (Note: This function is also included in Song - All size optimizations.)
+- New block effect/tool (menu Block - Effect/tools or Control+F
+  or toolbar button "FX") function: "Modify notes, instruments and volumes".
+- Function "Song - Prepare song line with unused empty tracks (Control+P)"
+  was changed to "Song - Insert new line with unused empty tracks (Control+P)"
+  and now it insert this new songline into actual song line positions,
+  not to line below.
+- Function "Song - Prepare duplicated song line (Control+O)"
+  was changed to "Song - Insert copy or clone of song line(s) (Control+O)".
+  and now it shows new copy/clone dialog for setting of parameters
+  for this very helpful function.
+- Menu Song:
+  * Put new empty unused track to actual song position (Control+N).
+- "File - Export as XEX Atari executable msx" there is possible to:
+  * define 4+1 lines now. 5th line is showed instead of 4th line 
+    if Atari SHIFT key is pressed.
+  * define color of rasterline meter.
+- "File - Export as SAP file" there is possible to define hexadecimal song line
+  numbers for more SAP module subsongs. Initial values are prepared by automatic
+  subsong-detection algorithm, but you can change it at pleasure.
+- Added "*.tm8" extension in Import TMC open file dialog.
+- New option in Config dialog (menu View - Configuration):
+  * F1-F8 keyboard layout:
+    - RMT original keyboard layout.
+    - Layout 2:
+      F1=track edit,F2=instrument edit,F3=info edit,F4=song edit
+      F5=Play,F6=Play from start,Control+F7=Play tracks,F7=Replay tracks,F8=Stop
+      (This layout is for F5-F8 keys identical with some other renowned
+       module tracker programs.)
+
+Accessories
+- Atari RMT player RMTPL104.XEX (new version 1.04) is in "player" directory.
+  (There is short description in RMTPL104.TXT file.)
+
+New songs
+- Song "hexxagon.rmt" (Hexxagon music & sfx, raster/c.p.u., 2003)
+  Song "basix.rmt" (Basix, by raster/c.p.u. 2004)
+  Song "gemx.rmt" (Gem'x song, Atari version by raster/c.p.u. 2004)
+  in "songs" directory.
+  (SAP file "hexxagon.sap" with 6 subsongs is in "exports/sap" directory.)
+  (SAP file "basix.sap" with 9 subsongs is in "exports/sap" directory.)
+
+Bugfixes
+- Revision of keyboard control. 
+  NumLock mode is turned off all the time when tracker main window is active,
+  so that key combinations Shift+NumBlockKeys are working as well as state
+  of right Shift key can be correctly detected now.
+- Internal improvement of TMC import algorithm (better recognition of identical
+  tracks arised from other tracks by song shift parameter).
+- If tracker window isn't active, MIDI events on channel 0 are ignored.
+- Other small corrections and bugfixes.
+
+
+Changes in RMT 1.16
+-------------------
+
+- Instrument edit
+  * Shift+Control+Num+,Num- ...change the R+L volume envelopes up/down.
+    If cursor is at line "VOLUME L" or "VOLUME R", then volume envelope
+    for left or right channel only is changed.
+- Menu Block - submenu Paste special:
+  * Merge with current content
+  * Volume values only
+  * Speed values only
+- Menu Instrument - submenu Paste special:
+  * Volume R+L envelopes only
+  * Volume R envelope only
+  * Volume L envelope only
+  * Envelope parameters only
+  * Table only
+- Preserve last "export type" in "Export As" dialog.
+
+RMT routine changes
+- A lot of great speed/size optimizations made by Jaskier/Taquart.
+  Thank you very much, Jaskier!!!
+- A few another speed/size optimizations.
+- RMT routine is 40 bytes shorter now and quicker about 100-200 CPU cycles.
+
+
+Changes in RMT 1.15
+-------------------
+
+- Quadruple instrument speed allowed also for 8 tracks STEREO modules.
+- .rmt (.txt,.rmw) filename can be used as the commandline parameter
+  for the automatic loading of this file after start of the RMT tracker.
+  (It's recommended to make association for "rmt" extension to run RMT tracker.)
+- Show Play time counter (from 00.0 sec to 9:59 minutes).
+  (default is on, turn off by menu View - Play time counter)
+- Menu Track:
+  * Info about using of actual track.
+  * Renumber all tracks (2 types of ordering).
+  * Clear all tracks unused in song.
+- Menu Instrument:
+  * Renumber all instruments (3 types of ordering).
+  * Clear all unused instruments.
+- Two tracks functions moved from Song menu to Track menu (Search and rebuild wise 
+  loops in all tracks, Expand loops in all tracks).
+- Size optimization function (menu Song - All size optimizations) perform also
+  clearing of all unused instruments and renumbering of all tracks and instruments now.
+  (So there can be a bit better result of size optimization thanks to removing unused
+  instruments and removing empty gaps after deleting of unused tracks and instruments.)
+- Preserve last "From address" value in export of stripped RMT file dialog.
+
+RMT routine changes
+- Several improvements of RMT Atari assembler routine - it is 22 bytes shorter now
+  and quicker about 50-150 CPU cycles.
+- New speed/size optimalization options FEAT_VOLUMEMIN and FEAT_TABLEGO supported 
+  and optimalization for FEAT_AUDCTLMANUALSET improved.
+  (Coders, you have to use new rmtplayr.a65 and rmt_feat.a65)
+- New mono/stereo compile modes. There is variable STEREOMODE (instead of previous
+  variable STEREO8T) with the following values:
+  STEREOMODE equ M  ;M=0 => compile RMTplayer for 4 tracks mono
+                    ;M=1 => compile RMTplayer for 8 tracks stereo
+                    ;M=2 => compile RMTplayer for 4 tracks stereo L1 R2 R3 L4
+                    ;M=3 => compile RMTplayer for 4 tracks stereo L1 L2 R3 R4
+  * Note: If RMTplayer routine compiled with STEREOMODE 2 or 3 is used on Atari computer 
+    without STEREO upgrade, then standard 1 POKEY mono music will be played.
+    It exploit POKEY memory area mirroring - there isn't used any "stereo detection" method!
+
+Bugfixes
+- Bug in rmtplayr.a65 initialization part if nonzero "starting song line position"
+  was used. (This problem occured in some cases only.)
+- Buffer overflow error with export of stripped RMT file for too high address.
+- Other small corrections and bugfixes.
+
+
+Changes in RMT 1.14
+-------------------
+
+- Menu Project: Import...
+  * Support for importing of classic ProTracker MOD format with 31 samples, 
+    4 or 8 channels (also modules with 5, 6, 7 channels), as well as old 
+    ProTracker 15 samples 4 channels MOD modules.
+    After import there is need of manual adjustment (tones tuning and distortions) 
+    of all instruments at first!!! Volume envelopes and loops are prepared 
+    in accordance with real samples in MOD module.
+  * Support for importing of Atari XE/XL TMC Theta Music Composer modules.
+    TMC instruments are imitated automatically by RMT instruments if it is possible.
+    There can be need of manually corrections!!! 
+    (Disclaimer: Some TMC effects may be totally wrong, sorry.)
+- Menu Track:
+  * Search and build wise loop.
+  * Expand loop.
+- Menu Instrument:
+  * Info about using of actual instrument.
+  * Change all the instrument occurences.
+- Menu Song:
+  * Song switch to 8 tracks / Song switch to mono 4 tracks.
+  * Tracks' order change in whole song.
+  * Search and rebuild wise loops in all tracks.
+  * Expand loops in all tracks.
+  * Size optimization.
+- Menu View - Configuration:
+  * Continue on previous/next song track upon the first/last track line
+    (default is on).
+- Insert/delete envelope columns in instrument edit mode
+  by Insert/Delete key (at the current cursor position).
+- Insert/delete table items in instrument edit mode
+  by Insert/Delete key (at the current cursor position).
+- Increase/decrease the whole envelope row of parameters in instrument edit mode
+  by Shift+Control+Up/Down key (while cursor is in envelope data area).
+- Increase/decrease the whole instrument table in instrument edit mode
+  by Shift+Control+Up/Down key (while cursor is in table data area).
+
+Accessories
+- Atari RMT player RMT1PLAY.XEX (new version 1.01) is in "player" directory.
+  (There is possible to show/hide song info text by spacebar key.)
+
+New songs
+- Song "nopromis.rmt" (No promises, raster/c.p.u. 2003)
+  Song "aurora_s.rmt" (Hymn to aurora, Atari version by raster/c.p.u. 2003)
+  Song "turrican2_rev2s.rmt" (Turrican 2 noise 3, Atari version by raster/c.p.u. 2003)
+  in "songs" directory.
+  (SAP file "aurora_s.sap" and "turrican2_rev2s.sap" in "exports/sap" directory.)
+- 5 songs from sack/cosine, 2003, www.cosine.org.uk
+  in "songs/sack_cosine" directory.
+
+New instruments
+- "drums/bassdrum.rti"
+  "drums/snaredrum.rti"
+  "drums/hithatclose.rti"
+  "drums/hithatopen.rti"
+  in "instruments" directory.
+
+Bugfixes
+- Main volume changes in instrument edit mode.
+- Other small corrections and bugfixes.
+
+
+Changes in RMT 1.13
+-------------------
+
+- MIDI multitimbral playing possibilities.
+  Now you can use the RMT like a Atari multitimbral MIDI instrument.
+  You have to send MIDI output from your MIDI sequencer or player 
+  to RMT MIDI input by means of some virtual MIDI cable (for example 
+  "MIDI Yoke" etc.). MIDI implementation chart is in midi.txt file.
+- All tracks cleanup (menu Tracks - All tracks cleanup).
+- All instruments cleanup (menu Instrument - All instruments cleanup).
+- Block effect/tool "Expand/shrink lines" improved - negative values allowed
+  for bottom-up way alterations.
+- Prepare duplicated song line (menu Song or Control+O).
+- Prepare song line with unused empty tracks (menu Song or Control+P).
+- Other small corrections.
+
+
+Changes in RMT 1.12
+-------------------
+
+- Support for higher instrument speeds: triple speed for STEREO modules,
+  triple and quadruple speed for MONO modules.
+- Support for NTSC 60Hz system speed (menu View - Configuration).
+- Simpler and shorter XEX Atari executable msx export file (*.xex).
+- New menu "Block" with all the block functions.
+- New feature - block effects/tools (menu Block - Effect/tools or Control+F
+  or toolbar button "FX").
+  Effects/tools:
+  * Fade in/out
+  * Echo
+  * Expand/shrink lines
+  * Volume humanize
+- Midi event "note off" recording possibility (menu View - Configuration).
+
+Bugfixes
+- Correction of instrument tempo-related bug (in RMT assembler routine
+  and also in tracker). (Thanks to Memblers from Indiana for notice.)
+- Higher instrument speeds timing in Atari msx corrected.
+- Numeric block keys plus/minus locked away the shift key.
+
+
+Changes in RMT 1.11
+-------------------
+
+- Maximal length of track increased to 256 beats.
+- New Config dialog (menu View - Configuration):
+  * Track line highlight step.
+  * Some keyboard hotkeys options.
+  * MIDI IN support! (events: key on, program change)
+  * OK button save the configuration to rmt.ini configuration file.
+- New input/output file format: TXT song files (*.txt).
+  (It's simple text format for easy making any convert tools.)
+- Change of toolbar icon for PROVE MODE and new icon for MIDI on/off
+- New TrackEdit block function:
+  Control+E ..exchange of block select data and the clipboard data.
+- Show the AUDF, AUDC and AUDCTL Pokey registers
+  (default is off, turn on by menu View - Pokey chip registers)
+- Light blue color of volume only values in the instrument envelope.
+- Checking for right version of RMW working files (RMW work files haven't
+  portability through the different RMT tracker versions).
+
+New songs
+- Song "aspir332.rmt" (Aspiration 332, by Raster/C.P.U. 2003) 
+  in "songs" directory. 
+
+Bugfixes
+- Bug with bad beat count if standalone speed command has been in track.
+- Other small corrections and bugfixes.
+
+
+Changes in RMT 1.1
+------------------
+
+- Main RMT assembler routine changed to version 01:
+- Backward compatibility:
+  * Support for loading of previous (version 00) RTI instruments.
+    (saving RTI instruments version 01 only)
+  * Support for loading of previous (version 00) RMT modules.
+    (saving RMT modules version 01 only)
+- New RMT routine features:
+  * Support for manual AUDCTL settings (but also automatic management is preserved,
+    if you will use command 6 or "filter" switch).
+  * Support for VOLUME ONLY settings by command 7 with parameter value $80.
+    (Volume only forced outputs are indicated by light blue color of volume analyzer box,
+    see the easy example song file "examples/volumeonly.rmt".)
+  * Support for NOTES/FRQS TABLE length from 1 to 32.
+  * A lot of speed/size optimizations (RMT modules with easy instruments are smaller than before).
+- Support for speed/size optimizations of RMT assembler routine for concrete RMT module.
+  (See the RMT player routine assembler source code and "Export song as.. RMT stripped
+   song file (*.rmt)" dialog and optimized routine example in "asm_src/optim" directory.)
+- Hotkeys' changes:
+  Pause ... mute all sounds and reinit RMT routine only.
+  Shift+Pause ... mute all sounds, reinit RMT routine and sound output.
+- If any instrument parameter is changed, then turn off this instrument on all
+  channels where it sounds.
+- If save or export process is aborted or failed, destination file will be deleted.
+
+Bugfixes
+- RMT routine - instrument table speed bug (each first note/frq table item was shorter by 1/50 sec).
+- Tab key while edit the instrument name (no CapsLock off).
+- PageUp/Down for octave up/down in Prove mode.
+- Instrument volume curve fault by mouse position after the instrument load.
+- Mouse doubleclick to track/channels turn on/off.
+- All the showed messages (message boxes) are owned by RMT application now.
+
+
+Changes in RMT beta 1.02
+------------------------
+
+Since the RMT beta 1.02 version all the parts based on GPL sources are totally removed
+from the RMT project (i.e. Pokey sound emulation and Atari 6502 processor emulation)
+and these aren't a part of RMT henceforth. 
+
+Description of dynamic DLL functions for standalone Pokey and 6502 emulation 
+is specified in the readme.txt file. If you run RMT without this way described DLLs
+(sa_pokey.dll, sa_c6502.dll), RMT will work, but there won't be any Pokey sound output
+and Atari sound routines won't be executed.
+
+Improvements
+- Use the hardware sound buffer if possible (instead of software sound buffer).
+- Initialize the file load directory to program location.
+- Block toolbar is showed by default.
+- Much more summary informations in the About box.
+- Text parameters editing was changed a bit. Because of ShiftKey is used for playing
+  the notes, You have to press the CapsLock key for switch to "normal" ShiftKey behaviour
+  (i.e. ShiftKey+Key for entering uppercase and other (!@#$%^&*()_+:"<>?|) characters).
+  CapsLock mode is turned off automatically when text editing is over by pressing the Tab key
+  or Enter key.
+- CapsLock state indication in the status bar ("CAP").
+- Reinit also RMT Atari sound routines when the Pause key is pressed.
+- Functions for turn on/off the sound channels (tracks):
+  * Control+ 1-8 ...turn on/off the sound channel (track) 1-8.
+  * Control+ 9 ...turn on all the channels (tracks).
+  * Control+ 0 ...turn off all the channels (tracks).
+  * Control+ BackQuote ...turn on/off the active sound channel (track).
+  * Shift+ BackQuote ...negation of turned on/off sound channels (tracks).
+  * BackQuote ...solo play of active sound channel (track) / turn on all channels (tracks).
+  Note: Muted sound channels are indicated by gray color of track title and volume
+  analyzer scope.
+- Status bar tool tips and short flying help messages completed.
+- Other internal improvements.
+
+TrackEdit
+- Mouse control of turn on/off the channels (tracks) - it's indicated by mouse cursor design
+  change to "hand with title 'on/off'":
+  * LeftMouseButton ... turn on/off relevant channel (track).
+  * RightMouseButton ... solo play of relevant channel (track) / turn on all channels (tracks).
+
+InstrumentEdit
+- Drawing of envelope volume curve by mouse - it's indicated by mouse cursor design 
+  change to "pen with title 'volume'":
+  * LeftMouseButton ... draw volume curve.
+  * RightMouseButton ... set volume to zero value.
+
+Bugfixes
+- Playing the block area.
+- Inserting and deleting song lines from track edit when "go to line" is active.
+- Other internal corrections.
+
+
+Changes in RMT beta 1.01
+------------------------
+
+All modes
+- Set the octave up-down hotkeys changed from Shift+up,down to Shift+page_up,page_down
+  (it works now in TrackEdit and InstrumentEdit only).
+- Correction of bug with instrument copy/paste.
+
+TrackEdit
+- No more set number of the track by Control+0-9A-F keys.
+- Hotkey changed: Control+I - insert new line into the song.
+- Hotkey changed: Control+U - delete the current line from the song.
+- Show title "EMPTY" for empty tracks.
+- Shift+up,down,home,end - the block select functions.
+- Control+A - select all data in the track (from the begin to the end of the track).
+- Control+Insert,Control+C - copy block to clipboard.
+- Shift+Insert,Control+V - paste data from clipboard.
+- If the block is selected and paste function is used, then data from clipboard is placed into the block select area only.
+- If the block is selected, then Delete key will delete data inside the block area.
+- If the block is selected, then Control+X key will cut data inside the block area.
+- New toolbar for block data modifications: menu View - Block toolbar. All this modify functions are available also by hotkeys.
+- Block data modification hotkeys (the block must be selected at first):
+  * Shift+Control+A switch between block modify mode all / current instrument only.
+  * Shift+Control+page_up,page_down do transpose up,down notes in the block (by semitones).
+  * Shift+Control+left,right do change of instrument numbers in the block.
+  * Shift+Control+Num-,Num+ do change of volumes in the block.
+  Note transpositions, instrument changes and volume changes are indicated in window statusbar at the bottom.
+- If the block is selected:
+  * Enter key will play the lines inside the block around.
+  * Home or End key set the cursor to the first or the last line in the block.
+  * Control+B will restore the block data changed by modification functions from the backup (backup is created when the block is getting start to select and destroyed when the block is deselected).
+  * Control+F4 will start cyclic playing of the part from the top to the bottom of selected block area.
+
+Operation manual
+- All this changes included to operation manual (see the rmt_en.htm, rmt_cz.htm).
+
+
+RMT beta 1.00
+-------------
+
+- The first published version.

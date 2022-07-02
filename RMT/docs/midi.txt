@@ -1,0 +1,52 @@
+************************************************************************
+RASTER MUSIC TRACKER - RMT
+by Radek Sterba, Raster/C.P.U., 2002-2008
+http://raster.atari.org
+************************************************************************
+
+RMT [Raster Music Tracker] MULTITIMBRAL INSTRUMENT - MIDI IMPLEMENTATION CHART
+
+-------------------------------------------------------------------------------
+Function              | Recognized           | Remarks
+----------------------|----------------------|---------------------------------
+Basic      Default    | 2-9                  | 2-5 = L1-L4 , 6-9 = R1-R4
+Channel    Changed    | x                    | (Channel 1 is reserved for edit)
+----------------------|----------------------|---------------------------------
+Mode       Default    | Mode 4               |
+           Messages   | x                    |
+           Altered    | x                    |
+----------------------|----------------------|---------------------------------
+Note                  | 36-96                | RMT notes from C-1 to C-6
+Number :   True voice | 36-96                |
+----------------------|----------------------|---------------------------------
+Velocity   Note ON    | o 9nH,v=1-127        | RMT volume = v / 8
+           Note OFF   | x 9nH,v=0 8nH,v=xx   | 
+----------------------|----------------------|---------------------------------
+After      Key's      | x                    |
+Touch      Ch's       | x                    |
+----------------------|----------------------|---------------------------------
+Pitch Bend            | x                    |
+----------------------|----------------------|---------------------------------
+Control               | x                    |
+Change                | x                    |
+----------------------|----------------------|---------------------------------
+Prog                  | o 0-63               | RMT instruments 00-3F
+Change : True #       | o 0-63               |
+----------------------|----------------------|---------------------------------
+System exclusive      | x                    |
+----------------------|----------------------|---------------------------------
+Common :   Song Pos.  | x                    |
+           Song Sel.  | x                    |
+           Tune       | x                    |
+----------------------|----------------------|---------------------------------
+System   : Clock      | x                    |
+Real Time: Commands   | x                    |
+----------------------|----------------------|---------------------------------
+Aux      : LocalON/OFF| x                    |
+Messages : ResetAllCtr| o (121)              | Silence + Reinit of RMT routine
+         : AllNotesOFF| o (123)              | Note OFF
+         : ActiveSense| x                    |
+         : SystemReset| o                    | Silence + Reinit of RMT routine
+-------------------------------------------------------------------------------
+Mode 1: OMNI ON, POLY               Mode 2: OMNI ON, MONO               o: Yes
+Mode 3: OMNI OFF, POLY              Mode 4: OMNI OFF, MONO              x: No

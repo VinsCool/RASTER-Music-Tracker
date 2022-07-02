@@ -1,0 +1,112 @@
+;
+; SFX
+; example by raster/c.p.u., 2006,2009
+;
+;
+STEREOMODE	equ 0				;0 => compile RMTplayer for mono 4 tracks
+;								;1 => compile RMTplayer for stereo 8 tracks
+;								;2 => compile RMTplayer for 4 tracks stereo L1 R2 R3 L4
+;								;3 => compile RMTplayer for 4 tracks stereo L1 L2 R3 R4
+;
+;
+	icl "rmtplayr.a65"			;include RMT player routine
+;
+;
+	opt h-						;RMT module is standard Atari binary file already
+	ins "sfx.rmt"				;include music RMT module
+	opt h+
+;
+;
+MODUL	equ $4000				;address of RMT module
+KEY		equ $2fc				;keypressed code
+RANDOM	equ $d20a				;random value
+;
+	org $6000
+start
+;
+	ldx #<text
+	ldy #>text
+	jsr $c642					;print info text to screen
+;
+	lda #$f0					;initial value
+	sta RMTSFXVOLUME			;sfx note volume * 16 (0,16,32,...,240)
+;
+	lda #$ff					;initial value
+	sta sfx_effect
+;
+	ldx #<MODUL					;low byte of RMT module to X reg
+	ldy #>MODUL					;hi byte of RMT module to Y reg
+	lda #2						;starting song line 0-255 to A reg
+	jsr RASTERMUSICTRACKER		;Init
+;
+	ldy #<vbi
+	ldx #>vbi
+	lda #$07
+	jsr $e45c					;Start VBI routine
+;
+;
+loop
+	lda #255
+	sta KEY						;no key pressed
+;
+waitkey
+	lda KEY						;keycode
+	cmp #255
+	beq waitkey					;no key pressed
+;
+	and #63
+	tay
+	lda (121),y					;keycode -> ascii
+;
+	cmp #'1'					; < key '1' ?
+	bcc loop
+	cmp #'9'					; >= key '9' ?
+	bcs loop
+	and #$0f					;A=1..8
+	pha							;sfx number
+;
+	lda RANDOM					;random number
+	and #$07					;0..7
+	ora #$08					;8..15
+	asl @
+	asl @
+	asl @
+	asl @						;*16
+	sta RMTSFXVOLUME
+;
+	pla							;sfx number
+	sta sfx_effect				;VBI routine is watching this variable
+;
+	jmp loop
+;
+;
+;
+vbi
+;
+	lda sfx_effect
+	bmi lab2
+	asl @						; * 2
+	tay							;Y = 2,4,..,16	instrument number * 2 (0,2,4,..,126)
+	ldx #3						;X = 3			channel (0..3 or 0..7 for stereo module)
+	lda #12						;A = 12			note (0..60)
+	jsr RASTERMUSICTRACKER+15	;RMT_SFX start tone (It works only if FEAT_SFX is enabled !!!)
+;
+	lda #$ff
+	sta sfx_effect				;reinit value
+;
+lab2
+	jsr RASTERMUSICTRACKER+3	;1 play
+;
+	jmp $e462					;end vbi
+;
+;
+;
+sfx_effect dta 0				;sfx number variable
+;
+text dta c'Press 1-8 for SFX (random volume)',$9b
+;
+;
+;
+	run start					;run addr
+;
+;that's all... :-)
