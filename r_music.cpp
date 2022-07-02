@@ -13,7 +13,8 @@
 // 11.2.2004 ... pridano generovani FEAT_VOLUMEMIN, FEAT_TABLEGO
 
 #include "stdafx.h"
-#include <fstream.h>
+#include <fstream>
+using namespace std;
 //#include <mmsystem.h>
 #include <malloc.h>
 
@@ -852,17 +853,17 @@ int CInstruments::SaveInstrument(int instr,ofstream& ou, int iotype)
 		static char head[4]="RTI";
 		head[3]=1;			//typ 1
 		ou.write(head,4);	//4 byty hlavicka RTI1 (binarni 1)
-		ou.write((unsigned char*) ai.name,sizeof(ai.name)); //jmeno 32bytu + 33. je binarni nula ukoncujici string
+		ou.write((const char*) ai.name,sizeof(ai.name)); //jmeno 32bytu + 33. je binarni nula ukoncujici string
 		unsigned char ibf[MAXATAINSTRLEN];
 		BYTE len = InstrToAta(instr,ibf,MAXATAINSTRLEN);
 		ou.write((char*)&len,sizeof(len));				//delka instrumentu v Atari bytech
-		if (len>0) ou.write(ibf,len);					//data instrumentu
+		if (len>0) ou.write((const char*)&ibf,len);					//data instrumentu
 		}
 		break;
 
 	case IOINSTR_RMW:
 		//name instrumentu
-		ou.write((unsigned char*) ai.name,sizeof(ai.name));
+		ou.write((const char*) ai.name,sizeof(ai.name));
 
 		char bfpar[PARCOUNT],bfenv[ENVCOLS][ENVROWS],bftab[TABLEN];
 		//
@@ -949,14 +950,14 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 		int version=head[3];
 		if (version>=2) return 0;					//je to verze 2 a vic (podporovana je jen 0 a 1)
 
-		in.read((unsigned char*) ai.name,sizeof(ai.name)); //jmeno 32 bytu + 33.binarni ukoncujici nula
+		in.read((char*) ai.name,sizeof(ai.name)); //jmeno 32 bytu + 33.binarni ukoncujici nula
 
 		BYTE len;
 		in.read((char*)&len,sizeof(len));				//delka instrumentu v Atari bytech
 		if (len>0)
 		{
 			unsigned char ibf[MAXATAINSTRLEN];
-			in.read(ibf,len);
+			in.read((char *)&ibf,len);
 			BOOL r;
 			if (version==0) 
 				r=AtaV0ToInstr(ibf,instr);
@@ -975,7 +976,7 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 		ClearInstrument(instr);	//nejdriv ho smaze nez bude nacitat
 		TInstrument& ai=m_instr[instr];
 		//jmeno instrumentu
-		in.read((unsigned char*) ai.name,sizeof(ai.name));
+		in.read((char *) ai.name,sizeof(ai.name));
 
 
 		char bfpar[PARCOUNT],bfenv[ENVCOLS][ENVROWS],bftab[TABLEN];
@@ -1182,7 +1183,7 @@ BYTE CInstruments::InstrToAta(int instr,unsigned char *ata,int max)
 	 11 0 (nevyuzito)
 	*/
 
-	const INSTRPAR=12;			//od 12.byte zacina table
+	const int INSTRPAR=12;			//od 12.byte zacina table
 
 	int tablelast = par[PAR_TABLEN]+INSTRPAR;		//od 12.byte zacina table
 	ata[0] = tablelast;
@@ -1254,7 +1255,7 @@ BYTE CInstruments::InstrToAtaRMF(int instr,unsigned char *ata,int max)
 	 11 0 (nevyuzito)			vynechano
 	*/
 
-	const INSTRPAR=11;			//RMF (standardne je to 12)
+	const int INSTRPAR=11;			//RMF (standardne je to 12)
 
 	int tablelast = par[PAR_TABLEN]+INSTRPAR;	 //+12	//od 12.byte zacina table
 	ata[0] = tablelast;
@@ -1428,7 +1429,7 @@ BOOL CInstruments::AtaToInstr(unsigned char *ata, int instr)
 }
 
 
-CInstruments::CalculateNoEmpty(int instr)
+BOOL CInstruments::CalculateNoEmpty(int instr)
 {
 	TInstrument& it = m_instr[instr];
 	int i,j;
@@ -2011,7 +2012,7 @@ BOOL CInstruments::DrawTab(int p,int it)
 CTracks::CTracks()
 {
 	m_maxtracklen = 64;			//default hodnota
-	g_cursoractview = m_maxtracklen/2;
+	g_cursoractview = 0;
 	InitTracks();
 }
 
@@ -2066,8 +2067,8 @@ int CTracks::SaveTrack(int track,ofstream& ou,int iotype)
 			int j;
 			char bf[TRACKLEN];
 			TTrack& at=m_track[track];
-			ou.write((unsigned char*) &at.len,sizeof(at.len));
-			ou.write((unsigned char*) &at.go,sizeof(at.go));
+			ou.write((char*) &at.len,sizeof(at.len));
+			ou.write((char*) &at.go,sizeof(at.go));
 			//
 			//vsechno
 			for(j=0; j<m_maxtracklen; j++) bf[j]=at.note[j];
@@ -2142,8 +2143,8 @@ int CTracks::LoadTrack(int track,ifstream& in,int iotype)
 			int j;
 			ClearTrack(track);	//promaze
 			TTrack& at=m_track[track];
-			in.read((unsigned char*) &at.len,sizeof(at.len));
-			in.read((unsigned char*) &at.go,sizeof(at.go));
+			in.read((char*) &at.len,sizeof(at.len));
+			in.read((char*) &at.go,sizeof(at.go));
 			//
 			//vsechno
 			in.read(bf,m_maxtracklen);
@@ -2262,7 +2263,7 @@ int CTracks::SaveAll(ofstream& ou,int iotype)
 	{
 	case IOTYPE_RMW:
 		{
-			ou.write((unsigned char*) &m_maxtracklen,sizeof(m_maxtracklen));
+			ou.write((char*) &m_maxtracklen,sizeof(m_maxtracklen));
 			for(int i=0; i<TRACKSNUM; i++)
 			{
 				SaveTrack(i,ou,iotype);
@@ -2289,8 +2290,8 @@ int CTracks::LoadAll(ifstream& in,int iotype)
 {
 	InitTracks();
 
-	in.read((unsigned char*) &m_maxtracklen,sizeof(m_maxtracklen));
-	g_cursoractview = m_maxtracklen/2;
+	in.read((char*) &m_maxtracklen,sizeof(m_maxtracklen));
+	g_cursoractview = 0;
 
 	for(int i=0; i<TRACKSNUM; i++)
 	{
@@ -2607,7 +2608,7 @@ BOOL CTracks::AtaToTrack(unsigned char* sour,int len,int track)
 	return 1;
 }
 
-BOOL CTracks::DrawTrack(int col,int x,int y,int tr,int aline,int cactview, int pline,BOOL isactive,int acu)
+BOOL CTracks::DrawTrack(int col,int x,int y,int tr,int line_cnt, int aline,int cactview, int pline,BOOL isactive,int acu)
 {
 	//cactview = cursor active view line
 	char s[16];
@@ -2649,9 +2650,9 @@ BOOL CTracks::DrawTrack(int col,int x,int y,int tr,int aline,int cactview, int p
 	y+=32;
 	//--
 
-	for(i=0; i<17; i++,y+=16)
+	for(i=0; i<line_cnt; i++,y+=TRACK_LINE_H)
 	{
-		line = cactview + i - 8;		//8 lines shora
+		line = cactview + i;		//  -8 lines shora
 		if (line<0 || line>=m_maxtracklen) continue;
 		if (line>=last)
 		{
@@ -3099,7 +3100,7 @@ BOOL CSong::ClearSong(int numoftracks)
 	//
 	g_activepart=g_active_ti=PARTTRACKS;	//tracks
 	//
-	m_songplayline = m_songactiveline = 0;
+	m_songplayline = m_songactiveline = m_songtopline = 0;
 	m_trackactiveline = m_trackplayline = 0;
 	m_trackactivecol = m_trackactivecur = 0;
 	m_activeinstr = 0;
@@ -3547,7 +3548,7 @@ void CSong::FileOpen(const char *filename, BOOL warnunsavedchanges)
 
 		if (type<1 || type>3) return;
 
-		ifstream in(fn,ios::binary|ios::nocreate);
+		ifstream in(fn,ios::binary);
 		if (!in)
 		{
 			MessageBox(g_hwnd,"Can't open this file: " +fn,"Open error",MB_ICONERROR);
@@ -3630,7 +3631,7 @@ void CSong::FileSave()
 		m_fileunsaved=0;
 	*/
 	
-	ofstream out(m_filename,ios::binary);
+	ofstream out(m_filename, (m_filetype == IOTYPE_TXT)?ios::out:ios::binary);
 	if (!out)
 	{
 		MessageBox(g_hwnd,"Can't create this file","Write error",MB_ICONERROR);
@@ -3644,7 +3645,7 @@ void CSong::FileSave()
 		r = Export(out,IOTYPE_RMT);
 		break;
 	case IOTYPE_TXT: //TXT
-		out.setmode(filebuf::text);
+//		out.setmode(filebuf::text);
 		r = Save(out,IOTYPE_TXT);
 		break;
 	case IOTYPE_RMW: //RMW
@@ -3760,7 +3761,7 @@ void CSong::FileNew()
 	if (dlg.DoModal() == IDOK )
 	{
 		m_tracks.m_maxtracklen = dlg.m_maxtracklen;
-		g_cursoractview = m_tracks.m_maxtracklen/2;
+		g_cursoractview = 0;
 
 		int i = dlg.m_combotype;
 		g_tracks4_8 = (i==0)? 4 : 8;
@@ -3819,7 +3820,7 @@ void CSong::FileImport()
 
 		l_lastimporttypeidx = type;
 
-		ifstream in(fn,ios::binary|ios::nocreate);
+		ifstream in(fn,ios::binary);
 		if (!in)
 		{
 			MessageBox(g_hwnd,"Can't open this file: " +fn,"Open error",MB_ICONERROR);
@@ -4032,7 +4033,7 @@ void CSong::FileInstrumentLoad()
 		fn = fid.GetPathName();
 		g_lastloadpath_instruments=GetFilePath(fn);	//jen cesta
 
-		ifstream in(fn,ios::binary|ios::nocreate);
+		ifstream in(fn,ios::binary);
 		if (!in)
 		{
 			MessageBox(g_hwnd,"Can't open this file: " +fn,"Open error",MB_ICONERROR);
@@ -4124,7 +4125,7 @@ void CSong::FileTrackLoad()
 		CString fn;
 		fn = fid.GetPathName();
 		g_lastloadpath_tracks=GetFilePath(fn);	//jen cesta
-		ifstream in(fn,ios::nocreate);	//default je text mode
+		ifstream in(fn);	//default je text mode
 		if (!in)
 		{
 			MessageBox(g_hwnd,"Can't open this file: " +fn,"Open error",MB_ICONERROR);
@@ -4219,7 +4220,7 @@ void CSong::FileTrackLoad()
 	&g_keyboard_escresetatarisound,								\
 	&m_trackactivecol,&m_trackactivecur,						\
 	&m_activeinstr,&m_volume,&m_octave,							\
-	&m_infoact,&m_songnamecur									\
+	&m_infoact,&m_songnamecur,									\
 }
 
 int CSong::Save(ofstream& ou,int iotype)
@@ -4232,19 +4233,19 @@ int CSong::Save(ofstream& ou,int iotype)
 		version.LoadString(IDS_RMTVERSION);
 		ou << (unsigned char*)(LPCSTR)version << endl;
 		//
-		ou.write((unsigned char*)m_songname,sizeof(m_songname));
+		ou.write((char*)m_songname,sizeof(m_songname));
 		//
 		DEFINE_MAINPARAMS;
 		
 		int p = RMWMAINPARAMSCOUNT; //pocet ukladanych parametru
-		ou.write((unsigned char*) &p,sizeof(p));		//zapise pocet main parametru
+		ou.write((char*) &p,sizeof(p));		//zapise pocet main parametru
 		for(int i=0; i<p; i++)
-			ou.write((unsigned char*) mainparams[i],sizeof(mainparams[0]));
+			ou.write((char*) mainparams[i],sizeof(mainparams[0]));
 		//
 		
 		//zapise komplet song a songgo
-		ou.write((unsigned char*)m_song,sizeof(m_song));
-		ou.write((unsigned char*)m_songgo,sizeof(m_songgo));
+		ou.write((char*)m_song,sizeof(m_song));
+		ou.write((char*)m_songgo,sizeof(m_songgo));
 		}
 		break;
 
@@ -4328,18 +4329,18 @@ int CSong::Load(ifstream& in,int iotype)
 		return 0;
 	}
 	//
-	in.read((unsigned char*)m_songname,sizeof(m_songname));
+	in.read((char*)m_songname,sizeof(m_songname));
 	//
 	DEFINE_MAINPARAMS;
 	int p=0;
-	in.read((unsigned char*)&p,sizeof(p));			//precte si pocet main parametru
+	in.read((char*)&p,sizeof(p));			//precte si pocet main parametru
 	for(int i=0; i<p; i++)
-		in.read((unsigned char*) mainparams[i],sizeof(mainparams[0]));
+		in.read((char*) mainparams[i],sizeof(mainparams[0]));
 	//
 
 	//precte komplet song a songgo
-	in.read((unsigned char*)m_song,sizeof(m_song));
-	in.read((unsigned char*)m_songgo,sizeof(m_songgo));
+	in.read((char*)m_song,sizeof(m_song));
+	in.read((char*)m_songgo,sizeof(m_songgo));
 
 	m_instrs.LoadAll(in,iotype);
 	m_tracks.LoadAll(in,iotype);
@@ -4401,7 +4402,7 @@ int CSong::Load(ifstream& in,int iotype)
 						int v = Hexstr(value,2);
 						if (v==0) v=256;
 						m_tracks.m_maxtracklen= v;
-						g_cursoractview = m_tracks.m_maxtracklen/2;
+						g_cursoractview = 0;
 						m_tracks.InitTracks();				//reinicializace
 					}
 					else
@@ -5885,7 +5886,7 @@ int CSong::DecodeModule(unsigned char* mem,int adrfrom,int adrend,BYTE *instrloa
 	g_tracks4_8 = b & 0x0f;
 	b = mem[adr+4];
 	m_tracks.m_maxtracklen = (b>0)? b:256;	//0 => 256
-	g_cursoractview = m_tracks.m_maxtracklen/2;
+	g_cursoractview = 0;
 	b = mem[adr+5];
 	m_mainspeed = b;
 	if (b<1) return 0;		//nemuze byt nulova rychlost
@@ -5992,14 +5993,27 @@ BOOL CSong::PlayPressedTones()
 	return 1;
 }
 
+int CSong::TopLine()
+{
+	if (m_songactiveline < m_songtopline) {
+		m_songtopline = m_songactiveline;
+	} else if (m_songactiveline > g_songlines-3) {
+		m_songtopline = m_songactiveline - (g_songlines - 3);
+	} else if (m_songactiveline < m_songtopline + 3) {
+		m_songtopline = m_songactiveline - 3;
+		if (m_songtopline < 0) m_songtopline = 0;
+	}
+	return m_songtopline;
+}
+
 BOOL CSong::DrawSong()
 {
 	int line,i,j,k,y,t;
 	char s[32],c;
-	TextXY("SONG",SONG_X+8,SONG_Y);
+	TextXY("SONG",g_song_x+8,SONG_Y);
 
 	//tisk L1 .. L4 R1 .. R4 s cervenym aktualnim trackem
-	k=SONG_X+6*8;
+	k=g_song_x+6*8;
 	s[0]='L';
 	s[2]=0;
 	for(i=0; i<4; i++,k+=24)
@@ -6026,10 +6040,12 @@ BOOL CSong::DrawSong()
 		TextXY(s,k,SONG_Y,c);
 	}
 
-	y=SONG_Y+16;
-	for(i=0; i<5; i++,y+=16)	//vypisuje 5 radku songu
+	int top_line = TopLine();
+
+	y=SONG_Y+SONG_HEADER_H;
+	for(i=0; i<g_songlines; i++,y+=SONG_LINE_H)	//vypisuje 5 radku songu
 	{
-		line = m_songactiveline + i -2; 		//2 radky nad
+		line = top_line + i; 		//2 radky nad
 		if (line<0 || line>255)
 		{
 			//ClearXY(SONG_X+16,y,27);		//smaze 27 pismen
@@ -6039,7 +6055,7 @@ BOOL CSong::DrawSong()
 		s[0]= CharH4(line);
 		s[1]= CharL4(line);
 		c = (line==m_songplayline)? 2:0;
-		TextXY(s,SONG_X+16,y,c);
+		TextXY(s,g_song_x+16,y,c);
 
 		if ((j=m_songgo[line])>=0)
 		{
@@ -6048,9 +6064,9 @@ BOOL CSong::DrawSong()
 			s[1]=CharL4(j);
 			s[2]=0;
 			c = (line==m_songactiveline)? 6:0;
-			TextXY("Go to line",SONG_X+16+32,y,c);
+			TextXY("Go to line",g_song_x+16+32,y,c);
 			if (line==m_songactiveline && !g_prove && g_activepart==PARTSONG) c=COLOR_SELECTED;
-			TextXY(s,SONG_X+16+32+11*8,y,c);
+			TextXY(s,g_song_x+16+32+11*8,y,c);
 		}
 		else
 		{
@@ -6071,11 +6087,11 @@ BOOL CSong::DrawSong()
 					c= (!g_prove && g_activepart==PARTSONG)? COLOR_SELECTED:6;
 				else
 					c = (line==m_songplayline)? 2:0;
-				TextXY(s,SONG_X+16+k,y,c);
+				TextXY(s,g_song_x+16+k,y,c);
 			}
 		}
 	}
-	TextXY("\x04\x05",SONG_X,SONG_Y+48,6);	//sipka
+	TextXY("\x04\x05",g_song_x,SONG_Y+SONG_HEADER_H+(m_songactiveline-top_line)*SONG_LINE_H,6);	//sipka
 	return 1;
 }
 
@@ -6093,18 +6109,33 @@ BOOL CSong::DrawTracks()
 		return 1;
 	}
 
+	int g_track_scroll_margin = 3;
+
+	// If on the top, move the first visible line up
+	if (m_trackactiveline < g_cursoractview+g_track_scroll_margin) {
+		g_cursoractview = m_trackactiveline-g_track_scroll_margin;
+		if (g_cursoractview < 0) g_cursoractview = 0;
+	}
+
+	// If on the bottom, move the first visible line to bottom
+	if (m_trackactiveline >= (g_cursoractview+g_tracklines-g_track_scroll_margin)) {
+		g_cursoractview = m_trackactiveline - g_tracklines+g_track_scroll_margin+1;
+	}
+/*
 	if (m_trackactiveline>g_cursoractview+g_trackcursorverticalrange)
 		g_cursoractview=m_trackactiveline-g_trackcursorverticalrange;
 	else
 	if (m_trackactiveline<g_cursoractview-g_trackcursorverticalrange)
 		g_cursoractview=m_trackactiveline+g_trackcursorverticalrange;
+*/
 
-	//cisla vlevo
-	y = TRACKS_Y+3*16;
+	y = TRACKS_Y+TRACKS_HEADER_H;
+	//====== Track line numbers
 	strcpy(s,"--‚");
-	for(i=0; i<17; i++,y+=16)
+
+	for(i=0; i<g_tracklines; i++,y+=16)
 	{
-		line = g_cursoractview + i - 8;		//8 lines shora
+		line = g_cursoractview + i;		// - 8;		//8 lines shora
 		if (line<0 || line>=m_tracks.m_maxtracklen)
 		{
 			//ClearXY(TRACKS_X,y,3);
@@ -6131,11 +6162,9 @@ BOOL CSong::DrawTracks()
 		TextXY(s,TRACKS_X,y,c);
 	}
 
-	//tracky
+	//====== Track captions
 
-
-	//
-	strcpy(s,"TRACK_XX  ");				//strcpy(s,"TRACK_XX ‚");
+	strcpy(s,"TRACK_XX  ");
 	x = TRACKS_X+5*8;
 	for(i=0; i<g_tracks4_8; i++, x+=11*8)
 	{
@@ -6147,7 +6176,7 @@ BOOL CSong::DrawTracks()
 		tr = m_song[m_songactiveline][i];
 		//prehrava se?
 		if ( m_song[m_songplayline][i] == tr ) t = m_trackplayline; else t = -1;
-		m_tracks.DrawTrack(i,x,TRACKS_Y+16,tr,m_trackactiveline,g_cursoractview,t,(m_trackactivecol==i),m_trackactivecur);
+		m_tracks.DrawTrack(i,x,TRACKS_Y+LINE_H,tr, g_tracklines , m_trackactiveline,g_cursoractview,t,(m_trackactivecol==i),m_trackactivecur);
 	}
 
 
@@ -6156,29 +6185,29 @@ BOOL CSong::DrawTracks()
 	{
 		x = TRACKS_X+6*8+ g_trackcl.m_selcol *11*8 -2;
 		int xt = x + 10*8+4;
-		y = TRACKS_Y+16*3;
+		y = TRACKS_Y+TRACKS_HEADER_H;
 		int bfro,bto;
 		g_trackcl.GetFromTo(bfro,bto);
 
-		int yf = bfro-g_cursoractview+8;
-		int yt = bto-g_cursoractview+8+1;
+		int yf = bfro-g_cursoractview;
+		int yt = bto-g_cursoractview+1;
 		int p1=1,p2=1;
 		if (yf<0)  { yf=0; p1=0; }
-		if (yt>17) { yt=17; p2=0; }
+		if (yt>g_tracklines) { yt=g_tracklines; p2=0; }
 
-		if (yf<17 && yt>0 
+		if (yf<g_tracklines && yt>0 
 			&& g_trackcl.m_seltrack==SongGetActiveTrackInColumn(g_trackcl.m_selcol)
 			&& g_trackcl.m_selsongline==SongGetActiveLine())
 		{
 			//obdelnik vymezujici selektnuty blok
 			CPen redpen(PS_SOLID,1,RGB(255,255,255));
 			CPen* origpen = g_mem_dc->SelectObject(&redpen);
-			g_mem_dc->MoveTo(x,y+yf*16);
-			g_mem_dc->LineTo(x,y+yt*16);
-			g_mem_dc->MoveTo(xt,y+yf*16);
-			g_mem_dc->LineTo(xt,y+yt*16);
-			if (p1) { g_mem_dc->MoveTo(x,y+yf*16); g_mem_dc->LineTo(xt,y+yf*16); }
-			if (p2) { g_mem_dc->MoveTo(x,y+yt*16); g_mem_dc->LineTo(xt+1,y+yt*16); }
+			g_mem_dc->MoveTo(x,y+yf*TRACK_LINE_H);
+			g_mem_dc->LineTo(x,y+yt*TRACK_LINE_H);
+			g_mem_dc->MoveTo(xt,y+yf*TRACK_LINE_H);
+			g_mem_dc->LineTo(xt,y+yt*TRACK_LINE_H);
+			if (p1) { g_mem_dc->MoveTo(x,y+yf*TRACK_LINE_H); g_mem_dc->LineTo(xt,y+yf*TRACK_LINE_H); }
+			if (p2) { g_mem_dc->MoveTo(x,y+yt*TRACK_LINE_H); g_mem_dc->LineTo(xt+1,y+yt*TRACK_LINE_H); }
 			g_mem_dc->SelectObject(origpen);
 		}
 		char tx[96];
@@ -6186,31 +6215,33 @@ BOOL CSong::DrawTracks()
 		GetTracklineText(s1,bfro);
 		GetTracklineText(s2,bto);
 		sprintf(tx,"%i line(s) [%s-%s] selected in the track %02X",bto-bfro+1,s1,s2,g_trackcl.m_seltrack);
-		TextXY(tx,TRACKS_X+4*8,TRACKS_Y+21*16);
+		TextXY(tx,STATUS_X,STATUS_Y);
 		x = TRACKS_X+4*8 + strlen(tx)*8 +8;
 		if (g_trackcl.m_all)
 			strcpy(tx,"[change ALL events]");
 		else
 			sprintf(tx,"[change events for instr %02X only]",m_activeinstr);
-		TextXY(tx,x,TRACKS_Y+21*16,6);
+		TextXY(tx,x,STATUS_Y,6);
 	}
 
 	//cary vymezujici aktualni radek
 	x = (g_tracks4_8==4)? TRACKS_X+(93-4*11)*8 : TRACKS_X+93*8;
-	y = TRACKS_Y+3*16-2+(m_trackactiveline-g_cursoractview+8)*16;
+	y = TRACKS_Y+TRACKS_HEADER_H-2+(m_trackactiveline-g_cursoractview)*TRACK_LINE_H;
 	g_mem_dc->MoveTo(TRACKS_X,y);
 	g_mem_dc->LineTo(x,y);
-	g_mem_dc->MoveTo(TRACKS_X,y+19);
-	g_mem_dc->LineTo(x,y+19);
+	g_mem_dc->MoveTo(TRACKS_X,y+TRACK_LINE_H+2+1);
+	g_mem_dc->LineTo(x,y+TRACK_LINE_H+2+1);
 
 	//cara vymezujici hranici mezi left/right
 	if (g_tracks4_8>4)
 	{
 		int fl,tl;
-		fl=8-g_cursoractview; if (fl<0) fl=0;
-		tl=8-g_cursoractview+m_tracks.m_maxtracklen; if (tl>17) tl=17;
-		g_mem_dc->MoveTo(TRACKS_X+50*8-7,TRACKS_Y+3*16-2+fl*16);
-		g_mem_dc->LineTo(TRACKS_X+50*8-7,TRACKS_Y+3*16+2+tl*16);
+//		fl=8-g_cursoractview; if (fl<0) fl=0;
+//		tl=8-g_cursoractview+m_tracks.m_maxtracklen; if (tl>g_tracklines) tl=g_tracklines;
+		fl = 0;
+		tl = g_tracklines;
+		g_mem_dc->MoveTo(TRACKS_X+50*8-7,TRACKS_Y+TRACKS_HEADER_H-2+fl*TRACK_LINE_H);
+		g_mem_dc->LineTo(TRACKS_X+50*8-7,TRACKS_Y+TRACKS_HEADER_H+2+tl*TRACK_LINE_H);
 	}
 
 	return 1;
@@ -6280,7 +6311,7 @@ BOOL CSong::DrawInfo()
 	BYTE flag = m_instrs.GetFlag(m_activeinstr);
 
 	int x=INFO_X;	//+4*8;
-	const y=INFO_Y+4*16;
+	const int y=INFO_Y+4*16;
 	int g=(m_trackactivecol%4) +1;		//generator 1 az 4
 	if (flag&IF_FILTER)
 	{
@@ -6345,7 +6376,7 @@ BOOL CSong::DrawPlaytimecounter(CDC *pDC = NULL)
 {
 	if (!g_viewplaytimecounter) return 0;
 
-#define PLAYTC_X	SONG_X+7
+//#define PLAYTC_X	SONG_X+7
 #define PLAYTC_Y	SONG_Y-8
 #define PLAYTC_S	4*8
 #define PLAYTC_H	8
@@ -6375,8 +6406,8 @@ BOOL CSong::DrawPlaytimecounter(CDC *pDC = NULL)
 		timstr[3]=(timesec%10) | '0';
 	}
 	timstr[4]=0; //ukonceni
-	TextMiniXY(timstr,PLAYTC_X,PLAYTC_Y,(m_play)? 2 : 0);
-	if (pDC) pDC->BitBlt(PLAYTC_X,PLAYTC_Y,PLAYTC_S,PLAYTC_H,g_mem_dc,PLAYTC_X,PLAYTC_Y,SRCCOPY);
+	TextMiniXY(timstr,g_song_x+7,PLAYTC_Y,(m_play)? 2 : 0);
+	if (pDC) pDC->BitBlt(g_song_x+7,PLAYTC_Y,PLAYTC_S,PLAYTC_H,g_mem_dc,g_song_x+7,PLAYTC_Y,SRCCOPY);
 	return 1;
 }
 
@@ -6417,7 +6448,7 @@ BOOL CSong::DrawAnalyzer(CDC *pDC = NULL)
 #define RGBVOLUMEONLY	RGB(128,255,255)
 
 	int audf,audc,vol;
-	static idx[8]={0xd200,0xd202,0xd204,0xd206,0xd210,0xd212,0xd214,0xd216};
+	static int idx[8]={0xd200,0xd202,0xd204,0xd206,0xd210,0xd212,0xd214,0xd216};
 	int col[8];
 	int yu=7;
 	for(int i=0; i<g_tracks4_8; i++) col[i]=72;
@@ -7998,7 +8029,7 @@ BOOL CSong::TrackCursorGoto(CPoint point)
 	int xch,x,y;
 	xch=(point.x/(11*8));
 	x=(point.x-(xch*11*8))/8;
-	y=(point.y+0)/16-8+g_cursoractview;	//m_trackactiveline;
+	y=(point.y+0)/TRACK_LINE_H+g_cursoractview;	//m_trackactiveline;
 	if (y>=0 && y<m_tracks.m_maxtracklen)
 	{
 		if (xch>=0 && xch<g_tracks4_8) m_trackactivecol=xch;
@@ -8410,8 +8441,8 @@ BOOL CSong::SongKey(int vk,int shift,int control)
 			SongSubsongPrev();
 		else
 		{
-			if (m_songactiveline>=4) 
-				m_songactiveline-=4;
+			if (m_songactiveline>=g_songlines) 
+				m_songactiveline-=g_songlines;
 			else
 				m_songactiveline=0;
 		}
@@ -8422,8 +8453,8 @@ BOOL CSong::SongKey(int vk,int shift,int control)
 			SongSubsongNext();
 		else
 		{
-			if (m_songactiveline<SONGLEN-4) 
-				m_songactiveline+=4;
+			if (m_songactiveline<SONGLEN-g_songlines) 
+				m_songactiveline+=g_songlines;
 			else
 				m_songactiveline=SONGLEN-1;
 		}
@@ -8442,7 +8473,10 @@ BOOL CSong::SongCursorGoto(CPoint point)
 	int xch,y;
 	xch=((point.x+4)/(3*8));
 	//x=(point.x-(xch*3*8))/8;
-	y=(point.y+0)/16-2+m_songactiveline;
+	int top_line = TopLine();
+
+	y = (point.y+0)/SONG_LINE_H+top_line;
+
 	if (y>=0 && y<SONGLEN)
 	{
 		if (xch>=0 && xch<g_tracks4_8) m_trackactivecol=xch;
@@ -8614,7 +8648,7 @@ BOOL CSong::SongInsertLine(int line)
 	}
 	for(j=0; j<g_tracks4_8; j++) m_song[line][j] = -1;
 	m_songgo[line] = -1;
-	for(i=0; i<line; i++)
+	for(int i=0; i<line; i++)
 	{
 		if (m_songgo[i]>=line) m_songgo[i]++;
 	}
@@ -8637,7 +8671,7 @@ BOOL CSong::SongDeleteLine(int line)
 		if (go>0 && go>line) go--;
 		m_songgo[i] = go;
 	}
-	for(i=0; i<line; i++)
+	for(int i=0; i<line; i++)
 	{
 		if (m_songgo[i]>line) m_songgo[i]--;
 	}
@@ -10067,7 +10101,7 @@ void CSong::RenumberAllInstruments(int type)
 					//oba jsou pouzite nebo oba nepouzite
 					char *name1=m_instrs.GetName(j);
 					char *name2=m_instrs.GetName(k);
-					if (strcmpi(name1,name2)>0) swap=1; //jsou naopak, takze prehodit
+					if (_strcmpi(name1,name2)>0) swap=1; //jsou naopak, takze prehodit
 				}
 
 				if (swap)

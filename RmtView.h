@@ -15,6 +15,13 @@
 
 
 extern CDC* g_mem_dc;
+
+extern int g_width;
+extern int g_height;
+extern int g_tracklines;
+extern int g_songlines;
+extern int g_song_x;
+
 extern CDC* g_gfx_dc;
 extern HWND g_hwnd;
 extern HWND g_viewhwnd;
@@ -69,6 +76,7 @@ extern BOOL g_keyboard_updowncontinue;
 extern BOOL g_keyboard_rememberoctavesandvolumes;
 extern BOOL g_keyboard_escresetatarisound;
 extern BOOL g_keyboard_askwhencontrol_s;
+extern BOOL g_keyboard_usenumlock;
 
 extern BOOL g_midi_tr;
 extern int g_midi_volumeoffset;
@@ -134,6 +142,11 @@ public:
 
 	void ChangeViewElements(BOOL writeconfig=1);
 
+	void UpdateModule();
+	bool Resize(int width, int height);
+	int  m_width;
+	int  m_height;
+
 	//void TextXY(char *txt,int x,int y);
 
 	//my
@@ -167,6 +180,8 @@ public:
 	//{{AFX_VIRTUAL(CRmtView)
 	public:
 	virtual void OnDraw(CDC* pDC);  // overridden to draw this view
+	virtual void OnSize(UINT nType, int cx, int cy);
+
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual void OnInitialUpdate();
 	protected:
@@ -195,6 +210,7 @@ protected:
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg void OnFileOpen();
+	afx_msg void OnFileOpenRecent(UINT i);
 	afx_msg void OnFileSave();
 	afx_msg void OnFileSaveAs();
 	afx_msg void OnFileNew();

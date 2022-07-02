@@ -1,5 +1,5 @@
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
+// Microsoft Visual C++ generated include file.
 // Used by Rmt.rc
 //
 #define IDDEFAULT                       3
@@ -71,6 +71,8 @@
 #define IDC_EFF_COMBO                   1033
 #define IDC_KEYBOARD_ESCRESETATARISOUND 1034
 #define IDC_KEYBOARD_ASKWHENCONTROL_S   1035
+#define IDC_KEYBOARD_ASKWHENCONTROL_S2  1036
+#define IDC_KEYBOARD_USENUMLOCK         1036
 #define IDC_EFF_EDIT1                   1037
 #define IDC_NTSC                        1038
 #define IDC_EFF_EDIT2                   1038
@@ -296,6 +298,10 @@
 #define ID_INSTRUMENT_PASTESPECIAL_INSERTVOLUMEENVSANDENVELOPEPARSTOCURSORPOSITION 32903
 #define ID_TRACK_CURSORGOTOTHESPEEDCOLUMN 32904
 #define ID_SONG_SONGCHANGEMAXIMALLENGTHOFTRACKS 32905
+#define ID_FILE_RECENT                  32906
+#define ID_RECENT_FILE3                 32907
+#define ID_RECENT_FILE4                 32908
+#define ID_RECENT_FILE5                 32909
 #define IDS_RMTVERSION                  61446
 #define IDS_RMTAUTHOR                   61447
 
@@ -305,7 +311,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
 #define _APS_NEXT_RESOURCE_VALUE        167
-#define _APS_NEXT_COMMAND_VALUE         32906
+#define _APS_NEXT_COMMAND_VALUE         32910
 #define _APS_NEXT_CONTROL_VALUE         1123
 #define _APS_NEXT_SYMED_VALUE           105
 #endif

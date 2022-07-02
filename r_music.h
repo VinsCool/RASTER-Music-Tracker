@@ -7,7 +7,8 @@
 #ifndef RMT_R_MUSIC_
 #define RMT_R_MUSIC_
 
-#include <fstream.h>
+#include <fstream>
+using namespace std;
 
 #include "EffectsDlg.h"
 #include "xpokey.h"
@@ -23,15 +24,28 @@ extern BOOL g_changes;
 
 #define CONFIG_FILENAME "rmt.ini"
 
+#define LINE_H  16
+
 #define TRACKS_X 2*8
 #define TRACKS_Y 8*16+8
+#define TRACK_LINE_H LINE_H
+
+#define TRACKS_HEADER_H 3*LINE_H
 
 #define	SONG_X	66*8
 #define SONG_Y	1*16
+#define SONG_LINE_H 16
+#define SONG_HEADER_H 16
+#define SONG_LEFT_W 6*8
+
+#define WIN_BORDER_B 4
 
 #define INFO_X	2*8
 #define INFO_Y	1*16
 
+#define STATUS_H  20
+#define STATUS_X TRACKS_X+4*8
+#define STATUS_Y g_height-STATUS_H 
 
 #define RMTFORMATVERSION	1	//cislo verze, ktera se uklada (a tim padem nejvyssi, kterou to umi nacist)
 
@@ -219,7 +233,7 @@ public:
 	BOOL InitTracks();
 	BOOL ClearTrack(int t);
 	BOOL IsEmptyTrack(int track);
-	BOOL DrawTrack(int col,int x,int y,int tr,int aline,int cactview,int pline,BOOL isactive,int acu=0);
+	BOOL DrawTrack(int col,int x,int y,int tr,int line_cnt,int aline,int cactview,int pline,BOOL isactive,int acu=0);
 	BOOL DelNoteInstrVolSpeed(int noteinstrvolspeed,int track,int line);
 	BOOL SetNoteInstrVol(int note,int instr,int vol,int track,int line);
 	BOOL SetInstr(int instr,int track,int line);
@@ -611,6 +625,8 @@ public:
 
 	BOOL volatile m_followplay;
 
+	int TopLine();
+
 private:
 	CXPokey m_pokey;
 
@@ -621,6 +637,7 @@ private:
 	int m_songgo[SONGLEN];					//je-li>=0, pak plati GO
 
 	int m_songactiveline;
+	int m_songtopline;
 	int volatile m_songplayline;
 
 	int m_trackactiveline;

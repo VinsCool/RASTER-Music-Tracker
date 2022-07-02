@@ -27,7 +27,7 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CConfigDlg)
 	enum { IDD = IDD_CONFIG };
-	CComboBox	m_c_trackcursorverticalrange;
+//	CComboBox	m_c_trackcursorverticalrange;
 	CComboBox	m_keyboard_c_layout;
 	CComboBox	m_midi_c_device;
 	BOOL	m_midi_tr;
@@ -43,6 +43,7 @@ public:
 	BOOL	m_keyboard_rememberoctavesandvolumes;
 	BOOL	m_keyboard_escresetatarisound;
 	BOOL	m_keyboard_askwhencontrol_s;
+	BOOL	m_keyboard_usenumlock;
 	//}}AFX_DATA
 
 	int		m_trackcursorverticalrange;
@@ -68,6 +69,8 @@ protected:
 	afx_msg void OnPaths();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnBnClickedKeyboardAskwhencontrolS2();
 };
 
 /////////////////////////////////////////////////////////////////////////////

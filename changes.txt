@@ -1,8 +1,17 @@
-************************************************************************
+﻿************************************************************************
 RASTER MUSIC TRACKER - RMT
 by Radek Sterba, Raster/C.P.U., 2002-2009
 http://raster.atari.org
 ************************************************************************
+
+Changes in RMT 1.30
+-------------------
+- Main window can be resized
+- Fixed bug with uninitialized COM
+- Window position is remembered on close, restored on start
+- Added recent file list
+- Support play/stop multimedia keys
+- Config option to disable use of NumLock
 
 
 Changes in RMT 1.29

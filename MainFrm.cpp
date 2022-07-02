@@ -27,6 +27,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 	//{{AFX_MSG_MAP(CMainFrame)
 	ON_WM_CREATE()
 	ON_WM_CLOSE()
+	ON_WM_GETMINMAXINFO()
 	ON_CBN_SELCHANGE(IDC_COMBO_LINESAFTER, OnSelchangeComboLinesAfter)
 	ON_CBN_KILLFOCUS(IDC_COMBO_LINESAFTER,OnSelendok)
 	ON_COMMAND(1,OnSelendok)	//pri stlaceni Enteru v ComboBoxu
@@ -74,7 +75,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CRect rect;
 
 	int index=m_wndToolBar.CommandToIndex(ID_BUTTONCOMBO1);
-	const combow=40;
+	const int combow=40;
 	m_wndToolBar.SetButtonInfo(index, ID_BUTTONCOMBO1, TBBS_SEPARATOR, combow);
     m_wndToolBar.GetItemRect(index, &rect);
 	rect.bottom+=300;	//velikost rozkliknuteho comboboxu
@@ -167,13 +168,47 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 {
+
+	//==== Restore main window position
+
+	CWinApp* app = AfxGetApp();
+	int s, t, b, r, l;
+
+	// only restore if there is a previously saved position
+	if ( -1 != (s = app->GetProfileInt("Frame", "Status",   -1)) &&
+		-1 != (t = app->GetProfileInt("Frame", "Top",      -1)) &&
+		-1 != (l = app->GetProfileInt("Frame", "Left",     -1)) &&
+		-1 != (b = app->GetProfileInt("Frame", "Bottom",   -1)) &&
+		-1 != (r = app->GetProfileInt("Frame", "Right",    -1))
+		) {
+
+			// restore the window's status
+			app->m_nCmdShow = s;
+
+			// restore the window's width and height
+			cs.cx = r - l;
+			cs.cy = b - t;
+
+			// the following correction is needed when the taskbar is
+			// at the left or top and it is not "auto-hidden"
+			RECT workArea;
+			SystemParametersInfo(SPI_GETWORKAREA, 0, &workArea, 0);
+			l += workArea.left;
+			t += workArea.top;
+
+			// make sure the window is not completely out of sight
+			int max_x = GetSystemMetrics(SM_CXSCREEN) -
+				GetSystemMetrics(SM_CXICON);
+			int max_y = GetSystemMetrics(SM_CYSCREEN) -
+				GetSystemMetrics(SM_CYICON);
+			cs.x = min(l, max_x);
+			cs.y = min(t, max_y);
+	}
+
 	if( !CFrameWnd::PreCreateWindow(cs) )
 		return FALSE;
-	// TODO: Modify the Window class or styles here by modifying
-	//  the CREATESTRUCT cs
-	cs.cx=800;
-	cs.cy=600;
-	cs.style = WS_OVERLAPPED | WS_SYSMENU | WS_BORDER | WS_MINIMIZEBOX;
+
+	cs.style = WS_OVERLAPPED | WS_SYSMENU | WS_BORDER | WS_MINIMIZEBOX | WS_SIZEBOX | WS_MAXIMIZEBOX;
 
 	return TRUE;
 }
@@ -235,6 +270,17 @@ void CMainFrame::OnClose()
 	}
 	//CFrameWnd::OnClose();
 */
+
+	// Save main window position
+	CWinApp* app = AfxGetApp();
+	WINDOWPLACEMENT wp;
+	GetWindowPlacement(&wp);
+	app->WriteProfileInt("Frame", "Status", wp.showCmd);
+	app->WriteProfileInt("Frame", "Top",    wp.rcNormalPosition.top);
+	app->WriteProfileInt("Frame", "Left",   wp.rcNormalPosition.left);
+	app->WriteProfileInt("Frame", "Bottom", wp.rcNormalPosition.bottom);
+	app->WriteProfileInt("Frame", "Right",  wp.rcNormalPosition.right);
+
 	if (g_closeapplication)
 	{
 		CFrameWnd::OnClose();
@@ -268,4 +314,10 @@ void CMainFrame::OnSelendok()
 		CRmtView* fw = (CRmtView*)(AfxGetApp()->GetMainWnd());
 		if (fw) fw->SetFocus();
 	}
+}
+
+void CMainFrame::OnGetMinMaxInfo( MINMAXINFO* lpMMI)
+{
+	lpMMI->ptMinTrackSize.x = 800;
+	lpMMI->ptMinTrackSize.y = 400;
 }

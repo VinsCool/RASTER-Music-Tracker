@@ -7,6 +7,7 @@
 #include "MainFrm.h"
 #include "RmtDoc.h"
 #include "RmtView.h"
+#include <afxadv.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -54,8 +55,10 @@ BOOL CRmtApp::InitInstance()
 	//  of your final executable, you should remove from the following
 	//  the specific initialization routines you do not need.
 
+	CoInitialize(NULL);
+
 #ifdef _AFXDLL
-	Enable3dControls();			// Call this when using MFC in a shared DLL
+//	Enable3dControls();			// Call this when using MFC in a shared DLL
 #else
 	Enable3dControlsStatic();	// Call this when linking to MFC statically
 #endif
@@ -65,7 +68,7 @@ BOOL CRmtApp::InitInstance()
 	// such as the name of your company or organization.
 	SetRegistryKey(_T("Local AppWizard-Generated Applications"));
 
-	LoadStdProfileSettings();  // Load standard INI file options (including MRU)
+	LoadStdProfileSettings(5);  // Load standard INI file options (including MRU)
 
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views.
@@ -175,6 +178,11 @@ void CRmtApp::OnAppAbout()
 	aboutDlg.m_about6502.Replace("\n","\x0d\x0a");
 
 	aboutDlg.DoModal();
+}
+
+CString & CRmtApp::GetRecentFile(int i)
+{
+	return (*m_pRecentFileList)[i];
 }
 
 /////////////////////////////////////////////////////////////////////////////

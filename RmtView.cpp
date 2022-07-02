@@ -48,6 +48,7 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_COMMAND(ID_FILE_SAVE, OnFileSave)
 	ON_COMMAND(ID_FILE_SAVE_AS, OnFileSaveAs)
 	ON_COMMAND(ID_FILE_NEW, OnFileNew)
+	ON_COMMAND_RANGE(ID_FILE_MRU_FILE1, ID_FILE_MRU_FILE5, OnFileOpenRecent)
 	ON_COMMAND(ID_FILE_EXPORT_AS, OnFileExportAs)
 	ON_COMMAND(ID_INSTR_LOAD, OnInstrLoad)
 	ON_COMMAND(ID_INSTR_SAVE, OnInstrSave)
@@ -242,6 +243,9 @@ CRmtView::CRmtView()
 	g_screenwait=2;		//2 padesatiny
 	//
 	m_setnumlockfunction=1; //funguje prepinani numlocku
+
+	m_width = 0;
+	m_height = 0;
 }
 
 CRmtView::~CRmtView()
@@ -293,8 +297,20 @@ BOOL CRmtView::PreCreateWindow(CREATESTRUCT& cs)
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView drawing
 
+void CRmtView::OnSize(UINT nType, int cx, int cy)
+{
+	TRACE("Rect: %d %d\n", cx, cy);
+}
+
 void CRmtView::OnDraw(CDC* pDC)
 {
+
+	RECT r;
+	GetClientRect(&r);
+//	TRACE("Rect2: %d..%d %d..%d\n", r.left, r.right, r.top, r.bottom);
+
+	bool resized = Resize(r.right-r.left+1, r.bottom-r.top+1);
+	UpdateModule();
 
 	//CRmtDoc* pDoc = GetDocument();
 	//ASSERT_VALID(pDoc);
@@ -318,7 +334,7 @@ void CRmtView::OnDraw(CDC* pDC)
 	SetStatusBarText(s);
 	*/
 
-	if (g_screenupdate && g_invalidatebytimer )
+	if (resized || (g_screenupdate && g_invalidatebytimer) )
 	{
 		g_screenupdate=0;
 		g_invalidatebytimer=0;
@@ -328,13 +344,13 @@ void CRmtView::OnDraw(CDC* pDC)
 	}
 
 	//MessageBeep(-1);
-	pDC->BitBlt(0,0,800,600,&m_mem_dc,0,0,SRCCOPY);
+	pDC->BitBlt(0,0,m_width,m_height,&m_mem_dc,0,0,SRCCOPY);
 
 }
 
 BOOL CRmtView::DrawAll()
 {
-	m_mem_dc.FillSolidRect(0,0,800,600,RGB(72,72,72));
+	m_mem_dc.FillSolidRect(0,0,m_width,m_height,RGB(72,72,72));
 
 	m_song.DrawInfo();
 	m_song.DrawSong();
@@ -351,7 +367,7 @@ BOOL CRmtView::DrawAll()
 	return 1;
 }
 
-extern g_rmtinstr[SONGTRACKS];
+extern int g_rmtinstr[SONGTRACKS];
 
 void CRmtView::DrawAnalyzer()
 {
@@ -444,7 +460,7 @@ void CRmtView::ReadConfig()
 	char line[1025];
 	char *tmp,*name,*value;
 	s.Format("%s%s",g_prgpath,CONFIG_FILENAME);
-	ifstream in(s,ios::nocreate);
+	ifstream in(s);
 	if (!in)
 	{
 		MessageBox("Can't read the config file\n"+s,"Read config",MB_ICONEXCLAMATION);
@@ -489,6 +505,8 @@ void CRmtView::ReadConfig()
 		if (NAME("KEYBOARD_ESCRESETATARISOUND")) g_keyboard_escresetatarisound = atoi(value);
 		else
 		if (NAME("KEYBOARD_ASKWHENCONTROL_S")) g_keyboard_askwhencontrol_s = atoi(value);
+		else
+		if (NAME("KEYBOARD_USENUMLOCK")) g_keyboard_usenumlock = atoi(value);
 		else
 		//midi
 		if (NAME("MIDI_IN")) m_midi.SetDevice(value);
@@ -556,6 +574,7 @@ void CRmtView::WriteConfig()
 	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES=" << g_keyboard_rememberoctavesandvolumes << endl;
 	ou << "KEYBOARD_ESCRESETATARISOUND=" << g_keyboard_escresetatarisound << endl;
 	ou << "KEYBOARD_ASKWHENCONTROL_S=" << g_keyboard_askwhencontrol_s << endl;
+	ou << "KEYBOARD_USENUMLOCK=" << g_keyboard_usenumlock << endl;
 	//midi
 	ou << "MIDI_IN=" << m_midi.GetMidiDevName() << endl;
 	ou << "MIDI_TR=" << g_midi_tr << endl;
@@ -595,6 +614,7 @@ void CRmtView::OnViewConfiguration()
 	dlg.m_keyboard_updowncontinue = g_keyboard_updowncontinue;
 	dlg.m_keyboard_rememberoctavesandvolumes = g_keyboard_rememberoctavesandvolumes;
 	dlg.m_keyboard_askwhencontrol_s = g_keyboard_askwhencontrol_s;
+	dlg.m_keyboard_usenumlock = g_keyboard_usenumlock;
 	//midi
 	dlg.m_midi_device = m_midi.GetMidiDevId();
 	dlg.m_midi_tr = g_midi_tr;
@@ -617,11 +637,12 @@ void CRmtView::OnViewConfiguration()
 		//keyboard
 		g_keyboard_layout = dlg.m_keyboard_layout;
 		g_keyboard_escresetatarisound = dlg.m_keyboard_escresetatarisound;
-		g_keyboard_playautofollow = dlg.m_keyboard_playautofollow;
 		g_keyboard_swapenter = dlg.m_keyboard_swapenter;
 		g_keyboard_updowncontinue=dlg.m_keyboard_updowncontinue;
 		g_keyboard_rememberoctavesandvolumes = dlg.m_keyboard_rememberoctavesandvolumes;
 		g_keyboard_askwhencontrol_s = dlg.m_keyboard_askwhencontrol_s;
+		g_keyboard_playautofollow = dlg.m_keyboard_playautofollow;
+		g_keyboard_usenumlock = dlg.m_keyboard_usenumlock;
 		//midi
 		if (dlg.m_midi_device>=0)
 		{
@@ -667,6 +688,50 @@ void GetCommandLineItem(CString& commandline,int& fromidx,int& toidx)
 	}
 }
 
+void CRmtView::UpdateModule()
+{
+	g_tracklines = (g_height - (TRACKS_Y+TRACKS_HEADER_H) - STATUS_H) / TRACK_LINE_H;
+	if (g_tracklines > m_song.GetTracks()->m_maxtracklen) {
+		g_tracklines = m_song.GetTracks()->m_maxtracklen;
+	}
+
+	g_song_x     = SONG_X;
+	g_songlines = 5;
+	if (g_tracks4_8 == 4 && 	g_active_ti==PARTTRACKS) {
+		g_songlines = 10;
+	} else if (g_width > 1028) {
+		g_song_x = 780;
+		g_songlines = (g_height - SONG_Y - SONG_HEADER_H - WIN_BORDER_B) / SONG_LINE_H;
+	}
+}
+
+bool CRmtView::Resize(int width, int height)
+{
+	if (width == m_width && height == m_height) return false;
+	if (m_width != 0) {
+		m_mem_dc.SelectObject((CBitmap*)0);
+		m_mem_bitmap.DeleteObject();
+		m_mem_dc.DeleteDC();
+	}
+	m_width = width;
+	m_height = height;
+	if (m_width != 0) {
+		CDC *dc = GetDC();
+		m_mem_bitmap.CreateCompatibleBitmap(dc,m_width,m_height);
+		m_mem_dc.CreateCompatibleDC(dc);
+		m_mem_dc.SelectObject(&m_mem_bitmap);
+		g_mem_dc = &m_mem_dc;
+		g_width = m_width;
+		g_height = m_height;
+
+//		UpdateModule();
+
+		m_mem_dc.FillSolidRect(0,0,m_width,m_height,RGB(0,0,0)); //inicializacni cerne pozadi
+		ReleaseDC(dc);
+	}
+	return true;
+}
+
 void CRmtView::OnInitialUpdate() 
 {
 	CView::OnInitialUpdate();
@@ -699,21 +764,23 @@ void CRmtView::OnInitialUpdate()
 	}
 
 
-	CDC *dc=GetDC();
 
 	//
 	m_song.SetRMTTitle();
 
-	//
-	m_mem_bitmap.CreateCompatibleBitmap(dc,800,600);
-	m_mem_dc.CreateCompatibleDC(dc);
-	m_mem_dc.SelectObject(&m_mem_bitmap);
+	// default size
+	Resize(800, 600);
+	CDC *dc=GetDC();
+//	m_mem_bitmap.CreateCompatibleBitmap(dc,800,600);
+//	m_mem_dc.CreateCompatibleDC(dc);
+//	m_mem_dc.SelectObject(&m_mem_bitmap);
 
-	m_gfx_bitmap.LoadBitmap(MAKEINTRESOURCE(IDB_GFX));
-	m_gfx_dc.CreateCompatibleDC(dc);
-	m_gfx_dc.SelectObject(&m_gfx_bitmap);
+	if (m_gfx_bitmap == (HBITMAP)0) {
+		m_gfx_bitmap.LoadBitmap(MAKEINTRESOURCE(IDB_GFX));
+		m_gfx_dc.CreateCompatibleDC(dc);
+		m_gfx_dc.SelectObject(&m_gfx_bitmap);
+	}
 
-	g_mem_dc = &m_mem_dc;
 	g_gfx_dc = &m_gfx_dc;
 	g_hwnd = AfxGetApp()->GetMainWnd()->m_hWnd;
 	g_viewhwnd = this->m_hWnd;
@@ -721,7 +788,7 @@ void CRmtView::OnInitialUpdate()
 	m_pen1 = new CPen(PS_SOLID,1,RGB(144,144,144));
 	m_penorig = g_mem_dc->SelectObject(m_pen1);
 
-	m_mem_dc.FillSolidRect(0,0,800,600,RGB(0,0,0)); //inicializacni cerne pozadi
+	m_mem_dc.FillSolidRect(0,0,m_width,m_height,RGB(0,0,0)); //inicializacni cerne pozadi
 
 	ReleaseDC(dc);
 
@@ -817,7 +884,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	int i;
 	int px,py;
 
-	CRect rec(SONG_X+6*8,SONG_Y+16,SONG_X+6*8+g_tracks4_8*3*8-8,SONG_Y+16+5*16);
+	CRect rec(g_song_x+SONG_LEFT_W,SONG_Y+SONG_HEADER_H,g_song_x+SONG_LEFT_W+g_tracks4_8*3*8-8,SONG_Y+SONG_HEADER_H+g_songlines*SONG_LINE_H);
 	if (rec.PtInRect(point))
 	{
 		//Song
@@ -825,7 +892,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		//
 		if (mousebutt & MK_LBUTTON)
 		{
-			BOOL r=m_song.SongCursorGoto(CPoint(point.x-(SONG_X+6*8),point.y-(SONG_Y+16)));
+			BOOL r=m_song.SongCursorGoto(CPoint(point.x-(g_song_x+SONG_LEFT_W),point.y-(SONG_Y+SONG_HEADER_H)));
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta!=0)
@@ -839,11 +906,12 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 5;
 	}
 
-	rec.SetRect(SONG_X+6*8,SONG_Y,SONG_X+6*8+g_tracks4_8*3*8-8,SONG_Y+16);
+	// Header
+	rec.SetRect(g_song_x+SONG_LEFT_W,SONG_Y,g_song_x+SONG_LEFT_W+g_tracks4_8*3*8-8,SONG_Y+SONG_HEADER_H);
 	if (rec.PtInRect(point))
 	{
 		//nad Songem L1-R4 pro channel on/off/solo/inverze
-		i = (point.x + 4 - (SONG_X+6*8)) / (8*3);
+		i = (point.x + 4 - (g_song_x+SONG_LEFT_W)) / (8*3);
 		if (i<0) i=0;
 		else
 		{	if (i>=g_tracks4_8) i=g_tracks4_8-1; }
@@ -987,14 +1055,16 @@ Instrument_Select_Dialog:
 			}
 			return 1;
 		}
-		rec.SetRect(TRACKS_X+6*8,TRACKS_Y+48,TRACKS_X+3*8+g_tracks4_8*8*11,TRACKS_Y+48+17*16);
+
+		// Track click
+		rec.SetRect(TRACKS_X+6*8,TRACKS_Y+TRACKS_HEADER_H,TRACKS_X+3*8+g_tracks4_8*8*11,TRACKS_Y+TRACKS_HEADER_H+g_tracklines*TRACK_LINE_H);
 		if (rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
 			//
 			if (mousebutt & MK_LBUTTON)
 			{
-				BOOL r=m_song.TrackCursorGoto(CPoint(point.x-(TRACKS_X+6*8),point.y-(TRACKS_Y+48)));
+				BOOL r=m_song.TrackCursorGoto(CPoint(point.x-(TRACKS_X+6*8),point.y-(TRACKS_Y+TRACKS_HEADER_H)));
 				if (r) SCREENUPDATE;
 			}
 			if (wheelzDelta!=0)
@@ -1395,7 +1465,11 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		// Atari_InstrumentTurnOff(m_song.GetActiveInstr());
 		//if (m_timeranalyzer) {	KillTimer(m_timeranalyzer);	m_timeranalyzer = 0; }
 		break;
+	case VK_MEDIA_STOP:
+		m_song.Stop();
+		break;
 
+	case VK_MEDIA_PLAY_PAUSE:
 	case VK_F2:
 		m_song.Play(MPLAY_SONG,g_shiftkey ^ g_keyboard_playautofollow);		//cely song od 0  (+shift => followplay)	
 		break;
@@ -1472,27 +1546,29 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 
 	case VK_NUMLOCK:
-		//g_numlock=GetNumLock();
-		if ( nFlags !=0 )
-		{
-			SetNumLock(0);				//Vypina NumLock
-			if ( (nFlags & 0x1ff) == 0) break;	//posun o +-1 se dela jen pri RUCNIM stlaceni NumLocku
-			int c = g_linesafter;
-			if (g_shiftkey)		//SHIFT+NUMLOCK
+		if (g_keyboard_usenumlock) {
+			//g_numlock=GetNumLock();
+			if ( nFlags !=0 )
 			{
-				c--;
-				if (c<0) c=8;
-			}
-			else 
-			{					//NUMLOCK
-				c++;
-				if (c>8) c=0;
-			}
-			CMainFrame *mf = ((CMainFrame*)AfxGetMainWnd());
-			if (mf)
-			{
-				g_linesafter = c;	//pokud by se nepodarilo MainFrame, tak ani nemeni g_linesafter
-				mf->m_c_linesafter.SetCurSel(g_linesafter);
+				SetNumLock(0);				//Vypina NumLock
+				if ( (nFlags & 0x1ff) == 0) break;	//posun o +-1 se dela jen pri RUCNIM stlaceni NumLocku
+				int c = g_linesafter;
+				if (g_shiftkey)		//SHIFT+NUMLOCK
+				{
+					c--;
+					if (c<0) c=8;
+				}
+				else 
+				{					//NUMLOCK
+					c++;
+					if (c>8) c=0;
+				}
+				CMainFrame *mf = ((CMainFrame*)AfxGetMainWnd());
+				if (mf)
+				{
+					g_linesafter = c;	//pokud by se nepodarilo MainFrame, tak ani nemeni g_linesafter
+					mf->m_c_linesafter.SetCurSel(g_linesafter);
+				}
 			}
 		}
 		break;
@@ -1673,6 +1749,7 @@ AllModesDefaultKey:
 KeyDownNoUndoCheckPoint:
 KeyDownFinish:
 
+//	TRACE("Key:%d\n", vk);
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 
 //	g_shiftkey = (GetAsyncKeyState(VK_SHIFT)!=NULL);
@@ -1721,9 +1798,18 @@ void CRmtView::OnFileOpen()
 	m_song.FileOpen();
 }
 
+extern CRmtApp theApp;
+
+void CRmtView::OnFileOpenRecent(UINT i) 
+{	
+	int nIndex = i - ID_FILE_MRU_FILE1;
+	CString& s = theApp.GetRecentFile(nIndex);
+	m_song.FileOpen(s);
+}
+
 void CRmtView::OnFileReload() 
 {
-	m_song.FileReload();	
+	m_song.FileReload();
 }
 
 void CRmtView::OnUpdateFileReload(CCmdUI* pCmdUI) 
@@ -2883,12 +2969,10 @@ void CRmtView::OnSetFocus(CWnd* pOldWnd)
 	CView::OnSetFocus(pOldWnd);
 	
 	// TODO: Add your message handler code here
-//*
-//	Beep(500,200);
-	g_numlock=GetNumLock();
-//	if (!g_rmtexit) SetNumLock(0);
-	SetNumLock(0);
-	// */
+	if (g_keyboard_usenumlock) {
+		g_numlock=GetNumLock();
+		SetNumLock(0);
+	}
 
 	/*
 	g_capslock_other=GetCapsLock();
@@ -2919,8 +3003,9 @@ void CRmtView::OnKillFocus(CWnd* pNewWnd)
 
 	// TODO: Add your message handler code here
 //	Beep(300,200);	
-	
-	SetNumLock(g_numlock);
+	if (g_keyboard_usenumlock) {	
+		SetNumLock(g_numlock);
+	}
 
 	/*
 	g_capslock_rmt=GetCapsLock();
@@ -3015,15 +3100,20 @@ void CRmtView::OnAppExit()
 
 void CRmtView::OnWantExit() //vola se z menu File/Exit ID_WANTEXIT misto puvodniho ID_APP_EXIT
 {
-	SetNumLock(g_numlock);
-	m_setnumlockfunction=0;
+	if (g_keyboard_usenumlock) {
+
+		SetNumLock(g_numlock);
+		m_setnumlockfunction=0;
+	}
 	//SetCapsLock(g_capslock_other);
 	//SetScrollLock(g_scrolllock_other);
 	if ( m_song.WarnUnsavedChanges() )
 	{
-		m_setnumlockfunction=1;
-		g_numlock=GetNumLock();
-		SetNumLock(0);
+		if (g_keyboard_usenumlock) {
+			m_setnumlockfunction=1;
+			g_numlock=GetNumLock();
+			SetNumLock(0);
+		}
 		//SetCapsLock(g_capslock_rmt);
 		//SetScrollLock(g_scrolllock_rmt);
 		return; //nema byt exit

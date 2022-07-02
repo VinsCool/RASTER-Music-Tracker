@@ -8,7 +8,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <fstream.h>	/* need for Load/SaveBinaryFile */
+#include <fstream>	/* need for Load/SaveBinaryFile */
+
+using namespace std;
 
 //#include "MainFrm.h"
 //#include "global.h"
@@ -213,28 +215,32 @@ void Memory_Clear()
 	memset(g_atarimem,0,65536);
 }
 
-int LoadBinaryBlock(ifstream& in,unsigned char* memory,WORD& fromadr, WORD& toadr)
+bool LoadWord(ifstream& in, WORD & w)
 {
-	unsigned char db,hb;
-	if (in.eof()) return 0;
+	unsigned char a1, a2;
+	char db,hb;
+	if (in.eof()) return false;
 	in.get(db);
-	if (in.eof()) return 0;
-	in.get(hb);
-	fromadr=db + (hb<<8);
+	a1 = (unsigned char)db;
+	if (in.eof()) return false;
+	in.get(hb);	
+	a2 = (unsigned char)hb;
+	w=a1 + (a2<<8);
+	return true;
+}
+
+int LoadBinaryBlock(ifstream& in,unsigned char* memory,WORD& fromadr, WORD& toadr)
+//Return number of bytes red. (0 if there was some error).
+{
+	if (!LoadWord(in, fromadr)) return 0;
 	if (fromadr==0xffff)
 	{
-		in.get(db);
-		if (in.eof()) return 0;
-		in.get(hb);
-		fromadr=db + (hb<<8);
+		if (!LoadWord(in, fromadr)) return 0;
 	}
-	in.get(db);
-	if (in.eof()) return 0;
-	in.get(hb);
-	toadr=db + (hb<<8);
+	if (!LoadWord(in, toadr)) return 0;
 
 	if (toadr<fromadr) return 0;
-	in.read(memory+fromadr,toadr-fromadr+1);
+	in.read((char*)memory+fromadr,toadr-fromadr+1);
 	return toadr-fromadr+1;
 }
 
@@ -244,7 +250,7 @@ int LoadBinaryFile(char *fname, unsigned char *memory,WORD& minadr,WORD& maxadr)
 	
 	WORD bfrom,bto;
 
-	ifstream fin(fname,ios::binary|ios::nocreate);
+	ifstream fin(fname,ios::binary|ios::_Nocreate);
 	if (!fin) return 0;
 	fsize=0;
 	minadr = 0xffff; maxadr=0; //opacne meze minimalni a maximalni adresy
@@ -299,7 +305,7 @@ int SaveBinaryBlock(ofstream& out,unsigned char* memory,WORD fromadr,WORD toadr,
 	out.put((unsigned char)(fromadr >> 8));
 	out.put((unsigned char)(toadr & 0xff));
 	out.put((unsigned char)(toadr >> 8));
-	out.write(memory+fromadr,toadr-fromadr+1);
+	out.write((char*)memory+fromadr,toadr-fromadr+1);
 	return toadr-fromadr+1;	
 }
 

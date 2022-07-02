@@ -22,6 +22,7 @@ CConfigDlg::CConfigDlg(CWnd* pParent /*=NULL*/)
 	//{{AFX_DATA_INIT(CConfigDlg)
 	m_midi_tr = FALSE;
 	m_keyboard_playautofollow = FALSE;
+	m_keyboard_usenumlock = TRUE;
 	m_midi_volumeoffset = 0;
 	m_tracklinehighlight = 0;
 	m_ntsc = FALSE;
@@ -41,7 +42,7 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CConfigDlg)
-	DDX_Control(pDX, IDC_TRACKCURSORVERTICALRANGE, m_c_trackcursorverticalrange);
+//	DDX_Control(pDX, IDC_TRACKCURSORVERTICALRANGE, m_c_trackcursorverticalrange);
 	DDX_Control(pDX, IDC_KEYBOARD_LAYOUT, m_keyboard_c_layout);
 	DDX_Control(pDX, IDC_MIDI_DEVICE, m_midi_c_device);
 	DDX_Check(pDX, IDC_MIDI_TR, m_midi_tr);
@@ -59,6 +60,7 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_KEYBOARD_REMEMBEROCTAVESANDVOLUMES, m_keyboard_rememberoctavesandvolumes);
 	DDX_Check(pDX, IDC_KEYBOARD_ESCRESETATARISOUND, m_keyboard_escresetatarisound);
 	DDX_Check(pDX, IDC_KEYBOARD_ASKWHENCONTROL_S, m_keyboard_askwhencontrol_s);
+	DDX_Check(pDX, IDC_KEYBOARD_USENUMLOCK, m_keyboard_usenumlock);
 	//}}AFX_DATA_MAP
 }
 
@@ -98,7 +100,7 @@ BOOL CConfigDlg::OnInitDialog()
 	m_keyboard_c_layout.AddString("Layout 2");
 	m_keyboard_c_layout.SetCurSel(m_keyboard_layout);
 
-	m_c_trackcursorverticalrange.SetCurSel(m_trackcursorverticalrange);
+//	m_c_trackcursorverticalrange.SetCurSel(m_trackcursorverticalrange);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
@@ -108,7 +110,7 @@ void CConfigDlg::OnOK()
 {
 	m_midi_device = m_midi_c_device.GetCurSel()-1;
 	m_keyboard_layout = m_keyboard_c_layout.GetCurSel();
-	m_trackcursorverticalrange = m_c_trackcursorverticalrange.GetCurSel();
+//	m_trackcursorverticalrange = m_c_trackcursorverticalrange.GetCurSel();
 	//
 	CDialog::OnOK();
 }
@@ -207,3 +209,5 @@ void CConfigPathsDlg::OnButton3()
 {
 	BrowsePath(IDC_EDIT3);	
 }
+
+

@@ -16,7 +16,8 @@ int Hexstr(char* txt,int len)
 {
 	int r=0;
 	char a;
-	for(int i=0; (a=txt[i]) && i<len; i++)
+	int i;
+	for(i=0; (a=txt[i]) && i<len; i++)
 	{
 		if (a>='0' && a<='9') 
 			r = (r<<4) + (a-'0');
@@ -59,6 +60,13 @@ void Trimstr(char* txt)
 BOOL g_closeapplication=0;
 CDC* g_mem_dc=NULL;
 CDC* g_gfx_dc=NULL;
+
+int g_width = 0;
+int g_height = 0;
+int g_tracklines = 8;
+int g_songlines = 3;
+int g_song_x    = SONG_X;
+
 HWND g_hwnd=NULL;
 HWND g_viewhwnd=NULL;
 
@@ -107,7 +115,7 @@ BOOL g_ntsc=0;				//NTSC (60Hz)
 BOOL g_nohwsoundbuffer=0;	//Don't use hardware soundbuffer
 int g_trackcursorverticalrange=6;	//maximalni volnost kurzoru (default 6)
 int g_cursoractview=0;		//
-
+int g_track_scroll_margin = 3;
 int g_channelon[SONGTRACKS];
 int g_rmtinstr[SONGTRACKS];
 
@@ -137,6 +145,7 @@ CString g_path_tracks; //default cesta pro tracky
 int g_keyboard_layout=0;
 BOOL g_keyboard_swapenter=0;
 BOOL g_keyboard_playautofollow=0;
+BOOL g_keyboard_usenumlock=1;
 BOOL g_keyboard_updowncontinue=1;
 BOOL g_keyboard_rememberoctavesandvolumes=1;
 BOOL g_keyboard_escresetatarisound=0;
@@ -168,7 +177,8 @@ void TextXYSelN(char *txt,int n,int x,int y,int c=0)
 	//znak indexu n bude mit "select" barvu, ostatni c
 	char a;
 	c=c<<4;
-	for(int i=0; a=(txt[i]); i++,x+=8)
+	int i;
+	for(i=0; a=(txt[i]); i++,x+=8)
 		g_mem_dc->BitBlt(x,y,8,16,g_gfx_dc,(a & 0x7f)<<3,(i==n)? COLOR_SELECTED*16:c,SRCCOPY);
 	if (i==n) //prvni znak za koncem retezce
 		g_mem_dc->BitBlt(x,y,8,16,g_gfx_dc,32<<3,COLOR_SELECTED*16,SRCCOPY);
@@ -206,7 +216,7 @@ void TextMiniXY(char *txt,int x,int y,int c=0)
 
 void IconMiniXY(int icon,int x,int y)
 {
-	static c=128-6;
+	static int c=128-6;
 	if (icon>=1 && icon<=4) g_mem_dc->BitBlt(x,y,32,6,g_gfx_dc,(icon-1) * 32,c,SRCCOPY);
 }
 
@@ -390,7 +400,8 @@ int EditText(int vk,int shift,int control, char* txt,int& cur, int max)
 		if (vk==VK_END)
 		{
 			//CString s; s.Format("'%s'",txt); MessageBox(g_hwnd,s,"Show",MB_OK);
-			for(int j=max; j>=0 && (txt[j]==' '); j--);
+			int j;
+			for(j=max; j>=0 && (txt[j]==' '); j--);
 			cur=(j<max)? j+1:max;
 		}
 

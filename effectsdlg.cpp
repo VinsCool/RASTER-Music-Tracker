@@ -1566,7 +1566,7 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CChannelsSelectionDlg message handlers
 
-const idcchan[8]={IDC_CHECK1,IDC_CHECK2,IDC_CHECK3,IDC_CHECK4,IDC_CHECK10,IDC_CHECK11,IDC_CHECK12,IDC_CHECK13};
+const int idcchan[8]={IDC_CHECK1,IDC_CHECK2,IDC_CHECK3,IDC_CHECK4,IDC_CHECK10,IDC_CHECK11,IDC_CHECK12,IDC_CHECK13};
 
 BOOL CChannelsSelectionDlg::OnInitDialog() 
 {

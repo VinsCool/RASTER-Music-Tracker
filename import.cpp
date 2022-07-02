@@ -68,7 +68,7 @@ int CConvertTracks::Init()
 		dm->shift=0;
 		dm->leftright=0;
 	}
-	for(i=0; i<INSTRSNUM; i++)
+	for(int i=0; i<INSTRSNUM; i++)
 	{
 		m_imark[i].maxvolL=0;
 		m_imark[i].maxvolR=0;
@@ -926,8 +926,8 @@ int CSong::ImportMOD(ifstream& in)
 	BYTE a;
 	BYTE head[1085];
 
-	in.read(head,1084);
-	int flen=in.gcount();
+	in.read((char *)&head,1084);
+	int flen=(int)in.gcount();
 
 	head[1084]=0;	//ukonceni za hlavickou
 
@@ -938,7 +938,7 @@ int CSong::ImportMOD(ifstream& in)
 	}
 
 	in.seekg(0,ios::end);
-	int modulelength=in.tellg();
+	int modulelength=(int)in.tellg();
 	
 	int chnls=0;
 	int song=950;	//kde zacina song u 31 samploveho modulu
@@ -999,8 +999,8 @@ int CSong::ImportMOD(ifstream& in)
 	
 	in.clear();
 	in.seekg(0);		//znovu na zacatek
-	in.read(mem,memlen);	//nacte modul
-	flen=in.gcount();
+	in.read((char*)mem,memlen);	//nacte modul
+	flen=(int)in.gcount();
 	if (flen!=memlen)
 	{
 		MessageBox(g_hwnd,"Bad file.","Error",MB_ICONSTOP);
@@ -1140,8 +1140,8 @@ int CSong::ImportMOD(ifstream& in)
 	}
 	imark[0].trackvolumeincrease=1; //kvuli volume slide, pokud ji provadi bez udani samplu (tj. samplem cislo 0)
 
-	const TABLENOTES=73;
-	const pertable[TABLENOTES]={															//period table
+	const int TABLENOTES=73;
+	const int pertable[TABLENOTES]={															//period table
 	0x06B0,0x0650,0x05F4,0x05A0,0x054C,0x0500,0x04B8,0x0474,0x0434,0x03F8,0x03C0,0x038B,	//C3-B3
 	0x0358,0x0328,0x02FA,0x02D0,0x02A6,0x0280,0x025C,0x023A,0x021A,0x01FC,0x01E0,0x01C5,	//C4-B4
 	0x01AC,0x0194,0x017D,0x0168,0x0153,0x0140,0x012E,0x011D,0x010D,0x00FE,0x00F0,0x00E2,	//C5-B5
@@ -1261,7 +1261,9 @@ int CSong::ImportMOD(ifstream& in)
 			BYTE *tdata=pdata+ch*4;	//zacatek zdroje dat tracku
 			TTrack *tr=m_tracks.GetTrack(destnum);	//cilovy track
 			m_tracks.ClearTrack(destnum);	//vycisti ho nejdriv
-			for(int sline=ThisPatternFromRow,dline=0; sline<64; sline++,dline++)
+			int dline;
+			int sline;
+			for(sline=ThisPatternFromRow,dline=0; sline<64; sline++,dline++)
 			{
 				BYTE *bdata=tdata+sline*chnls*4;		//ukazatel na 4 bytovy blok
 
@@ -1656,7 +1658,7 @@ OutOfSongLines:
 
 		in.clear();		//kvuli dosahovani konce, kdy se nastavi eof
 		in.seekg(smpfrom,ios::beg);
-		if (in.tellg()!=smpfrom)
+		if ((int)in.tellg()!=smpfrom)
 		{
 			CString s;
 			s.Format("Can't seek sample #%02X data.",i);
@@ -1664,7 +1666,7 @@ OutOfSongLines:
 		}
 		else
 		{
-			in.read(smpdata,samplen);
+			in.read((char*)smpdata,samplen);
 			if (in.gcount()!=samplen)
 			{
 				CString s;
@@ -1713,7 +1715,7 @@ OutOfSongLines:
 
 		double sampvol= (x_decreaseinstrument)? ((double)im->volume/0x3f) : 1;	//desetinne cislo 0 az 1
 		if (x_volumeincrease) sampvol/=im->trackvolumeincrease;		//snizi dle toho jak zvysil volume v trackach
-		for(k=0; k<ix; k++)
+		for(int k=0; k<ix; k++)
 		{
 			int avol = (int) ((double)16*((double)sumtab[k]/maxsum)*sampvol+0.5);
 			if (avol>15) avol=15;
