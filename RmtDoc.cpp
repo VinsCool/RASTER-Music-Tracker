@@ -3,9 +3,7 @@
 
 #include "stdafx.h"
 #include "Rmt.h"
-
 #include "RmtDoc.h"
-
 #include "RmtView.h"
 
 #ifdef _DEBUG
@@ -13,7 +11,6 @@
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
-
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtDoc
@@ -33,7 +30,6 @@ END_MESSAGE_MAP()
 CRmtDoc::CRmtDoc()
 {
 	// TODO: add one-time construction code here
-
 }
 
 CRmtDoc::~CRmtDoc()
@@ -50,8 +46,6 @@ BOOL CRmtDoc::OnNewDocument()
 
 	return TRUE;
 }
-
-
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtDoc serialization
@@ -86,18 +80,3 @@ void CRmtDoc::Dump(CDumpContext& dc) const
 /////////////////////////////////////////////////////////////////////////////
 // CRmtDoc commands
 
-/*
-BOOL CRmtDoc::SaveModified() 
-{
-	//Return Value
-	//Nonzero if it is safe to continue and close the document; 0 if the document should not be closed.
-// / *
-	// TODO: Add your specialized code here and/or call the base class
-	CRmtView* fw = (CRmtView*)(AfxGetApp()->GetMainWnd());
-	if ( !fw || !(fw->m_song.WarnUnsavedChanges()) ) return 1; //muze zavrit
-
-	return 0; //nezavirat
-// * /
-	return CDocument::SaveModified();
-}
-*/

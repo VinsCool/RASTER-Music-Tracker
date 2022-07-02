@@ -1,13 +1,13 @@
 // Rmt.cpp : Defines the class behaviors for the application.
+// originally made by Raster, 2002-2009
+// reworked by VinsCool, 2021-2022
 //
 
 #include "stdafx.h"
 #include "Rmt.h"
-
 #include "MainFrm.h"
 #include "RmtDoc.h"
 #include "RmtView.h"
-#include <afxadv.h>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -55,8 +55,6 @@ BOOL CRmtApp::InitInstance()
 	//  of your final executable, you should remove from the following
 	//  the specific initialization routines you do not need.
 
-	CoInitialize(NULL);
-
 #ifdef _AFXDLL
 //	Enable3dControls();			// Call this when using MFC in a shared DLL
 #else
@@ -68,8 +66,9 @@ BOOL CRmtApp::InitInstance()
 	// such as the name of your company or organization.
 	SetRegistryKey(_T("Local AppWizard-Generated Applications"));
 
-	LoadStdProfileSettings(5);  // Load standard INI file options (including MRU)
+	LoadStdProfileSettings();  // Load standard INI file options (including MRU)
 
+	CoInitialize(NULL);
 	// Register the application's document templates.  Document templates
 	//  serve as the connection between documents, frame windows and views.
 
@@ -93,14 +92,13 @@ BOOL CRmtApp::InitInstance()
 	m_pMainWnd->ShowWindow(SW_SHOW);
 	m_pMainWnd->UpdateWindow();
 
-	// Inicializace nahodneho cisla
+	// Initialization of a random number
 	srand( (unsigned)time( NULL ) );
 
-	//PostMessage(m_pMainWnd->m_hWnd,WM_COMMAND,ID_APP_ABOUT,0); //aby se pak nejdriv vyvolal about dialog
+	//PostMessage(m_pMainWnd->m_hWnd,WM_COMMAND,ID_APP_ABOUT,0); //so that the dialogue can be triggered first
 
 	return TRUE;
 }
-
 
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
@@ -114,6 +112,7 @@ public:
 	//{{AFX_DATA(CAboutDlg)
 	enum { IDD = IDD_ABOUTBOX };
 	CString	m_rmtversion;
+	CString m_driverversion;
 	CString	m_rmtauthor;
 	CString	m_credits;
 	CString	m_about6502;
@@ -138,6 +137,7 @@ CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
 {
 	//{{AFX_DATA_INIT(CAboutDlg)
 	m_rmtversion = _T("");
+	m_driverversion = _T("");
 	m_rmtauthor = _T("");
 	m_credits = _T("");
 	m_about6502 = _T("");
@@ -150,6 +150,7 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CAboutDlg)
 	DDX_Text(pDX, IDC_RMTVERSION, m_rmtversion);
+	DDX_Text(pDX, IDC_DRIVERVERSION, m_driverversion);
 	DDX_Text(pDX, IDC_RMTAUTHOR, m_rmtauthor);
 	DDX_Text(pDX, IDC_CREDITS, m_credits);
 	DDX_Text(pDX, IDC_ABOUT6502, m_about6502);
@@ -169,8 +170,27 @@ void CRmtApp::OnAppAbout()
 	CAboutDlg aboutDlg;
 	aboutDlg.m_rmtversion.LoadString(IDS_RMTVERSION);
 	aboutDlg.m_rmtauthor.LoadString(IDS_RMTAUTHOR);
+	aboutDlg.m_driverversion = g_driverversion;
+	aboutDlg.m_credits =
+		"Bob!k/C.P.U., JirkaS/C.P.U., PG, Fandal, Atari800 emulator developer team, Fox/Taquart, Jaskier/Taquart, Tatqoo/Taquart, Sack/Cosine, Grayscale music band, LiSU, Miker, Dely\n\n"
+		"RASTER Music Tracker is now open source! Contributions are welcome, and appreciated, for making this program better in any way!\n\n"
+		"Special thanks to Bob!k and Fandal for originally granting me the permission to access the original sources, and ultimately agree to allow me setting up a Github repository.\n\n"
+		"Also thanks to Mathy for the original email communication, this is where this adventure took a new and unexpected twist!\n\n"
+		"I also want to thank Ivop for helping me figure out how to use git, and how to set up the repository from the original sources, where I have then added my own contributions for the last months.\n\n"
+		"--------------------------------------------------------------------------------------\n\n"
+		"Additional credits since version 1.31.0:\n\n"
+		"New features, bugfixes and improvements by VinsCool\n\n"
+		"POKEY Tuning Calculations programming by VinsCool, with helpful advices from synthpopalooza and OPNA2608\n\n"
+		"SAP-R Dumper and VUPlayer programming by VinsCool\n\n"
+		"LZSS compression programming by DMSC, C++ port by VinsCool\n\n"
+		"Unrolled LZSS music driver by Rensoupp, with few changes and new features by VinsCool\n\n"
+		"New Bitmap graphics, ideas and beta testing by PG\n\n"
+		"Ideas, features suggestions and inspiration by PG, Enderdude, Spring, Ivop, Tatqoo, Miker\n\n" 
+		"Spiteful inspiration by Rensoupp, Emkay, and anyone who challenged me to try doing things believed impossible or outside of my abilities ;)\n\n"
+		"Special thanks to everyone from The Chiptune Café, Atari Age, and GBAtemp who motivated me to work harder on the revival of RMT!\n\n"
+		"If you think anyone was forgotten or credits were incorrectly attributed, feel free to pester VinsCool about it :D\n\n"
+		"And now, time to make some Atari 8-bit music! Thanks to all dedicated fans for keeping the scene alive!";
 
-	aboutDlg.m_credits="Bob!k/C.P.U., JirkaS/C.P.U., PG, Fandal, Atari800 emulator developer team, Fox/Taquart, Jaskier/Taquart, Tatqoo/Taquart, Sack/Cosine, Grayscale music band, LiSU, Miker, Dely";
 	aboutDlg.m_credits.Replace("\n","\x0d\x0a");
 	aboutDlg.m_aboutpokey=g_aboutpokey;
 	aboutDlg.m_aboutpokey.Replace("\n","\x0d\x0a");
@@ -180,21 +200,6 @@ void CRmtApp::OnAppAbout()
 	aboutDlg.DoModal();
 }
 
-CString & CRmtApp::GetRecentFile(int i)
-{
-	return (*m_pRecentFileList)[i];
-}
-
 /////////////////////////////////////////////////////////////////////////////
 // CRmtApp message handlers
 
-
-/*
-BOOL CRmtApp::SaveAllModified() 
-{
-	// TODO: Add your specialized code here and/or call the base class
-	MessageBox(g_hwnd,"SaveAllModified()","MSG",IDOK);
-	
-	return CWinApp::SaveAllModified();
-}
-*/

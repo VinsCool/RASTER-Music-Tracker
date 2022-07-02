@@ -2,15 +2,15 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{1b4264d2-cbbd-41ae-8a17-64940f1311a5}</UniqueIdentifier>
+      <UniqueIdentifier>{d8f4f65e-b0ae-46d4-8e0c-e39f57b43b77}</UniqueIdentifier>
       <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
     </Filter>
     <Filter Include="Header Files">
-      <UniqueIdentifier>{194062d9-2407-44f6-9f13-8ff1bbbda33f}</UniqueIdentifier>
+      <UniqueIdentifier>{6cfabe39-db36-40b3-9b22-60327880bde5}</UniqueIdentifier>
       <Extensions>h;hpp;hxx;hm;inl</Extensions>
     </Filter>
     <Filter Include="Resource Files">
-      <UniqueIdentifier>{86ecec4c-40f4-49e4-927f-544c6040f8a5}</UniqueIdentifier>
+      <UniqueIdentifier>{9f40edfd-959f-43b9-98e8-183315831f97}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
   </ItemGroup>
@@ -33,16 +33,7 @@
     <ClCompile Include="FilePathDlg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="import.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="importdlgs.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="MainFrm.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="r_music.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Rmt.cpp">
@@ -61,6 +52,27 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="XPokey.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="importdlgs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="r_music.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Tuning.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TuningDlg.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lzss_sap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="getopt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libfmemopen.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -88,16 +100,7 @@
     <ClInclude Include="FilePathDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="global.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="importdlgs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MainFrm.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="r_music.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
@@ -121,59 +124,88 @@
     <ClInclude Include="XPokey.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="global.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="importdlgs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="r_music.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tuning.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TuningDlg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="getopt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lzss_sap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libfmemopen.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="res\asciagr.bmp">
+    <Image Include="res\Rmt.ico">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\bmp00001.bmp">
+    </Image>
+    <Image Include="res\RmtDoc.ico">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\cur00001.cur">
+    </Image>
+    <Image Include="res\Toolbar.bmp">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\cur00002.cur">
+    </Image>
+    <Image Include="res\asciagr.bmp">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\cur00003.cur">
+    </Image>
+    <Image Include="res\bmp00001.bmp">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\cursor1.cur">
+    </Image>
+    <Image Include="res\icon1.ico">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\cursorch.cur">
+    </Image>
+    <Image Include="res\toolbar1.bmp">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\cursoren.cur">
+    </Image>
+    <Image Include="res\toolbarp.bmp">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\cursorgo.cur">
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\Rmt.rc2">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\icon1.ico">
+    </None>
+    <None Include="res\cur00001.cur">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\Rmt.ico">
+    </None>
+    <None Include="res\cur00002.cur">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\Rmt.rc2">
+    </None>
+    <None Include="res\cur00003.cur">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\RmtDoc.ico">
+    </None>
+    <None Include="res\cursor1.cur">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\Toolbar.bmp">
+    </None>
+    <None Include="res\cursorch.cur">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\toolbar1.bmp">
+    </None>
+    <None Include="res\cursoren.cur">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="res\toolbarp.bmp">
+    </None>
+    <None Include="res\cursorgo.cur">
       <Filter>Resource Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="changes.txt" />
-    <CustomBuild Include="midi.txt" />
-    <CustomBuild Include="ReadMe.txt" />
-    <CustomBuild Include="todo.txt" />
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="moduleformatdescription.txt" />
+    <Text Include="rmt_format1x.txt" />
+    <Text Include="todo eng.txt" />
+    <Text Include="trackerdesign_x_uzsi.txt" />
+    <Text Include="RMT CHANGES WIP.txt" />
   </ItemGroup>
 </Project>

@@ -45,9 +45,6 @@ public:
 
 	CSong *m_song;
 
-	//int m_par1,m_par2,m_par3;
-	//char m_ch1,m_ch2,m_ch3;
-
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CEffectsDlg)

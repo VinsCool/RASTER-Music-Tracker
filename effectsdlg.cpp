@@ -12,8 +12,6 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-//#include "global.h"
-
 int Hexstr(char* txt,int len);
 BOOL ModifyTrack(TTrack *track,int from,int to,int instrnumonly,int tuning,int instradd,int volumep);
 
@@ -76,29 +74,29 @@ struct TEffs {
 TEffs effects[NUMBEROFEFFECT]={
 	{	
 		"Fade in/out",
-		"Initial volume level 0..100 (%)",
+		"Initial volume level, 0-100 (%)",
 		"100",
-		"Final volume level 0..100 (%)",
+		"Final volume level, 0-100 (%)",
 		"100",
 		"Line step",
 		"1"
 	},
 	{
-		"Modify notes, instruments and volumes",
-		"Notes tuning (+- halftones)",
+		"Modify notes, instruments and volume values",
+		"Notes tuning (+- semitones)",
 		"0",
-		"Instruments numbers change (+- shift value)",
+		"Instruments used (+- offset value)",
 		"0",
-		"Volume change (%)",
+		"Volume changes (%)",
 		"100"
 	},
 	{
 		"Echo",
 		"Delay (lines)",
 		"3",
-		"Fade out level 0..100 % (or V1..V15 for linear volume subtraction)",
+		"Fade out level 0-100 (%), or V1-V15 for linear volume subtraction",
 		"20",
-		"Minimal volume 0..15 (or !0..!15 for echo ending on minimal volume)",
+		"Minimal volume 0-15, or !0-!15 for ending echo on minimal volume",
 		"1"
 	},
 	{
@@ -112,20 +110,20 @@ TEffs effects[NUMBEROFEFFECT]={
 	},
 	{
 		"Volume humanize",
-		"Random level 0..100 (%)",
+		"Random level 0-100 (%)",
 		"30",
-		"Minimal volume 0..15",
+		"Minimal volume 0-15",
 		"1",
 		"Line step",
 		"1"
 	},
 	{
 		"Volume set/remove",
-		"Volume range - minimum 0..15",
+		"Volume range - minimum 0-15",
 		"0",
-		"Volume range - maximum 0..15",
+		"Volume range - maximum 0-15",
 		"15",
-		"Set volume to 0..15 (or 'X' for remove whole note event)",
+		"Set volume to 0-15, or 'X' to remove whole note events",
 		"15"
 	}
 };
@@ -137,7 +135,7 @@ BOOL CEffectsDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
-	//kopie puvodniho tracku do m_trackorig
+	//a copy of the original track to m_trackorig
 	memcpy(m_trackorig,m_trackptr,sizeof(TTrack));
 
 	m_effai = g_effai;
@@ -166,28 +164,19 @@ void CEffectsDlg::OnSelchangeEffCombo()
 	m_edit3.EnableWindow(effects[m_effai].p3[0]!=0);
 
 	if (eff_ed[m_effai][0]=="") 
-		OnDefault();	//jestlize je P1 parametr prazdny, pak nastavi vsechny defaultne
+		OnDefault();	//if the P1 parameter is empty, then set all defaults
 	else
 	{
 		m_edit1.SetWindowText(eff_ed[m_effai][0]);
 		m_edit2.SetWindowText(eff_ed[m_effai][1]);
 		m_edit3.SetWindowText(eff_ed[m_effai][2]);
 	}
-/*
-	CString s;
-	m_edit1.GetWindowText(s);
-	eff_ed[m_effai][0]=s;
-	m_edit2.GetWindowText(s);
-	eff_ed[m_effai][1]=s;
-	m_edit3.GetWindowText(s);
-	eff_ed[m_effai][2]=s;
-*/
 }
 
-void ZpracujChPar(CString& s,char& ch,int& par)
+void ZpracujChPar(CString& s,char& ch,int& par) //"ProcessChPar" in English lol
 {
-	//s je napr. "0" , "15", "-5", "100", "E10", "E -5", "X"
-	//rozdeli to na prvni ze znaku (char) a cislo (integer)
+	//s is, for example, "0" , "15", "-5", "100", "E10", "E -5", "X"
+	//split it into the first character (char) and number (integer)
 	int len=s.GetLength();
 	int i;
 	char a;
@@ -216,7 +205,6 @@ void CEffectsDlg::OnOK()
 void CEffectsDlg::OnCancel() 
 {
 	OnRestore();
-	
 	CDialog::OnCancel();
 }
 
@@ -273,10 +261,10 @@ void CEffectsDlg::PerformEffect()
 	TTrack td;
 	memcpy(&td,m_trackorig,sizeof(TTrack));
 	
-	float fvolume[TRACKLEN]; //hlasitosti v realnych cislech
+	float fvolume[TRACKLEN]; //volume in real numbers
 	for(i=bfro; i<=bto; i++) fvolume[i]=(float)td.volume[i];
 
-	int continstr[TRACKLEN]; //cisla instrumentu prubezna
+	int continstr[TRACKLEN]; //the instrument numbers are continuous
 	int lasti=-1;
 	for(i=0; i<=bto; i++)
 	{
@@ -284,7 +272,7 @@ void CEffectsDlg::PerformEffect()
 		if (i>=bfro) continstr[i]=lasti;
 	}
 
-	TTrack tempt;	//pomocny prazdny track
+	TTrack tempt;	//auxiliary empty track
 	for (i=0;i<TRACKLEN;i++) tempt.note[i]=tempt.instr[i]=tempt.volume[i]=tempt.speed[i]=-1;
 
 	switch(m_effai)
@@ -295,10 +283,10 @@ void CEffectsDlg::PerformEffect()
 			for(i=bfro; i<=bto; i+=p3)	//line step p3
 			{
 				if (!m_all && m_ainstr!=continstr[i]) continue;
-				if (td.volume[i]<0) continue;		//radky bez volume nikdy
+				if (td.volume[i]<0) continue;		//never without volume
 				float proc=(float)p1/100;
 				if (i>0) proc+=(float)(p2-p1)/(bto-bfro)*(i-bfro)/100;
-				h=(int)(proc*td.volume[i]+0.5);	//zmena hlasitosti (zaokrouhleno)
+				h=(int)(proc*td.volume[i]+0.5);	//volume change (rounded)
 				if (h<0) h=0;
 				else
 				if (h>15) h=15;
@@ -318,12 +306,12 @@ void CEffectsDlg::PerformEffect()
 		{
 			float dvol=0;
 			if (ch2=='V')
-			{	//linearni ubyvani
+			{	//linear calculations
 				if (p2<-15) p2=-15;
 				if (p2>15) p2=15;
 			}
 			else
-			{	//podilove ubyvani
+			{	//percentage calculations
 				dvol = (1-((float)p2/100));
 				if (dvol<-15) dvol=-15;
 				if (dvol>15) dvol=15;
@@ -333,33 +321,33 @@ void CEffectsDlg::PerformEffect()
 
 			for(i=bfro; i<=bto; i++)
 			{
-				if (td.note[i]<0) continue;	//neni tam nota
-				if (!m_all && td.instr[i]!=m_ainstr) continue;	//ne pro tento instrument
-				j=i+p1;	//echo o p1 dal
-				if (j<bfro || j>bto) continue;		//echo uz vychazi mimo blok
-				if (td.note[j]>=0) continue;	//na vyslednem miste uz nejaka nota je
+				if (td.note[i]<0) continue;	//there is no note
+				if (!m_all && td.instr[i]!=m_ainstr) continue;	//not for this instrument
+				j=i+p1;	//echo for p1
+				if (j<bfro || j>bto) continue;		//echo is coming out of the block
+				if (td.note[j]>=0) continue;	//there is already a note in the final place
 
 				if (ch2=='V')
-					nv=fvolume[i]-p2;	//linearni ubyvani
+					nv=fvolume[i]-p2;	//linear calculations
 				else
-					nv=fvolume[i]*dvol; //podilove ubyvani
-				ph=(int)(fvolume[i]+0.5); //puvodni hlasitost (zaokrouhli na cela)
-				h=(int)(nv+0.5); //nova hlasitost (zaokrouhli na cela)
+					nv=fvolume[i]*dvol; //percentage calculations
+				ph=(int)(fvolume[i]+0.5); //original volume (rounded to the nearest)
+				h=(int)(nv+0.5); //new volume (rounded to the nearest)
 
 				if (ch3=='!')
 				{	//ending volume
 					if ( ph<=p3 ) continue;
 				}
 
-				if (h<p3) h=p3;	//minimalni volume p3
+				if (h<p3) h=p3;	//minimal volume p3
 				if (h<0) h=0;
 				else
 				if (h>15) h=15;
 
-				fvolume[j]=nv;				//hlasitost v realnych cislech
-				td.note[j]=td.note[i];		//zkopiruje notu
-				td.instr[j]=td.instr[i];	//stejnym instrumentem
-				td.volume[j]=h;				//prislusnou hlasitosti
+				fvolume[j]=nv;				//volume in real numbers
+				td.note[j]=td.note[i];		//copies the note
+				td.instr[j]=td.instr[i];	//the same instrument
+				td.volume[j]=h;				//corresponding volume
 			}
 		}
 		break;
@@ -370,7 +358,7 @@ void CEffectsDlg::PerformEffect()
 			int lenb=bto-bfro;
 			for(i=(p1>=0)?0:lenb,j=(p2>=0)?0:lenb; i>=0 && i<=lenb && j>=0 && j<=lenb; i+=p1,j+=p2)
 			{
-				if (!m_all && td.instr[bfro+i]!=m_ainstr) continue;	//ne pro tento instrument
+				if (!m_all && td.instr[bfro+i]!=m_ainstr) continue;	//not for this instrument
 				tempt.note[j]=td.note[bfro+i];
 				tempt.instr[j]=td.instr[bfro+i];
 				tempt.volume[j]=td.volume[bfro+i];
@@ -398,8 +386,8 @@ void CEffectsDlg::PerformEffect()
 			for(i=bfro; i<=bto; i+=p3)
 			{
 				vol=td.volume[i];
-				if (!m_all && m_ainstr!=continstr[i]) continue;	//ne pro tento instrument
-				if (vol<0) continue;	//neni-li zadna hlasitost
+				if (!m_all && m_ainstr!=continstr[i]) continue;	//not for this instrument
+				if (vol<0) continue;	//if there is no volume
 
 				float dol= ( vol - (float)p1/100*15 );
 				if (dol<p2) dol=(float)p2;
@@ -432,13 +420,13 @@ void CEffectsDlg::PerformEffect()
 			for(i=bfro; i<=bto; i++)
 			{
 				vol=td.volume[i];
-				if (!m_all && m_ainstr!=continstr[i]) continue;	//ne pro tento instrument
-				if (vol<0) continue;	//neni-li zadna hlasitost
+				if (!m_all && m_ainstr!=continstr[i]) continue;	//not for this instrument
+				if (vol<0) continue;	//if there is no volume
 
 				if (p1<=vol && vol<=p2)
 				{
 					if (ch3=='X')
-						td.note[i]=td.instr[i]=td.volume[i]=-1; //smaze
+						td.note[i]=td.instr[i]=td.volume[i]=-1; //clear
 					else
 					if (p3>=0 && p3<=15)
 						td.volume[i]=p3;
@@ -447,17 +435,13 @@ void CEffectsDlg::PerformEffect()
 		}
 		break;
 
-	case 6:
-		{
-		}
-		break;
-	
+	default:
+		break;	
 	}
 
-	//zkopiruje do skutecneho tracku
+	//copies to the actual track
 	memcpy(m_trackptr,&td,sizeof(TTrack));
 	g_screenupdate=1;	//SCREENUPDATE;
-
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -558,8 +542,6 @@ void CSongTracksOrderDlg::OnPaint()
 			ScreenToClient(&rectd);
 			dc.MoveTo((rects.left+rects.right)/2,rects.bottom);		//rects.CenterPoint()
 			dc.LineTo((rectd.left+rectd.right)/2,rectd.top);		//rectd.CenterPoint());
-			//dc.MoveTo(55+z*29,36);
-			//dc.LineTo(55+i*29,80);
 		}
 	}
 	
@@ -574,7 +556,6 @@ void CSongTracksOrderDlg::OnDefault()
 
 void CSongTracksOrderDlg::OnMonostereo() 
 {
-	//const int ttt[8]={0,4,5,1, 2,6,7,3};
 	const int ttt[8]={0,3,4,7, 1,2,5,6};
 	for(int i=0; i<8; i++) m_tracksorder[i]=ttt[i];
 	Invalidate();
@@ -582,7 +563,6 @@ void CSongTracksOrderDlg::OnMonostereo()
 
 void CSongTracksOrderDlg::OnStereomono() 
 {
-	//const int ttt[8]={0,3,4,7, 1,2,5,6};
 	const int ttt[8]={0,4,5,1, 2,6,7,3};
 	for(int i=0; i<8; i++) m_tracksorder[i]=ttt[i];
 	Invalidate();
@@ -614,25 +594,13 @@ void CSongTracksOrderDlg::OnL1R4()
 	if (num>=0 && num<8)
 	{
 		m_fromtrack=num;
-		//((CWindow*)wnd)->SetSty
-		//wnd->GetStyl
 	}
 	else
 	if (num>=8 && num<16)
 	{
 		m_totrack=num- (IDC_L1D-IDC_L1);
-		//if (m_fromtrack>=0)
-		//{
-			/*
-			int z=m_tracksorder[m_fromtrack];
-			for(int i=0; i<g_tracks4_8; i++)
-			{
-				if (m_tracksorder[i]==m_totrack) m_tracksorder[i]=z;
-			}
-			*/
-			m_tracksorder[m_totrack]=m_fromtrack;
-			Invalidate();
-		//}
+		m_tracksorder[m_totrack]=m_fromtrack;
+		Invalidate();
 	}
 }
 
@@ -902,14 +870,14 @@ void CInstrumentChangeDlg::SelChangeComboX()
 	if (m_check1.GetCheck())
 	{	//same volume range
 		int j=c[1]-c[0]+c[4];
-		if (j>NOTESNUM) j=NOTESNUM;		//na konci je pridana "---" polozka
+		if (j>NOTESNUM) j=NOTESNUM;		//an "---" item is added at the end
 		c[5]=j;	
 	}
 
 	if (m_check2.GetCheck())
 	{	//same volume range
 		int j=c[3]-c[2]+c[6];
-		if (j>16) j=16;					//na konci za 0-15 je pridana 16. polozka "---"
+		if (j>16) j=16;					//16th item "---" is added at the end of 0-15
 		c[7]=j;	
 	}
 
@@ -918,7 +886,7 @@ void CInstrumentChangeDlg::SelChangeComboX()
 		//same instrument range || only one instrument
 		if (m_checkoneinstr.GetCheck()) c[11]=c[10];
 		int j=c[11]-c[10]+c[8];
-		if (j>INSTRSNUM) j=INSTRSNUM;	//na konci je pridana "---" polozka
+		if (j>INSTRSNUM) j=INSTRSNUM;	//an "---" item is added at the end
 		c[9]=j;
 	}
 
@@ -928,7 +896,6 @@ void CInstrumentChangeDlg::SelChangeComboX()
 
 	int ch=m_checkoneinstr.GetCheck();
 	((CComboBox*)GetDlgItem(IDC_COMBO12))->EnableWindow(!ch);
-	//((CComboBox*)GetDlgItem(IDC_COMBO10))->EnableWindow(!ch);
 	m_check3.EnableWindow(!ch);
 
 	for(i=0; i<12; i++) ((CComboBox*)GetDlgItem(idcombo[i]))->SetCurSel(c[i]);
@@ -961,12 +928,12 @@ void CInstrumentChangeDlg::OnCheckoneinstrument()
 
 void CInstrumentChangeDlg::OnCheckTrackOnly() 
 {
-	//vzajemne vylouceni check4 a check5+6
+	//mutually excluded check4 and check5+6
 	if (m_check4.GetCheck())
 	{
 		m_check5.SetCheck(0);
 		m_check5.SetWindowText("Only in some channels");
-		m_onlychannels=-1; //vsechny
+		m_onlychannels=-1; //all
 		m_check6.SetCheck(0);
 		m_edit1.EnableWindow(0);
 		m_edit2.EnableWindow(0);
@@ -975,7 +942,7 @@ void CInstrumentChangeDlg::OnCheckTrackOnly()
 
 void CInstrumentChangeDlg::OnCheckSomeChannelsOnly() 
 {
-	//vzajemne vylouceni check4 a check5+6
+	//mutually excluded check4 and check5+6
 	if (m_check5.GetCheck())
 	{
 		m_check4.SetCheck(0);
@@ -1004,7 +971,7 @@ void CInstrumentChangeDlg::OnCheckSomeChannelsOnly()
 	if (!m_check5.GetCheck())
 	{
 		m_check5.SetWindowText("Only in some channels");
-		m_onlychannels=-1; //vsechny
+		m_onlychannels=-1; //all
 	}
 }
 
@@ -1194,16 +1161,6 @@ BOOL CInsertCopyOrCloneOfSongLinesDlg::OnInitDialog()
 	s.Format("%i",m_volumep);
 	m_c_volumep.SetWindowText(s);
 
-	/*
-	CRichEditCtrl *r = (CRichEditCtrl*)&m_c_linefrom;
-	DWORD mask = r->GetEventMask();
-	r->SetEventMask(mask | ENM_CHANGE);
-
-	r = (CRichEditCtrl*)&m_c_lineto;
-	mask = r->GetEventMask();
-	r->SetEventMask(mask | ENM_CHANGE);
-	*/
-
 	ValuesTest();
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -1217,7 +1174,7 @@ void CInsertCopyOrCloneOfSongLinesDlg::OnOK()
 
 	if (!ValuesTest())
 	{
-		MessageBox("Some wrong parameter values was corrected.\nPlease check its values.","Warning",MB_ICONWARNING);
+		MessageBox("Some parameters need to be corrected.\nPlease re-verify their values.","Warning",MB_ICONWARNING);
 		return;
 	}
 	
@@ -1249,7 +1206,7 @@ BOOL CInsertCopyOrCloneOfSongLinesDlg::ValuesTest()
 	if (c<0) { c=0; r=0; }
 	else
 	if (c>=SONGLEN) { c=SONGLEN-1; r=0; }
-	if (c<m_linefrom) { c=m_linefrom; r=0; }	//nemuze byt mensi
+	if (c<m_linefrom) { c=m_linefrom; r=0; }	//it can't be smaller
 	m_lineto=c;
 	s.Format("%02X",c);
 	m_c_lineto.SetWindowText(s);
@@ -1340,8 +1297,8 @@ BOOL COctaveSelectDlg::PreTranslateMessage(MSG* pMsg)
 	if (pMsg->message==0x0118 && pMsg->wParam==0xfff6)
 	{
 		//P message:0x0118 [Unknown] wParam:0000FFF6 lParam:17677DBA
-		//(souvisi to s udalostmi WM_NCHITTEST, WM_NCMOUSEMOVE a HTCLOSE)
-		//Message co zpusobuje bublinkovou napovedu "Close" a zadrhne se kvuli tomu na moment prehravani a zbytecne to tam otravuje ;-)
+		//(related to WM_NCHITTEST, WM_NCMOUSEMOVE and HTCLOSE events)
+		//The message that causes the "Close" bubble prompt. And because of that, it stops playing for a moment and it annoys it there unnecessarily. ;-)
 		return 1;
 	}
 	
@@ -1351,7 +1308,7 @@ BOOL COctaveSelectDlg::PreTranslateMessage(MSG* pMsg)
 BOOL COctaveSelectDlg::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
-	
+
 	// TODO: Add extra initialization here
 	SetWindowPos(0,m_pos.x,m_pos.y,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_SHOWWINDOW);
 	GetDlgItem(IDC_OCTAVE1+m_octave)->SetFocus();
@@ -1412,8 +1369,8 @@ BOOL CInstrumentSelectDlg::PreTranslateMessage(MSG* pMsg)
 	if (pMsg->message==0x0118 && pMsg->wParam==0xfff6)
 	{
 		//P message:0x0118 [Unknown] wParam:0000FFF6 lParam:17677DBA
-		//(souvisi to s udalostmi WM_NCHITTEST, WM_NCMOUSEMOVE a HTCLOSE)
-		//Message co zpusobuje bublinkovou napovedu "Close" a zadrhne se kvuli tomu na moment prehravani a zbytecne to tam otravuje ;-)
+		//(related to WM_NCHITTEST, WM_NCMOUSEMOVE and HTCLOSE events)
+		//The message that causes the "Close" bubble prompt. And because of that, it stops playing for a moment and it annoys it there unnecessarily. ;-)
 		return 1;
 	}
 	
@@ -1428,8 +1385,6 @@ BOOL CInstrumentSelectDlg::OnInitDialog()
 
 	// TODO: Add extra initialization here
 	SetWindowPos(0,m_pos.x,m_pos.y,0,0,SWP_NOZORDER|SWP_NOSIZE|SWP_SHOWWINDOW);	
-
-	//m_instrs->F
 
 	for(i=0; i<INSTRSNUM; i++)
 	{
@@ -1528,8 +1483,8 @@ BOOL CVolumeSelectDlg::PreTranslateMessage(MSG* pMsg)
 	if (pMsg->message==0x0118 && pMsg->wParam==0xfff6)
 	{
 		//P message:0x0118 [Unknown] wParam:0000FFF6 lParam:17677DBA
-		//(souvisi to s udalostmi WM_NCHITTEST, WM_NCMOUSEMOVE a HTCLOSE)
-		//Message co zpusobuje bublinkovou napovedu "Close" a zadrhne se kvuli tomu na moment prehravani a zbytecne to tam otravuje ;-)
+		//(related to WM_NCHITTEST, WM_NCMOUSEMOVE and HTCLOSE events)
+		//The message that causes the "Close" bubble prompt. And because of that, it stops playing for a moment and it annoys it there unnecessarily. ;-)
 		return 1;
 	}
 	
@@ -1566,7 +1521,7 @@ END_MESSAGE_MAP()
 /////////////////////////////////////////////////////////////////////////////
 // CChannelsSelectionDlg message handlers
 
-const int idcchan[8]={IDC_CHECK1,IDC_CHECK2,IDC_CHECK3,IDC_CHECK4,IDC_CHECK10,IDC_CHECK11,IDC_CHECK12,IDC_CHECK13};
+const int idcchan[8] = { IDC_CHECK1,IDC_CHECK2,IDC_CHECK3,IDC_CHECK4,IDC_CHECK10,IDC_CHECK11,IDC_CHECK12,IDC_CHECK13 };
 
 BOOL CChannelsSelectionDlg::OnInitDialog() 
 {

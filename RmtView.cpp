@@ -1,19 +1,18 @@
+//
 // RmtView.cpp : implementation of the CRmtView class
+// originally made by Raster, 2002-2009
+// reworked by VinsCool, 2021-2022
 //
 
 #include "stdafx.h"
 #include "Rmt.h"
-
 #include "RmtDoc.h"
 #include "RmtView.h"
-
-#include "MainFrm.h"			//!
-
+#include "MainFrm.h"
 #include "ConfigDlg.h"
 #include "FileNewDlg.h"
-
 #include "r_music.h"
-
+#include "TuningDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -22,14 +21,11 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 extern BOOL g_closeapplication;
-
 #define SCREENUPDATE	g_screenupdate=1
+#define RGBBACKGROUND	RGB(34,50,80)	//dark blue
+#define RGBLINES		RGB(149,194,240)	//blue gray
+#define RGBBLACK		RGB(0,0,0)	//black
 void UpdateShiftControlKeys();
-void SetLockKeys(int vkey, BOOL onoff);
-BOOL GetCapsLock();
-void SetCapsLock(BOOL onoff);
-BOOL GetScrollLock();
-void SetScrollLock(BOOL onoff);
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView
@@ -48,7 +44,6 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_COMMAND(ID_FILE_SAVE, OnFileSave)
 	ON_COMMAND(ID_FILE_SAVE_AS, OnFileSaveAs)
 	ON_COMMAND(ID_FILE_NEW, OnFileNew)
-	ON_COMMAND_RANGE(ID_FILE_MRU_FILE1, ID_FILE_MRU_FILE5, OnFileOpenRecent)
 	ON_COMMAND(ID_FILE_EXPORT_AS, OnFileExportAs)
 	ON_COMMAND(ID_INSTR_LOAD, OnInstrLoad)
 	ON_COMMAND(ID_INSTR_SAVE, OnInstrSave)
@@ -137,6 +132,7 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_COMMAND(ID_MIDIONOFF, OnMidionoff)
 	ON_UPDATE_COMMAND_UI(ID_MIDIONOFF, OnUpdateMidionoff)
 	ON_COMMAND(ID_VIEW_CONFIGURATION, OnViewConfiguration)
+	ON_COMMAND(ID_VIEW_TUNING, OnViewTuning)
 	ON_COMMAND(ID_BLOCK_COPY, OnBlockCopy)
 	ON_COMMAND(ID_BLOCK_CUT, OnBlockCut)
 	ON_COMMAND(ID_BLOCK_DELETE, OnBlockDelete)
@@ -235,49 +231,37 @@ END_MESSAGE_MAP()
 
 CRmtView::CRmtView()
 {
-	// TODO: add construction code here
-
-	//
-	//
 	g_screena=0;
-	g_screenwait=2;		//2 padesatiny
-	//
-	m_setnumlockfunction=1; //funguje prepinani numlocku
-
+	g_screenwait=2;		//2 fifties
 	m_width = 0;
 	m_height = 0;
 }
 
 CRmtView::~CRmtView()
 {
-	g_mem_dc->SelectObject(m_penorig);		//vraceni puvodniho Penu
-	delete m_pen1;							//uvolneni newnuteho m_pen1
+	g_mem_dc->SelectObject(m_penorig);		//The return of the original Pen
+	delete m_pen1;							//unloaded m_pen1
 }
 
 void CRmtView::OnDestroy() 
 {
-	//zrusi Pokey DLL
+	//cancels Pokey DLL
 	m_song.DeInitPokey();
 
-	//zrusi 6502 DLL
+	//cancels 6502 DLL
 	Atari6502_DeInit();
 
-	//vypne timer
+	//turns off the timer
 	if (m_timeranalyzer) 
 	{
 		KillTimer(m_timeranalyzer);
 		m_timeranalyzer=0;
 	}
-
-	//vypne capslock
-	//SetCapsLock(0);
-
 	CView::OnDestroy();
 }
 
 void CRmtView::OnTimer(UINT nIDEvent) 
 {
-	// TODO: Add your message handler code here and/or call default
 	if (nIDEvent == m_timeranalyzer)
 	{
 		DrawAnalyzer();
@@ -289,14 +273,13 @@ void CRmtView::OnTimer(UINT nIDEvent)
 
 BOOL CRmtView::PreCreateWindow(CREATESTRUCT& cs)
 {
-	// TODO: Modify the Window class or styles here by modifying
-	//  the CREATESTRUCT cs
 	return CView::PreCreateWindow(cs);
 }
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView drawing
 
+//screen drawing changes involved in order to make use of the window dimensions
 void CRmtView::OnSize(UINT nType, int cx, int cy)
 {
 	TRACE("Rect: %d %d\n", cx, cy);
@@ -304,66 +287,34 @@ void CRmtView::OnSize(UINT nType, int cx, int cy)
 
 void CRmtView::OnDraw(CDC* pDC)
 {
-
 	RECT r;
 	GetClientRect(&r);
-//	TRACE("Rect2: %d..%d %d..%d\n", r.left, r.right, r.top, r.bottom);
-
-	bool resized = Resize(r.right-r.left+1, r.bottom-r.top+1);
-	UpdateModule();
-
-	//CRmtDoc* pDoc = GetDocument();
-	//ASSERT_VALID(pDoc);
-	// TODO: add draw code for native data here
-/*
-	CRect rc;
-	GetUpdateRect(&rc);	//, BOOL bErase = FALSE );
-	
-	if (rc!=r)
-	{
-		MessageBox("asas");
-	}
-
-	r=rc;
-*/
-	//pDC->SetBoundsRect( NULL, DCB_ENABLE );
-
-	/*
-	CString s;
-	s.Format("NumLock=%u",g_numlock);
-	SetStatusBarText(s);
-	*/
-
-	if (resized || (g_screenupdate && g_invalidatebytimer) )
+	if (g_scaling_percentage > 300 || g_scaling_percentage < 100) g_scaling_percentage = 100;	//set the default scaling as a failsafe if the values are beyond those limits
+	bool resized = Resize(r.right - r.left + 1, r.bottom - r.top + 1);
+	if (resized || (g_screenupdate && g_invalidatebytimer))
 	{
 		g_screenupdate=0;
 		g_invalidatebytimer=0;
 		g_screena = g_screenwait;
-//		MessageBeep(-1);
 		DrawAll();
 	}
-
-	//MessageBeep(-1);
-	pDC->BitBlt(0,0,m_width,m_height,&m_mem_dc,0,0,SRCCOPY);
-
+	pDC->BitBlt(0, 0, m_width, m_height, &m_mem_dc, 0, 0, SRCCOPY);
+	SCREENUPDATE;
 }
 
 BOOL CRmtView::DrawAll()
 {
-	m_mem_dc.FillSolidRect(0,0,m_width,m_height,RGB(72,72,72));
-
+	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBACKGROUND);	
 	m_song.DrawInfo();
 	m_song.DrawSong();
-	if (g_active_ti==PARTTRACKS)	//v dolni casti je aktivni?
-	{
+	
+	if (g_active_ti==PARTTRACKS)	//which one is the active screen?
 		m_song.DrawTracks();		
-	}
-	else
+	else 
 		m_song.DrawInstrument();
 
 	m_song.DrawAnalyzer(NULL);
 	m_song.DrawPlaytimecounter(NULL);
-
 	return 1;
 }
 
@@ -375,6 +326,8 @@ void CRmtView::DrawAnalyzer()
 	if (pDC)
 	{
 		/*
+		//debug instrument number display
+		g_mem_dc->FillSolidRect(0, 0, 500, 16, 0);
 		for(int i=0; i<SONGTRACKS; i++)
 		{
 			char s[10];
@@ -383,7 +336,6 @@ void CRmtView::DrawAnalyzer()
 		}
 		pDC->BitBlt(0,0,800,32,g_mem_dc,0,0,SRCCOPY);
 		*/
-
 		m_song.DrawAnalyzer(pDC);
 		ReleaseDC(pDC);
 	}
@@ -400,12 +352,9 @@ void CRmtView::DrawPlaytimecounter()
 }
 
 BOOL CRmtView::OnEraseBkgnd(CDC* pDC) 
-{
-	// TODO: Add your message handler code here and/or call default
-	//Invalidate(0);	
-	return 1;	//CView::OnEraseBkgnd(pDC);
+{	
+	return 1;
 }
-
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView printing
@@ -450,42 +399,52 @@ CRmtDoc* CRmtView::GetDocument() // non-debug version is inline
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView message handlers
 
-
 void CRmtView::ReadConfig()
 {
-
 #define NAME(a)	(strcmp(a,name)==0)
 
 	CString s;
-	char line[1025];
-	char *tmp,*name,*value;
+	char line[1024];
+	char *tmp,*div,*name,*value,*value2;
 	s.Format("%s%s",g_prgpath,CONFIG_FILENAME);
 	ifstream in(s);
 	if (!in)
 	{
 		MessageBox("Can't read the config file\n"+s,"Read config",MB_ICONEXCLAMATION);
+		WriteConfig(); //create config as soon as possible
+		AfxGetApp()->GetMainWnd()->PostMessage(WM_COMMAND, ID_APP_ABOUT, 0);	//display the about dialog, assuming RMT was ran for the first time if no .ini file was found
 		return;
 	}
 	while(!in.eof())
 	{
-		in.getline(line,1024);
-		tmp=strchr(line,'=');
+		in.getline(line, 1023);
+		tmp = strchr(line, '=');
+		div = strchr(line, '/');
+		if (div)
+		{
+			div[0] = 0;
+			value2 = div + 1;
+		}
 		if (tmp)
 		{
-			tmp[0]=0;
-			name=line;
-			value=tmp+1;
+			tmp[0] = 0;
+			name = line;
+			value = tmp + 1;
 		}
 		else
 			continue;
-		//Jednotlive radky configu
+		//Individual lines config
 
-		//genereral
+		//general
+		if (NAME("SCALEPERCENTAGE")) g_scaling_percentage = atoi(value);
+		else
 		if (NAME("TRACKLINEHIGHLIGHT")) g_tracklinehighlight = atoi(value);
 		else
 		if (NAME("TRACKLINEALTNUMBERING")) g_tracklinealtnumbering = atoi(value);
 		else
-		if (NAME("TRACKCURSORVERTICALRANGE")) g_trackcursorverticalrange = atoi(value);
+		if (NAME("DISPLAYFLATNOTES")) g_displayflatnotes = atoi(value);
+		else
+		if (NAME("USEGERMANNOTATION")) g_usegermannotation = atoi(value);
 		else
 		if (NAME("NTSC_SYSTEM")) g_ntsc = atoi(value);
 		else
@@ -505,8 +464,6 @@ void CRmtView::ReadConfig()
 		if (NAME("KEYBOARD_ESCRESETATARISOUND")) g_keyboard_escresetatarisound = atoi(value);
 		else
 		if (NAME("KEYBOARD_ASKWHENCONTROL_S")) g_keyboard_askwhencontrol_s = atoi(value);
-		else
-		if (NAME("KEYBOARD_USENUMLOCK")) g_keyboard_usenumlock = atoi(value);
 		else
 		//midi
 		if (NAME("MIDI_IN")) m_midi.SetDevice(value);
@@ -538,7 +495,40 @@ void CRmtView::ReadConfig()
 		if (NAME("VIEW_POKEYCHIPREGISTERS")) g_viewpokeyregs = atoi(value);
 		else
 		if (NAME("VIEW_INSTRUMENTACTIVEHELP")) g_viewinstractivehelp = atoi(value);
-		//	
+		else
+		//tuning
+		if (NAME("TUNING")) g_basetuning = atof(value);
+		else
+		if (NAME("BASENOTE")) g_basenote = atoi(value);
+		else
+		if (NAME("TEMPERAMENT")) g_temperament = atoi(value);
+		else
+		//ratio
+		if (NAME("UNISON")) { g_UNISON_L = atoi(value); if (div) g_UNISON_R = atoi(value2); }
+		else
+		if (NAME("MIN_2ND")) { g_MIN_2ND_L = atoi(value); if (div) g_MIN_2ND_R = atoi(value2); }
+		else
+		if (NAME("MAJ_2ND")) { g_MAJ_2ND_L = atoi(value); if (div) g_MAJ_2ND_R = atoi(value2); }
+		else
+		if (NAME("MIN_3RD")) { g_MIN_3RD_L = atoi(value); if (div) g_MIN_3RD_R = atoi(value2); }
+		else
+		if (NAME("MAJ_3RD")) { g_MAJ_3RD_L = atoi(value); if (div) g_MAJ_3RD_R = atoi(value2); }
+		else
+		if (NAME("PERF_4TH")) { g_PERF_4TH_L = atoi(value); if (div) g_PERF_4TH_R = atoi(value2); }
+		else
+		if (NAME("TRITONE")) { g_TRITONE_L = atoi(value); if (div) g_TRITONE_R = atoi(value2); }
+		else
+		if (NAME("PERF_5TH")) { g_PERF_5TH_L = atoi(value); if (div) g_PERF_5TH_R = atoi(value2); }
+		else
+		if (NAME("MIN_6TH")) { g_MIN_6TH_L = atoi(value); if (div) g_MIN_6TH_R = atoi(value2); }
+		else
+		if (NAME("MAJ_6TH")) { g_MAJ_6TH_L = atoi(value); if (div) g_MAJ_6TH_R = atoi(value2); }
+		else
+		if (NAME("MIN_7TH")) { g_MIN_7TH_L = atoi(value); if (div) g_MIN_7TH_R = atoi(value2); }
+		else
+		if (NAME("MAJ_7TH")) { g_MAJ_7TH_L = atoi(value); if (div) g_MAJ_7TH_R = atoi(value2); }
+		else
+		if (NAME("OCTAVE")) { g_OCTAVE_L = atoi(value); if (div) g_OCTAVE_R = atoi(value2); }
 	}
 	in.close();
 }
@@ -546,8 +536,7 @@ void CRmtView::ReadConfig()
 void CRmtView::WriteConfig()
 {
 	CString s;
-	//char line[1025];
-	s.Format("%s%s",g_prgpath,CONFIG_FILENAME);
+	s.Format("%s%s", g_prgpath, CONFIG_FILENAME);
 	ofstream ou(s);
 	if (!ou)
 	{
@@ -559,11 +548,14 @@ void CRmtView::WriteConfig()
 	CString version;
 	version.LoadString(IDS_RMTVERSION);
 	ou << version << endl;
+	ou << setprecision(16);
 
 	//general
+	ou << "SCALEPERCENTAGE=" << g_scaling_percentage << endl;
 	ou << "TRACKLINEHIGHLIGHT=" << g_tracklinehighlight << endl;
 	ou << "TRACKLINEALTNUMBERING=" << g_tracklinealtnumbering << endl;
-	ou << "TRACKCURSORVERTICALRANGE=" << g_trackcursorverticalrange << endl;
+	ou << "DISPLAYFLATNOTES=" << g_displayflatnotes << endl;
+	ou << "USEGERMANNOTATION=" << g_usegermannotation << endl;
 	ou << "NTSC_SYSTEM=" << g_ntsc << endl;
 	ou << "NOHWSOUNDBUFFER=" << g_nohwsoundbuffer << endl;
 	//keyboard
@@ -574,7 +566,6 @@ void CRmtView::WriteConfig()
 	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES=" << g_keyboard_rememberoctavesandvolumes << endl;
 	ou << "KEYBOARD_ESCRESETATARISOUND=" << g_keyboard_escresetatarisound << endl;
 	ou << "KEYBOARD_ASKWHENCONTROL_S=" << g_keyboard_askwhencontrol_s << endl;
-	ou << "KEYBOARD_USENUMLOCK=" << g_keyboard_usenumlock << endl;
 	//midi
 	ou << "MIDI_IN=" << m_midi.GetMidiDevName() << endl;
 	ou << "MIDI_TR=" << g_midi_tr << endl;
@@ -592,18 +583,38 @@ void CRmtView::WriteConfig()
 	ou << "VIEW_VOLUMEANALYZER=" << g_viewanalyzer << endl;
 	ou << "VIEW_POKEYCHIPREGISTERS=" << g_viewpokeyregs << endl;
 	ou << "VIEW_INSTRUMENTACTIVEHELP=" << g_viewinstractivehelp << endl;
-	//
+	//tuning
+	ou << "TUNING=" << g_basetuning << endl;
+	ou << "BASENOTE=" << g_basenote << endl;
+	ou << "TEMPERAMENT=" << g_temperament << endl;
+	//ratios
+	ou << "UNISON=" << g_UNISON_L << "/" << g_UNISON_R << endl;
+	ou << "MIN_2ND=" << g_MIN_2ND_L << "/" << g_MIN_2ND_R << endl;
+	ou << "MAJ_2ND=" << g_MAJ_2ND_L << "/" << g_MAJ_2ND_R << endl;
+	ou << "MIN_3RD=" << g_MIN_3RD_L << "/" << g_MIN_3RD_R << endl;
+	ou << "MAJ_3RD=" << g_MAJ_3RD_L << "/" << g_MAJ_3RD_R << endl;
+	ou << "PERF_4TH=" << g_PERF_4TH_L << "/" << g_PERF_4TH_R << endl;
+	ou << "TRITONE=" << g_TRITONE_L << "/" << g_TRITONE_R << endl;
+	ou << "PERF_5TH=" << g_PERF_5TH_L << "/" << g_PERF_5TH_R << endl;
+	ou << "MIN_6TH=" << g_MIN_6TH_L << "/" << g_MIN_6TH_R << endl;
+	ou << "MAJ_6TH=" << g_MAJ_6TH_L << "/" << g_MAJ_6TH_R << endl;
+	ou << "MIN_7TH=" << g_MIN_7TH_L << "/" << g_MIN_7TH_R << endl;
+	ou << "MAJ_7TH=" << g_MAJ_7TH_L << "/" << g_MAJ_7TH_R << endl;
+	ou << "OCTAVE=" << g_OCTAVE_L << "/" << g_OCTAVE_R << endl;
 	ou.close();
 }
 
 void CRmtView::OnViewConfiguration() 
 {
-	// TODO: Add your command handler code here
 	CConfigDlg dlg;
 	//general
+	dlg.m_scaling_percentage = g_scaling_percentage;
+	dlg.m_tuning = g_basetuning;
 	dlg.m_tracklinehighlight = g_tracklinehighlight;
 	dlg.m_tracklinealtnumbering = g_tracklinealtnumbering;
-	dlg.m_trackcursorverticalrange = g_trackcursorverticalrange;
+	dlg.m_displayflatnotes = g_displayflatnotes;
+	dlg.m_usegermannotation = g_usegermannotation;
+	//
 	dlg.m_ntsc = g_ntsc;
 	dlg.m_nohwsoundbuffer = g_nohwsoundbuffer;
 	//keyboard
@@ -614,7 +625,6 @@ void CRmtView::OnViewConfiguration()
 	dlg.m_keyboard_updowncontinue = g_keyboard_updowncontinue;
 	dlg.m_keyboard_rememberoctavesandvolumes = g_keyboard_rememberoctavesandvolumes;
 	dlg.m_keyboard_askwhencontrol_s = g_keyboard_askwhencontrol_s;
-	dlg.m_keyboard_usenumlock = g_keyboard_usenumlock;
 	//midi
 	dlg.m_midi_device = m_midi.GetMidiDevId();
 	dlg.m_midi_tr = g_midi_tr;
@@ -624,25 +634,47 @@ void CRmtView::OnViewConfiguration()
 	if (dlg.DoModal()==IDOK)
 	{
 		//general
-		g_tracklinehighlight = dlg.m_tracklinehighlight;
-		g_tracklinealtnumbering = dlg.m_tracklinealtnumbering;
-		g_trackcursorverticalrange = dlg.m_trackcursorverticalrange;
-		g_ntsc = dlg.m_ntsc;
+		if (g_scaling_percentage != dlg.m_scaling_percentage)	//necessary to scale all the elements immetiately, without resizing the window first
+		{
+			g_width = (m_width * 100) / dlg.m_scaling_percentage;
+			g_height = (m_height * 100) / dlg.m_scaling_percentage;
+			g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16; 
+			SCREENUPDATE;
+		}
+		g_scaling_percentage = dlg.m_scaling_percentage;
+
 		if (g_nohwsoundbuffer != dlg.m_nohwsoundbuffer)
 		{
-			//zmenilo se HW/SW pouziti soundubfferu
-			g_nohwsoundbuffer = dlg.m_nohwsoundbuffer;
-			m_song.GetPokey()->ReInitSound();	//nutno reinicializovat zvuk
+			m_song.GetPokey()->ReInitSound();	//the sound needs to be reinitialized
+			Atari_InitRMTRoutine(); //reset RMT routines
 		}
+		g_nohwsoundbuffer = dlg.m_nohwsoundbuffer;
+
+		if (g_ntsc != dlg.m_ntsc)
+		{
+			//Pal or NTSC
+			g_ntsc = dlg.m_ntsc;
+			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
+			m_song.ChangeTimer((g_ntsc) ? 17 : 20);
+			m_song.GetPokey()->ReInitSound();	//the sound needs to be reinitialized
+			Atari_InitRMTRoutine(); //reset RMT routines
+			SCREENUPDATE;
+		}
+		g_ntsc = dlg.m_ntsc;
+
+		g_tracklinehighlight = dlg.m_tracklinehighlight;
+		g_tracklinealtnumbering = dlg.m_tracklinealtnumbering;
+		g_displayflatnotes = dlg.m_displayflatnotes;
+		g_usegermannotation = dlg.m_usegermannotation;
+
 		//keyboard
 		g_keyboard_layout = dlg.m_keyboard_layout;
 		g_keyboard_escresetatarisound = dlg.m_keyboard_escresetatarisound;
+		g_keyboard_playautofollow = dlg.m_keyboard_playautofollow;
 		g_keyboard_swapenter = dlg.m_keyboard_swapenter;
 		g_keyboard_updowncontinue=dlg.m_keyboard_updowncontinue;
 		g_keyboard_rememberoctavesandvolumes = dlg.m_keyboard_rememberoctavesandvolumes;
 		g_keyboard_askwhencontrol_s = dlg.m_keyboard_askwhencontrol_s;
-		g_keyboard_playautofollow = dlg.m_keyboard_playautofollow;
-		g_keyboard_usenumlock = dlg.m_keyboard_usenumlock;
 		//midi
 		if (dlg.m_midi_device>=0)
 		{
@@ -655,20 +687,91 @@ void CRmtView::OnViewConfiguration()
 		g_midi_tr = dlg.m_midi_tr;
 		g_midi_volumeoffset = dlg.m_midi_volumeoffset;
 		g_midi_noteoff = dlg.m_midi_noteoff;
-
 		m_midi.MidiInit();
-
-		//Pal nebo NTSC
-		m_song.ChangeTimer((g_ntsc)? 17 : 20);
-
 		//
 		WriteConfig();
-		//
 		g_screenupdate=1;
 	}
 }
 
-//---
+void CRmtView::OnViewTuning()
+{
+	TuningDlg dlg;
+	dlg.m_basetuning = g_basetuning;
+	dlg.m_basenote = g_basenote; 
+	dlg.m_temperament = g_temperament;
+
+	//ratio left
+	dlg.UNISON_L = g_UNISON_L;
+	dlg.MIN_2ND_L = g_MIN_2ND_L;
+	dlg.MAJ_2ND_L = g_MAJ_2ND_L;
+	dlg.MIN_3RD_L = g_MIN_3RD_L;
+	dlg.MAJ_3RD_L = g_MAJ_3RD_L;
+	dlg.PERF_4TH_L = g_PERF_4TH_L;
+	dlg.TRITONE_L = g_TRITONE_L;
+	dlg.PERF_5TH_L = g_PERF_5TH_L;
+	dlg.MIN_6TH_L = g_MIN_6TH_L;
+	dlg.MAJ_6TH_L = g_MAJ_6TH_L;
+	dlg.MIN_7TH_L = g_MIN_7TH_L;
+	dlg.MAJ_7TH_L = g_MAJ_7TH_L;
+	dlg.OCTAVE_L = g_OCTAVE_L;
+
+	//ratio right
+	dlg.UNISON_R = g_UNISON_R;
+	dlg.MIN_2ND_R = g_MIN_2ND_R;
+	dlg.MAJ_2ND_R = g_MAJ_2ND_R;
+	dlg.MIN_3RD_R = g_MIN_3RD_R;
+	dlg.MAJ_3RD_R = g_MAJ_3RD_R;
+	dlg.PERF_4TH_R = g_PERF_4TH_R;
+	dlg.TRITONE_R = g_TRITONE_R;
+	dlg.PERF_5TH_R = g_PERF_5TH_R;
+	dlg.MIN_6TH_R = g_MIN_6TH_R;
+	dlg.MAJ_6TH_R = g_MAJ_6TH_R;
+	dlg.MIN_7TH_R = g_MIN_7TH_R;
+	dlg.MAJ_7TH_R = g_MAJ_7TH_R;
+	dlg.OCTAVE_R = g_OCTAVE_R;
+
+	if (dlg.DoModal() == IDOK)
+	{
+		//ratio left
+		g_UNISON_L = dlg.UNISON_L;
+		g_MIN_2ND_L = dlg.MIN_2ND_L;
+		g_MAJ_2ND_L = dlg.MAJ_2ND_L;
+		g_MIN_3RD_L = dlg.MIN_3RD_L;
+		g_MAJ_3RD_L = dlg.MAJ_3RD_L;
+		g_PERF_4TH_L = dlg.PERF_4TH_L;
+		g_TRITONE_L = dlg.TRITONE_L;
+		g_PERF_5TH_L = dlg.PERF_5TH_L;
+		g_MIN_6TH_L = dlg.MIN_6TH_L;
+		g_MAJ_6TH_L = dlg.MAJ_6TH_L;
+		g_MIN_7TH_L = dlg.MIN_7TH_L;
+		g_MAJ_7TH_L = dlg.MAJ_7TH_L;
+		g_OCTAVE_L = dlg.OCTAVE_L;
+
+		//ratio right
+		g_UNISON_R = dlg.UNISON_R;
+		g_MIN_2ND_R = dlg.MIN_2ND_R;
+		g_MAJ_2ND_R = dlg.MAJ_2ND_R;
+		g_MIN_3RD_R = dlg.MIN_3RD_R;
+		g_MAJ_3RD_R = dlg.MAJ_3RD_R;
+		g_PERF_4TH_R = dlg.PERF_4TH_R;
+		g_TRITONE_R = dlg.TRITONE_R;
+		g_PERF_5TH_R = dlg.PERF_5TH_R;
+		g_MIN_6TH_R = dlg.MIN_6TH_R;
+		g_MAJ_6TH_R = dlg.MAJ_6TH_R;
+		g_MIN_7TH_R = dlg.MIN_7TH_R;
+		g_MAJ_7TH_R = dlg.MAJ_7TH_R;
+		g_OCTAVE_R = dlg.OCTAVE_R;
+		
+		//update tuning
+		g_basetuning = dlg.m_basetuning;
+		g_basenote = dlg.m_basenote;
+		g_temperament = dlg.m_temperament;
+		WriteConfig();
+		Atari_InitRMTRoutine(); //reset RMT routines
+		g_screenupdate = 1;
+	}
+}
 
 void GetCommandLineItem(CString& commandline,int& fromidx,int& toidx)
 {
@@ -688,46 +791,32 @@ void GetCommandLineItem(CString& commandline,int& fromidx,int& toidx)
 	}
 }
 
-void CRmtView::UpdateModule()
-{
-	g_tracklines = (g_height - (TRACKS_Y+TRACKS_HEADER_H) - STATUS_H) / TRACK_LINE_H;
-	if (g_tracklines > m_song.GetTracks()->m_maxtracklen) {
-		g_tracklines = m_song.GetTracks()->m_maxtracklen;
-	}
-
-	g_song_x     = SONG_X;
-	g_songlines = 5;
-	if (g_tracks4_8 == 4 && 	g_active_ti==PARTTRACKS) {
-		g_songlines = 10;
-	} else if (g_width > 1028) {
-		g_song_x = 780;
-		g_songlines = (g_height - SONG_Y - SONG_HEADER_H - WIN_BORDER_B) / SONG_LINE_H;
-	}
-}
-
+//originally added in RMT 1.30, and reworked in 1.31+ 
 bool CRmtView::Resize(int width, int height)
 {
+	int sp = g_scaling_percentage;
 	if (width == m_width && height == m_height) return false;
 	if (m_width != 0) {
 		m_mem_dc.SelectObject((CBitmap*)0);
 		m_mem_bitmap.DeleteObject();
-		m_mem_dc.DeleteDC();
+		m_mem_dc.DeleteDC();		
 	}
 	m_width = width;
 	m_height = height;
 	if (m_width != 0) {
-		CDC *dc = GetDC();
-		m_mem_bitmap.CreateCompatibleBitmap(dc,m_width,m_height);
+		g_width = (m_width * 100) / sp;
+		g_height = (m_height * 100) / sp;
+		CDC* dc = GetDC();
+		m_mem_bitmap.CreateCompatibleBitmap(dc, m_width, m_height);
 		m_mem_dc.CreateCompatibleDC(dc);
 		m_mem_dc.SelectObject(&m_mem_bitmap);
 		g_mem_dc = &m_mem_dc;
-		g_width = m_width;
-		g_height = m_height;
-
-//		UpdateModule();
-
-		m_mem_dc.FillSolidRect(0,0,m_width,m_height,RGB(0,0,0)); //inicializacni cerne pozadi
+		g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16;	//number of track lines that can be displayed based on the window height
+		m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
+		m_penorig = g_mem_dc->SelectObject(m_pen1);
+		m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBLACK); //initial black background
 		ReleaseDC(dc);
+		SCREENUPDATE;
 	}
 	return true;
 }
@@ -736,7 +825,7 @@ void CRmtView::OnInitialUpdate()
 {
 	CView::OnInitialUpdate();
 
-	//prikazova radka
+	//command line
 	CString cmdl = GetCommandLine();
 	CString commandlinefilename="";
 	g_prgpath = "";
@@ -744,7 +833,7 @@ void CRmtView::OnInitialUpdate()
 	if (cmdl!="")
 	{
 		int i1=0,i2=0;
-		GetCommandLineItem(cmdl,i2,i1);	//cesta/nazev.exe
+		GetCommandLineItem(cmdl,i2,i1);	//path/name.exe
 		if (i1!=i2)
 		{
 			CString exefilename=cmdl.Mid(i2,i1-i2);
@@ -752,47 +841,32 @@ void CRmtView::OnInitialUpdate()
 			if (l<0) l=exefilename.ReverseFind('\\');
 			if (l>=0)
 			{
-				g_prgpath = exefilename.Left(l+1);	//vcetne lomitka
+				g_prgpath = exefilename.Left(l+1);	//including slash
 			}
 		}
 		i1++;
-		GetCommandLineItem(cmdl,i1,i2);	//parametr
+		GetCommandLineItem(cmdl,i1,i2);	//parameter
 		if (i1!=i2)
 		{
 			commandlinefilename=cmdl.Mid(i1,i2-i1);
 		}
 	}
-
-
-
-	//
-	m_song.SetRMTTitle();
-
-	// default size
-	Resize(800, 600);
 	CDC *dc=GetDC();
-//	m_mem_bitmap.CreateCompatibleBitmap(dc,800,600);
-//	m_mem_dc.CreateCompatibleDC(dc);
-//	m_mem_dc.SelectObject(&m_mem_bitmap);
-
-	if (m_gfx_bitmap == (HBITMAP)0) {
-		m_gfx_bitmap.LoadBitmap(MAKEINTRESOURCE(IDB_GFX));
-		m_gfx_dc.CreateCompatibleDC(dc);
-		m_gfx_dc.SelectObject(&m_gfx_bitmap);
-	}
-
+	m_song.SetRMTTitle();
+	Resize(800, 600); //default window dimensions if RMT was never used on a system, else, it will load the last known values
+	m_gfx_bitmap.LoadBitmap(MAKEINTRESOURCE(IDB_GFX));
+	m_gfx_dc.CreateCompatibleDC(dc);
+	m_gfx_dc.SelectObject(&m_gfx_bitmap);
+	g_mem_dc = &m_mem_dc;	//1.30 changes had this line commented out for some reason... however, I see no reason why this was necessary?
 	g_gfx_dc = &m_gfx_dc;
 	g_hwnd = AfxGetApp()->GetMainWnd()->m_hWnd;
 	g_viewhwnd = this->m_hWnd;
-
-	m_pen1 = new CPen(PS_SOLID,1,RGB(144,144,144));
+	m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
 	m_penorig = g_mem_dc->SelectObject(m_pen1);
-
-	m_mem_dc.FillSolidRect(0,0,m_width,m_height,RGB(0,0,0)); //inicializacni cerne pozadi
-
+	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBLACK); //initial black background
 	ReleaseDC(dc);
 
-	//kurzory
+	//cursor
 	m_cursororig = LoadCursor(NULL,IDC_ARROW);
 	m_cursorchanonoff = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORCHANNELONOFF));
 	m_cursorenvvolume = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORENVVOLUME));
@@ -800,83 +874,80 @@ void CRmtView::OnInitialUpdate()
 	m_cursordlg = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORDLG));
 	m_cursorsetpos = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORSETPOS));
 
-	//klavesnice
-	g_shiftkey=g_controlkey=0;
-	g_numlock=0;
-	
-	g_capslock_other=GetCapsLock();
-	g_capslock_rmt=0;
-	SetCapsLock(0);
+	//keyboard
+	g_shiftkey=g_controlkey=0;	//TODO: add support for ALT key as well
 
-	/*
-	g_scrolllock_other=GetScrollLock();
-	g_scrolllock_rmt=0;
-	SetScrollLock(0);
-	*/
+	//current parts
+	g_activepart = PARTTRACKS;	//tracks
+	g_active_ti = PARTTRACKS;	//below the active tracks
 
-	//aktualni casti
-	g_activepart = PARTTRACKS;		//tracks
-	g_active_ti = PARTTRACKS;	//v dolni casti aktivni tracks
+	//turn on all channels
+	SetChannelOnOff(-1,1);
 
-	//vsechny kanaly zapnute
-	SetChannelOnOff(-1,1);		//vsechny kanaly zapnout
-
-	//KONFIGURACE
+	//CONFIGURATION
 	ReadConfig();
 
-	//view prvky
-	ChangeViewElements(0); //bez write!
+	//view elements
+	ChangeViewElements(0); //without write!
 
-	// PRVOTNI INICIALIZACE POKEYE (NACTENI DLL)
+	//INITIAL POKEY INITIALISATION (DLL)
 	if (!m_song.InitPokey())
 	{
 		m_song.DeInitPokey();
-		exit(1);	//hlasku vypsal uz InitPokey
+		exit(1);
 	}
 
-	// PRVOTNI INICIALIZACE 6502 (NACTENI DLL)
+	//INITIAL 6502 INITIALIZATION (DLL)
 	if (!Atari6502_Init())
 	{
 		Atari6502_DeInit();
 		exit(1);
 	}
 
-	// PRVOTNI NACTENI A INICIALIZACE ATARI RMT RUTINY
-	Memory_Clear();
+	//INITIALISATION OF ATARI RMT ROUTINES
+	Memory_Clear();	//clear the allocated memory space beforehand in order to avoid reading garbage
 	if (!Atari_LoadRMTRoutines())
 	{
-		//MessageBox("Can't open Atari RMT ATARI system routines.","Error",MB_ICONERROR);
-		MessageBox("Fatal error with RMT ATARI system routines.","Error",MB_ICONERROR);
+		MessageBox("Fatal error with RMT ATARI system routines.\nCouldn't load 'RMT Binaries/tracker.obx'.","Error",MB_ICONERROR);
 		exit(1);
 	}
 	Atari_InitRMTRoutine();
 
+	Get_Driver_Version();	//get the driver version from the binary, nothing will appear if it does not exist
 
-	g_screenupdate=1;	//prvni vykresleni
-
+	g_screenupdate=1;	//first rendered
 	m_timeranalyzer=0;
 	m_timeranalyzer = SetTimer(1,20,NULL);
 
-	//Zobrazi ABOUT dialog kdyz neni Pokey nebo 6502
+	Sleep(100);	//this will ensure there will be no false positive with the sound initialisation, else it would attempt to check too early and assume the plugins were not initialised
+
+	//Displays the ABOUT dialog if there is no Pokey or 6502 initialized...
 	if (!m_song.GetPokey()->GetRenderSound() || !g_is6502)
 	{
 		AfxGetApp()->GetMainWnd()->PostMessage(WM_COMMAND,ID_APP_ABOUT,0);
 	}
 
-	//Inicializuje MIDI
+	//Initialise MIDI
 	m_midi.MidiInit();
 	m_midi.MidiOn();
 
-	//Pal nebo NTSC
+	//Pal or NTSC
 	m_song.ChangeTimer((g_ntsc)? 17 : 20);
 
-	//Jestli byl tracker spusten s parametrem, pak nacte prislusny soubor
-	if (commandlinefilename)
+	//If the tracker was started with an argument, it attempts to load the file, and will return an error if the extention isn't .rmt. 
+	//When not argument is passed, the initialisation continues like normal.
+	if (commandlinefilename != "")
 	{
-		m_song.FileOpen((LPCTSTR)commandlinefilename);
+		if (commandlinefilename.Right(4) == ".rmt")
+		{
+			m_song.FileOpen((LPCTSTR)commandlinefilename);
+		}
+		else
+		{
+			MessageBox("Invalid .rmt file!", "Error", MB_ICONERROR);
+			exit(1);
+		}
 	}
-
-	//PostMessage(WM_COMMAND,ID_FILE_NEW); //aby se pak vyvolal new dialog
 }
 
 int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
@@ -884,15 +955,32 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	int i;
 	int px,py;
 
-	CRect rec(g_song_x+SONG_LEFT_W,SONG_Y+SONG_HEADER_H,g_song_x+SONG_LEFT_W+g_tracks4_8*3*8-8,SONG_Y+SONG_HEADER_H+g_songlines*SONG_LINE_H);
+	int sp = g_scaling_percentage;
+
+	//scale the mouse XY coordinates to the actual display scaling, so the hitboxes will match everything visually rendered
+	point.x = (point.x * 100) / sp;
+	point.y = (point.y * 100) / sp;
+
+	//TODO: make those parameters global so they won't have to be re-initialised in multiple functions separately
+	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == 1) ? 1420 : 960;
+	int MINIMAL_WIDTH_INSTRUMENTS = (g_tracks4_8 > 4 && g_active_ti == 2) ? 1220 : 1220;
+	int WINDOW_OFFSET = (g_width < 1320 && g_tracks4_8 > 4 && g_active_ti == 1) ? -250 : 0;	//test displacement with the window size
+	int INSTRUMENT_OFFSET = (g_active_ti == 2 && g_tracks4_8 > 4) ? -250 : 0;
+	if (g_tracks4_8 == 4 && g_active_ti == 2 && g_width > MINIMAL_WIDTH_INSTRUMENTS - 220) INSTRUMENT_OFFSET = 260;
+	int SONG_OFFSET = SONG_X + WINDOW_OFFSET + INSTRUMENT_OFFSET + ((g_tracks4_8 == 4) ? -200 : 310);	//displace the SONG block depending on certain parameters
+
+	int linescount = (WINDOW_OFFSET) ? 5 : 9;	//songlines displayed depend on the window offset, if it's displaced to the left side, only 5 lines will be visible, else, 9 will be displayed
+
+	CRect rec(SONG_OFFSET + 6 * 8, SONG_Y + 16, SONG_OFFSET + 6 * 8 + g_tracks4_8 * 3 * 8 - 8, SONG_Y + 16 + linescount * 16); 
 	if (rec.PtInRect(point))
 	{
 		//Song
 		SetCursor(m_cursorgoto);
-		//
+		
 		if (mousebutt & MK_LBUTTON)
 		{
-			BOOL r=m_song.SongCursorGoto(CPoint(point.x-(g_song_x+SONG_LEFT_W),point.y-(SONG_Y+SONG_HEADER_H)));
+			int lineoffset = (WINDOW_OFFSET) ? SONG_Y + 16 : SONG_Y + 48;
+			BOOL r = m_song.SongCursorGoto(CPoint(point.x - (SONG_OFFSET + 6 * 8), point.y - lineoffset));
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta!=0)
@@ -906,22 +994,19 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 5;
 	}
 
-	// Header
-	rec.SetRect(g_song_x+SONG_LEFT_W,SONG_Y,g_song_x+SONG_LEFT_W+g_tracks4_8*3*8-8,SONG_Y+SONG_HEADER_H);
+	rec.SetRect(SONG_OFFSET+6*8,SONG_Y,SONG_OFFSET+6*8+g_tracks4_8*3*8-8,SONG_Y+16);
 	if (rec.PtInRect(point))
 	{
-		//nad Songem L1-R4 pro channel on/off/solo/inverze
-		i = (point.x + 4 - (g_song_x+SONG_LEFT_W)) / (8*3);
+		//over Song L1-R4 for channel on/off/solo/inversion
+		i = (point.x + 4 - (SONG_OFFSET+6*8)) / (8*3);
 		if (i<0) i=0;
 		else
 		{	if (i>=g_tracks4_8) i=g_tracks4_8-1; }
 		px = i;
-		//
 		SetCursor(m_cursorchanonoff);
-		//
 		if (mousebutt & MK_LBUTTON)
 		{
-			SetChannelOnOff(px,-1);	//inverze
+			SetChannelOnOff(px,-1);	//inversion
 			SCREENUPDATE;
 		}
 		if (mousebutt & MK_RBUTTON)
@@ -937,7 +1022,6 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	{
 		//Song name
 		SetCursor(m_cursorgoto);
-		//
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r=m_song.InfoCursorGotoSongname(point.x-INFO_X);
@@ -951,11 +1035,70 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	{
 		//Song speed
 		SetCursor(m_cursorgoto);
-		//
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r=m_song.InfoCursorGotoSpeed(point.x-(INFO_X+13*8));
 			if (r) SCREENUPDATE;
+		}
+		return 6;
+	}
+
+	rec.SetRect(INFO_X+38*8,INFO_Y+16,INFO_X+40*8,INFO_Y+16*2);
+	if (rec.PtInRect(point))
+	{
+		//MAXTRACKLENGTH
+		SetCursor(m_cursordlg);
+		if (mousebutt & MK_LBUTTON)
+		{
+			OnSongSongchangemaximallengthoftracks();
+			SCREENUPDATE;
+		}
+		return 6;
+	}
+
+	if (g_tracks4_8==8)
+		rec.SetRect(INFO_X+42*8,INFO_Y+16,INFO_X+57*8,INFO_Y+16*2);
+	else
+		rec.SetRect(INFO_X+42*8,INFO_Y+16,INFO_X+55*8,INFO_Y+16*2);
+	if (rec.PtInRect(point))
+	{
+		//MONO-4-TRACKS or STEREO-8-TRACKS
+		SetCursor(m_cursordlg);
+		if (mousebutt & MK_LBUTTON)
+		{
+			OnSongSongswitch4_8();
+			SCREENUPDATE;
+		}
+		return 6;
+	}
+
+	if (g_tracks4_8==8)
+	{
+		if (g_ntsc)
+			rec.SetRect(INFO_X+59*8,INFO_Y+16,INFO_X+63*8,INFO_Y+16*2);
+		else
+			rec.SetRect(INFO_X+59*8,INFO_Y+16,INFO_X+62*8,INFO_Y+16*2);
+	}
+	else 
+	{
+		if (g_ntsc)
+			rec.SetRect(INFO_X+57*8,INFO_Y+16,INFO_X+61*8,INFO_Y+16*2);
+		else 
+			rec.SetRect(INFO_X+57*8,INFO_Y+16,INFO_X+60*8,INFO_Y+16*2);
+	}
+	if (rec.PtInRect(point))
+	{
+		//PAL or NTSC
+		SetCursor(m_cursorgoto);
+		if (mousebutt & MK_LBUTTON)
+		{
+			g_ntsc ^=1;
+			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
+			m_song.ChangeTimer((g_ntsc)? 17 : 20);
+			m_song.GetPokey()->ReInitSound();	//the sound needs to be reinitialized
+			WriteConfig();
+			Atari_InitRMTRoutine(); //reset RMT routines
+			SCREENUPDATE;
 		}
 		return 6;
 	}
@@ -965,7 +1108,6 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	{
 		//Octave Select Dialog
 		SetCursor(m_cursordlg);
-		//
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r=m_song.InfoCursorGotoOctaveSelect(point.x,point.y);
@@ -987,7 +1129,6 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	{
 		//Volume Select Dialog
 		SetCursor(m_cursordlg);
-		//
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r=m_song.InfoCursorGotoVolumeSelect(point.x,point.y);
@@ -1004,14 +1145,13 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 6;
 	}
 
-
 	rec.SetRect(INFO_X,INFO_Y+3*16,INFO_X+4*8+INSTRNAMEMAXLEN*8,INFO_Y+3*16+16);
 	if (rec.PtInRect(point))
 	{
 		//Instrument Select Dialog
 Instrument_Select_Dialog:
+
 		SetCursor(m_cursordlg);
-		//
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r=m_song.InfoCursorGotoInstrumentSelect(point.x,point.y);
@@ -1027,44 +1167,41 @@ Instrument_Select_Dialog:
 		return 6;
 	}
 
-	//DOLNI CASTI
-
+	//LOWER PARTS
 	if (g_active_ti==PARTTRACKS)
 	{
-		//TrackEdit                   (-12 pridano smerem nahoru)
-		rec.SetRect(TRACKS_X+5*8,TRACKS_Y-12,TRACKS_X+5*8+g_tracks4_8*8*11,TRACKS_Y+32);
+		rec.SetRect(TRACKS_X + 3 * 16, TRACKS_Y - 12, TRACKS_X + 3 * 8 + g_tracks4_8 * 8 * 16, TRACKS_Y + 32);
+
 		if (rec.PtInRect(point))
 		{
-			i = (point.x - (TRACKS_X+5*8)) / (8*11);
+			i = (point.x - (TRACKS_X + 5 * 8)) / (8 * 16);
 			if (i<0) i=0;
 			else
 			if (i>=g_tracks4_8) i=g_tracks4_8-1;
 			px = i;
-			//
+
 			SetCursor(m_cursorchanonoff);
-			//
+
 			if (mousebutt & MK_LBUTTON)
 			{
-				SetChannelOnOff(px,-1);	//inverze
+				SetChannelOnOff(px,-1);	//inversion
 				SCREENUPDATE;
 			}
 			if (mousebutt & MK_RBUTTON)
 			{
-				SetChannelSolo(px);		//solo/mute on off
+				SetChannelSolo(px);		//solo/mute/on/off
 				SCREENUPDATE;
 			}
 			return 1;
 		}
-
-		// Track click
-		rec.SetRect(TRACKS_X+6*8,TRACKS_Y+TRACKS_HEADER_H,TRACKS_X+3*8+g_tracks4_8*8*11,TRACKS_Y+TRACKS_HEADER_H+g_tracklines*TRACK_LINE_H);
+		//the number of tracklines is adjusted based on the window height
+		rec.SetRect(TRACKS_X + 6 * 8, TRACKS_Y + 48, TRACKS_X + 3 * 8 + g_tracks4_8 * 8 * 16, TRACKS_Y + 48 + g_tracklines * 16);
 		if (rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
-			//
 			if (mousebutt & MK_LBUTTON)
 			{
-				BOOL r=m_song.TrackCursorGoto(CPoint(point.x-(TRACKS_X+6*8),point.y-(TRACKS_Y+TRACKS_HEADER_H)));
+				BOOL r=m_song.TrackCursorGoto(CPoint(point.x-(TRACKS_X+6*8),point.y-(TRACKS_Y+48)));
 				if (r) SCREENUPDATE;
 			}
 			if (wheelzDelta!=0)
@@ -1082,24 +1219,21 @@ Instrument_Select_Dialog:
 	if (g_active_ti==PARTINSTRS)
 	{
 		//InstrEdit
-
 		int ainstr = m_song.GetActiveInstr();
-		//VOLUME LEFT (dolni)
+		//VOLUME LEFT (bottom)
 		int r= m_song.GetInstruments()->GetInstrArea(ainstr,0,rec);
 		if (r && rec.PtInRect(point))
 		{
 			px = (point.x - rec.left) /8;
 			py = 15- ((point.y - rec.top) /4);
-			//return 2;
 			SetCursor(m_cursorenvvolume);
-			//
-			if (g_mousebutt & MK_LBUTTON) //porovnava g_mousebutt, aby to fungovalo i pri move
+			if (g_mousebutt & MK_LBUTTON) //compares g_mousebutt to make it work while moving
 			{
 				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
 				m_song.GetInstruments()->SetEnvVolume(ainstr,0,px,py);
 				SCREENUPDATE;
 			}
-			if (g_mousebutt & MK_RBUTTON) //porovnava g_mousebutt, aby to fungovalo i pri move
+			if (g_mousebutt & MK_RBUTTON) //compares g_mousebutt to make it work while moving
 			{
 				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
 				m_song.GetInstruments()->SetEnvVolume(ainstr,0,px,0);
@@ -1108,22 +1242,20 @@ Instrument_Select_Dialog:
 			return 2;
 		}
 
-		//VOLUME RIGHT (horni)
+		//VOLUME RIGHT (upper)
 		r= m_song.GetInstruments()->GetInstrArea(ainstr,1,rec);
 		if (r && rec.PtInRect(point))
 		{
 			px = (point.x - rec.left) /8;
 			py = 15- ((point.y - rec.top) /4);
-			//return 3;
 			SetCursor(m_cursorenvvolume);
-			//
-			if (g_mousebutt & MK_LBUTTON) //porovnava g_mousebutt, aby to fungovalo i pri move
+			if (g_mousebutt & MK_LBUTTON) //compares g_mousebutt to make it work while moving
 			{
 				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
 				m_song.GetInstruments()->SetEnvVolume(ainstr,1,px,py);
 				SCREENUPDATE;
 			}
-			if (g_mousebutt & MK_RBUTTON) //porovnava g_mousebutt, aby to fungovalo i pri move
+			if (g_mousebutt & MK_RBUTTON) //compares g_mousebutt to make it work while moving
 			{
 				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
 				m_song.GetInstruments()->SetEnvVolume(ainstr,1,px,0);
@@ -1132,13 +1264,11 @@ Instrument_Select_Dialog:
 			return 3;
 		}
 
-
-		//ENVELOPE PARAMETERS velka tabulka
+		//ENVELOPE PARAMETERS large table
 		r= m_song.GetInstruments()->GetInstrArea(ainstr,2,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
-			//
 			if (mousebutt & MK_LBUTTON)
 			{
 				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),0);
@@ -1147,12 +1277,11 @@ Instrument_Select_Dialog:
 			return 3;
 		}
 
-		//ENVELOPE PARAMETERS rada cisel pro hlasitost praveho kanalu
+		//ENVELOPE PARAMETERS series of numbers for the right channel volume
 		r= m_song.GetInstruments()->GetInstrArea(ainstr,3,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
-			//
 			if (mousebutt & MK_LBUTTON)
 			{
 				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),1);
@@ -1166,7 +1295,6 @@ Instrument_Select_Dialog:
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
-			//
 			if (mousebutt & MK_LBUTTON)
 			{
 				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),2);
@@ -1180,7 +1308,6 @@ Instrument_Select_Dialog:
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
-			//
 			if (mousebutt & MK_LBUTTON)
 			{
 				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),3);
@@ -1194,7 +1321,6 @@ Instrument_Select_Dialog:
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
-			//
 			if (mousebutt & MK_LBUTTON)
 			{
 				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),4);
@@ -1212,12 +1338,11 @@ Instrument_Select_Dialog:
 			goto Instrument_Select_Dialog;
 		}
 
-		//ENVELOPE LEN a GO PARAMETER - delka a smycka pomoci mysi
+		//ENVELOPE LEN a GO PARAMETER - length and loop to help the mouse
 		r= m_song.GetInstruments()->GetInstrArea(ainstr,8,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorsetpos);
-			//
 			r=0;
 			if (mousebutt & MK_LBUTTON)
 			{
@@ -1233,12 +1358,11 @@ Instrument_Select_Dialog:
 			return 7;
 		}
 
-		//TABLE LEN a GO PARAMETER - delka a smycka pomoci mysi
+		//TABLE LEN a GO PARAMETER - length and loop to help the mouse
 		r= m_song.GetInstruments()->GetInstrArea(ainstr,9,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorsetpos);
-			//
 			r=0;
 			if (mousebutt & MK_LBUTTON)
 			{
@@ -1255,7 +1379,6 @@ Instrument_Select_Dialog:
 		}
 
 	}
-
 	SetCursor(m_cursororig);
 	return 0;
 }
@@ -1312,227 +1435,216 @@ void CRmtView::OnMouseMove(UINT nFlags, CPoint point)
 
 BOOL CRmtView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message) 
 {
-	// TODO: Add your message handler code here and/or call default
 	return 1;
-	//return CView::OnSetCursor(pWnd, nHitTest, message);
 }
-
-/*
-void CRmtView::OnSysKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
-{
-	CView::OnSysKeyDown(nChar,nRepCnt,nFlags);
-}
-*/
 
 void CRmtView::OnSysChar( UINT nChar, UINT nRepCnt, UINT nFlags )
 {
-	/*
-	char s[128];
-	sprintf(s,"nChar=%u nRepCnt=%u nFlags=%u",nChar,nRepCnt,nFlags);
-	SetStatusBarText(s);
-	Sleep(500);
-	*/
-	//8,1,8206
-	if ( nFlags&0x2000 ) //ALT ?
-	{
-		//ALT+
-		if (nChar==8) //8 = VK_BACKSPACE:
-		{
-			//MessageBox("aaa","bbb");
-			if (g_shiftkey)
-			{
-				if (m_song.Redo()) //Shift+Alt+Backspace (nechova se idealne - zustava viset Shift)
-				{
-					SCREENUPDATE;
-					return;
-				}
-			}
-			else
-			{
-				if (m_song.Undo()) //Alt+Backspace
-				{
-					SCREENUPDATE;
-					return;
-				}
-			}
-			//pokud uz Undo nejde, pusti ho dal aby udelal zvuk
-		}
-		/*
-		else
-		if (nChar==XXX)
-		{
-			if (m_song.Redo()) SCREENUPDATE;
-			return;
-		}
-		*/
-	}
 	CView::OnSysChar( nChar, nRepCnt, nFlags );
 }
 
-
 const int  NChaCode[]={  36,  38,  33, VK_SUBTRACT,  37,  12,  39, VK_ADD,  35,  40,  34,  45};
 const char FlaToCha[]={0x67,0x68,0x69,109,0x64,0x65,0x66,107,0x61,0x62,0x63,0x60};
-
 const char layout2[]={VK_F5,VK_F6,VK_F7,VK_F8, VK_F3,VK_F2,VK_F4,VK_ESCAPE};
 
+//TODO: cleanup and reconfigure, since testing keys in Stereo is not working correctly due to all the shortcuts being intermixed into the inputs
 void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) 
 {
-
-	/*
-	char s[128];
-	sprintf(s,"nChar=%u nRepCnt=%u nFlags=%u",nChar,nRepCnt,nFlags);
-	SetStatusBarText(s);
-
-	Sleep(500);
-	CView::OnKeyDown(nChar, nRepCnt, nFlags);
-	return;
-	//*/
-
-
 	UINT vk = nChar;
-
-//	g_shiftkey = (GetAsyncKeyState(VK_SHIFT)!=NULL);
-//	g_controlkey = (GetAsyncKeyState(VK_CONTROL)!=NULL);
-
-	if (g_keyboard_layout==1 && vk>=VK_F1 && vk<=VK_F8)
+	UINT nfb = nFlags & 0x1ff;	//when autorepeat is set in nFlags bit 16384
+	//this seems to work around possible problems and causes no harm... so let's leave this untouched
+	if (nfb>=71 && nfb<=82) //shift + numblock 0-9 + -
 	{
-		//Layout 2
-		if (vk==VK_F7 && g_controlkey)
-		{
-			m_song.Play(MPLAY_TRACK,g_shiftkey ^ g_keyboard_playautofollow,1);
-			goto KeyDownFinish;
-		}
-		vk = layout2[vk-VK_F1];
-	}
-
-
-	//*
-	{
-	 UINT nfb = nFlags & 0x1ff;	//pri autorepeatu se nastavuje v nFlags bit 16384
-	 if (nfb>=71 && nfb<=82) //shift + numblock 0-9 + -
-	 {
 		if ((int)nChar == NChaCode[nfb-71])
 		{
 			vk=FlaToCha[nfb-71];
-//			g_shiftkey=1;	//pridan test pri pousteni shiftu, jestli je to skutecne shift
 		}
-	 }
 	}
-	/*/
-		char s[128];
-		//sprintf(s,"shift=%i control=%i vkey=%i nFlags=%i    ",GetKeyState(VK_LSHIFT),GetKeyState(VK_LCONTROL),vk,nFlags);
-		sprintf(s,"shift=%i control=%i vkey=%i nFlags=%i    ",g_shiftkey,g_controlkey,vk,nFlags);
-		SetStatusBarText(s);
-		//MessageBox(s);
-		//TextXY(s,10,10);
-		//SCREENUPDATE;
-	//	return;
-	// */
 
 	switch(vk)
 	{
-	case VK_ESCAPE:
-		m_song.Stop();					//utisi vsechno
-		if (g_prove)					//je-li zapnuto, vypne PROVE MODE
+	case 0x5A: //Z
+		if (g_controlkey && !g_shiftkey) //or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			g_prove=0;
-			SCREENUPDATE;
+			if (m_song.Undo()) //CTRL+Z
+			{
+				SCREENUPDATE;
+				return;
+			}
 		}
+		goto AllModesDefaultKey;
+		break;
+
+	case 0x59: //Y
+		if (g_controlkey && !g_shiftkey) //or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
+		{
+			if (m_song.Redo()) //CTRL+Y
+			{
+				SCREENUPDATE;
+				return;
+			}
+		}
+		goto AllModesDefaultKey;
+		break;
+
+	case VK_SPACE: //SPACEBAR
+		if (g_controlkey)
+		{
+		m_song.GetUndo()->Separator(); //CTRL+SPACEBAR
+		OnProvemode();
+		}
+		goto AllModesDefaultKey;
+		break;
+
+	case VK_ESCAPE:	
+		m_song.Stop();	//stops everything
 		if (g_keyboard_escresetatarisound)
 		{
-			Atari_InitRMTRoutine(); //reinit RMT rutiny
+			Atari_InitRMTRoutine(); //reset RMT routines automatically
 		}
-		break;
-
-		//
-	case VK_F1:
-		/*
-		//DEBUG:
-		m_song.GetPokey()->Test();
-		break;
-		//konec
-		*/
-		if (g_controlkey)
-			m_song.SetBookmark();
-		else
-			m_song.Play(MPLAY_BOOKMARK,g_shiftkey ^ g_keyboard_playautofollow);		//od bookmarku  (+shift => followplay)	
-		/*
+		if (g_shiftkey) 
 		{
-			CKeyboardLayoutDlg dlg;
-			dlg.DoModal();
+			m_song.GetPokey()->ReInitSound(); 
+			Atari_InitRMTRoutine(); //reset RMT routines
 		}
-		//*/
-		// Atari_InstrumentTurnOff(m_song.GetActiveInstr());
-		//if (m_timeranalyzer) {	KillTimer(m_timeranalyzer);	m_timeranalyzer = 0; }
-		break;
-	case VK_MEDIA_STOP:
-		m_song.Stop();
-		break;
-
-	case VK_MEDIA_PLAY_PAUSE:
-	case VK_F2:
-		m_song.Play(MPLAY_SONG,g_shiftkey ^ g_keyboard_playautofollow);		//cely song od 0  (+shift => followplay)	
+		if (m_song.GetPlayMode()==0) //only if the module is stopped
+		{
+			g_playtime=0;
+			DrawPlaytimecounter();
+		}
+		goto AllModesDefaultKey;
 		break;
 
-	case VK_F3:
-		m_song.Play(MPLAY_FROM,g_shiftkey ^ g_keyboard_playautofollow);		//od aktualniho mista (+shift => followplay)	
-		break;
-
-	case VK_F4:
-		if (g_controlkey)
-			m_song.Play(MPLAY_BLOCK,g_shiftkey ^ g_keyboard_playautofollow);		//aktualni blok porad dokola (+shift => followplay)
+	case VK_SUBTRACT:
+		if (g_controlkey && !g_shiftkey)
+		{
+			g_linesafter--;
+			if (g_linesafter < 0) g_linesafter = 8;
+			CMainFrame* mf = ((CMainFrame*)AfxGetMainWnd());
+			if (mf) mf->m_c_linesafter.SetCurSel(g_linesafter);
+		}
 		else
-			m_song.Play(MPLAY_TRACK,g_shiftkey ^ g_keyboard_playautofollow);		//aktualni tracky porad dokola (+shift => followplay)	
+			goto AllModesDefaultKey;
 		break;
 
-		//
-	case VK_F5:
+	case VK_ADD:
+		if (g_controlkey && !g_shiftkey)
+		{
+			g_linesafter++;
+			if (g_linesafter > 8) g_linesafter = 0;
+			CMainFrame* mf = ((CMainFrame*)AfxGetMainWnd());
+			if (mf) mf->m_c_linesafter.SetCurSel(g_linesafter);
+		}
+		else
+			goto AllModesDefaultKey;
+		break;
+
+	case VK_MULTIPLY:
+		goto AllModesDefaultKey;
+		break;
+
+	case VK_DIVIDE:
+		goto AllModesDefaultKey;
+		break;
+
+	case VK_F1:
+		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
 		m_song.GetUndo()->Separator();
-		OnEmTracks();
+		OnEmTracks();		
 		break;
 
-	case VK_F6:
+	case VK_F2:
+		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
 		m_song.GetUndo()->Separator();
 		OnEmInstruments();
 		break;
 
-	case VK_F7:
+	case VK_F3:
+		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
 		m_song.GetUndo()->Separator();
 		OnEmInfo();
 		break;
 
-	case VK_F8:
+	case VK_F4:
+		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
 		m_song.GetUndo()->Separator();
 		OnEmSong();
 		break;
 
-		//
-
-	case VK_F9:							//prove mode
-		m_song.GetUndo()->Separator();
-		OnProvemode();
+	case VK_F5:
+		m_song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
+		m_song.Play(MPLAY_SONG,m_song.m_followplay);	//play song from start
 		break;
 
-	case VK_F11:						//respect volume
-		m_song.GetUndo()->Separator();
+	case VK_F6:
+		m_song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
+		if (g_shiftkey) m_song.Play(MPLAY_BLOCK,m_song.m_followplay);	//play block and follow
+		else m_song.Play(MPLAY_TRACK,m_song.m_followplay);				//play pattern and follow	
+		break;
+
+	case VK_F7:
+		m_song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
+		if (m_song.IsBookmark() && g_shiftkey) m_song.Play(MPLAY_BOOKMARK,m_song.m_followplay);	//play song from bookmark
+		else m_song.Play(MPLAY_FROM,m_song.m_followplay);							//play song from current position
+		break;
+
+	case VK_F8:
+		if (g_controlkey) m_song.ClearBookmark();	//clear bookmark
+		else m_song.SetBookmark();					//set song bookmark
+		break;
+
+	case VK_F9:
+		if (!g_controlkey && g_shiftkey)	
+		{
+			SetChannelOnOff(-1,-1);		//switch all channels on or off
+		}		
+		else if (g_controlkey)
+		{
+			int ch = m_song.GetActiveColumn(); //solo current channel
+			SetChannelSolo(ch);
+		}
+		else
+		{
+			int ch = m_song.GetActiveColumn(); //mute current channel
+			SetChannelOnOff(ch,-1);	
+		}
+		SCREENUPDATE;
+		break;
+
+	//F10 can't be used for some reason... it seems to be binded to native Windows functions and so it would take priority instead of any shortcut I would like to use for it.
+
+	case VK_F11:						
+		m_song.GetUndo()->Separator();	//respect volume
 		g_respectvolume ^=1;
 		SCREENUPDATE;
 		break;
 
-		//
-
-	case VK_F12:
-		m_song.GetUndo()->Separator();
-		if (g_activepart != g_active_ti)
-			g_activepart = g_active_ti;
-		else
+	case VK_F12: 
+		if (g_controlkey) 
 		{
-			if (g_activepart==PARTTRACKS)
-				g_activepart=g_active_ti=PARTINSTRS;
-			else
-				g_activepart=g_active_ti=PARTTRACKS;	
+			g_ntsc ^= 1;
+			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
+			m_song.ChangeTimer((g_ntsc) ? 17 : 20);
+			m_song.GetPokey()->ReInitSound();	//the sound needs to be reinitialized
+			WriteConfig();
+			Atari_InitRMTRoutine(); //reset RMT routines
+			SCREENUPDATE;
 		}
-		SCREENUPDATE;
+		else OnPlayfollow(); //toggle follow position
+		break;
+
+	case VK_MEDIA_PLAY_PAUSE:
+		if (m_song.GetPlayMode()==0)
+		m_song.Play(MPLAY_SONG,m_song.m_followplay);	//play song from start
+		else m_song.Stop();								//if playing, stop
+		break;
+
+	case VK_MEDIA_NEXT_TRACK:
+		m_song.Play(MPLAY_SEEK_NEXT,m_song.m_followplay); //seek next and play from track
+		break;
+
+	case VK_MEDIA_PREV_TRACK:
+		m_song.Play(MPLAY_SEEK_PREV,m_song.m_followplay); //seek prev and play from track
 		break;
 
 	case VK_SHIFT:
@@ -1545,79 +1657,10 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		goto KeyDownNoUndoCheckPoint;
 		break;
 
-	case VK_NUMLOCK:
-		if (g_keyboard_usenumlock) {
-			//g_numlock=GetNumLock();
-			if ( nFlags !=0 )
-			{
-				SetNumLock(0);				//Vypina NumLock
-				if ( (nFlags & 0x1ff) == 0) break;	//posun o +-1 se dela jen pri RUCNIM stlaceni NumLocku
-				int c = g_linesafter;
-				if (g_shiftkey)		//SHIFT+NUMLOCK
-				{
-					c--;
-					if (c<0) c=8;
-				}
-				else 
-				{					//NUMLOCK
-					c++;
-					if (c>8) c=0;
-				}
-				CMainFrame *mf = ((CMainFrame*)AfxGetMainWnd());
-				if (mf)
-				{
-					g_linesafter = c;	//pokud by se nepodarilo MainFrame, tak ani nemeni g_linesafter
-					mf->m_c_linesafter.SetCurSel(g_linesafter);
-				}
-			}
-		}
-		break;
-
-	case VK_SCROLL:	//ScrollLock key
-		OnPlayfollow();
-		break;
-
-	case VK_CANCEL: //Control+Pause = VK_BREAK
-		break; //nic
-
-	case VK_PAUSE:
-		if (g_shiftkey) m_song.GetPokey()->ReInitSound(); //SHIFT+PAUSE ..celkovy reinit zvuku
-		Atari_InitRMTRoutine(); //reinit RMT rutiny
-		if (m_song.GetPlayMode()==0) //pouze je-li modul zastaven
-		{
-			g_playtime=0;
-			DrawPlaytimecounter();
-		}
-		//MessageBeep(-1);
-		break;
-
-	case VK_DIVIDE:
-		m_song.TrackLeft(1);
-		SCREENUPDATE;
-		break;
-	
-	case VK_MULTIPLY:
-		m_song.TrackRight(1);
-		SCREENUPDATE;
-		break;
-
-	case 192:	//VK_BACKQUOTE ( ` opacny apostrof)
-		if (g_shiftkey)
-		{
-			SetChannelOnOff(-1,-1);	//inverze soucasneho stavu vyp/zap		
-		}
-		else
-		if (g_controlkey)
-		{
-			int ch = m_song.GetActiveColumn(); //aktualni channel
-			SetChannelOnOff(ch,-1);			//jeho inverze soucasneho stavu vyp/zap
-		}
-		else
-		{
-			int ch = m_song.GetActiveColumn(); //aktualni channel
-			SetChannelSolo(ch);
-		}
-		SCREENUPDATE;
+	//TODO: Add ALT key support for the "is held" flag, for some reason I am unable to make it work, it seems to behave like the F10 key and take priority over everything else.
+	case VK_LMENU:
+		g_altkey = 1;
+		goto KeyDownNoUndoCheckPoint;
 		break;
 
 	case 49:	//VK_1
@@ -1630,27 +1673,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 56:	//VK_8
 		if (g_controlkey && !g_shiftkey)	//CONTROL + 1-8
 		{
-			SetChannelOnOff(vk-49,-1);		//invertuje stav kanalu 1-8 (=>zap/vyp)
-			SCREENUPDATE;
-		}
-		else
-			goto AllModesDefaultKey;
-		break;
-
-	case 57:	//VK_9
-		if (g_controlkey && !g_shiftkey)	//CONTROL + 9
-		{
-			SetChannelOnOff(-1,1);		//vsechny zapnout
-			SCREENUPDATE;
-		}
-		else
-			goto AllModesDefaultKey;
-		break;
-
-	case 48:	//VK_0
-		if (g_controlkey && !g_shiftkey)	//CONTROL + 0
-		{
-			SetChannelOnOff(-1,0);		//vsechny vypnout
+			SetChannelOnOff(vk-49,-1);		//inverts channel status 1-8 (=> on / off)
 			SCREENUPDATE;
 		}
 		else
@@ -1658,7 +1681,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 
 	case 76:	//VK_L
-		if (g_controlkey && !g_shiftkey) //CONTROL+L
+		if (g_controlkey && !g_shiftkey) //CTRL+L, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
 			SetStatusBarText("Load...");
 			OnFileOpen();
@@ -1668,9 +1691,19 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			goto AllModesDefaultKey;
 		break;
 
+	case 87: //VK_W
+		if (g_controlkey && !g_shiftkey) //CTRL+W, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
+		{
+			m_song.Stop();
+			int r = MessageBox("Would you like to create a new song?", "Create new song", MB_YESNOCANCEL | MB_ICONQUESTION);
+			if (r == IDYES) m_song.FileNew();
+		}
+		else
+			goto AllModesDefaultKey;
+		break;
 
 	case 83:	//VK_S
-		if (g_controlkey && !g_shiftkey) //CONTROL+S
+		if (g_controlkey && !g_shiftkey) //CTRL+S, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
 			m_song.Stop();
 			SetStatusBarText("Save...");
@@ -1678,10 +1711,10 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			if (g_keyboard_askwhencontrol_s
 				&& (filename!="" || m_song.GetFiletype()!=0))
 			{
-				//ma-li se ptat a bude-li se provadet prepis uz existujiciho
-				//(=> nebude "Save as..." dialog)
+				//if a question is asked and if a file already exists
+				//(=> there will be a "Save as ..." dialog)
 				CString s;
-				s.Format("Save song to file '%s'?",filename);
+				s.Format("Do you want to save song file '%s'?\nIs it okay to overwrite?",filename);
 				int r=MessageBox(s,"Save song",MB_YESNOCANCEL | MB_ICONQUESTION);
 				if (r==IDNO) { OnFileSaveAs(); goto end_save_control_s; }
 				if (r!=IDYES) goto end_save_control_s;
@@ -1689,6 +1722,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			Sleep(128);
 			OnFileSave();
 			Sleep(128);
+
 end_save_control_s:
 			SetStatusBarText("");
 		}
@@ -1696,83 +1730,112 @@ end_save_control_s:
 			goto AllModesDefaultKey;
 		break;
 
-	default:
-AllModesDefaultKey:
-		int r=0;
-
-		if (g_prove)
+	case 82:	//VK_R
+		if (g_controlkey && !g_shiftkey) //CTRL+R, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			//testovani hry na klavesnici
-			r=m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+			m_song.Stop();
+			m_song.FileReload();	//turns out this function handles the rest already, so jump right to it instead
 		}
 		else
-		{
-			short capslock = GetKeyState(20);	//VK_CAPS_LOCK
-			if (g_shiftkey 
-				&& (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE)
-				&& (!capslock || (g_activepart!=PARTINFO && g_active_ti!=PARTINSTRS))
-			   )
+			goto AllModesDefaultKey;
+		break;
+
+	default:
+	AllModesDefaultKey:
+			int r=0;
+			BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
+			switch (g_activepart)
 			{
-				r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
-			}
-			else
-			{
-				switch (g_activepart)
+			case PARTINFO:
+				if (g_shiftkey && !is_editing_infos && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
+					r = m_song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Song Name field, it will be ignored
+				else if (g_shiftkey && !is_editing_infos && (NoteKey(vk) < 0))
+					if (vk == VK_TAB || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_infokey_anyway;
+					else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
+				else if (is_editing_infos && CAPSLOCK && !g_shiftkey)
 				{
-				case PARTINFO:
-					r=m_song.InfoKey(vk,g_shiftkey,g_controlkey);
-					break;
-				case PARTTRACKS:
-					r=m_song.TrackKey(vk,g_shiftkey,g_controlkey);
-					break;
-				case PARTINSTRS:
-					r=m_song.InstrKey(vk,g_shiftkey,g_controlkey);
-					break;
-				case PARTSONG:
-					r=m_song.SongKey(vk,g_shiftkey,g_controlkey);
+					g_shiftkey = 1;
+					r = m_song.InfoKey(vk, g_shiftkey, g_controlkey);
+					g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
 					break;
 				}
+				else if (is_editing_infos && CAPSLOCK && g_shiftkey)
+				{
+					g_shiftkey = 0;
+					r = m_song.InfoKey(vk, g_shiftkey, g_controlkey);
+					g_shiftkey = 1;	//workaround: so it will *stay* locked when CAPSLOCK isn't active
+					break;
+				}
+				else 
+				{
+do_infokey_anyway:
+					if (vk == VK_PAGE_UP || vk == VK_PAGE_DOWN)
+						r = m_song.ProveKey(vk, g_shiftkey, g_controlkey);
+					else
+					r = m_song.InfoKey(vk, g_shiftkey, g_controlkey);
+				}
+				break;
+
+			case PARTTRACKS:
+				if (g_prove)
+					r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+				else if (g_shiftkey && (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE))
+					r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+				else 
+					r = m_song.TrackKey(vk,g_shiftkey,g_controlkey);
+				break;
+
+			case PARTINSTRS:
+				if (g_shiftkey && !is_editing_instr && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
+					r = m_song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Instrument Name field, it will be ignored
+				else if (g_shiftkey && !is_editing_instr && (NoteKey(vk) < 0))
+					if (vk == VK_TAB || vk == VK_INSERT || vk == VK_DELETE || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN || vk == VK_DIVIDE || vk == VK_MULTIPLY || vk == VK_SUBTRACT || vk == VK_ADD || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_instrkey_anyway;
+					else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
+				else if (is_editing_instr && CAPSLOCK && !g_shiftkey)
+				{
+					g_shiftkey = 1;
+					r = m_song.InstrKey(vk, g_shiftkey, g_controlkey);
+					g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
+					break;
+				}
+				else if (is_editing_instr && CAPSLOCK && g_shiftkey)
+				{
+					g_shiftkey = 0;
+					r = m_song.InstrKey(vk, g_shiftkey, g_controlkey);
+					g_shiftkey = 1;	//workaround: so it will *stay* locked when CAPSLOCK isn't active
+					break;
+				}
+				else
+				{
+do_instrkey_anyway:
+					if (vk == VK_PAGE_UP || vk == VK_PAGE_DOWN)
+						r = m_song.ProveKey(vk, g_shiftkey, g_controlkey);
+					else
+					r = m_song.InstrKey(vk, g_shiftkey, g_controlkey);
+				}
+				break;
+
+			case PARTSONG:
+				if (g_prove)
+					r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+				else if (g_shiftkey && (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE))
+					r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+				else 
+					r = m_song.SongKey(vk,g_shiftkey,g_controlkey);
+				break;
 			}
-		}
-		if (r)
-			SCREENUPDATE;
-//		else
-//			CView::OnKeyDown(nChar, nRepCnt, nFlags);
+		if (r) SCREENUPDATE;
 	}
-
-
-	//UndoCheckPoint
-	//nedela se je-li to jen shift nebo jen control
-	// (ke kteremu teprve prijde klavesa priste)
-	//m_song.UndoCheckPoint();
-
+//UndoCheckPoint does not work if it is only a shift or just a control (to which the next key will come)
 KeyDownNoUndoCheckPoint:
-KeyDownFinish:
-
-//	TRACE("Key:%d\n", vk);
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
-
-//	g_shiftkey = (GetAsyncKeyState(VK_SHIFT)!=NULL);
-//	g_controlkey = (GetAsyncKeyState(VK_CONTROL)!=NULL);
-//	UpdateShiftControlKeys();
-
-/*
-	CString s;
-	s.Format("NumLock=%u",GetNumLock());
-	SetStatusBarText(s);
-*/
 }
 
 void CRmtView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags) 
 {
-
-//	g_shiftkey = (GetAsyncKeyState(VK_SHIFT)!=NULL);
-//	g_controlkey = (GetAsyncKeyState(VK_CONTROL)!=NULL);
-
-//*
+	//TODO: Add support for ALT key for the "is held" flag, currently it does not work for some reason
 	if (nChar==VK_SHIFT)
 	{
-		//if ( (nFlags & (4+8+16)) != 4+16) g_shiftkey=0; //porovnani kvuli autogenerovane zprave o pusteni shiftu pri shift+numblock keys (+/-)
 		g_shiftkey=0;
 	}
 	else
@@ -1780,36 +1843,22 @@ void CRmtView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 	{
 		g_controlkey=0;
 	}
-//	*/
-
-	//	else
+	else
+	if (nChar==VK_LMENU)
+	{
+		g_altkey=0;
+	}
 	CView::OnKeyUp(nChar, nRepCnt, nFlags);
-
-/*
-	CString s;
-	s.Format("NumLock=%u",GetNumLock());
-	SetStatusBarText(s);
-*/
 }
-
 
 void CRmtView::OnFileOpen() 
 {
 	m_song.FileOpen();
 }
 
-extern CRmtApp theApp;
-
-void CRmtView::OnFileOpenRecent(UINT i) 
-{	
-	int nIndex = i - ID_FILE_MRU_FILE1;
-	CString& s = theApp.GetRecentFile(nIndex);
-	m_song.FileOpen(s);
-}
-
 void CRmtView::OnFileReload() 
 {
-	m_song.FileReload();
+	m_song.FileReload();	
 }
 
 void CRmtView::OnUpdateFileReload(CCmdUI* pCmdUI) 
@@ -1937,10 +1986,10 @@ void CRmtView::OnInstrumentPastespecialVolumertolenvelopeonly()
 //update
 void CRmtView::OnUpdateInstrumentPastespecialInsertvolenvsandenvparstocurpos(CCmdUI* pCmdUI) 
 {
-	//to curpos
+	//to cur pos
 	int i = m_song.GetActiveInstr();
 	TInstrument* ai = &m_song.GetInstruments()->m_instr[i];
-	pCmdUI->Enable(g_activepart==PARTINSTRS && (ai->act==2)); //kdyz je na editaci envelope
+	pCmdUI->Enable(g_activepart==PARTINSTRS && (ai->act==2)); //when the envelope is being edited
 }
 
 void CRmtView::OnUpdateInstrumentPastespecialVolumelenvelopeonly(CCmdUI* pCmdUI) 
@@ -1962,7 +2011,6 @@ void CRmtView::OnUpdateInstrumentPastespecialVolumeltorenvelopeonly(CCmdUI* pCmd
 {
 	pCmdUI->Enable(g_tracks4_8>4); //L to R
 }
-
 
 void CRmtView::OnTrackCopy() 
 {
@@ -2107,32 +2155,34 @@ void CRmtView::OnUpdateSongMaketracksduplicate(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_song.SongGetActiveTrack()>=0);
 }
 
-//---
-
 void CRmtView::OnPlay0() 
 {
-	m_song.Play(MPLAY_BOOKMARK,m_song.m_followplay);	//od bookmarku
+	m_song.Play(MPLAY_BOOKMARK,m_song.m_followplay);	//from the bookmark - with respect to followplay
 }
 
 void CRmtView::OnPlay1() 
 {
-	m_song.Play(MPLAY_SONG,m_song.m_followplay);		//cely song od 0  - s respektovanim followplay
+	m_song.Play(MPLAY_SONG,m_song.m_followplay);		//whole song from start - with respect to followplay
 }
 
 void CRmtView::OnPlay2() 
 {
-	m_song.Play(MPLAY_FROM,m_song.m_followplay);		//od aktualniho mista  - s respektovanim followplay
+	m_song.Play(MPLAY_FROM,m_song.m_followplay);		//from the current position - with respect to followplay
 }
 
 void CRmtView::OnPlay3() 
 {
-	m_song.Play(MPLAY_TRACK,m_song.m_followplay);		//aktualni tracky porad dokola  - s respektovanim followplay
+	m_song.Play(MPLAY_TRACK,m_song.m_followplay);		//current pattern and loop - with respect to followplay
 }
-
 
 void CRmtView::OnPlaystop() 
 {
-	m_song.Stop();					//utisi vsechno	
+	m_song.Stop();	//stops everything
+	if (m_song.GetPlayMode()==0) //only if the module is stopped
+	{
+		g_playtime=0;
+		DrawPlaytimecounter();
+	}
 }
 
 void CRmtView::OnPlayfollow() 
@@ -2169,7 +2219,6 @@ void CRmtView::OnEmSong()
 
 void CRmtView::OnUpdatePlay0(CCmdUI* pCmdUI) 
 {
-	// TODO: Add your command update UI handler code here
 	int ch= m_song.IsBookmark();
 	pCmdUI->Enable(ch);
 	ch= (m_song.GetPlayMode()==MPLAY_BOOKMARK);
@@ -2224,14 +2273,13 @@ void CRmtView::OnUpdateEmSong(CCmdUI* pCmdUI)
 	pCmdUI->SetCheck(ch);
 }
 
-
 void CRmtView::OnProvemode() 
 {
-	if (g_prove==0)
-		g_prove=1;
+	if (g_prove==0) g_prove=1;
+	else if (g_prove == 3) g_prove = 0;		//disable the special MIDI test mode immediately
 	else
 	{
-		if (g_prove==1 && g_tracks4_8>4)	//PROVE 2 jde jen pro 8 tracku
+		if (g_prove==1 && g_tracks4_8>4)	//PROVE 2 only works for 8 tracks
 			g_prove=2;
 		else
 			g_prove=0;
@@ -2251,7 +2299,6 @@ void CRmtView::ChangeViewElements(BOOL writeconfig)
 	mf->ShowControlBar((CControlBar*)(&mf->m_wndToolBar),g_viewmaintoolbar,0);
 	mf->ShowControlBar((CControlBar*)(&mf->m_ToolBarBlock),g_viewblocktoolbar,0);
 	mf->ShowControlBar((CControlBar*)(&mf->m_wndStatusBar),g_viewstatusbar,0);
-	//
 	if (writeconfig) WriteConfig();
 }
 
@@ -2430,7 +2477,7 @@ void CRmtView::OnUpdateBlockBackup(CCmdUI* pCmdUI)
 
 void CRmtView::OnBlockPlay() 
 {
-	m_song.Play(MPLAY_BLOCK,m_song.m_followplay);		//vybrany blok porad dokola  - s respektovanim followplay
+	m_song.Play(MPLAY_BLOCK,m_song.m_followplay);	//selected block and loop - with respect to followplay
 }
 
 void CRmtView::OnUpdateBlockPlay(CCmdUI* pCmdUI) 
@@ -2443,78 +2490,64 @@ void CRmtView::OnUpdateBlockPlay(CCmdUI* pCmdUI)
 //----------------------------------------------------------------------------
 //CHANNELS
 
-
 void CRmtView::OnChan1() 
 {
 	// TODO: Add your command handler code here
-	
 }
 
 void CRmtView::OnChan2() 
 {
 	// TODO: Add your command handler code here
-	
 }
 
 void CRmtView::OnChan3() 
 {
 	// TODO: Add your command handler code here
-	
 }
 
 void CRmtView::OnChan4() 
 {
 	// TODO: Add your command handler code here
-	
 }
 
 void CRmtView::OnChan5() 
 {
 	// TODO: Add your command handler code here
-	
 }
 
 void CRmtView::OnChan6() 
 {
 	// TODO: Add your command handler code here
-	
 }
 
 void CRmtView::OnChan7() 
 {
 	// TODO: Add your command handler code here
-	
 }
 
 void CRmtView::OnChan8() 
 {
 	// TODO: Add your command handler code here
-	
 }
-
 
 void CRmtView::OnUpdateChan1(CCmdUI* pCmdUI) 
 {
 	// TODO: Add your command update UI handler code here
-	
 }
 
 void CRmtView::OnUpdateChan2(CCmdUI* pCmdUI) 
 {
 	// TODO: Add your command update UI handler code here
-	
 }
 
 void CRmtView::OnUpdateChan3(CCmdUI* pCmdUI) 
 {
 	// TODO: Add your command update UI handler code here
-	
 }
 
 void CRmtView::OnUpdateChan4(CCmdUI* pCmdUI) 
 {
 	// TODO: Add your command update UI handler code here
-	
 }
 
 void CRmtView::OnUpdateChan5(CCmdUI* pCmdUI) 
@@ -2570,7 +2603,6 @@ void CRmtView::OnBlockDelete()
 
 void CRmtView::OnBlockPaste() 
 {
-	//m_song.TrackKey(86,0,1);	//Ctrl+V
 	m_song.BlockPaste();	//paste normal
 	SCREENUPDATE;
 }
@@ -2634,7 +2666,7 @@ void CRmtView::OnUpdateBlockExchange(CCmdUI* pCmdUI)
 void CRmtView::OnTrackClearallduplicatedtracks() 
 {
 	m_song.Stop();
-	int r=MessageBox("Are you sure to clear all duplicated tracks and adjust song?","Clear all duplicated tracks",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
+	int r=MessageBox("Are you sure you want to clear all duplicated tracks and adjust song?","Clear all duplicated tracks",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
 	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
@@ -2649,11 +2681,10 @@ void CRmtView::OnTrackClearallduplicatedtracks()
 	SCREENUPDATE;
 }
 
-
 void CRmtView::OnTrackClearalltracksunusedinsong() 
 {
 	m_song.Stop();
-	int r=MessageBox("Are you sure to delete all tracks unused in song?","Clear all unused tracks",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
+	int r=MessageBox("Are you sure you want to delete all tracks unused in song?","Clear all unused tracks",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
 	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
@@ -2669,10 +2700,10 @@ void CRmtView::OnTrackClearalltracksunusedinsong()
 
 void CRmtView::OnTrackAlltrackscleanup() 
 {
-	//Smazat vsechny tracky
+	//Delete all tracks
 	m_song.Stop();
 
-	int r=MessageBox("WARNING:\nReally cleanup all the tracks?","All tracks cleanup",MB_YESNO | MB_ICONWARNING);
+	int r=MessageBox("WARNING:\nReally cleanup all tracks?","All tracks cleanup",MB_YESNO | MB_ICONWARNING);
 	if (r==IDYES)
 	{
 		m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
@@ -2744,7 +2775,7 @@ void CRmtView::OnInstrumentChange()
 void CRmtView::OnInstrumentClearallunusedinstruments() 
 {
 	m_song.Stop();
-	int r=MessageBox("Are you sure to delete all instruments unused in any tracks?","Clear unused instruments",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
+	int r=MessageBox("Are you sure you want to delete all unused instruments in any tracks?","Clear unused instruments",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
 	m_song.GetUndo()->ChangeInstrument(0,0,UETYPE_INSTRSALL);
@@ -2758,10 +2789,10 @@ void CRmtView::OnInstrumentClearallunusedinstruments()
 
 void CRmtView::OnInstrAllinstrumentscleanup() 
 {
-	//Smazat vsechny instrumenty
+	//Delete all instruments
 	m_song.Stop();
 
-	int r=MessageBox("WARNING:\nReally cleanup all the instruments?","All instruments cleanup",MB_YESNO | MB_ICONWARNING);
+	int r=MessageBox("WARNING:\nAre you sure you want to cleanup all the instruments?","All instruments cleanup",MB_YESNO | MB_ICONWARNING);
 	if (r==IDYES)
 	{
 		m_song.GetUndo()->ChangeInstrument(0,0,UETYPE_INSTRSALL);
@@ -2781,13 +2812,12 @@ void CRmtView::OnSongTracksorderchange()
 
 void CRmtView::OnUpdateSongSongswitch4_8(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetText((g_tracks4_8<=4)? "Song switch to 8 tracks" : "Song switch to mono 4 tracks");
+	pCmdUI->SetText((g_tracks4_8<=4)? "Switch song to Stereo 8 tracks..." : "Switch song to Mono 4 tracks...");
 }
 
 void CRmtView::OnSongSongswitch4_8() 
 {
 	m_song.Stop();
-
 	m_song.Songswitch4_8((g_tracks4_8<=4)? 8 : 4);
 	SCREENUPDATE;
 }
@@ -2805,27 +2835,25 @@ void CRmtView::OnSongSongchangemaximallengthoftracks()
 	{
 		//Undo
 		m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
-		//
 		ma=dlg.m_maxtracklen;
 		m_song.ChangeMaxtracklen(ma);
 		SCREENUPDATE;
 	}
 }
 
-
 void CRmtView::OnSongSearchandrebuildloopsinalltracks() 
 {
 	m_song.Stop();	//stop music
 
-	int r=MessageBox("Are you sure to search and rebuild wise loops in all tracks?","Search and rebuild loops",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
+	int r=MessageBox("Are you sure you want to search and rebuild wise loops in all tracks?","Search and rebuild loops",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
 	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
 
-	//nejdriv rozbali vsechny dosavadni loopy
+	//first unpack all existing loops
 	int tracksmodified=0,loopsexpanded=0;
 	m_song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
-	//a ted to vsechno prohleda a vytvori loopy znovu
+	//and now search all and create loops again
 	int optitracks=0,optibeats=0;
 	m_song.TracksAllBuildLoops(optitracks,optibeats);
 	CString s;
@@ -2838,7 +2866,7 @@ void CRmtView::OnSongExpandloopsinalltracks()
 {
 	m_song.Stop();	//stop music
 
-	int r=MessageBox("Are you sure to expand loops in all tracks?","Expand loops",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
+	int r=MessageBox("Are you sure you want to expand loops in all tracks?","Expand loops",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
 	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
@@ -2856,7 +2884,7 @@ void CRmtView::OnSongSizeoptimization()
 	//ALL size optimalizations
 	m_song.Stop();	//stop music
 
-	int r=MessageBox("Are you sure to delete all tracks and instruments unused in song,\ntruncate unused tracks parts and rebuild wise tracks loops,\ndelete all duplicated tracks, renumber all tracks and instruments\nand change maximal tracks length to effective computed value?","All size optimizations",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
+	int r=MessageBox("Are you sure you want to delete all tracks and instruments unused in song,\ntruncate unused tracks and rebuild wise tracks loops,\ndelete all duplicated tracks, renumber all tracks and instruments\nand change maximal tracks length to effective computed value?","All size optimizations",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
 	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
@@ -2864,10 +2892,10 @@ void CRmtView::OnSongSizeoptimization()
 	m_song.GetUndo()->ChangeSong(0,0,UETYPE_SONGDATA,1);
 
 	int chmaxtl=0;
-	//nejdriv rozbali vsechny dosavadni loopy
+	//first unpack all existing loops
 	int tracksmodified=0,loopsexpanded=0;
 	m_song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
-	//zjisti si originalni a efektivni delku maxtracklen a pripadne zkrati
+	//find the effective length of maxtracklen and shorten it if necessary
 	int maxtracklen = m_song.GetTracks()->m_maxtracklen;
 	int effemaxtracklen = m_song.GetEffectiveMaxtracklen();
 	if (effemaxtracklen<maxtracklen)
@@ -2875,26 +2903,26 @@ void CRmtView::OnSongSizeoptimization()
 		m_song.ChangeMaxtracklen(effemaxtracklen);
 		chmaxtl=1;
 	}
-	//ted to zaloopuje znovu
+	//now it will back up
 	int optitracks=0,optibeats=0;
 	m_song.TracksAllBuildLoops(optitracks,optibeats);
-	//a AZ NAKONEC odmaze nepouzite tracky a jejich casti
+	//and until the end, don't use the tracks and their parts
 	int clearedtracks=0,truncatedtracks=0,truncatedbeats=0;
 	m_song.SongClearUnusedTracksAndParts(clearedtracks,truncatedtracks,truncatedbeats);
 
-	//a teprve ted (po odklizeni nepouzitych tracku) odstrani nepouzite instrumenty
+	//and only now (after clearing unused tracks) it will remove unused instruments
 	int clearedinstruments;
 	clearedinstruments = m_song.ClearAllInstrumentsUnusedInAnyTrack();
 
-	//a ted odmaze zdvojene tracky a zkoriguje jejich vyskyty v songu
-	//(mohly vzniknout predchozimi upravami)
+	//and now it eliminates double tracks and corrects their occurrences in the song
+	//(may have been created by previous edits)
 	int duplicatedtracks;
 	duplicatedtracks = m_song.SongClearDuplicatedTracks();
 
-	//ted jeste precisluje tracky (aby se odstranily pripadne mezery)
+	//now refines the tracks (to remove any gaps)
 	m_song.RenumberAllTracks(1);
 
-	//a ted jeste precisluje instrumenty (aby se odstranily pripadne mezery)
+	//and now refines the instruments (to remove any gaps)
 	m_song.RenumberAllInstruments(1);
 
 	CString s;
@@ -2916,7 +2944,7 @@ void CRmtView::OnTrackRenumberalltracks()
 	CRenumberTracksDlg dlg;
 	if (dlg.DoModal()==IDOK)
 	{
-		//schova tracky a song
+		//hide the tracks and song
 		m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
 		m_song.GetUndo()->ChangeSong(0,0,UETYPE_SONGDATA,1);
 		m_song.RenumberAllTracks( dlg.m_radio );	//type=1...order by songcolumns, type=2...order by songlines
@@ -2931,7 +2959,7 @@ void CRmtView::OnInstrumentRenumberallinstruments()
 	CRenumberInstrumentsDlg dlg;
 	if (dlg.DoModal()==IDOK)
 	{
-		//schova instrumenty a tracky
+		//hide instruments and tracks
 		m_song.GetUndo()->ChangeInstrument(0,0,UETYPE_INSTRSALL,-1);
 		m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL,1);
 		m_song.RenumberAllInstruments( dlg.m_radio );	//type=1...remove gaps, 2=order by using in tracks, type=3...order by instrument names
@@ -2939,98 +2967,28 @@ void CRmtView::OnInstrumentRenumberallinstruments()
 	}
 }
 
-BOOL CRmtView::GetNumLock()
-{
-	BYTE keys[256];
-	GetKeyboardState(keys);
-	return (keys[VK_NUMLOCK]!=0);
-}
-
-/*
-typedef struct _OSVERSIONINFO{ 
-    DWORD dwOSVersionInfoSize; 
-    DWORD dwMajorVersion; 
-    DWORD dwMinorVersion; 
-    DWORD dwBuildNumber; 
-    DWORD dwPlatformId; 
-    TCHAR szCSDVersion[ 128 ]; 
-};
-*/
-
-void CRmtView::SetNumLock(BOOL onoff)
-{
-	if (!m_setnumlockfunction) return;
-	BOOL state=GetNumLock();
-	if (state != onoff) SetLockKeys(VK_NUMLOCK,onoff);
-}
-
 void CRmtView::OnSetFocus(CWnd* pOldWnd) 
 {
 	CView::OnSetFocus(pOldWnd);
-	
-	// TODO: Add your message handler code here
-	if (g_keyboard_usenumlock) {
-		g_numlock=GetNumLock();
-		SetNumLock(0);
-	}
-
-	/*
-	g_capslock_other=GetCapsLock();
-	SetCapsLock(g_capslock_rmt);
-	g_scrolllock_other=GetScrollLock();
-	SetScrollLock(g_scrolllock_rmt);
-	*/
-
-/*
-	BYTE keys[256];
-	GetKeyboardState(keys);
-	
-	g_shiftkey = (keys[VK_SHIFT]!=0);
-	g_controlkey = (keys[VK_CONTROL]!=0);
-//*/
 	g_shiftkey = g_controlkey = 0;
-
-//	g_shiftkey = (GetAsyncKeyState(VK_SHIFT)!=NULL);
-//	g_controlkey = (GetAsyncKeyState(VK_CONTROL)!=NULL);
-
-	g_focus=1;	//hlavni okno ma focus
+	g_focus=1;	//main window focus
 }
 
 void CRmtView::OnKillFocus(CWnd* pNewWnd) 
 {
 
 	CView::OnKillFocus(pNewWnd);
-
-	// TODO: Add your message handler code here
-//	Beep(300,200);	
-	if (g_keyboard_usenumlock) {	
-		SetNumLock(g_numlock);
-	}
-
-	/*
-	g_capslock_rmt=GetCapsLock();
-	SetCapsLock(g_capslock_other);
-	g_scrolllock_rmt=GetScrollLock();
-	SetScrollLock(g_scrolllock_other);
-	*/
-
-	g_focus=0;	//hlavni okno nema focus
+	g_focus=0;	//the main window has no focus
 }
-
 
 BOOL CRmtView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt) 
 {
-	// TODO: Add your message handler code here and/or call default
 	CRect rec;
-	//AfxGetApp()->GetMainWnd()->GetWindowRect(&rec);
-	//this->GetWindowRect(&rec);
 	::GetWindowRect(g_viewhwnd,&rec);
 	CPoint np(pt-rec.TopLeft());
 	MouseAction(np,0,zDelta);
-
 	return CView::OnMouseWheel(nFlags, zDelta, pt);
 }
-
 
 void CRmtView::OnUndoUndo() 
 {
@@ -3044,13 +3002,13 @@ void CRmtView::OnUpdateUndoUndo(CCmdUI* pCmdUI)
 	{
 		pCmdUI->Enable(1);
 		CString s;
-		s.Format("&Undo (%u)\tAlt+Backspace",u);
+		s.Format("&Undo (%u)\tCtrl+Z",u);
 		pCmdUI->SetText(s);
 	}
 	else
 	{
 		pCmdUI->Enable(0);
-		pCmdUI->SetText("&Undo\tAlt+Backspace");
+		pCmdUI->SetText("&Undo\tCtrl+Z");
 	}
 }
 
@@ -3066,13 +3024,13 @@ void CRmtView::OnUpdateUndoRedo(CCmdUI* pCmdUI)
 	{
 		pCmdUI->Enable(1);
 		CString s;
-		s.Format("&Redo (%u)",u);
+		s.Format("&Redo (%u)\tCtrl+Y",u);
 		pCmdUI->SetText(s);
 	}
 	else
 	{
 		pCmdUI->Enable(0);
-		pCmdUI->SetText("&Redo");
+		pCmdUI->SetText("&Redo\tCtrl+Y");
 	}
 }
 
@@ -3086,40 +3044,12 @@ void CRmtView::OnUpdateUndoClearundoredo(CCmdUI* pCmdUI)
 	pCmdUI->Enable(m_song.UndoGetUndoSteps() || m_song.UndoGetRedoSteps());
 }
 
-/*
-//ID_APP_EXIT:   Exit the application.
-//CWinApp::OnAppExit handles this command by sending a WM_CLOSE message to the application's main window. The standard shutting down of the application (prompting for dirty files and so on) is handled by the CFrameWnd implementation.
-//Customization of this command handler is not recommended. Overriding CWinApp::SaveAllModified or the CFrameWnd closing logic is recommended.
-
-void CRmtView::OnAppExit() 
+void CRmtView::OnWantExit() //called from the menu File/Exit ID_WANTEXIT instead of the original ID_APP_EXIT
 {
-	//if ( m_song.WarnUnsavedChanges() ) return; //nechce to
-	CView::OnClose();
-}
-*/
-
-void CRmtView::OnWantExit() //vola se z menu File/Exit ID_WANTEXIT misto puvodniho ID_APP_EXIT
-{
-	if (g_keyboard_usenumlock) {
-
-		SetNumLock(g_numlock);
-		m_setnumlockfunction=0;
-	}
-	//SetCapsLock(g_capslock_other);
-	//SetScrollLock(g_scrolllock_other);
 	if ( m_song.WarnUnsavedChanges() )
 	{
-		if (g_keyboard_usenumlock) {
-			m_setnumlockfunction=1;
-			g_numlock=GetNumLock();
-			SetNumLock(0);
-		}
-		//SetCapsLock(g_capslock_rmt);
-		//SetScrollLock(g_scrolllock_rmt);
-		return; //nema byt exit
+		return; //there is no exit
 	}
-	//ma byt exit
-	//m_setnumlockfunction necha 0 aby uz nikdo stav numlocku nemenil
 	m_song.Stop();
 	g_closeapplication=1;
 	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE,0,0);
@@ -3134,4 +3064,3 @@ void CRmtView::OnUpdateTrackCursorgotothespeedcolumn(CCmdUI* pCmdUI)
 {
 	pCmdUI->Enable(	g_activepart==PARTTRACKS && m_song.SongGetActiveTrack()>=0 );
 }
-

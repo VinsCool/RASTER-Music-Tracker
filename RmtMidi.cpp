@@ -4,19 +4,11 @@
 
 #include "stdafx.h"
 #include "Rmt.h"
-
 #include "RmtDoc.h"
 #include "RmtView.h"
-
 #include "MainFrm.h"			//!
-
-//#include "r_music.h"
-
 #include <mmsystem.h>
-//#include "global.h"
-
 #include "RmtMidi.h"
-
 
 ////////////// MIDIINPROC //////////////////
 void CALLBACK MidiInProc(
@@ -59,7 +51,7 @@ int CRmtMidi::MidiInit()
 	if (m_midiindevname[0]==0)
 	{
 		m_midiinid = -1;
-		return 1;	//nechce zadne MIDI device
+		return 1;	//does not want a MIDI device
 	}
 
 	MIDIINCAPS micaps;
@@ -70,14 +62,13 @@ int CRmtMidi::MidiInit()
 		midiInGetDevCaps(i,&micaps, sizeof(MIDIINCAPS));
 		if (strcmp(m_midiindevname,micaps.szPname)==0)
 		{
-			m_midiinid = i;   //nasel midi in dle configfile
+			m_midiinid = i;   //found midi in by configfile
 			//strcpy(m_midiindevname,micaps.szPname);
 			if (lastonoff) MidiOn();
 			return 1;
 		}
 	}
-
-	//nenasel
+	//was not found
 	m_midiinid = -1;
 
 	MessageBox(g_hwnd,CString("Can't init the MIDI IN device\n")+m_midiindevname,"MIDI IN error",MB_ICONEXCLAMATION);
@@ -86,15 +77,14 @@ int CRmtMidi::MidiInit()
 	return 0;
 }
 
-
 int CRmtMidi::MidiOn()
 {
 
 	for(int i=0; i<16; i++)
 	{
-		g_midi_notech[i]=-1;	//posledne stlacene klavesy na jednotlivych kanalech
-		g_midi_voluch[i]=0;		//hlasitosti
-		g_midi_instch[i]=0;		//cisla instrumentu
+		g_midi_notech[i]=-1;	//last pressed keys on each channel
+		g_midi_voluch[i]=0;		//volume
+		g_midi_instch[i]=0;		//instrument numbers
 	}
 
 	if (m_midiinid>=0)
@@ -117,66 +107,18 @@ int CRmtMidi::MidiOn()
 			return 1;
 		}
 	}
-
-/*
-	if (g_midioutid>=0)
-	{
-		int status = midiOutOpen( &g_hmidiout,
-				g_midioutid,
-				NULL, 
-				(unsigned long) NULL,
-				CALLBACK_NULL ); 
-		if (status == MMSYSERR_NOERROR )
-		{
-			if (g_local)
-			{
-				unsigned char mv[4];
-				mv[0] = 0xb0;	//controller na kanalu 0
-				mv[1] = 122;	//local on/off
-				mv[2] = 0;		//off
-				midiOutShortMsg(g_hmidiout,*(DWORD*)mv);
-			}
-		}
-		else
-		{
-			strcat(errbf,"Can't open selected MIDI OUT device.");
-		}
-
-	}
-	else
-		strcat(errbf,"MIDI OUT device isn't selected.");
-
-	if (errbf[0]) throw(errbf);
-*/
 	return 0;
 }
 
 void CRmtMidi::MidiOff()
 {
-	if (m_midiinid>=0) //0 je PC keyboard only
+	if (m_midiinid>=0) //0 is PC keyboard only
 	{
 		midiInStop(m_hmidiin);
 		midiInReset(m_hmidiin);
 		midiInClose(m_hmidiin);
 	}
-
 	m_ison=0;
-
-	/*
-	if (g_midioutid>=0)
-	{
-		if (g_local)
-		{
-			unsigned char mv[4];
-			mv[0] = 0xb0;	//controller na kanalu 0
-			mv[1] = 122;	//local on/off
-			mv[2] = 127;	//on
-			midiOutShortMsg(g_hmidiout,*(DWORD*)mv);
-		}
-		midiOutReset(g_hmidiout);
-		midiOutClose(g_hmidiout);
-	}
-	*/
 }
 
 int CRmtMidi::MidiRestart()

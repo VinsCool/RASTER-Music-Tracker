@@ -1,0 +1,537 @@
+Progress log...
+
+--- VinsCool, November 10th 2021 ---
+Ok, fully done the rewriting of exported data.
+Tested and functional for everything I could test with it.
+
+--- VinsCool, November 11th 2021 ---
+Fixed the speed column in channel 4/8 being impossible to click with the mouse pointer.
+Turns out this was a very simple fix, the hitbox was a few pixels short, so making the x coordinate larger fixed it.
+
+--- VinsCool, November 12th 2021 ---
+Restructuring and cleaning up a lot of code today.
+Trying to translated most if not all comments from Czech to English in the process.
+Should make a lot of the code easier to read by then.
+
+Cleaned up so far:
+Atari6502.cpp -> Cleaned, restructured and translated comments
+ConfigDlg.cpp -> Nothing to do really
+EffectsDlg.cpp -> Cleaned, restructured and translated comments, left some commented out code for later use
+ExportDlgs.cpp -> Cleaned, restructured and translated comments, left some commented out code for later use
+fft.cpp -> Nothing to do really, no point either
+FileNewDlg.cpp -> Fixed a typo in a dialog
+FilePathDlg.cpp -> Cleaned and translated comments
+MainFrm.cpp -> Cleaned, restructured, and translated comments, deleted a bunch of old broken code, but kept some unused/beta stuff commented out for later use
+...
+Enough for today, lol
+
+--- VinsCool, November 13th 2021 ---
+Okay, let's continue from where I left last night.
+Most of the same I did last night.
+Edited the icon a tiny bit again too.
+
+Notable improvements:
+- CTRL+Z Undo, CTRL+Y Redo
+- CTRL+TAB to jump to the speed column
+- Strings updated to match these changes
+That was a pretty good evening :D
+
+Cleaned up so far:
+Rmt.cpp -> Nothing to do really. The about screen could be edited at a later time though
+RmtDoc.cpp -> Nothing to do really.
+RmtMidi.cpp -> Translated some more comments
+RmtView.cpp -> In progress... Been carried away with the UNDO and REDO revamp :D
+
+--- VinsCool, November 14th 2021 --- 
+Note to myself: do not try to edit what you don't understand yet lol
+So I wanted to edit the export dialog for the rasterbar colour shuffling, and that was a mess, so I reverted to my last backup because fuck this, I just fucked up.
+Soooo... Yeah let's see what else I can do and not break this time.
+Aaaaand I fixed the NUMLOCK acting wierd bug. Nice!
+The code was not all that bad but it had a weird bug where it would be randomly toggled and shuffle around line step values when every other key were also used...
+A very annoying one for sure, I'll find a replacement for its purpose later, or not. At least it is gone.
+I've also started editing and re-arranging all the key shortcuts and hotkeys.
+There was also some experiment related to the sound buffer but that didn't really go anywhere yet.
+Will continue tomorrow.
+
+--- VinsCool, November 15th 2021 --- 
+Alright, so let's get going with the remaining shortcuts, and hopefully fix that stupid SHIFT key behaviour.
+I almost fixed it all, got rid of the CAPSLOCK requirement, but currently the instrument page needs tweaking, and the SPACEBAR needs a check so exiting JAM mode won't input a row delete.
+Updated a bunch of the UI to respond visually to the switch between EDIT and JAM modes.
+Fixed a small visual bug related to the colours displayed, and added a case for either being in JAM or EDIT mode.
+Fixed and changed some more shortcut commands, still being worked on but at least, most of what really was broken or counter-intuitive was improved.
+More on that later... it's 6:33 am, fuck my life :D
+
+--- VinsCool, November 16th 2021 ---
+On for the UI improvements still.
+I also wanted to experiment with a way to get "more colours" from the bitmap graphics, *if* this works the way I expect.
+This would be hilariously cursed it if even works, but I expect that won't really do anything, maybe corrupt?
+Let's see how it goes.
+
+--- VinsCool, November 19th 2021 ---
+...Been sick for a few days.
+But I managed to catch up tonight with quite a lot of things done, and surprisingly seem to work perfectly so far!
+- Display Two-Tone Filter, requires the Altirra plugins for proper functionality 
+- PAL/NTSC toggle in-tracker using CTRL+F12
+- Colours fix in the UI
+- New font by PG
+- Fixed the CTRL+SPACEBAR bug when exiting JAM MODE
+Yay me :D
+
+--- VinsCool, November 20th 2021 --- 
+Let's get on with the key shortcuts being changed for the best, now.
+I've been getting carried away, and while I still make some progress, it gets all over the place, I need to work on that, hehe.
+Anyway, let's a goooo...
+...Meh, too tired now, had a shit day + still somewhat sick still, buuut...
+I figured out what the code for RMT header checks work, and also how to adjust the cursor row look and feel, so nice.
+I can get stuff look cozier soon, and implement a prototype RMT v2 module format :D
+At least I hope it will work. 
+Kinda sad no one in CC noticed I purposefully made the SONG lines go in reverse, however. That was a dumb hack and it made me laugh when I did it by accident earlier, hahaha.
+
+--- VinsCool, November 21st 2021 --- 
+Okay so... let's fuck around and see what I can break or improve by accident :D
+Alright, fixed the SONG block size, as well as its clickable area, and the offset related to it so the currently playing line is centered too.
+Also added some code to change the region from PAL/NTSC to the other one from a simple mouse click on the text area associated to it.
+Not too bad so far :D
+Now, you can also set MAXTRACKLENGTH and switch between 4 and 8 TRACKS all from the main interface. Thanks Enderdude for the idea!
+Overall, a pretty productive evening despite the crappy day in general (because who could have thought having a busy life was great?).
+
+--- VinsCool, November 22nd 2021 --- 
+So for today I suppose my real objective is to get the shortcuts refactored for good now.
+Hopefully I don't get carried away again... unless I somehow come with some new revolutionary stuff lol
+Let's add multimedia keys support now, requested by Enderdude again.
+Added some new fuckaround such as a "seek" song line command... I'll elaborate later... zzzzz
+
+--- VinsCool, November 24th 2021 --- 
+Took some time off on other unrelated project yesterday.
+With that bit of cooldown, and the other things done and getting tested, seems alright, so let's get on the shortcut commands, this time, for real.
+No more distraction until I have this part done, hopefully.
+I will have to rewrite the manual at some point too, and make sure to update the UI elements to match these changes... Buuut 1 thing at the time, please :D
+Ok did 1 more thing: tweaked the clickable hitboxes slightly when the text was variable width for the the MONO/STEREO and PAL/NTSC boundaries... Small change but it's attention to details.
+RmtView.cpp -> Pretty much done editing it for the time being, will now the do actual cleanup of code now, lots of leftover stuff and uncommented old edits.
+Finally done cleaning RmtView.cpp... damn
+Time to get on the other ones for the god forsaken remaining shortcuts and hotkeys...
+XPokey.cpp -> Cleaned up and translated comments too
+Will finish the hotkeys tomorrow now.
+
+--- VinsCool, November 25th 2021 --- 
+Well... look at that! I've been given the sources of RMT 1.30 now :O
+I suppose I can now get into a quest of merging all my 1.29+ changes into it and finally come into making a 1.31 version onward!
+That would be as close as an official continuation this way.
+Now if only everything had the "permission" to be uploaded to the public (ie Github repository) that would make this a lot better.
+But now I guess this will soon become the last time I used Visual Studio 2002 from this point, since the code of RMT 1.30 had been updated to build with Visual Studio 2010.
+It only took me a few clicks and voilà, the solution is now compatible with Visual Studio 2019 :D
+Here we go again, I must get back to Windows 10, and familiarise myself with the more recent tools. 
+I hope all my experimental changes will be compatible... Please be compatible hahahaha, haaaaaa :3
+Farewell, see you again in Windows 10~
+
+--- VinsCool, November 27th 2021 --- 
+Alright! Sooo here we are! Hello Visual Studio 2019!
+Finally it works, I had troubles to make it compatible to build at all.
+Then I did find it after I spent 2 days tracking a out of bound array bug that turned out to be DUMB EASY to fix, but I sure spent WAYYYY TOO much time to find it...
+But hey, it finally works! And now I am slowly backporting the code of 1.30 into my branch to add its own set of improvements related to the window UI mostly.
+I have a preleminary amount of it working, like the dynamic tracks length, and I am trying to adapt my code around it for now.
+I also fixed an bug introduced by 1.30, which caused the lines of selected objects and AUDCTL hooks to be black, since they were reading zeroes instead of the proper RBG values.
+So yeah, now I am trying to get my "centered view" compatible to the dynamic size now... More or less functional but I will find a way :D
+That's pretty much it for now...
+Finally managed to get my cursor display to remain centered on rows, dynamically adjusted based on the window size.
+Not perfect, but it does a nice job I think.
+Wew, I was in fire tonight:
+- Added MinMaxInfo calls for the minimal window sizes
+- It is now possible to display notes as Flats or Sharps (also saved in rmt.ini)
+Important note: dialog for the notes is not yet adjusted for the bool format and the type displayed, but the option does work so that will be fixed later :D
+Alright, enough for tonight~
+
+--- VinsCool, November 28th 2021 --- 
+Okay, so let's finish up porting some 1.30 code, finish editing the few additions I made last night, and carry on to finish cleaning up and change the other things that needed fixes.
+Just fixed the new option "display notes as Flats" in both the Dialog window and .ini file, to being a checkbox option and a proper BOOL type. Yay.
+Also added support for German Notation, so B being H, the fun stuff lol. It was also pretty easy to do, so here is it.
+Might as well bump the RMT version to 1.31 (still in progress) and remove the Patch 16 references now, since this is basically the "unofficial official" continuation of RMT now...
+And done, also reverted the icon since the "+16" addition is no longer necessary.
+...argggh I just noticed a bug I fixed some time ago was re-introduced with the 1.30 changes... I'll hotfix it before I forget and sleep.
+Done...
+
+--- VinsCool, November 30th 2021 ---
+Hmm yesterday working on my The Golden Ages cover I noticed a few bugs in RMT I need to fix, related to all the codebase changes related to the addition of 1.30 code:
+- The pattern view scroll does not go from song line to another anymore, effectively making the pattern "loop" when you try to scroll it.
+I do like this in a way, but this is clearly not supposed to happen and I am not sure how I broke this.
+- The selection block text below is misplaced, but this one is easy to fix, it was still hardcoded to my dimensions where I used a size of 32 rows.
+This one I already know why it happened, thankfully.
+I am really confused about the first bug however... I did not actually touch anything related to that, so I hope I can fix it easily.
+I also got a suggestion by Enderdude in which I replaced the notion of "flat/sharp notes" to "accidentals", that seems to be the proper musical term, so thanks for the info!
+...well okay so the "wrapping pattern navigation bug" was not a bug, I was an idiot and had enabled the option by accident LOL
+Anyway I fixed the actual display bug related to the "selected block" text, and also tweaked the Config Dialog window so it is a little less ambiguous.
+Now can I finally get into the hotkeys and shortcuts? I think I can for real finish this up properly :3
+Hey I had a nice little idea: display the About dialog is no .ini file can be read, assuming RMT ran for the first time. It's the small things :3
+...wow did quite a lot of tweaks and fixes today, added a CTRL+N shortcut to create new file, tweaked the argument loading method to throw an error when the file isn't a .rmt, among other tiny things.
+AND... FINALLY... I got rid of the ugly CAPSLOCK workaround when you are editing instrument names, and it works a lot better than expected! :D Wohooo!
+That was a pretty good day I have to say! So let's finish up the shortcuts revamping tomorrow, yay!
+
+--- VinsCool, December 1st 2021 ---
+Ok, so what do I have left to do really before a proper 1.31 release? Few bugfixes? Finish the hotkeys revamp, tweak more UI elements? Pretty much it I think?
+Oh yeah, more RMT 6502 routines improvements of course, but that's an obvious one there. 1 thing at the time :)
+Anyway, for tonight I guess I'll continue with things I was finalising related to the inputs and hotkeys... wish me luck!
+I think one tiny improvement I can do in the immediate is related to the SHIFT ket again, but for the INFO area, where the Song Name would also prevent the SHIFT key to be used for notes, then it's golden.
+And I think I fixed the SHIFT key for good now. I can edit Instrument and Song names with no problem holding SHIFT for uppercase, and use ALL the other areas like normal holding SHIFT for live play.
+Better yet, I even added a failsafe in which holding SHIFT with an invalid combination will do nothing at all instead of inputing values by accident (eg, 1 would be input since it's not a note).
+Time to cleanup CAPSLOCK and NUMLOCK and otherleftover code for them, as well as tweaking the shortcuts further.
+Implemented proper CAPSLOCK now, yay, even the inversion when SHIFT is held is being handled :3
+
+--- VinsCool, December 3rd 2021 ---
+Took some time off, but I'm back now!
+Going to finalise cleaning up the code and edit the other hotkeys, now that I am about 100% sure all my earlier changes are functional.
+That was a journey by itself, but that paid off, with more experience, and I have gotten more comfortable with the code, and that's what is the most important right now.
+So let's get this done!
+
+--- VinsCool, December 4th 2021 ---
+Okay so that's a lot to unpack here...
+a FUCK TON of UI changes, and I am now exhausted working on it the whole night, so I'll just save and quit lol
+I must fix all hitboxes later as well, eee
+Good night
+
+--- VinsCool, December 5th 2021 ---
+Bleh, short night, busy day cleaning... Booooring!
+But hey I'm back to this project, so let's finish up the touch ups from yesterday and finalise more details, hopefully I get plenty of the evening without getting bothered for once.
+Wow, somehow I figured out a way to implement a proper PAL/NTSC clock and pitch setup, assuming the sa_pokey.dll plugin can support it!
+It does indeed work with the old sa_pokey.dll, but Altirra's version does not, it will always return PAL clock. I've asked Phaeron about this, let's see what he might think about my new method :P
+now before I crash from exhaustion I should get the hitboxes fixed at least... eee
+Oh fixed the TRACKS UI further and also fixed a small oversight in the Two-Tone filter display
+
+--- VinsCool, December 6th 2021 ---
+Well I got carried over with some sa_pokey.dll experimentation, turns out I fixed the obnoxious DC offset bug!
+Anyway, time to fix the X coordinates, if I can get the maths right this time...
+God damn, fixed it now, turns out my boundaries box was good, but the code processing which column is being clicked was using the parameters of 11 tiles wide, while I now use 16, oooops!
+Well, guess I can finally send a beta test update, baaah, fucking baaaah I'm a stupid goat and smell like a goat!
+
+--- VinsCool, December 9th 2021 ---
+Ah well, haven't kept up with the logs hah. Been busier for a few days, but I had still done some work into RMT, mainly the UI themes and colours.
+Had done some more fixes I noted below in the DONE section too.
+Anyway.
+I just noticed a little oversight in the config setting I missed yesterday... I will have to fix it.
+I'll also add some highlight effects on the cursor active frame in the instrument editor, so we'll know where the frame is relative to what is being edited... Very good suggestion by many people.
+Fixed the config sound reset bug and added the SONG block offset depending on window size, woop woop!
+Only missing is the hitbox part, but that's very easy to adjust.
+
+--- VinsCool, December 11th 2021 ---
+Hiya, so no proper log for the last 2 days but I managed to get the preleminary Register viewer now! woo!
+I have got some UI bugs related to it I must fix, and implement all the planned features, but so far, it does work!
+Very happy so far.
+Here we go, all the blocks adjusted again taking into account I also display the registers view block!
+It's details like this that make a UI feel more comfortable to use.
+Now... I'll try adding the simplier pitch calculation so far: Distortion A 64khz!
+
+--- VinsCool, December 12th 2021 ---
+Lets continue with the additions... in the Registers View...
+Fixed a memory leak, added Distortion C formulae, feels good man!
+
+--- VinsCool, December 14th 2021 ---
+Alright, took some time off.
+So far, everything I did works really good, makes me incredibly happy!
+Let's tweak things up now. The code for the Registers View could get much better, and I have many ideas already for how to do it.
+So before I lose the focus of it, I'll do everything I have in mind really quick!
+
+--- VinsCool, December 15th 2021 ---
+Man, I'm kinda pissed.
+I barely had any time today for this project, but at least I got my cents off formula work with acceptable accuracy. Tuning for it is 440hz even if my actual POKEY tuning follows B-4 being 494.82hz.
+Now what kinda fucked the mood was a bug found by my friend Zlew tonight, who made me realise the RMW format was broken. RMT would crash at saving AND loading it!
+Thankfully, it was a VERY easy fix.
+What I am not happy about however is that once I dug a little further, I found out the .txt format is broken too!
+So now I'm stuck with a problem that probably was there for a while and no one ever noticed, thanks goodness!
+I'm just a little mad because 1- I don't wanna try to fix it yet and 2- I have no interest in the TXT format either... so I'm adding it to my to do list as a low priority item...
+At least, RMW was fixed... well, I hope it is. It seems alright but now it's a good idea to take much precautions...
+So with that in mind, I'll finish off my Notes + Cents display now... Bleh, fucking formats, breaking when I literally did not even touch them!
+
+--- VinsCool, December 16th 2021 ---
+I gave the tracker a good run, last night, the Registers View seems really robust so far!
+I haven't noticed anything wrong with it, except for the currently missing combinations. So awesome to know my crappy code does work!
+...now, time to fix some things... like the instrument selection shortcut, or the .txt format... I hope this won't be too hard, because I legitimately don't want to try fixing it...
+I believe I fixed it for the instrument shortcut... eeeehhh...
+
+--- VinsCool, December 17th 2021 ---
+Cool cool... so I guess I can try to fix the .txt format now...
+I may want to kill myself, but we'll see how it goes.
+I *really* hope nothing else is broken mysteriously like this LOL
+
+--- VinsCool, December 19th 2021 ---
+A SHITTON of UI and INPUT changes... too many to even remember properly, so it's hopefully a lot of better controls!
+Will continue further later...
+
+--- VinsCool, December 20th 2021 ---
+Okay, and back into the act!
+I hope I can fix some more things, and finish the total input revamp.
+I noticed a glitch where trying to song up or down in the Tracks view would cause some stutter before going back into normal, and carry on...
+Makes me wonder... should I embrace this behaviour into a feature? Or actually patch this to prevent any input when the song is both playing and in follow mode?
+Prevent moving in follow mode it is! Seems to be the most logical too.
+Well fixed most of this! nice!
+
+--- VinsCool, December 21st 2021 ---
+Let's finish up the shortcuts and hotkeys shit. I edited so much it needs to be re-ordered for once and for all...
+Fucking INFO screen... spent 2 hours trying to fix a "bug" that was a simple oversight... so it was done correctly but had 1 missing parameter... oops
+FUCKING FINALLY DONE WITH THE INPUTS, now they will be easier to revisit and change. THEY'RE ALL FUNCTIONAL NOW, GOD DAMNIT!
+It was a long and boring task, but now I believe everything works! I sure hope it does work...
+Time to finally relax and edit other shit, I know I spent a lot of time pushing that one for later, but I'm glad it's finally over and I won't have to do it again.
+AAAAAAARRGH IT WAS A SLOW ONE BUT FINALLY IT'S OVER!
+
+--- VinsCool, December 22nd 2021 ---
+I noticed some bugs in the Tracks inputs, so I will try to fix them, blah.
+It's the same Instrument Column I could have sworn I had fixed... But looks like I did not.
+So let's try to do it, hah.
+
+--- VinsCool, December 24th 2021 ---
+It's almost Christmas!
+And I honestly did not really have plans nor wanted to do anything, so since I am home alone (fucking finally I can breathe!), why not try and finish polishing inputs now?
+I believe I am ALMOST done by now, so... Christmas release if I am lucky?!
+I cross my fingers, but I really cannot promise anything... All I can do is hope this could indeed happen!!!
+Things are looking really good for this, honestly. I'm literally just a few bugfix and tweaks away now :O
+Oh and of course... Update the manual... But this shouldn't be too hard now that I made my total list of inputs and know what I can do to revamp everything in few tiny steps.
+...I believe I got everything to work now o.o Is it time for the moment we are all waiting for?
+Guess I can now update the manual and strings in the menus...
+
+--- VinsCool, December 26th 2021 ---
+Merry Christmas!
+I know I am late, been busy with all the Christmasy stuff, and also really under-estimated the amount of work involved rewriting the manual, but I finally got it out of the way.
+So now I can finally get the release done, hopefully tonight?
+All I need to do now is finish editing text strings, menus/dialogs so things match all my newer changes and design, and also improve all the English grammar issues.
+Fingers crossed!
+So I added a experimental NTSC timing change, and now I think I'm good to go, time for RMT 1.31, finally!!!!!
+
+--- VinsCool, December 28th 2021 ---
+Alright, the 1.31 release was a smash hit so far! I am so happy with this.
+So now I can finally do the big cleanup, before editing anything further.
+I mean delete any unused sources, and all the unused and commented out shit, and pretty much have a more clean workspace without stuff all over the place.
+I had done a lot of "comment out then try your edited code" so it has been accumulating since last month...
+I've confirmed everything works now, so let's just get done with this, and take the garbage out, and finally have the room for breathing again!
+Let's goooooo! :D
+Okay... done cleaning all .h files, removed all unused data, basically 100 less clutter!
+Now the same in .cpp files... just gonna remove all the unused code, and only leave anything I believe I will use sometime later.
+
+--- VinsCool, December 30th 2021 ---
+Some bugfixes... and I started working on the reborn patch 16 engine, to make it not suck x3
+
+--- VinsCool, February 5th, 2022 ---
+Well... long time no see with the text version of my progress...
+Honestly, I have nothing really useful to mention anymore, I will leave this to the changelog instead.
+So this is pretty much my last "proper" entry on the matter.
+See you next time!
+
+//
+//
+//
+
+Todo:
+DONE - Fix the UI bugs I have introduced with my experiments (in emkay's quoted reply, it's all fixed now). There is still a lot of room for improvements
+DONE - Adjust the UI to either 4 or 8 tracks layout, making things look cleaner in general
+DONE - Adjust the UI to display 32 Tracks rows, and 8 Song rows. Design still in progress so it's likely to change again to be more interactive (ie window size to adjust the layout)
+DONE - Adjust the Instrument popup window width so full names can be visible, making instruments with long names easier to find
+DONE - Fix the exports formats to be compatible to the Patch 16 design. Full support of MONO, STEREO, and NTSC parameters, in both SAP and XEX formats (still in progress for some details, but they are fully functional)
+DONE - Re-introduce the external binary loader, using the obx extension. This makes a lot of the things I am doing a lot more modular and easier to maintain since I don't have to hack pointers and memory addresses every time
+DONE - Allow modules instrument speed to support up to speed 8 / Maximum of speed 4 in exports still!!
+DONE - Fix the Tracker UI's hitbox so the 4th/8th channel's speed column could be clicked using the mouse pointer
+DONE - Change ALT+DEL to CTRL+Z for undo, same for the redo whatever ALT+SHIFT+DEL, to CTRL+Y. This now seems to be fully functional, the previous redo combo had random chances of missing due to the implementation of how keys were checked
+DONE - CTRL+TAB jumps to the speed columns of the currently edited channel
+DONE - Fix the NUMLOCK bug in which it would get toggled at random, and would make the line step values increment at random when other keys were used
+DONE - Fix the song timer to always reset when the player stops
+DONE - Add the ability to either set a song bookmark, or remove it. Shortcut using it would either play from set bookmark, or from cursor position when unset. Bookmarks used to stay for as long as the module was edited
+DONE - Cursor follow during play is now toggled with the F12 key, and playing from one of the shortcuts (now F5, F6 and F7) will not overwrite it, but instead make use of either case, making the overall interface less awkward when it's playing.
+DONE - Reset the entire sound process (including reloading the .dll plugin) with a SHIFT+ESC combo, helps removing stutters or crackling in some cases
+DONE - Fix a small visual bug related to the colours displayed, which caused conflicts with certain colours used together, and added a case for either being in JAM or EDIT mode when necessary.
+DONE - JAM mode is toggled with CTRL+SPACE, the other SPACE shortcuts were removed (since other, better ways to stop the sounds exist anyway). Bug: Space is input when exiting Jam mode, due to a missing parameter, but will be fixed later
+DONE - Instruments and song infos can now all be edited in Jam mode, leaving the Tracks and Song blocks the only ones which will be in live test mode.
+DONE - Permanently display what mode is being used (EDIT, JAM (MONO) and JAM (STEREO)), with matching colour palettes (still in progress)
+DONE - Display Two-Tone Filter, requires the Altirra plugins for proper functionality 
+DONE - PAL/NTSC display in the info area, toggle in-tracker using CTRL+F12
+DONE - Colours fix in the UI
+DONE - New font by PG
+DONE - Fix the CTRL+SPACEBAR bug when exiting JAM MODE
+DONE - Fix the SONG block size, as well as its clickable area, and the offset related to it so the currently playing line is centered too
+DONE - Add a PAL/NTSC toggle from a mouse click in the text area associated to it, behaviour is identical to CTRL+F12 when it's executed
+DONE - Set MAXTRACKLENGTH and switch between 4 and 8 TRACKS from the main interface.
+DONE - New Global UI commands: Song Line Seek Next and Previous. Use with either Multimedia Keys (Seek Next/Prev) and SHIFT+F1 and SHIFT+F2
+DONE - Tweak the clickable hitboxes slightly when the text was variable width for the the MONO/STEREO and PAL/NTSC boundaries
+DONE - Port to Visual Studio 2019
+DONE - Fix an bug introduced by 1.30, which caused the lines of selected objects and AUDCTL hooks to be black, since they were reading zeroes instead of the proper RBG values.
+DONE - Fix the "centered cursor on rows" view being dynamically adjusted using the window size itself.
+DONE - Add MinMaxInfo calls for the minimal window sizes
+DONE - Display notes as Flats or Sharps (also saved in rmt.ini)
+DONE - Fix the config dialog window and .ini file handling of the new "Display notes as Flats" option, making use of a checkbox and proper BOOL type
+DONE - Add a toggle for notes to display German Notation, basically B notes as H instead, etc (thanks PG for the idea)
+DONE - Bump version to 1.31 (still in progress) and removed all the "Patch 16" references since this is pretty much the continuation of RMT now.
+DONE - Fix a minor oversight re-introduced with the 1.30 changes, which made the 4th/8th channel's speed column impossible to click with the mouse pointer due to a slightly smaller hitbox dimension
+DONE - Change the highlight colours to a more uniform display, design is still not definitive
+DONE - Replace the text "Flat or Sharp notes" to "accidentals", being the proper musical term. Thanks to Enderdude for the information!
+DONE - Edit the configuration dialog window to make options a little less ambiguous, also re-arrange the elements a little bit
+DONE - Fix the selection block text below rows being misplaced, this one is easy to fix, it was still hardcoded to my dimensions where I used a size of 32 rows.
+DONE - Small code cleanup, now that most things merged recently appear to work properly, few 1.30 additions were purposefully omitted for the time being, since a different approach is being taken
+DONE - Display the "About" dialog if no .ini file is detected, this is assuming RMT ran for the first time on a new system. It's the small things!
+DONE - Tweaked the commandline argument, so attempting to load any file by association that isn't a .rmt module will throw an error message and exit, instead of loading the tracker with nothing at all
+DONE - Changed the F6 hotkey to use SHIFT instead of CTRL for play&loop block
+DONE - Changed the F7 hotkey to now Play from current position using F7 alone, or from Bookmark only if SHIFT is held and Bookmark is set.
+DONE - New global shortcut: CTRL+N to create a new file. Known issue: The same shortcut is also used in SONG lines for adding new patterns, this was worked around by preventing the dialog to appear there
+DONE - Preleminary Multimedia keys support
+DONE - Fix the Instrument editor screen to allow using SHIFT + Note Key again, and keep SHIFT as SHIFT for uppercase on the Instrument Name and Song Name instead
+DONE - Fully removed the necessity to use CAPSLOCK for typing uppercase characters holding SHIFT, this was counter-intuitive and rather unpleasant to have to use it like that
+DONE - Tweak the SHIFT key further when testing notes or editing text, so no accidental values are input if certain characters were pressed while SHIFT was held
+DONE - Properly implement CAPSLOCK, which will force uppercase and reverse to lowercase if SHIFT is also being held, it won't affect anything else than the text input areas (Song and Instrument names)
+DONE - Add another BOOL flag for the Song name area this time since it caused conflicts with the instruments screen when the same one was used for both at the same time
+DONE - Remove the old code and references to CAPSLOCK, NUMLOCK and SCROLLLOCK since they are no longer needed
+DONE - Fix a bug where holding SHIFT through CAPSLOCK caused instrument name cursor to function backwards, now having CAPSLOCK active won't cause any conflict with the arrow keys while SHIFT is held
+DONE - Tiny change to the is_editing_infos boolean, making sure it's actually only setting 1 when the cursor is on the Song Name area, while the Speed values will always return 0
+DONE - Fix a design oversight where editing in the "Track lines boundaries go to next/previous songlines" parameter being disabled would not take the pattern size into account and overflow past the "END" rows
+DONE - Make sure the selection block cursor won't cross pattern boundaries, fixing both a graphical bug and the awkward block selection behaviour where it would also overflow into the next/previous pattern
+DONE - Allow tracks to be navigated with LEFT and RIGHT keys seamlessly, making all Tracks columns (Note, Instrument, Volume and Speed) accessible unconditionally
+DONE - Force the Instrument column to insert a note if the note keys are used on empty rows, effectively making it behave the same as the Note column. Will use the original instrument number function otherwise
+DONE - Two-Tone Filter can now display its volume output in a unique colour, final design to decide later
+DONE - Small Two-Tone display fix to also apply in the Instrument Editor screen above the SONG lines
+DONE - Replace the "." character in empty tracks to "-" for making it easier to visually know where the active line is
+DONE - Fix the "now playing" yellow colour to only display on the proper song line, and not when the same patterns are used elsewhere
+DONE - Fix the newer TRACKS UI blocks position
+DONE - Tweak the UI elements a bit to allow larger tracks, making Speed columns their own spot and also did preliminary work on implementing more complex functions in tracks
+DONE - Fix a small oversight in the Two-Tone Filter display, where the "shadow" channel from RIGHT TRACKS was drawing itself in the LEFT TRACKS twice due to a copy-paste error
+DONE - Add preleminary support for sa_pokey.dll PAL/NTSC toggle, sending the accurate CPU clock values between each cases
+DONE - Fix the X coorfinates in TRACKS hitbox, everything else works as expected
+DONE - Adjust the minimal window size to accomodate the new TRACKS UI dimensions
+DONE - Preliminary new colours and themeing (thanks PG for the help and suggestions!)
+DONE - 256 colours bitmap support
+DONE - Tweak the DrawAnalyser() function in order to draw the mute/shadow/full volume bars with unique colours matching the background
+DONE - Highlight GOTO lines in the SONG block to make them easier to see
+DONE - Fix the bug with the notes input/instrument number changes in the tracks instrument columns caused by a missing else statement, both actions would happen at once and conflict otherwise
+DONE - Fix the config dialog update to not reset the sound routine if no region setting was changed, same for the HW/SW Soundbuffer setting. This was an oversight by Vin, oops
+DONE - Move the SONG block depending on the window size. This was the last 1.30 feature that was not backported yet since I took a different approach with the offset displacement handler
+DONE - Fix a tiny bit the Volume Analyser in the Instrument Editor screen, the volume bars were 3 pixels off relative to the tracks below it
+DONE - Add experimental register state visualiser/debug informations display, works for the few elements in place, but a lot of the design has yet made
+DONE - Add few more windows size parameters in order to move the SONG block accordingly, and hide the registers view block if it is too large to display properly
+DONE - Fix a small bug related to the WINDOW_OFFSET variable which would run into a conflict with another parameter and cause the UI to flicker as a result
+DONE - Add rudimentary frequencies calculation for the Register View. Much still missing!
+DONE - Create a Distortion C formulae for 15khz, 64khz and 1.79mhz modes. Accurate frequencies computed in real time!
+DONE - Create a Distortion 2 formula only for 1.79mhz mode, same as above!
+DONE - Worked around all missing modes by going directly into the Pure (Distortion A) frequencies formulae
+DONE - Fix a memory leak in the initialisation of the Registers Visualiser causing glitched characters to pop up at random
+DONE - Rewrote the Registers Viewer entirely to make it fit inside a single for() loop, since this caused random corruption in the data being read elsewhere despite sharing the exact same variables
+DONE - Fix a tiny mistake where not having the POKEY Chip registers option checked in the View menu would not display the Registers on the right, while the POKEY REGISTERS text shown above was still there
+DONE - Fix the Registers View initialisation, which potentially leaked memory by writing characters out of bounds
+DONE - Add Distortion 2 64khz and 15khz formulae
+DONE - Add Distortion 0 and 8 POLY9 formulae for 1.79mhz and 64khz
+DONE - Rudimentary cents off calculation. Needs improvements
+DONE - Further improvements in the cents calculation. Seems to output acceptable accuracy withing the range of +-1 error compared to the earlier attempt
+DONE - Remap the Registers View into a nicer block, still in progress. Small code cleanup in the AUDCTL bits detection
+DONE - Hopefully fix the RMW format for loading and saving due to an error in parameters number being incorrect, causing RMT to crash (thanks Zlew for reporting this bug!)
+DONE - Add new compiler flags in order to speed up the general performace of the code, few code adjustments done accordingly (thanks Puna for the tips and advices!)
+DONE - Notes computation based on cents and base tuning (440hz currently)
+DONE - Fix the Instrument Editor screen where being in the Instrument parameters make SHIFT not work to switch Instrument with LEFT or RIGHT when the cursor is not on the Instrument Name line
+DONE - Also fix the Infos area with the same issue
+DONE - Make both "is_editing_" BOOLs more robust by making sure any situation would update the flag accordingly, to prevent keeping the wrong flag in memory when the cursor is moved elsewhere
+DONE - Work around the TXT format being broken by preventing the user from loading and saving in that format until it is properly fixed at an ulterior time
+DONE - Fix hotkey support holding SHIFT for Infos and Instrument areas, making PLUS, MINUS, PAGE UP and PAGE DOWN work again for Volume and Octave edit, finally after being broken for 3000 years
+DONE - Fix the SPACE key input when exiting PROVE/JAM mode, which would be input by accident in the instrument editor, when mode switched.
+DONE - Also fix a small bug in PROVE mode where pressing SPACE also reduced the current active volume... because of a missing break; statement at the end of its case entry, oops
+DONE - Allow jumping to ANY song line during playback, using either the mouse pointer, or any of the known shortcuts to SongUp() or SongDown() (Thanks Zlew for the suggestion)
+DONE - PAGE UP and PAGE DOWN keys can be used anywhere, effectively allowing seeking song lines from everywhere during playback! In Tracks: Use CTRL+Up or Down, or CTRL+Page Up or Page Down for the same effect
+DONE - Add Paste Merge (CTRL+M) hotkeys in tracks
+DONE - Tweak PROVE keys further so navigation is almost identical to EDIT mode control, minus the ability to edit SONG and TRACK lines. Instruments and Infos can still be edited, use SHIFT to test notes there
+DONE - Add Transposition shortcuts using CTRL+F1/F2/F3/F4, F1 and F2 transpose down or up 1 semitone, F3 and F4 transpose down or up 1 octave
+DONE - Add the ability to use most Tracks edit hotkeys without selecting a block first. When no block is selected, current row is automatically selected then gets the effect processed onto it
+DONE - Tweak the paste shortcuts so the data can be pasted anywhere when a Selection Block is still active, avoiding pasting in that block when it was not wanted
+DONE - Add CTRL+SHIFT+LEFT/RIGHT/UP/DOWN shortcuts, Left an Right change the instrument, Up and Down change the volume. If a block was selected first, it will be processed whole, else, it will be the active row
+DONE - Press Escape key to DESELECT a block
+DONE - Add CTRL+NUMKEY_ADD/NUMKEY_SUBTRACT shortcuts to change the tracks Step value
+DONE - Step value is now precessed in all situations in tracks, eg: inputting notes, volume, deleting row, selecting block, etc, except for SPEED column (no step when input), or when ENTER key is used (always 1)
+DONE - Add CTRL+SHIFT+ENTER hotkey to input a track end line, useful when you literally cannot use the END key (like myself)
+DONE - Multiple tweaks and polish on most things, too many detail to remember, or be worth mentionning, mostly fixing some bugs or very small oddities. Input revamp still in the work, so bugs may happen!
+DONE - Fix Tracks lines going out of bounds going up on tracks with Wise Loops due to a maths error
+DONE - Fix Select All command to actually select all, up to the Track End line, as it should have been since forever. This is directly related to the oversight mentionned above. Manual selection needs fix too
+DONE - Fix Tracks lines during Play+Follow mode to prevent any movement, except on the horizontal axis, so moving the cursor left and right still works. Fixes the oversight introduced with my new Song Lines code
+DONE - Fix a off by 1 error in the Select All function, where a line would be selected too far outside the boundaries, causing an overflow and possibly memory corruption when copied then pasted elsewhere
+DONE - Edit the Song Lines Goto code to make sure it always starts playing on the very first row of a pattern, to avoid skipping lines by "continuing" the playback from the wrong row on a different pattern
+DONE - Fix the Info section where changing the active instrument with SHIFT+LEFT/RIGHT would fail due to a missing parameter in the input handler
+DONE - Fix a bug in the Instrument editor where the combo CTRL+SHIFT+PLUS/MINUS for editing the volume envelope would be ignored due to a missing parameter
+DONE - Fix a bug in the Instrument editor where the combo CTRL+SHIFT+UP/DOWN would be ignored, also due to a missing parameter
+DONE - Fix a bug in the Instrument editor where using CTRL+SHIFT+LEFT/RIGHT would wrongfully return an instrument change command, because of a missing condition in the SHIFT key handler
+DONE - Fix a bug in the Instrument editor where using SHIFT+INSERT would wrongfully be ignored, also because of a missing parameter (god fucking damnit I keep finding new ones...)
+DONE - Tweak Prove keys a bit to prevent accidental inputs with invalid combinations
+DONE - Add TAB key support in Song lines, move track right, or left if SHIFT is also held
+DONE - FINALLY made sense of all inputs, will be much easier to edit from now on!
+DONE - Hopefully fixed the bugged note/instrument combo input from the Instrument column in tracks, where an empty row would force a note, else, change the instrument value
+DONE - Fix a crash caused by attempting to display Volume Only mode in the Registers View. Added few tiny changes in order to display "nothing" instead (thanks Enderdude for pointing this out!)
+DONE - Tweak global shortcuts further to avoid any conflicts with PROVE keys in stereo (CTRL+SHIFT+NOTEKEY)
+DONE - Add HOME and END keys support in PROVE mode, HOME to the first line, and END for the last
+DONE - Re-add the SONG Lines shortcuts "Insert New Unused Pattern", "Duplicate Pattern", "Set Goto Line"", now I realise those were nice to have there too
+DONE - Tweak Block Selection behaviour, so now manual selection using SHIFT+UP/DOWN in tracks follow the same logic used by CTRL+A, allowing selection of all valid track lines properly
+DONE - Tweak TrackUp() and TrackDown(), to make sure "going past boundaries move Song Line to the Next/Previous position" is properly happening only if the configuration is also enabled
+DONE - Also Treak the Tracks up/down code further so having a block selection active could never go past the boundaries, and just not move further on the active line, regardless of the boundary setting active
+DONE - Make the Home and End keys in tracks have a much smarter behaviour, where holding SHIFT for a Selection Block will match the improved logic done a bit earlier
+DONE - Also allow END to either go to the last wise loop line/end line or actual last line, replicating the behaviour of HOME which goes either to the first line in track, or first line in a Wise Loop
+DONE - Force the Tracks ENTER key case to always move down, to prevent the Selection Block's last line to get stuck, caused by the improved logic's check for the last line while the block is also active
+DONE - Update the manual to match this version's differences and new design
+DONE - Correct some English grammar in menus, update strings to better reflect the changes done
+DONE - Add experimental NTSC timing, using a pretty cursed setup involving the timeSetEvent() function which gets called every other frame to oscillate the timing between 16 and 17 miliseconds in NTSC mode
+DONE - Tweak the NTSC timing hack, should be a little closer to the actual thing now
+DONE - Fix the step size of 0 to force a movement of 1 when movement keys are used, to prevent getting stuck (thanks Ravancloak for pointing this out!)
+DONE - Force a .ini file write if no config is found when RMT.exe is launched, setting the default configuration (thanks again Ravancloak!)
+DONE - Added one of my own tunes I missed last time (Stranded on the Surface of Io Final.rmt), and updated a tune upon author's request (ilusia.rmt)
+DONE - Updated the driver binaries to a newer and better WIP version, including export binaries, ASM code was NOT updated yet, more about that later...
+DONE - Bump the version number to 1.32 since the driver update is a major change, and numerous fixes will be done since the last 1.31 revision
+DONE - Clearly show the exact version number, since RMT may be updated pretty often, without really being warrant of a major release... Like this one for example :P
+DONE - Added 16-bit pitch accuracy frequencies display for Distortion 2, A, C and E (C table 2)
+DONE - Added Sawtooth pitch frequencies display, as well as if the waveform is inverted by swapping the CH1 and CH3 values
+DONE - Fixed a bug when playing a song with follow cursor enabled would always switch back to "play from current position" mode even if the mode was set to "track loop"
+DONE - Fixed a memory leak caused by the 16-bit frequencies calculations, which lead to a chance out of 2 to cause a crash when RMT is being executed
+DONE - Changed the empty tracks appearance from a single dash per row to a dotted pattern identical to tracks with data into them (thanks zaxolotl for the suggestion!)
+DONE - Tweaked the "Go to line: XX" appearance by moving it a few tiles to the left, in order to mask the line number. This may help reduce the number accidental recursive GOTOs when they are edited
+DONE - Also changed the GOTO colours so only the number colour will be changed when highlighted. The number will be white by default
+DONE - Added a line separating the Left/Right tracks in the SONG block, making it easier to identify which channels belong to which side
+DONE - Small improvement to make the "Go to line" on tracks more appealing visually: highlight the number when the cursor is actually active in tracks, and keep the "Go to line" text more visible as well.
+DONE - Set the cursor position on the Volume envelope by default for instruments, to avoid accidentally overwriting the name when cycling through instruments (thanks PG for the suggestion!)
+DONE - Properly fixed the Follow Cursor Play bug by also making sure the parameter was defined in the Subsong change as well
+DONE - Fixed a bug where using the PAGEUP/PAGEDOWN keys in tracks at the same time as play+follow mode is active would cause graphical glitches since the line would try to move at the same time of following the cursor
+DONE - Re-introduced the Distortion BASS16 code in RMT, with updated description. You can also set the Distortion used for it with CMD6. $0Y = Distortion
+DONE - Small update on Distortions and Commands description, Added infos for new BASS16 CMD6 code, as well as Distortion A Sawtooth mode using AUTOFILTER + CH1+3 1.79mhz mode.
+DONE - Added scaling support. 100% to 300% There is no filtering yet, only integer multiple of 100% will look pixel perfect.
+DONE - Added a new tracker.obx function, where the driver version is written in plaintext, and then displayed in the About dialog. This is purely cosmetic, otherwise, there is no difference.
+DONE - Make the XEX export format have the colour shuffling optional.
+DONE - Also make sure the SAP exports skip the colour shuffling instructions, since both export formats use the same player binaries.
+DONE - Added an option for XEX exports to enable or disable the automatic region detection, in case a particular setup may work incorrectly with it.
+DONE - Fixed a bug related to scaling, causing the output to have choppy appearance due to incorrectly having set the boundaries of the display to draw every frame. Now it's a smooth display!
+DONE - Improved the PAL/NTSC detection code in the exports player (thanks pps for the sample code I used as a reference!).
+DONE - Update binaries with the 6502 ASM changes, the old export binaries will no longer be compatible due to memory addresses being changed!
+
+DONE - Added the proper calculations for displaying track lines centred regardless of the screen height or the scaling dimensions.
+
+PARTIAL - General improvements of the text in the program, correcting English grammar and/or making things easier to understand when they were ambiguous
+PARTIAL - Attempts to improve the sound buffer and latency to reduce wobbling and cracklings, this is not quite perfect and my edits may actually make things worse
+PARTIAL - Implement more colours and/or graphical elements in the bitmap graphics for a visually more enjoyable interface (still in progress)
+PARTIAL - Add ALT key support
+
+//
+//
+//
+
+TO DO:
+
+- TIME tag(s) for SAP format 
+- RMTVIS format  
+- Update the .rmt format to version 2 for some new things I want to do with it 
+- Repurpose the vibrato code to make it behave similarily to FamiTracker: SIZE, SPEED, INTENSITY, etc
+- Add a "Note Stop" command (thanks Enderdude for the idea)
+- Dock the Octave/Volume/Instruments windows to the side, or have an option to keep them open, but in the background (thanks Enderdude for the idea)
+- Add support for Instrument CMD 1 to use Vibrato, Finetune, Portamento, etc (thanks PG for the idea)
+- Add a highlight effect in the instrument editor, so we know which frame is edited relative to the volume/effect position, and vice versa for note/freq table
+- Add a parameter to allow forcing STEREO playback into MONO (thanks Zlew for the suggestion)
+- Fix TXT format, saving and loading leads to corrupted data, making the project file unusable!
+
+//
+//
+//
+
+KNOWN ISSUES:
+
+- TXT format is broken.
+Loading or Saving returns corrupted data. Workaround: only save as RMT or RMT, and load TXT using an older RMT version, and save into RMT/RMW before loading it in the current version.
+
+- Instrument/Volume/Octave windows just don't make sense when they appear... 
+This needs to be redesigned entirely, in my opinion.
+
+- NTSC timing is hacked up, and it's not fully correct as a result.
+It does work fine... but it's a cursed hack, so that's worth fixing in the future.
+
+- Scaling doesn't work perfectly.
+The zooming is fine, but the code involved for the screen refresh is wrong, so the entire thing is choppy as a result.
+There is also no proper filter on the scaled image, so the display is unevenly pixelated.

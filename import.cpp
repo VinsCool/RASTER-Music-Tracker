@@ -1,5 +1,7 @@
 /********************************************************************************************/
 //IMPORT 
+//Note by VinsCool: For some reason, including this file in the solution breaks everything, but excluding, then building works fine???
+//This is odd, but oh well
 /********************************************************************************************/
 
 #include "importdlgs.h"
@@ -68,7 +70,7 @@ int CConvertTracks::Init()
 		dm->shift=0;
 		dm->leftright=0;
 	}
-	for(int i=0; i<INSTRSNUM; i++)
+	for (int i = 0; i < INSTRSNUM; i++)
 	{
 		m_imark[i].maxvolL=0;
 		m_imark[i].maxvolR=0;
@@ -82,36 +84,36 @@ int CConvertTracks::Init()
 
 int CConvertTracks::MakeOrFindTrackShiftLR(int from, int shift, BYTE lr)
 {
-	//pokusi se najit mezi jiz vytvorenymi tracky odpovidajici, nebo takovy
-	//vytvori (co nejblize za puvodni cislo tracku). 
-	//Vrati jeho cislo, nebo -1
+	//will try to find a matching track among the already created ones
+	//or create a new one (as close as possible to the original track number).
+	//Return its number, or -1
 
 	int i;
 
-	if (m_strack[from].len<0) return -1;	//tenhle zdrojovy track je prazdny
+	if (m_strack[from].len<0) return -1;	//this source track is empty
 
-	//najde si cislo kam predbezne vytvori ten novy
+	//will find the number where it will first create the new one
 	int track=-1;
 
 	if (m_dmark[from].fromtrack<0)
 	{
-		track = from;		//primo to stejne cislo je volne
+		track = from;		//the same number is free
 	}
 	else
 	{
-		//najde volne misto co nejbliz u "from" tracku
+		//finds a free place as close as possible to the "from" track
 		for(i=from+1; i!=from; i++)
 		{
-			if (i>=TRACKSNUM) i=0;	//kdyz dosel na konec, zacne od zacatku
-			if (m_dmark[i].fromtrack<0) break; //nasel volny track
+			if (i>=TRACKSNUM) i=0;	//when he reaches the end, he starts from the beginning
+			if (m_dmark[i].fromtrack<0) break; //found a free track
 		}
-		if (i==from) return -1;		//nenasel volne misto
-		track=i;	//to je prazdny, do nehoz vytvori prislusnou modifikaci zdrojoveho tracku
+		if (i==from) return -1;		//did not find one
+		track=i;	//this is empty, it will create the appropriate modification of the source track
 	}
 
-	//prepsani z source tracku do systemoveho
+	//rewritten from source track to system track
 	TSourceTrack* ts=&m_strack[from];
-	if ( !ts->stereo ) lr=VOLUMES_L | VOLUMES_R; //pokud to neni stereo track a chce pravy kanal, da mu levy
+	if ( !ts->stereo ) lr=VOLUMES_L | VOLUMES_R; //if it's not a stereo track and it wants the right channel, give it the left channel anyway
 	TTrack* td = m_ctracks->GetTrack(track);
 	int activeinstr=-1;
 	for(i=0; i<ts->len; i++)
@@ -144,21 +146,21 @@ int CConvertTracks::MakeOrFindTrackShiftLR(int from, int shift, BYTE lr)
 	}
 	td->len=ts->len;
 
-	//hledani jestli se tenhle neshoduje s nekterym jiz existujicim
+	//search if this one does not match one that already exists
 	for(i=0; i<TRACKSNUM; i++)
 	{
-		if (track==i) continue;	//nebude porovnavat sebe se sam sebou
+		if (track==i) continue;	//it will not compare itself with itself
 		if (m_ctracks->CompareTracks(track,i))
 		{
-			//nasel stejny
-			//takze tento nove vytvoreny smaze
+			//found the same
+			//so the newly created one will be deleted
 			m_ctracks->ClearTrack(track);
-			//a vrati cislo toho drivejsiho
-		    return i; //nasel takovy
+			//and return the former number
+		    return i; //found one
 		}
 	}
 
-	//neshoduje se s zadnym predchozim
+	//does not match the previous one
 
 	TDestinationMark* dm=&m_dmark[track];
 	dm->fromtrack=from;
@@ -174,10 +176,10 @@ int CSong::ImportTMC(ifstream& in)
 {
 	int originalg_tracks4_8=g_tracks4_8;
 
-	//vymaze nynejsi song
-	g_tracks4_8=8;					//standardni TMC je 8 tracku
-	m_tracks.m_maxtracklen = 64;	//delka tracku 64
-	ClearSong(g_tracks4_8);			//smaze vsechno
+	//delete the current song
+	g_tracks4_8=8;					//standard TMC is 8 tracks
+	m_tracks.m_maxtracklen = 64;	//track length is 64
+	ClearSong(g_tracks4_8);			//clear everything
 
 	unsigned char mem[65536];
 	memset(mem,0,65536);
@@ -203,7 +205,7 @@ int CSong::ImportTMC(ifstream& in)
 		if (a<32 || a>=127) a=' ';
 		m_songname[j]=a;
 	}
-	for(k=j;k<SONGNAMEMAXLEN; k++) m_songname[k]=' '; //doplni mezery
+	for(k=j;k<SONGNAMEMAXLEN; k++) m_songname[k]=' '; //fill in the gaps
 
 	CImportTmcDlg importdlg;
 	CString s=m_songname;
@@ -229,25 +231,25 @@ int CSong::ImportTMC(ifstream& in)
 	if (m_instrspeed>4)
 	{
 		speco=m_instrspeed-4;
-		m_instrspeed=4;		//maximalni 4x instrspeed
+		m_instrspeed=4;		//4x instrspeed maximum
 	}
 	else
-	if (m_instrspeed<1) m_instrspeed=1;		//minimalni 1x instrspeed
+	if (m_instrspeed<1) m_instrspeed=1;		//1x instrspeed minimum
 
-	//instrument vektory
+	//instrument vectors
 	for(i=0; i<64; i++)
 	{
 		instr_ptr[i]= mem[bfrom+32+i] + (mem[bfrom+32+64+i]<<8);
-		instr_used[i] = 0; //zjistuje az pak pri prochazeni tracku, jestli je pouzit
+		instr_used[i] = 0; //find out when the track is used if it is used
 	}
-	//track vektory
+	//track vectors
 	for(i=0; i<128; i++) track_ptr[i]= mem[bfrom+32+128+i] + (mem[bfrom+32+128+128+i]<<8);
 
-	//tracky
+	//tracks
 	for(i=0; i<128; i++)
 	{
 		adr = track_ptr[i];
-		if (mem[adr]==0xff) continue;	//ukazuje na FF
+		if (mem[adr]==0xff) continue;	//points to FF
 		int line=0;
 		TSourceTrack& ts = *(cot.GetSTrack(i));
 		int ains=0,note=-1,volL=15,volR=15,speed=0,space=0;
@@ -268,8 +270,8 @@ int CSong::ImportTMC(ifstream& in)
 			else
 			if (txx == 0x00)
 			{
-				//nota a hlasitost
-				//nota
+				//note and volume
+				//note
 				note = (c & 0x3f) - 1;
 				if (note<0) note = -1;
 				else
@@ -277,12 +279,12 @@ int CSong::ImportTMC(ifstream& in)
 					ts.note[line]= note;
 					ts.instr[line]= ains;
 				}
-				//hlasitost
+				//volume
 				c=mem[adr++];
 				volL= 15 - ((c & 0xf0)>>4);
 				volR= 15 - (c & 0x0f);
-				if (volL!=volR) ts.stereo=1;	//je tam nejaka ruzna hlasitost pro L a R
-				if (volL!=0 || volR!=0)			//v TMC nemuze existovat zapis kdy jsou volL i R rovny oba 0
+				if (volL!=volR) ts.stereo=1;	//there is some different volume for L and R
+				if (volL!=0 || volR!=0)			//in TMC there may be no note if vol L and R are both equal to 0
 				{
 					ts.volumeL[line]= volL;
 					ts.volumeR[line]= volR;
@@ -292,8 +294,8 @@ int CSong::ImportTMC(ifstream& in)
 			else
 			if (txx == 0x40)
 			{
-				//nota speed  (+mozna hlasitost)
-				//nota
+				//note speed  (+possible volume)
+				//note
 				note = (c & 0x3f) - 1;
 				if (note<0) note = -1;
 				else
@@ -308,63 +310,63 @@ int CSong::ImportTMC(ifstream& in)
 				{
 					ts.len=line+1;
 					endt=1;
-					//break;			// speed=0 => konec tohoto tracku
+					//break;			//speed = 0 => end of this track
 				}
 				else
 				{
 					ts.speed[line]= speed+1;
 				}
-				if (c & 0x80)		//za speedem je i hlasitost
+				if (c & 0x80)		//behind speed is also the volume
 				{
-					//hlasitost
+					//volume
 					c=mem[adr++];
 					volL= 15 - ((c & 0xf0)>>4);
 					volR= 15 - (c & 0x0f);
-					if (volL!=volR) ts.stereo=1;	//je tam nejaka ruzna hlasitost pro L a R
-					if (volL!=0 || volR!=0)			//v TMC nemuze existovat zapis kdy jsou volL i R rovny oba 0
+					if (volL!=volR) ts.stereo=1;	//there is some different volume for L and R
+					if (volL!=0 || volR!=0)			//in TMC there may be no note if vol L and R are both equal to 0
 					{
 						ts.volumeL[line]= volL;
 						ts.volumeR[line]= volR;
 					}
 				}
-				if (endt) break;	//konec tohoto tracku pres speed=0
+				if (endt) break;	//end of this track via speed = 0
 				line++;
 			}
 			else
 			if (txx == 0xc0)
 			{
-				//mezera
+				//gap
 				space=(c & 0x3f)+1;
 				if (space>63 || line+space>63)
 				{
 					if (line>0) ts.len = 64;
-					break;	//space=64 (ff) => konec tohoto tracku
+					break;	//space = 64 (ff) => end of this track
 				}
 				line +=space;
 			}
 		}
-		//a na dalsi track
+		//and on the next track
 		line=0;
 	}
 
-	//instrumenty
+	//instruments
 	int nonemptyinstruments=0;
 	for(i=0; i<64; i++)
 	{
 		TInstrument& ai = m_instrs.m_instr[i];
 
-		if (instr_used[i]) //je tento instrument pouzit nekde v nekterem tracku
+		if (instr_used[i]) //this instrument is used somewhere in some track
 		{
-			//ano => nazev
+			//yes => name
 			CString s;
 			s.Format("TMC instrument imitation %02X",i);
 			strncpy(ai.name,(LPCTSTR)s,s.GetLength());
 		}
 
 		int adr_e=instr_ptr[i];
-		if (adr_e==0) continue;	//nedefinovan
+		if (adr_e==0) continue;	//undefined
 		
-		//definovan
+		//defined
 
 		nonemptyinstruments++;
 
@@ -380,15 +382,15 @@ int CSong::ImportTMC(ifstream& in)
 		//envelope
 		int c1,c2,c3;
 		BOOL anyrightvolisntzero=0;
-		BOOL filteru=0;			//je pouzit filter?
-		int lasttmccmd=-1;				//minuly command
-		int lasttmcpar=0;				//minuly parametr
-		int cmd1_2=0;					//pro posloupnost commandu 1 a 2
-		int par1_2=0;					//parametr pro pricitani frekvenci u posloupnosti commandu 1 a 2
-		int cmd2_2=0;					//posloupnost 2 a 2
-		int par2_2=0;					//parametr pro posloupnost 2 a 2
-		int cmd6_6=0;					//posloupnost 6 a 6
-		int par6_6=0;					//parametr pro posloupnost 6 a 6
+		BOOL filteru=0;					//is it using the filter?
+		int lasttmccmd=-1;				//last command
+		int lasttmcpar=0;				//last parameter
+		int cmd1_2=0;					//for command sequence 1 and 2
+		int par1_2=0;					//parameter for adding frequency for command sequence 1 and 2
+		int cmd2_2=0;					//sequence 2 and 2
+		int par2_2=0;					//parameter for sequence 2 and 2
+		int cmd6_6=0;					//sequence 6 and 6
+		int par6_6=0;					//parameter for sequence 6 and 6
 		int maxvolL=0,maxvolR=0,lastvol=0;
 		for(j=0; j<21; j++)
 		{
@@ -396,13 +398,13 @@ int CSong::ImportTMC(ifstream& in)
 			c2=mem[adr_e+j*3+1];
 			c3=mem[adr_e+j*3+2];
 
-			int dist08=(c1>>4) & 0x01;			//forced volume
-			BYTE dist=(c1>>4) & 0x0e;					//suda c. 0,2,az,E
-			if (dist==0x0e) dist=0x0a;		//ciste tony
+			int dist08=(c1>>4) & 0x01;		//forced volume bit
+			BYTE dist=(c1>>4) & 0x0e;		//distortions, in step of 2
+			if (dist==0x0e) dist=0x0a;		//pure tones
 			else
-			if (dist==0x06) dist=0x02;		//sumy 2
+			if (dist==0x06) dist=0x02;		//distortion 2 sharp tones
 
-			//nyni je dist 0,2,4,8,10,12   (bez 0x06 a 0x0e)
+			//now dist is 0,2,4,8,A,C (without 0x06 and 0x0e)
 
 			int basstable = mem[adr_p+7]&0xc0;
 			if (dist==0x0c && (basstable==0x80 || basstable==0xc0)) dist=0x0e;
@@ -410,10 +412,10 @@ int CSong::ImportTMC(ifstream& in)
 			int com08=(c2>>4) & 0x08;		//command 8x
 			BYTE audctl= com08 ? audctl2 : audctl1;
 
-			//16 bit basy?
-			if (   ((audctl&0x50)==0x50 || (audctl&0x28)==0x28) 
-				&& (dist==0x0c) ) 
-							dist=0x06;	//16bit bassy
+			//16 bit bass?
+			if (((audctl&0x50)==0x50 || (audctl&0x28)==0x28) && (dist==0x0c)) 
+				dist=0x06;	//16bit bass
+
 			//filter
 			if ( ((audctl&0x04)==0x04 || (audctl&0x02)==0x02) )
 			{
@@ -423,45 +425,46 @@ int CSong::ImportTMC(ifstream& in)
 			
 			ai.env[j][ENV_DISTORTION]= dist;
 			int vol=c1 & 0x0f;			//volumeL 0-F;
-			ai.env[j][ENV_VOLUMEL]= lastvol = vol;			//lastvol je potreba pro korekci doznivani
-			if (vol>maxvolL) maxvolL=vol;	//maximalni volumeL z cele envelope
+			ai.env[j][ENV_VOLUMEL]= lastvol = vol;			//lastvol is needed to correct the fading
+			if (vol>maxvolL) maxvolL=vol;	//maximum volumeL of the whole envelope
 			vol = c2 & 0x0f;			//volumeR 0-F
 			ai.env[j][ENV_VOLUMER]= vol;
-			if (vol>maxvolR) maxvolR=vol;	//maximalni volumeR z cele envelope
-			if (vol>0) anyrightvolisntzero=1;	//nejaka volumeR je >0
+			if (vol>maxvolR) maxvolR=vol;	//maximum volumeR of the whole envelope
+			if (vol>0) anyrightvolisntzero=1;	//some volumeR is> 0
 			
 			int tmccmd=(c2>>4) & 0x07;		//command
 			int tmcpar=c3;
 			int rmtcmd=tmccmd,rmtpar=tmcpar;
-			//prevod commandu TMC na RMT
+
+			//TMC to RMT command conversion
 			switch (tmccmd)
 			{
-			case 0: //bez efektu
+			case 0: //without effect
 				rmtcmd=0; rmtpar=0;
 				break;
-			case 1: //P->AUDF		(stejne s TMC)
+			case 1: //P-> AUDF (same as TMC)
 				cmd1_2=2;
 				par1_2=tmcpar;
-				if (com08 || tmcpar==0x00) //ale cmd 9 nebo 1 s parametrem 00 je volume only
+				if (com08 || tmcpar==0x00) //but cmd 9 or 1 with parameter 00 is volume only
 				{
 					rmtcmd=7;		//Volume only
-					rmtpar=0x80;	//
+					rmtpar=0x80;	
 				}
 				break;
 			case 2: //P+A->AUDF
 				if (j>0 && cmd1_2)
 				{
-					//predela 2 xy na 1 ab,  kde ab=hodnota u predchozi leve jednicky + prirustek
-					//bude to fungovat retezove i u dalsich dvojek, coz je v poradku
+					//divide 2 xy into 1 ab, where ab = value at the previous left unit + increment
+					//it will work in chains for the other two, which is fine
 					rmtcmd=1;
 					rmtpar=(BYTE)(par1_2+tmcpar);
-					cmd1_2=2;	//aby to vydrzelo opet pro pristi sloupec envelope
-					par1_2=rmtpar;	//prictena frekvence pro priste
+					cmd1_2=2;	//to make it last again for the next envelope column
+					par1_2=rmtpar;	//added frequency for next
 				}
 				else
 				if (j>0 && cmd2_2)
 				{
-					//predela 2 xy na 2 ab, kde ab=hodnota u predchozi leve dvojky + prirustek
+					//divide 2 xy to 2 ab, where ab = value at the previous left two + increment
 					rmtcmd=2;
 					rmtpar=(BYTE)(par2_2+tmcpar);
 					cmd2_2=2;
@@ -469,7 +472,7 @@ int CSong::ImportTMC(ifstream& in)
 				}
 				else
 				{
-					//zustane stejne
+					//will remain the same
 					rmtcmd=2;
 					rmtpar=tmcpar;
 					cmd2_2=2;
@@ -477,17 +480,17 @@ int CSong::ImportTMC(ifstream& in)
 				}
 				break;
 			case 3: //P+N->AUDF
-				//odpovida presne TMC commandu 2
+				//corresponds exactly to TMC command 2
 				rmtcmd=2; rmtpar=tmcpar;
 				break;
 			case 4: //P&RND->AUDF
-				rmtcmd=1;	//prevede na pevne nastaveni nahodne zvolene frekvence
+				rmtcmd=1;	//converts randomly selected frequencies to a fixed setting
 				rmtpar=rand()&0xff;
 				break;
-			case 5: //PN->AUDF  (hraje pevne notu s tim indexem)
-				rmtcmd=1;	//prevede na pevne nastaveni frekvence odpovidajici noty (dle distortion)
+			case 5: //PN->AUDF  (plays a fixed note with that index)
+				rmtcmd=1;	//converts to a fixed frequency setting the corresponding note (according to distortion)
 				//dist=0-e
-				rmtpar=(256-(tmcpar*4)) & 0xff;	//JEN PROZATIM NEZ TO BUDE PORADNE!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+				rmtpar=(256-(tmcpar*4)) & 0xff;	//JUST FOR THAT IT WILL BE ADVISORY !!!!!!!!!!!!!!!!!!!!!!!!!!!!
 				break;
 			case 6: //PN+A->AUDF 
 				if (j>0 && cmd6_6)
@@ -506,11 +509,11 @@ int CSong::ImportTMC(ifstream& in)
 				}
 				break;
 			case 7: //PN+N->AUDF
-				rmtcmd=0;	//v RMT se notovy posun dela commandem 0
+				rmtcmd=0;	//in RMT, the note shift is done by command 0
 				break;
 			}
 
-			//posun basu
+			//bass shift
 			if (dist==0x0c && rmtcmd==0) rmtpar+=8;
 
 			//forced volume
@@ -522,21 +525,21 @@ int CSong::ImportTMC(ifstream& in)
 
 			lasttmccmd=tmccmd;
 			lasttmcpar=tmcpar;
-			if (cmd1_2>0) cmd1_2--;		//odecita
-			if (cmd2_2>0) cmd2_2--;		//odecita
-			if (cmd6_6>0) cmd6_6--;		//odecita
+			if (cmd1_2>0) cmd1_2--;		//read
+			if (cmd2_2>0) cmd2_2--;		//read
+			if (cmd6_6>0) cmd6_6--;		//read
 
-		} //0-20 sloupcu envelope
+		} //0-20 column envelope
 
-		//je vsechna prava hlasitost=0 ? => prekopiruje levou na pravou
+		//is all right volume = 0? => copies left to right
 		if (!anyrightvolisntzero) 
 		{
 			for(j=0; j<=21; j++) ai.env[j][ENV_VOLUMER]=ai.env[j][ENV_VOLUMEL];
 			maxvolR=maxvolL;
 		}
 
-		//delka envelope
-		ai.par[PAR_ENVLEN]=20;			//envelope je 21 sloupcu
+		//envelope length
+		ai.par[PAR_ENVLEN]=20;			//the envelope is 21 columns
 		ai.par[PAR_ENVGO]=20;
 
 		TInstrumentMark* im=cot.GetIMark(i);
@@ -551,66 +554,68 @@ int CSong::ImportTMC(ifstream& in)
 			int nut=mem[adr_t+j];
 			if (nut>=0x80 && nut<=0xc0) nut+=0x40;
 			if (nut>=0x40 && nut<=0x7f) nut-=0x40;
-			if (nut!=0) tableu=1; //table je na neco pouzita
+			if (nut!=0) tableu=1; //table is used for something
 			ai.tab[j]=nut;
 		}
 		
-		//parametry
-		//table delka a speed
+		//parameters
+		//table length and speed
 		int tablen = (mem[adr_p+8]>>4) & 0x07;
 		ai.par[PAR_TABLEN]= tablen;		//0-7
-		ai.par[PAR_TABSPD]= mem[adr_p+8] & 0x0f;			//rychlost 0-15
-		//
-		//dalsi parametry
+		ai.par[PAR_TABSPD]= mem[adr_p+8] & 0x0f;			//speed 0-15
+		
+		//other parameters
+		
 		//volume slide
 		BYTE t1vslide=mem[adr_p+3];
-		//speco je korekce pri zpomaleni instrumentu ze 5 a vice na 4
+		//speco is the correction when the instrument decelerates from 5 and more to 4
 		BYTE t2vslide=(t1vslide<1)? 0: (BYTE)((double)15/lastvol*(double)255/((double)t1vslide * (1-((double)speco)/4) ) +0.5);
 		if (t2vslide>255) t2vslide=255;
 		else
 		if (t2vslide<0) t2vslide=0;
 		ai.par[PAR_VSLIDE] = t2vslide;
 		ai.par[PAR_VMIN]= 0;
-		//vibrato nebo fshift
+
+		//vibrato or fshift
 		BYTE pvib=mem[adr_p+5] & 0x7f;
-		BYTE pvib8=mem[adr_p+5] & 0x80;		//horni bit
+		BYTE pvib8=mem[adr_p+5] & 0x80;		//highest bit
 		BYTE delay=mem[adr_p+6];
 		BYTE vibspe=mem[adr_p+7] & 0x3f;	//vibrato speed
 		BYTE vib=0,fshift=0;
-		BOOL vpt=0;			//vibrato pres table se podarilo
+		BOOL vpt=0;			//vibrato through the table succeeded
 
 		int posuntable= (int)((double)delay / (vibspe+1) +0.5);
 
-		BOOL nobytable=0;	//jestli se ma pokouset to prevadet na table
-		if (!x_usetable) nobytable=1;	//nema se pokouset
+		BOOL nobytable=0;	//if it tries to convert to a table
+		if (!x_usetable) nobytable=1;	//it shouldn't try
 		if (filteru) nobytable=1;
 
-		//co kdyz sice je table pouzita, ale jen pro posun na 0.miste
-		if (!nobytable && tableu && tablen==0 && (pvib&0x40))		//(pvib&0x40) <--jen jestlize na neco pouziva vibrato, jinak nema smysl to predelavat
+		//what if the table is used, but only to move to the 0th place
+		if (!nobytable && tableu && tablen==0 && (pvib&0x40))		//(pvib & 0x40) <- only if vibrato uses something, otherwise it doesn't make sense to redo it
 		{
-			//je to tak, zoptimalizuje pres posun vsech not v envelope
-			int psn=ai.tab[0];	//0.misto v table
+			//that is, it optimizes over the shift of all notes in the envelope
+			int psn=ai.tab[0];	//0th place in the table
 			for(j=0; j<21; j++)
 			{
-				if (ai.env[j][ENV_COMMAND]==0) //notovy posun
+				if (ai.env[j][ENV_COMMAND]==0) //music shift
 				{
 					BYTE notenum = (ai.env[j][ENV_X]<<4) + ai.env[j][ENV_Y];
-					notenum += psn; //posune
+					notenum += psn; //shifts
 					ai.env[j][ENV_X]= (notenum>>4) & 0x0f;
 					ai.env[j][ENV_Y]= notenum & 0x0f;
 				}
 			}
-			ai.tab[0]=0; //takze parametr v table se vynuluje
-			tableu=0;	//a tim padem je table volna pro dalsi pouziti
+			ai.tab[0]=0; //so the parameter in the table is reset
+			tableu=0;	//and thus the table is free for further use
 		}
 
-		//a ted jednotlive hodnoty parametru "vibrato":
+		//and now the individual values of the "vibrato" parameter:
 
 		if (pvib>0x10 && pvib<0x3f)
 		{
 			//vibrato
-			int hn=pvib>>4;		//typ vibrata 1-3
-			int dn=pvib&0x0f;	//vykmit vibrata 0-f
+			int hn=pvib>>4;		//vibrato type 1-3
+			int dn=pvib&0x0f;	//cut out vibrato 0-f
 
 			/*
 			vib = (int) ((double) (hn+(float)dn/4)+0.5);
@@ -619,118 +624,118 @@ int CSong::ImportTMC(ifstream& in)
 			if (vib>3) vib=3;
 			*/
 			vib=3;
-			if (hn==1) vib=1+vibspe;	//nejpodobnejsi je tohle nezavisle na velikosti vykmitu, speed to kdyztak posune na vib 2 nebo 3
+			if (hn==1) vib=1+vibspe;	//the most similar is this regardless of the magnitude of the oscillation, speed will move it to vib 2 or 3
 			else
-			if (hn==2 && dn==1) vib=2+vibspe; //pro dn==1 to odpovida presne, ostatni uz jsou uz odpovidajici vib3
-			if (vib>3) vib=3;	//kdyby to po pricteni "vibspe" vyslo vic nez 3
+			if (hn==2 && dn==1) vib=2+vibspe; //for dn == 1 this corresponds exactly, the others are already corresponding to vib3
+			if (vib>3) vib=3;	//if it read more than 3 after reading "vibspec"
 
-			//jestlize ma nevyuzite table, pokusi se udelat vibrato pres table
+			//if you do not use the table, try to use vibrato through the table
 			if (!nobytable && !tableu)
 			{
 				if (hn==1 && (dn>2 || vibspe>0) )							//(dn>=4 || vibspe>0) )
 				{
-					if (posuntable>TABLEN-4) posuntable=TABLEN-4; //nejdal co je mozne podle delay
+					if (posuntable>TABLEN-4) posuntable=TABLEN-4; //did not give what is possible according to the delay
 					ai.tab[posuntable]=0;
 					ai.tab[posuntable+1]=(pvib8) ? (BYTE)(256-dn) : dn;
 					ai.tab[posuntable+2]=0;
 					ai.tab[posuntable+3]=(pvib8) ? dn : (BYTE)(256-dn);
 					ai.par[PAR_TABLEN]=posuntable+3;
 					ai.par[PAR_TABGO]=posuntable;
-					ai.par[PAR_TABTYPE]=1;	//tabulka frekvenci
+					ai.par[PAR_TABTYPE]=1;	//frequency table
 					ai.par[PAR_TABSPD]=(vibspe<0x3f)? vibspe : 0x3f;
-					vpt=1; //podarilo se
+					vpt=1; //successful
 				}
 				else
 				if (hn==2 && (dn>2 || vibspe>0) )							//(dn>=4 || vibspe>0))
 				{
-					if (posuntable>TABLEN-4) posuntable=TABLEN-4; //nejdal co je mozne podle delay
+					if (posuntable>TABLEN-4) posuntable=TABLEN-4; //did not give what is possible according to the delay
 					ai.tab[posuntable]=(pvib8) ? (BYTE)(256-dn) : dn;
 					ai.tab[posuntable+1]=0;
 					ai.tab[posuntable+2]=(pvib8) ? dn : (BYTE)(256-dn);
 					ai.tab[posuntable+3]=0;
 					ai.par[PAR_TABLEN]=posuntable+3;
 					ai.par[PAR_TABGO]=posuntable;
-					ai.par[PAR_TABTYPE]=1;	//tabulka frekvenci
+					ai.par[PAR_TABTYPE]=1;	//frequency table
 					int sp=dn*(vibspe+1)-1;
 					if (sp<0) sp=0;	else if (sp>0x3f) sp=0x3f;
 					ai.par[PAR_TABSPD]=sp;
-					vpt=1; //podarilo se
+					vpt=1; //successful
 				}
 				else
 				if (hn==3 && (dn>2 || vibspe>0) )							//(dn>=4 || vibspe>0))
 				{
-					if (posuntable>TABLEN-4) posuntable=TABLEN-4; //nejdal co je mozne podle delay
-					ai.tab[posuntable]=(pvib8) ? (BYTE)(dn*4) : (BYTE)(256-(dn*4)) ; //u not je to naopak (pricitani not = odecitani frekv
+					if (posuntable>TABLEN-4) posuntable=TABLEN-4; //did not give what is possible according to the delay
+					ai.tab[posuntable]=(pvib8) ? (BYTE)(dn*4) : (BYTE)(256-(dn*4)) ; //for notes it is the other way around (add note = read frequency
 					ai.tab[posuntable+1]=0;
-					ai.tab[posuntable+2]=(pvib8) ? (BYTE)(256-(dn*4)) : (BYTE)(dn*4); //u not je to naopak
+					ai.tab[posuntable+2]=(pvib8) ? (BYTE)(256-(dn*4)) : (BYTE)(dn*4); //it is the other way around
 					ai.tab[posuntable+3]=0;
 					ai.par[PAR_TABLEN]=posuntable+3;
 					ai.par[PAR_TABGO]=posuntable;
-					ai.par[PAR_TABTYPE]=1;	//tabulka frekvenci
+					ai.par[PAR_TABTYPE]=1;	//frequency table
 					int sp=dn*(vibspe+1)-1;
 					if (sp<0) sp=0;	else if (sp>0x3f) sp=0x3f;
 					ai.par[PAR_TABSPD]=sp;
-					vpt=1; //podarilo se
+					vpt=1; //successful
 				}
 			}
 		}
 		else
 		if (pvib>0x40 && pvib<=0x4f)
 		{
-			//fshift dolu (pridavani frq)
+			//fshift down (added frq)
 			fshift=pvib-0x40;
 			if (pvib8) fshift = (BYTE)(256-fshift);
 
-			//a ted zjisti, jestli by to neudelal lip pres table
+			//and now find out if it wouldn't do it through the table
 			if (!nobytable && !tableu && vibspe>0)
 			{
-				if (posuntable>TABLEN-2) posuntable=TABLEN-2; //nejdal co to jde
+				if (posuntable>TABLEN-2) posuntable=TABLEN-2; //he didn't give up
 				ai.tab[posuntable]=fshift;
 				ai.tab[posuntable+1]=fshift;
 				ai.par[PAR_TABLEN]=posuntable+1;
 				ai.par[PAR_TABGO]=posuntable+1;
-				ai.par[PAR_TABTYPE]=1;	//tabulka frekvenci
-				ai.par[PAR_TABMODE]=1;	//pricitani
+				ai.par[PAR_TABTYPE]=1;	//frequency table
+				ai.par[PAR_TABMODE]=1;	//read
 				ai.par[PAR_TABSPD]=(vibspe<0x3f)? vibspe : 0x3f;
-				vpt=1; //podarilo se
+				vpt=1; //successful
 			}
 		}
 		else
 		if (pvib>0x50 && pvib<=0x5f)
 		{
-			//posun v notach dolu (doleva) => posun o frekvenci 255/61 * posun_v_notach 
+			//shift in notes down (left) => shift in frequency 255/61 * shift_in_notes
 			fshift= (int) (((double)(255/61)* (pvib-0x50))+0.5);
 			if (pvib8) fshift = (BYTE)(256-fshift);
 
-			//a ted zjisti, jestli by to neudelal lip pres table
+			//and now find out if it wouldn't do it through the table
 			
 			if (!nobytable && !tableu)				// && vibspe>0)
 			{
-				if (posuntable>TABLEN-2) posuntable=TABLEN-2; //nejdal co to jde
+				if (posuntable>TABLEN-2) posuntable=TABLEN-2; //it didn't give up
 				int nshift=pvib-0x50;
-				if (!pvib8) nshift= (BYTE)(256-nshift);		//u not je to naopak (5x je <--down, Dx je up-->)
+				if (!pvib8) nshift= (BYTE)(256-nshift);		//for notes it is the opposite (5x is <- down, Dx is up ->)
 				ai.tab[posuntable]=nshift;
 				ai.tab[posuntable+1]=nshift;
 				ai.par[PAR_TABLEN]=posuntable+1;
 				ai.par[PAR_TABGO]=posuntable+1;
-				ai.par[PAR_TABTYPE]=0;	//tabulka not
-				ai.par[PAR_TABMODE]=1;	//pricitani
+				ai.par[PAR_TABTYPE]=0;	//note table
+				ai.par[PAR_TABMODE]=1;	//read
 				ai.par[PAR_TABSPD]=(vibspe<0x3f)? vibspe : 0x3f;
-				vpt=1; //podarilo se
+				vpt=1; //succesful
 			}
 		}
 		else
 		if (pvib>0x60 && pvib<=0x6f)
 		{
-			//podladeni $60-$6f => -0 az -15 k frekvenci
-			//neumime
+			//tuned $ 60- $ 6f => -0 to -15 to frequency
+			//we don't know
 		}
 
 
-		//overeni, zda vibrato effekt udelal pres table nebo "normalne" pres vibrato a fshift
+		//verify whether the vibrato effect was done via table or "normal" via vibrato and fshift
 		if (vpt)
 		{
-			//podarilo se udelat vibrato pres table, takze nevyuzije vibrato ani shift ani delay
+			//managed to do vibrato through the table, so it does not use vibrato, fshift or delay
 			vib=0;
 			fshift=0;
 			delay=0;
@@ -743,8 +748,8 @@ int CSong::ImportTMC(ifstream& in)
 		if ((vib>0 || fshift>0) && delay==0) delay=1;
 		ai.par[PAR_DELAY] = delay;
 
-		//optimalizace
-		//delka envelope
+		//optimalization
+		//envelope length
 		int lastnonzerovolumecol=-1;
 		int lastchangecol=0;
 		for(int k=0; k<=20; k++)
@@ -754,30 +759,30 @@ int CSong::ImportTMC(ifstream& in)
 			{
 				for(int m=0; m<ENVROWS; m++)
 				{
-					if (ai.env[k][m]!=ai.env[k-1][m])	//je neco jineho? (volumeL,R,distor,...,portamento)
+					if (ai.env[k][m]!=ai.env[k-1][m])	//is there anything else? (volumeL, R, distortion, ..., portamento)
 					{
-						lastchangecol=k;	//jo, neco je jineho.
+						lastchangecol=k;	//yeah, something else.
 						break;
 					}
 				}
-				//sem skoci break
+				//skipping break(?)
 			}
 		}
 
 		if (lastnonzerovolumecol<20)
 		{
-			ai.par[PAR_ENVLEN]=ai.par[PAR_ENVGO]=lastnonzerovolumecol+1; //zkrati za posledni nenulovou hlasitost
+			ai.par[PAR_ENVLEN]=ai.par[PAR_ENVGO]=lastnonzerovolumecol+1; //shortens to the last non-zero volume
 		}
 
-		if (   lastchangecol<lastnonzerovolumecol	//posledni libovolna zmena probehla ve sloupci lastchangecol
-			&& ai.par[PAR_VSLIDE]==0				//jedine kdyz neubyva hlasitost
+		if (   lastchangecol<lastnonzerovolumecol	//the last arbitrary change took place in the last change col column
+			&& ai.par[PAR_VSLIDE]==0				//only when the volume does not decrease
 		   )
 		{
-			ai.par[PAR_ENVLEN]=ai.par[PAR_ENVGO]=lastchangecol; //zkrati to na sloupec kde byla posledni zmena cehokoliv
+			ai.par[PAR_ENVLEN]=ai.par[PAR_ENVGO]=lastchangecol; //shorten it to the column where the last change of anything was
 		}
 
 		//table
-		for(int v=0; v<=ai.par[PAR_TABLEN]; v++)	//jsou tam jen nuly?
+		for(int v=0; v<=ai.par[PAR_TABLEN]; v++)	//are there only zeros?
 		{
 			if (ai.tab[v]!=0) goto NoTableOptimize;
 		}
@@ -789,9 +794,9 @@ int CSong::ImportTMC(ifstream& in)
 NoTableOptimize:
 
 
-		//promitnuti instrumentu do Atarkove RAM
+		//projected instrument into Atari's RAM
 		m_instrs.ModificationInstrument(i);
-	} //a na dalsi instrument
+	} //and another instrument
 
 
 	//song
@@ -803,7 +808,7 @@ NoTableOptimize:
 
 	for(adr=bfrom+32+128+256; adr<adrendsong; adr+=16,line++)
 	{
-		if ((mem[adr+15] & 0x80) == 0x80)	//goto radek?
+		if ((mem[adr+15] & 0x80) == 0x80)	//goto line?
 		{
 			//goto
 			m_songgo[line]=mem[adr+14] & 0x7f;
@@ -828,7 +833,7 @@ NoTableOptimize:
 					if (levy>=0 && levy<128 && cot.GetSTrack(t)->len<0)
 					{
 						t = levy; //pouzije pravou variaci leveho tracku
-						preladeni = (char)mem[adr+14+8-i*2];	//se stejnym ladenim jako ma ten levy
+						preladeni = (char)mem[adr+14+8-i*2];	//with the same tuning the lines have
 					}
 					*/
 				}
@@ -837,19 +842,19 @@ NoTableOptimize:
 
 				m_song[line][i]= vyslednytrack;
 
-				if (vyslednytrack>numoftracks) numoftracks=vyslednytrack;	//celkovy pocet tracku
+				if (vyslednytrack>numoftracks) numoftracks=vyslednytrack;	//total number of tracks
 
 				if (vyslednytrack>=0 && i>=4) stereomodul=1;
 			}
 		}
 	}
-	//je na konci nejake goto?
-	if (m_songgo[line-1]<0) m_songgo[line+1]=line;	//neni, tak prida na konec nekonecny loop
-	//if (m_songgo[line-1]<0) m_songgo[line]=0; //neni, tak prida goto na zacatek
+	//is there a goto in the end?
+	if (m_songgo[line-1]<0) m_songgo[line+1]=line;	//no, so it adds an endless loop to the end
+	//if (m_songgo[line-1]<0) m_songgo[line]=0; //no, so add a goto to the first line
 
-	if (!stereomodul) g_tracks4_8=4;	//mono modul
+	if (!stereomodul) g_tracks4_8=4;	//mono module
 
-	//ZAVERECNY DIALOG PO DOKONCENI IMPORTU
+	//FINAL DIALOGUE AFTER IMPORT
 	CImportTmcFinishedDlg imfdlg;
 	imfdlg.m_info.Format("%i tracks, %i instruments, %i songlines",numoftracks,nonemptyinstruments,line);
 
@@ -874,8 +879,8 @@ NoTableOptimize:
 
 	if (imfdlg.DoModal()!=IDOK)
 	{
-		//nedal Ok, takze to smaze
-		g_tracks4_8=originalg_tracks4_8;	//vrati puvodni hodnotu
+		//did not give Ok, so it deletes
+		g_tracks4_8=originalg_tracks4_8;	//returns the original value
 		ClearSong(g_tracks4_8);
 		MessageBox(g_hwnd,"Module import aborted.","Import...",MB_ICONINFORMATION);
 	}
@@ -886,13 +891,13 @@ NoTableOptimize:
 
 /********************************************************************************************/
 
-//27.zari 2003 20:38 ... Prave jsem naimportoval aurora.mod, pustil to bez uprav a jsem ohromen!!!
-//							To je naprosto UZASNY! UZASNY! NAPROSTO UZASNY!!!
+//September 27, 2003 8:38 PM ... I just imported aurora.mod, released it without editing and I'm amazed !!!
+//							That's absolutely AMAZING! AMAZING! ABSOLUTELY AWESOME !!!
 
 
 struct TMODInstrumentMark
 {
-	BYTE used;			//bity urcuji v kterem sloupci (na kterem channelu) je pouzit
+	BYTE used;			//bits determine in which column (on which channel) it is used
 	int volume;
 	int minnote;
 	int maxnote;
@@ -905,7 +910,7 @@ struct TMODInstrumentMark
 
 int AtariVolume(int volume0_64)
 {
-	int	avol=(int)( (double)volume0_64/4 +0.5);	//prepocet na atarkovou volume
+	int	avol=(int)( (double)volume0_64/4 +0.5);	//conversion to atari volume
 	if (volume0_64<1) avol=0;
 	else
 	if (volume0_64==1) avol=1;
@@ -916,20 +921,20 @@ int AtariVolume(int volume0_64)
 
 int CSong::ImportMOD(ifstream& in)
 {
-	//vymaze nynejsi song
-	int originalg_tracks4_8=g_tracks4_8;	//schova si puvodni hodnotu pro Abort
-	g_tracks4_8=8;					//predchysta si 8 kanalovy
-	m_tracks.m_maxtracklen = 64;	//delka tracku 64
-	ClearSong(g_tracks4_8);			//vymaze
+	//deletes the current song
+	int originalg_tracks4_8=g_tracks4_8;	//keeps the original value for Abort
+	g_tracks4_8=8;					//prepares 8 channels
+	m_tracks.m_maxtracklen = 64;	//track length 64
+	ClearSong(g_tracks4_8);			//clear existing data
 
 	int i,j;
 	BYTE a;
 	BYTE head[1085];
 
-	in.read((char *)&head,1084);
-	int flen=(int)in.gcount();
+	in.read((char*)&head, 1084);
+	int flen = (int)in.gcount();
 
-	head[1084]=0;	//ukonceni za hlavickou
+	head[1084]=0;	//finished behind the header
 
 	if (flen!=1084)
 	{
@@ -938,12 +943,12 @@ int CSong::ImportMOD(ifstream& in)
 	}
 
 	in.seekg(0,ios::end);
-	int modulelength=(int)in.tellg();
-	
+	int modulelength = (int)in.tellg();
+
 	int chnls=0;
-	int song=950;	//kde zacina song u 31 samploveho modulu
-	int patstart=1084;	//zacatek patternu u 31 samploveho modulu
-	int modsamples=31;	//31 samplovy
+	int song=950;		//where the song starts at the 31 sample module
+	int patstart=1084;	//the beginning of the pattern at the 31 sample module
+	int modsamples=31;	//31 samples
 	if (strncmp((char*)(head+1080),"M.K.",4)==0)
 		chnls=4;					//M.K.
 	else
@@ -954,9 +959,9 @@ int CSong::ImportMOD(ifstream& in)
 		for(int i=0; i<4; i++)
 		{
 			a=head[1080+i];
-			if (a<32 || a>90) // je to mimo " " az "Z"  (tj. neni to nejake pismeno nebo mezera)
+			if (a<32 || a>90) //it's outside " " and "Z" (ie it's not a letter or a space)
 			{
-				//=>15 samplovy MOD
+				//=> 15 samples MOD
 				chnls=4;
 				modsamples=15;
 				song=470;
@@ -986,10 +991,10 @@ int CSong::ImportMOD(ifstream& in)
 		int patnum=head[song+2+i];
 		if (patnum>maxpat) maxpat=patnum;
 	}
-	int memlen=song+130+patternsize*(maxpat+1);				//130= 1delka +1repeat + 128song
-	if (song>=950) memlen+=4;		// navic 4 identifikacni pismena (napr. "M.K.") //song+130 (1084)
+	int memlen=song+130+patternsize*(maxpat+1);				//130 = 1 length +1 repeat + 128 song
+	if (song>=950) memlen+=4;		//in addition 4 identification letters (eg "M.K.") // song + 130 (1084)
 
-	//TED TEPRVE ALOKUJE PAMET
+	//now it is allocating memory
 	BYTE* mem = new BYTE[memlen];
 	if (!mem)
 	{
@@ -998,9 +1003,9 @@ int CSong::ImportMOD(ifstream& in)
 	}
 	
 	in.clear();
-	in.seekg(0);		//znovu na zacatek
-	in.read((char*)mem,memlen);	//nacte modul
-	flen=(int)in.gcount();
+	in.seekg(0);		//again at the beginning
+	in.read((char*)mem, memlen);	//load module
+	flen = (int)in.gcount();
 	if (flen!=memlen)
 	{
 		MessageBox(g_hwnd,"Bad file.","Error",MB_ICONSTOP);
@@ -1008,23 +1013,23 @@ int CSong::ImportMOD(ifstream& in)
 		return 0;
 	}
 
-	BYTE trackorder[8]={0,1,2,3,4,5,6,7};	//usporadani tracku
+	BYTE trackorder[8]={0,1,2,3,4,5,6,7};	//track layout
 	int rmttype=0;
 
 	CImportModDlg importdlg;
 	importdlg.m_info.Format("%i channels %i samples ProTracker module detected.\n(Header bytes \"%s\".)",chnls,modsamples,head+1080);
 	if (chnls==4)
-	{	//4 kanalovy modul
+	{	//4 channels module
 		importdlg.m_txtradio1="RMT4 with 1,2,3,4 tracks order";
 		importdlg.m_txtradio2="RMT8 with 1,4 / 2,3 tracks order";
 		if (importdlg.DoModal()==IDOK)
 		{
 			if (importdlg.m_txtradio1!="")
-			{	//prvni volba
+			{	//first choice
 				rmttype=4;
 			}
 			else
-			{	//druha volba
+			{	//second choice
 				rmttype=8;
 				trackorder[0]=0;
 				trackorder[1]=4;
@@ -1034,13 +1039,13 @@ int CSong::ImportMOD(ifstream& in)
 		}
 	}
 	else
-	{	//5-8 kanalovy modul
+	{	//5-8 channels module
 		importdlg.m_txtradio1="RMT8 with 1,4,5,8 / 2,3,6,7 tracks order";
 		importdlg.m_txtradio2="RMT8 with 1,2,3,4 / 5,6,7,8 tracks order";
 		if (importdlg.DoModal()==IDOK)
 		{
 			if (importdlg.m_txtradio1!="")
-			{	//prvni volba
+			{	//first choice
 				rmttype=8;
 				trackorder[0]=0;
 				trackorder[1]=4;
@@ -1052,14 +1057,14 @@ int CSong::ImportMOD(ifstream& in)
 				trackorder[7]=3;
 			}
 			else
-			{	//druha volba
+			{	//second choice
 				rmttype=8;
 			}
 		}
 	}
 
 	if (rmttype!=4 && rmttype!=8)
-	{	//nevybral zadnou moznost (cancel v dialogu)
+	{	//did not select the back option (cancel in the dialog)
 		if (mem) delete[] mem;
 		return 0;
 	}
@@ -1073,26 +1078,26 @@ int CSong::ImportMOD(ifstream& in)
 	BOOL x_truncateunusedparts=importdlg.m_check7;
 	BOOL x_fourier=importdlg.m_check8;
 
-	g_tracks4_8=rmttype;	//vyrobi RMT4 nebo RMT8
+	g_tracks4_8=rmttype;	//produce RMT4 or RMT8
 
-	//jmeno songu
+	//song name
 	for(j=0; j<20 && (a=mem[j]); j++) m_songname[j]=a;
 
 	//speeds
 	m_mainspeed=m_speed= 6;			//default speed
 	m_instrspeed=1;
 
-	int maxsmplen=0;			//maximalni delka samplu
+	int maxsmplen=0;			//maximum sample length
 
-	//instrumenty 1-31
+	//instruments 1-31
 	TMODInstrumentMark imark[32];
 	for(i=1; i<=modsamples; i++)
 	{
-		//jmeno 
-		BYTE *sdata=mem+(20+(i-1)*30);	//hlavickova data samplu
+		//name 
+		BYTE *sdata=mem+(20+(i-1)*30);	//sample header data
 		TInstrument *ti = &m_instrs.m_instr[i];
 		char *dname= ti->name;
-		for(j=0; j<22; j++)	//0-21 jmeno
+		for(j=0; j<22; j++)	//0-21 name
 		{
 			a=sdata[j];
 			if (a>=32 && a<=126) 
@@ -1100,10 +1105,10 @@ int CSong::ImportMOD(ifstream& in)
 			else
 				dname[j]=' ';
 		}
-		for(;j<INSTRNAMEMAXLEN; j++) dname[j]=' '; //smaze zbytek nazvu instrumentu
+		for(;j<INSTRNAMEMAXLEN; j++) dname[j]=' '; //deletes the rest of the instrument name
 		int samplen=(sdata[23] | (sdata[22]<<8))*2;
 		//BYTE finetune=sdata[24]&0x0f;		//0-15
-		//if (finetune>=8) finetune+=240;		//0-7 nebo 248-255
+		//if (finetune>=8) finetune+=240;		//0-7 or 248-255
 		
 		int volume=sdata[25];
 		if (volume>0x3f) volume=0x3f;		//00-3f
@@ -1114,10 +1119,10 @@ int CSong::ImportMOD(ifstream& in)
 
 		//ti->env[0][ENV_VOLUMEL]= (volume>>2);	//0-15
 		//ti->env[0][ENV_VOLUMER]= (volume>>2);	//0-15
-		//ti->env[0][ENV_DISTORTION]= 0x0a;		//cisty ton
+		//ti->env[0][ENV_DISTORTION]= 0x0a;		//clean tone
 		/*if (finetune!=0)
 		{
-			ti->env[0][ENV_COMMAND]=0x02;		//frekvencni posun
+			ti->env[0][ENV_COMMAND]=0x02;		//frequency shift
 			ti->env[0][ENV_X]=(finetune>>4);
 			ti->env[0][ENV_Y]=(finetune&0x0f);
 		}
@@ -1127,30 +1132,31 @@ int CSong::ImportMOD(ifstream& in)
 		imark[i].volume=volume;
 		imark[i].minnote=NOTESNUM-1;
 		imark[i].maxnote=0;
-		imark[i].used=0;			//nepouzit na zadnem kanalu
+		imark[i].used=0;			//do not use on any channel
 		imark[i].samplen=samplen;
 		imark[i].reppoint=reppoint;
 		imark[i].replen=replen;
 		imark[i].trackvolumeincrease=1;
 		imark[i].trackvolumemax=0;
 
-		if (samplen>maxsmplen) maxsmplen=samplen;	//maximalni delka samplu
+		if (samplen>maxsmplen) maxsmplen=samplen;	//maximum sample length
 
-		//promitnuti do Atarka je na konci pri doplnovani veci do instrumentu
+		//sending into Atari memory is at the end of adding things to the instrument
 	}
-	imark[0].trackvolumeincrease=1; //kvuli volume slide, pokud ji provadi bez udani samplu (tj. samplem cislo 0)
+	imark[0].trackvolumeincrease=1; //due to volume slide, if it is performed without specifying a sample (ie sample number 0)
 
-	const int TABLENOTES=73;
-	const int pertable[TABLENOTES]={															//period table
+	const int TABLENOTES = 73;
+	const int pertable[TABLENOTES] = {															//period table
 	0x06B0,0x0650,0x05F4,0x05A0,0x054C,0x0500,0x04B8,0x0474,0x0434,0x03F8,0x03C0,0x038B,	//C3-B3
 	0x0358,0x0328,0x02FA,0x02D0,0x02A6,0x0280,0x025C,0x023A,0x021A,0x01FC,0x01E0,0x01C5,	//C4-B4
 	0x01AC,0x0194,0x017D,0x0168,0x0153,0x0140,0x012E,0x011D,0x010D,0x00FE,0x00F0,0x00E2,	//C5-B5
 	0x00D6,0x00CA,0x00BE,0x00B4,0x00AA,0x00A0,0x0097,0x008F,0x0087,0x007F,0x0078,0x0071,	//C6-B6
 	0x006B,0x0065,0x005F,0x005A,0x0055,0x0050,0x004B,0x0047,0x0043,0x003F,0x003C,0x0038,	//C7-B7
 	0x0035,0x0032,0x002F,0x002D,0x002A,0x0028,0x0025,0x0023,0x0021,0x001F,0x001E,0x001C,	//C8-B8
-	0x001B }; //dopocitana hodnota															//C9
-	//vyrobi si tabulku
-	BYTE pertonote[4096];	//prevod periody na notu
+	0x001B }; //calculated value															//C9
+
+	//make a table
+	BYTE pertonote[4096];	//convert period to note
 	int n1=0,n2=0,n12=0,lastp=4095;
 	for(i=0; i<TABLENOTES; i++)
 	{
@@ -1170,24 +1176,24 @@ int CSong::ImportMOD(ifstream& in)
 		lastp=n12-1;
 	}
 
-	//ZACATEK ZPRACOVAVANI CELEHO SONGU A PATTERNU
+	//BEGINNING OF PROCESSING THE ENTIRE SONG AND PATTERN
 	int dsline;		//destination song line
 	int destnum;	//destination track num
 
 	int nofpass=(x_fullvolumerange)? 1 : 0;
 	for(int pass=0; pass<=nofpass; pass++)
-	{ //---PRUCHOD 0/1---
+	{ //---TRANSITION 0/1---
 
 	destnum=0;		//destination track num
-	int tnot[8]={-1,-1,-1,-1,-1,-1,-1,-1};	//posledne hrana nota (pouzije se pro portamento)
+	int tnot[8]={-1,-1,-1,-1,-1,-1,-1,-1};	//last edge note (used for portamento)
 	int tporon[8]={0,0,0,0,0,0,0,0};	//portamento yes/no
-	int tporperiod[8]={0,0,0,0,0,0,0,0};	//cilova period pro portamento
+	int tporperiod[8]={0,0,0,0,0,0,0,0};	//target period for portamento
 	int tporspeed[8]={0,0,0,0,0,0,0,0};		//portamento speed
-	int tper[8]={0,0,0,0,0,0,0,0};	//aktualni period
-	int tvol[8]={0,0,0,0,0,0,0,0};	//hlasitosti jednotlivych tracku (pouzije se pro volume slide)
-	int tvolslidedebt[8]={0,0,0,0,0,0,0,0};		//dluh pri volume slide
-	int tins[8]={0,0,0,0,0,0,0,0};	//instrumenty jednotlivych tracku (pouzije se kdyz samplenum je ==0)
-	int ticks=m_mainspeed;		//songspeed (pro volume slide), default 6
+	int tper[8]={0,0,0,0,0,0,0,0};	//current period
+	int tvol[8]={0,0,0,0,0,0,0,0};	//volume of individual tracks (used for volume slide)
+	int tvolslidedebt[8]={0,0,0,0,0,0,0,0};		//debt at volume slide
+	int tins[8]={0,0,0,0,0,0,0,0};	//individual track instruments (used when the sample is == 0)
+	int ticks=m_mainspeed;		//songspeed (for volume slide), default 6
 	int beats=125;				//default beats/min speed
 
 	int LastRowTicks=ticks;
@@ -1195,28 +1201,28 @@ int CSong::ImportMOD(ifstream& in)
 
 	//song
 	dsline=0;		//destination song line
-	int ThisPatternFromRow=0;	//pocatecni radek patternu (kvuli Dxx effektu)
-	int ThisPatternFromColumn=-1;	//zadny
+	int ThisPatternFromRow=0;	//initial pattern line (due to Dxx effect)
+	int ThisPatternFromColumn=-1;	//none
 	int NextPatternFromRow=0;
 	int NextPatternFromColumn=-1;
 	for(i=0; i<songlen; i++)
 	{
-		int patnum=mem[song+2+i];	//probira song
+		int patnum=mem[song+2+i];	//test song
 
-		BYTE *pdata=mem+(patstart+patnum*patternsize);	//zacatek patternu
+		BYTE *pdata=mem+(patstart+patnum*patternsize);	//beginning of the pattern
 
-		int songjump=-1;	//inicializace pro song jump
-		ThisPatternFromRow=NextPatternFromRow;	//prebere si z minuleho patternu
-		ThisPatternFromColumn=NextPatternFromColumn;	//prebere si z minula
-		NextPatternFromRow=0;	//inicializovano na 0 pro pristi pattern
-		NextPatternFromColumn=-1;	//inicializovano na -1 pro pristi pattern
+		int songjump=-1;	//initialization for song jump
+		ThisPatternFromRow=NextPatternFromRow;	//takes over from the previous pattern
+		ThisPatternFromColumn=NextPatternFromColumn;	//takes over from the past
+		NextPatternFromRow=0;	//initialized to 0 for the next pattern
+		NextPatternFromColumn=-1;	//initialized to -1 for the next pattern
 
-		//predpocitani tickrow[0..63] a speedrow[0..63]
+		//pre-calculated tickrow [0..63] and speedrow [0..63]
 		int tickrow[64],speedrow[64];
 		int m,n;
 		BOOL lrow=0;
-		ticks=LastRowTicks;		//posledni ticks z minula
-		beats=LastRowBeats;		//posledni beats z minula
+		ticks=LastRowTicks;		//previous ticks
+		beats=LastRowBeats;		//previous beats
 		LastRowTicks=-1;		//init
 		LastRowBeats=-1;		//init
 		for(m=ThisPatternFromRow; m<64; m++)
@@ -1229,17 +1235,17 @@ int CSong::ImportMOD(ifstream& in)
 				if (effect==0x0f)
 				{	//speed
 					if (param<=0x20) 
-						ticks=(param>0)? param : 1; //speed 0 nelze
+						ticks=(param>0)? param : 1; //speed 0 is not possible
 					else
 						beats=param;
 				}
 				else
 				if (effect==0x0b || effect==0x0d)
-				{	//pattern break nebo song jump
-					lrow=1;	//musi si to zapsat az dokonci cely tento radek 0..chnls
+				{	//pattern break or song jump
+					lrow=1;	//you have to write it down and even this whole line 0..chnls
 				}
 			}
-			//prepocet beats a ticks na ss
+			//recalculation of beats and ticks on ss
 			int ss= (int)(((double)(125 * ticks)) / ((double)beats) + 0.5);
 			if (ss<1) ss=1;
 			else
@@ -1250,76 +1256,76 @@ int CSong::ImportMOD(ifstream& in)
 
 			if ((lrow || m==63) && LastRowTicks<0 && LastRowBeats<0)
 			{
-				LastRowTicks=ticks;	//v pristim patternu zacne touto hodnotou ticks
-				LastRowBeats=beats;	//v pristim patternu zacne touto hodnotou beats
+				LastRowTicks=ticks;	//in the next pattern, ticks start with this value
+				LastRowBeats=beats;	//in the next pattern, beats start with this value
 			}
 		}
 
-		//4 tracky v patternu
+		//4 tracks in the pattern
 		for(int ch=0; ch<chnls; ch++)
 		{
-			BYTE *tdata=pdata+ch*4;	//zacatek zdroje dat tracku
-			TTrack *tr=m_tracks.GetTrack(destnum);	//cilovy track
-			m_tracks.ClearTrack(destnum);	//vycisti ho nejdriv
+			BYTE *tdata=pdata+ch*4;	//the beginning of the track data source
+			TTrack *tr=m_tracks.GetTrack(destnum);	//target track
+			m_tracks.ClearTrack(destnum);	//clean it first
 			int dline;
 			int sline;
-			for(sline=ThisPatternFromRow,dline=0; sline<64; sline++,dline++)
+			for (sline = ThisPatternFromRow, dline = 0; sline < 64; sline++, dline++)
 			{
-				BYTE *bdata=tdata+sline*chnls*4;		//ukazatel na 4 bytovy blok
+				BYTE *bdata=tdata+sline*chnls*4;		//pointer to 4 bytes block
 
-				ticks=tickrow[sline];	//spolecna predpocitana hodnota ticks pro cely radek
+				ticks=tickrow[sline];	//common calculated value of ticks for the whole line
 
-				int period = bdata[1] | ((bdata[0]&0x0f)<<8);			//12 bitu
-				int sample = (((bdata[2]&0xf0)>>4) | (bdata[0]&0x10)) & modsamples;	//0-31/0-15, nikoliv 0-255 !
+				int period = bdata[1] | ((bdata[0]&0x0f)<<8);			//12 bit
+				int sample = (((bdata[2]&0xf0)>>4) | (bdata[0]&0x10)) & modsamples;	//0-31 / 0-15, not 0-255!
 				int effect = bdata[2]&0x0f;
 				int param = bdata[3];
-				int sampleorig = sample;		//original jak je v tracku
+				int sampleorig = sample;		//original as in the track
 				int pspeed;
 
-				if (sample==0) sample=tins[ch];	//sampl cislo 0 znamena stejny jako posledne pouzity
+				if (sample==0) sample=tins[ch];	//sample number 0 means the same as last used
 				else
-					tins[ch]=sample;	//ulozi si posledne pouzity sampl v tomto "sloupci"
+					tins[ch]=sample;	//saves the last used sample in this "column"
 				
 				int note=-1,vol=-1;
 				if (period<1 || period>=4096)
 				{
-					//prazdne misto (neni tam nota)
+					//empty place (there is no note)
 TonePortamento:
 					if (x_portamento && tporon[ch])
-					{	//naposled bylo portamento
-						int pnote = pertonote[tper[ch]];	//jake note odpovida perioda
+					{	//the last time was portamento
+						int pnote = pertonote[tper[ch]];	//what note corresponds to the period
 						if (pnote != tnot[ch])
 						{
-							//portamento efekt posunul frekvenci az na uroven jine noty
+							//portamento effect shifted the frequency to the level of other notes
 							note = pnote;
-							//hlasitost bude dle aktualni hlasitosti co je na tomto kanalu, tj. tvol[ch]
+							//the volume will be according to the current volume of what is on this channel, ie the form [ch]
 							vol=tvol[ch];	//0-64
-							tporon[ch]=0;	//prozatim hotovo (pridana nota odpovida zmene portamentem)
+							tporon[ch]=0;	//done for now (added note corresponds to change by portamento)
 							goto NoteByPortamento;
 						}
 					}
 				}
 				else
 				{
-					//je tam nota
+					//there is a note
 					note = pertonote[period];
 					if (x_portamento && (effect==0x03 || effect==0x05))
 					{
-						//tone portamento 3xx  nebo continue tone portamento 5
-						tporperiod[ch]=period;	//cilova portamento perioda
+						//tone portamento 3xx or continue tone portamento 5
+						tporperiod[ch]=period;	//target portamento period
 						tporon[ch]=1;
-						//navic
+						//addition
 						int aper = tper[ch];
 						int hfper= aper;
 						if (effect==0x03)
 						{
 							if (param) 
-								pspeed=tporspeed[ch]=param;	//TONE portamento speed jen u parametru 3xx
+								pspeed=tporspeed[ch]=param;	//TONE portamento speed only for parameter 3xx
 							else
-								pspeed=tporspeed[ch];	//je-li 300 => continue portamento posledne pouzitou rychlosti
+								pspeed=tporspeed[ch];	//if 300 => continue portamento is the last used speed
 						}
 						else //effect==0x05
-							pspeed=tporspeed[ch];	//eff 0x05 je portamento continue
+							pspeed=tporspeed[ch];	//effect 0x05 is continued portamento
 
 						if (aper<period)
 						{
@@ -1335,124 +1341,123 @@ TonePortamento:
 						{
 							note = pertonote[hfper];
 							vol = tvol[ch];
-							tporon[ch]=0;	//prozatim hotovo (pridana nota odpovida zmene portamentem)
+							tporon[ch]=0;	//done for now (added note corresponds to change by portamento)
 							goto NoteByPortamento;
 						}
 						//
-						goto TonePortamento;	//a resi to jako by tam bylo prazdne misto
+						goto TonePortamento;	//and solve it as if it were an empty slot
 					}
 
-					tper[ch]=period;	//aktualni period
-					tporon[ch]=0;		//zadne portamento
-					vol=0x40;			//defaultni je plna hlasitost (kdyztak to pak prepise)
-					tvolslidedebt[ch]=0; //dluh volume slide=0
+					tper[ch]=period;	//current period
+					tporon[ch]=0;		//no portamento
+					vol=0x40;			//the default is full volume (if you then overwrite it)
+					tvolslidedebt[ch]=0; //debt volume slide = 0
 NoteByPortamento:
-					tnot[ch]=note;		//posledne hrana nota
+					tnot[ch]=note;		//last note
 					tr->note[dline]=note;
 					tr->instr[dline]=sample;
-					int	avol=AtariVolume(vol);		//prepocet na atarkovou volume
-					tr->volume[dline]=avol;	//pripadne to nasledne prepise u parametru Cxx
-					imark[sample].used|=(1<<trackorder[ch]);	//sampl je pouzit na kanalu "ch"
+					int	avol=AtariVolume(vol);		//conversion to atari volume
+					tr->volume[dline]=avol;	//or it will overwrite the Cxx parameter
+					imark[sample].used|=(1<<trackorder[ch]);	//sample is used on channel "ch"
 					if (note>imark[sample].maxnote) imark[sample].maxnote=note;
 					if (note<imark[sample].minnote) imark[sample].minnote=note;
 				}
 
-				//efekty: PORTAMENTO
+				//effect: PORTAMENTO
 				pspeed=0;
 				if (effect==0x01)	//1xx	Portamento Up
 				{
-					int cpor=pertable[NOTESNUM-1];	//nejvyssi nota jakou RMT umi
-					tporperiod[ch]=cpor;		//cilove portamento si ulozi pro tento channel
+					int cpor=pertable[NOTESNUM-1];	//the highest note that RMT can play
+					tporperiod[ch]=cpor;		//save the target portamento for this channel
 					pspeed=param;		//portamento speed
 					goto Effect3;
 				}
 				else
 				if (effect==0x02)	//2xx	Portamento Down
 				{
-					int cpor=pertable[0];	//nejnizsi nota jakou RMT umi
-					tporperiod[ch]=cpor;		//cilove portamento si ulozi pro tento channel
+					int cpor=pertable[0];	//the lowest note that RMT can play
+					tporperiod[ch]=cpor;		//save the target portamento for this channel
 					pspeed=param;		//portamento speed
 					goto Effect3;
 				}
 				else
-				if (effect==0x05)	//5xx	continue toneportamento (+soucasne volume slide, to dela nize)
+				if (effect==0x05)	//5xx	continue toneportamento (+ simultaneous volume slide, to work low)
 				{
-					pspeed=tporspeed[ch]; //prebere speed z minula
-					goto Effect3;	//stejne jako effekt 3, ale bez nastavovani portamento speed
+					pspeed=tporspeed[ch]; //takes over previous speed 
+					goto Effect3;	//same as effect 3, but without setting the portamento speed
 				}
 				else
 				if (effect==0x03)	//3xx	TonePortamento
 				{
 					if (param) 
-						pspeed=tporspeed[ch]=param;	//TONE portamento speed jen u parametru 3xx
+						pspeed=tporspeed[ch]=param;	//TONE portamento speed only for parameter 3xx
 					else
-						pspeed=tporspeed[ch];	//je-li 300 => continue portamento posledne pouzitou rychlosti
+						pspeed=tporspeed[ch];	//if 300 => continue portamento is the last used speed
 Effect3:
-					int cpor=tporperiod[ch]; //cilove portamento
-					int aper=tper[ch];	//aktualni perioda
+					int cpor=tporperiod[ch]; //target portamento
+					int aper=tper[ch];	//current period
 					if (aper>cpor)
 					{
-						//portamento smerem k mensim hodnotam, tj. nahoru k vyssim tonum
+						//portamento towards smaller values, ie up to higher tones
 						aper -= pspeed*(ticks-1);
-						if (aper<cpor) aper=cpor;	//pokud by ho prebehlo, tak srovnat
+						if (aper<cpor) aper=cpor;	//if it took place, then compare
 					}
 					else
 					if (aper<cpor)
 					{
-						//portamento smerem k vetsim hodnotam, tj. dolu k nizsim tonum
+						//portamento towards higher values, ie down to lower tones
 						aper += pspeed*(ticks-1);
-						if (aper>cpor) aper=cpor;	//pokud by ho prebehlo, tak srovnat
+						if (aper>cpor) aper=cpor;	//if it took place, then compare
 					}
 
 					tper[ch]=aper;
-					tporon[ch]=1;	//v pristim kroku bude resit portamento
+					tporon[ch]=1;	//in the next step, the port will be resolved
 				}
 
 
-
-				//efekty: HLASITOST
+				//effects: VOLUME
 				if (effect==0x0c)	//Cxx   setvolume xx=$00-$40
 				{
 					if (pass==1) 
 						param=(int)((double)param*imark[sample].trackvolumeincrease +0.5);
-					if (param>0x40) param=0x40;	//maximalni hlasitost
+					if (param>0x40) param=0x40;	//maximum volume
 					tvol[ch]=param;
-					tvolslidedebt[ch]=0;		//zadny dluh
+					tvolslidedebt[ch]=0;		//no debt
 					if (param>imark[sample].trackvolumemax) imark[sample].trackvolumemax=param;
 
-					int avol=AtariVolume(param);	//atarkova volume
+					int avol=AtariVolume(param);	//atari volume
 					tr->volume[dline]=avol;
 				}
 				else
-				{	//neni to Cxx => nedefinovana hlasitost
+				{	//it is not Cxx => undefined volume
 					if (note>=0 || sampleorig>0)
 					{
-						//nota bez hlasitosti nebo sampl bez noty => defaultni maximalni hlasitost
-						int v=(vol>=0)? vol : 0x40;	//vezme bud "vol" z portamenta, nebo defaultni plnou
+						//note without volume or sample without note => default maximum volume
+						int v=(vol>=0)? vol : 0x40;	//takes either "vol" from the portamento, or the default full
 						tvol[ch]=v;
 						imark[sample].trackvolumemax=v;
 					}
 				}
 
-				//efekty: DALSI...
-				if (   effect==0x0a		//Axx	volumeslide	xx=0x decrease, xx=x0 increase
-					|| effect==0x05		//5xx	continue toneportamento (to uz udelal vyse)+ volumeslide xx
-					|| effect==0x06		//6xx	continue vibrato + volumeslide xx => jen volumeslide xx
+				//effect NEXT
+				if (   effect==0x0a		//Axx	volumeslide xx = 0x decrease, xx = x0 increase
+					|| effect==0x05		//5xx	continue toneportamento (this has already done above) + volumeslide xx
+					|| effect==0x06		//6xx	continue vibrato + volumeslide xx => only volumeslide xx
 					)	
 				{
 					int vol=tvol[ch];
-					double slidedivide = (note>=0 || sampleorig>0)? 2 : 1; //prvni ubytek je polovicni
+					double slidedivide = (note>=0 || sampleorig>0)? 2 : 1; //first half is half
 					if ((param&0xf0)==0)
 					{
 						int voldec = (int)((double)(param&0x0f)*(ticks-1)*imark[sample].trackvolumeincrease/slidedivide +0.5);
 						vol-= voldec;	//decrease
-						if (slidedivide==2)	tvolslidedebt[ch]= -voldec; //dluh volume slide
+						if (slidedivide==2)	tvolslidedebt[ch]= -voldec; //debt volume slide
 					}
 					else
 					{
 						int volinc = (int)((double)((param&0xf0)>>4)*(ticks-1)*imark[sample].trackvolumeincrease/slidedivide +0.5);
 						vol+= volinc;	//increase
-						if (slidedivide==2)	tvolslidedebt[ch]= volinc; //dluh volume slide
+						if (slidedivide==2)	tvolslidedebt[ch]= volinc; //debt volume slide
 					}
 					
 					if (vol<0) vol=0;
@@ -1462,7 +1467,7 @@ Effect3:
 					tvol[ch]=vol;
 					if (vol>imark[sample].trackvolumemax) imark[sample].trackvolumemax=vol;
 
-					int avol=AtariVolume(vol);		//atarkova volume
+					int avol=AtariVolume(vol);		//atari volume
 					tr->volume[dline]=avol;
 				}
 				else
@@ -1470,7 +1475,7 @@ Effect3:
 				{
 					/*
 					if (param<=0x20) 
-						ticks=(param>0)? param : 1; //speed 0 nelze
+						ticks=(param>0)? param : 1; //speed 0 is not possible
 					else
 						beats=param;
 					
@@ -1479,18 +1484,18 @@ Effect3:
 					else
 					if (ss>255) ss=255;
 					*/
-					int ss=speedrow[sline];		//dava tam tu spolecnou predpocitanou pro cely tento radek
+					int ss=speedrow[sline];		//use a common pre-calculated value for the whole row
 					tr->speed[dline]=ss;
 				}
 				else
-				if (effect==0x0d)	//Dxx	pattern break (xx = goto to xx line in next pattern <- hm, to neumime)
+				if (effect==0x0d)	//Dxx	pattern break (xx = goto xx line in the next pattern <- hm, we do not know)
 				{
-					//ukonci track na prvnim vyskytu Dxx shora
-					//a ma pokracovat nasledujicim od pozice xx
+					//end the track on the first occurrence of Dxx from above
+					//and continue to position xx
 					if (tr->len==64)
 					{
 						tr->len=dline+1;
-						int nxp= ((int)(param/16))*10 + (param % 16);		//je to tam v 10kove soustave
+						int nxp= ((int)(param/16))*10 + (param % 16);		//it's there in the 10th system
 						if (nxp>=0 && nxp<64 && NextPatternFromColumn==-1)
 						{
 							NextPatternFromRow=nxp;
@@ -1505,45 +1510,44 @@ Effect3:
 					if (songjump<0) songjump=param;
 				}
 
-				//doresi dluh jestli nejaky je a je tam volne misto
-				if (tr->volume[dline]<0)	//hlasitost neni udana
+				//the debt will increment if there is any and there is a free slot
+				if (tr->volume[dline]<0)	//the volume is not specified
 				{
 					int mvol=tvol[ch];
-					mvol+=tvolslidedebt[ch]; //upravi volume o dluh
+					mvol+=tvolslidedebt[ch]; //adjust volume by debt
 					if (mvol<0) mvol=0;
 					else
 					if (mvol>0x40) mvol=0x40;
 					int avol=AtariVolume(mvol);
-					if (avol!=AtariVolume(tvol[ch])) tr->volume[dline]=avol; //pokud vyjde jina nez byla, prida ji
+					if (avol!=AtariVolume(tvol[ch])) tr->volume[dline]=avol; //if it comes out differently than it was, it will add it
 					tvol[ch]=mvol;
-					tvolslidedebt[ch]= 0; //dluh volume slide vyresen
+					tvolslidedebt[ch]= 0; //debt volume slide resolved
 				}
-
 
 			}//line 0-64
 
-			//pokud se zacinalo s posunem (effekt Dxx), pak musi zkratit delku prislusneho tracku
+			//if the shift (effect Dxx) has started, then it must shorten the length of the respective track
 			if (ThisPatternFromColumn==ch && tr->len==64 && dline<64) tr->len=dline;
 
-			int cit=-1;	//cislo tracku pro song
-			if (!m_tracks.IsEmptyTrack(destnum)) //je neprazdny
+			int cit=-1;	//track number for the song
+			if (!m_tracks.IsEmptyTrack(destnum)) //is empty
 			{
-				//Odstrani nadbytecne volume 0
+				//Removes excess volume 0
 				m_tracks.TrackOptimizeVol0(destnum);
 
-				//podiva se, jestli uz takovy track neexistuje
+				//see if such a track already exists
 				for(int k=0; k<destnum; k++)
 				{
 					if (m_tracks.CompareTracks(k,destnum))
 					{
-						cit=k;	//nasel takovy
+						cit=k;	//found one
 						break;
 					}
 				}
 				if (cit<0)
 				{
-					cit=destnum;	//nenasel
-					destnum++;		//predchysta pro pristi
+					cit=destnum;	//was not found
+					destnum++;		//prepare for the next
 				}
 			}
 
@@ -1551,15 +1555,15 @@ Effect3:
 			if (destnum>=TRACKSNUM)
 			{
 				if (pass==0) MessageBox(g_hwnd,"Out of RMT tracks. Tracks converting terminated.","Warning",MB_ICONWARNING);
-				goto OutOfTracks;	//dosly tracky
+				goto OutOfTracks;	//the tracks have reached the end
 			}
 
-		}//4 tracky v patternu
-		dsline++; //dalsi radek ciloveho (RMT) songu
+		}//4 tracks in the pattern
+		dsline++; //increment the target number of songlines(?)
 		if (dsline>=SONGLEN)
 		{
 			if (pass==0) MessageBox(g_hwnd,"Out of song lines. Song converting terminated.","Warning",MB_ICONWARNING);
-			goto OutOfSongLines;	//dosly Song radky
+			goto OutOfSongLines;	//ran out of songlines
 		}
 
 		if (songjump>=0 && songjump<SONGLEN)
@@ -1576,10 +1580,10 @@ Effect3:
 OutOfTracks:
 OutOfSongLines:
 
-	//VSECHNY PATTERNY SONGU DODELANY
+	//ALL PATTERNS OF SONG ARE DONE
 
-	//pripravi trackvolumeincrease pro jednotlive samply, aby tim v druhem pruchodu
-	//navysil hlasitosti v trackach
+	//prepare a track volume increase for each sample to make it the second time it arrives
+	//increased the volume in the tracks
 	if (pass==0)
 	{
 		for(i=1; i<=modsamples; i++)
@@ -1589,26 +1593,26 @@ OutOfSongLines:
 		}
 	}
 
-	//---KONEC PRUCHODU 0/1---
+	//---END OF TRANSITION 0/1---
 	} //pass=0/1
 
-	//zkoriguje jumpy v songu
+	//corrects the jumps in the song
 	int nog=0;
-	int k;
 	for(i=0; i<dsline; i++)
 	{
+		int k;
 		int go=m_songgo[i];
 		if (go<0) continue;
-		for(k=0; k<=go && k<SONGLEN; k++)	//hleda kolik je od zacatku jumpu a za kazdy nalezeny posune go o 1 dal
+		for(k=0; k<=go && k<SONGLEN; k++)	//looking for how much is from the beginning of the jump and for each found moves go by 1 step
 		{
 			if (m_songgo[k]>=0) go++;
 		}
-		m_songgo[i]=go;	//zapise ten posunuty skok
+		m_songgo[i]=go;	//writes that shifted jump
 	}
-	if (m_songgo[dsline-1]<0) { m_songgo[dsline]=restartpos; dsline++; } //smycka na zacatek nebo kam chce dle head[951]
+	if (m_songgo[dsline-1]<0) { m_songgo[dsline]=restartpos; dsline++; } //loop at the beginning or where it wants according to header[951]
 
-	//doplni k instrumentum do popisu MIN MAX rozsah
-	//a najde globalne nejnizsi a nejvyssi pouzitou notu ze vsech instrumentu a v celem songu
+	//add to the instrument in the description MIN MAX range
+	//and finds globally the lowest and highest used note of all instruments and in the whole song
 	int glonomin=NOTESNUM-1;
 	int glonomax=0;
 	for(i=1; i<=modsamples; i++)
@@ -1618,18 +1622,18 @@ OutOfSongLines:
 		int maxnote = imark[i].maxnote;
 		if (minnote<glonomin) glonomin=minnote;
 		if (maxnote>glonomax) glonomax=maxnote;
-		//maximalni hlasitost v trackach
-		int avol=AtariVolume(imark[i].trackvolumemax);	//atarkova volume
+		//maximum volume in tracks
+		int avol=AtariVolume(imark[i].trackvolumemax);	//atari volume
 		CString s;
 		s.Format("%s%s%X%02X",notes[minnote],notes[maxnote],avol,imark[i].used);
-		strncpy(m_instrs.m_instr[i].name+23,s,9);	//9 znaku!! 23+9 = 32
+		strncpy(m_instrs.m_instr[i].name+23,s,9);	//9 characters !! 23 + 9 = 32
 	}
 
-	if (x_shiftdownoctave) //posun o oktavu dolu u prilis vysoko ladenych songu (pokud je to mozne)
+	if (x_shiftdownoctave) //an octave shift down for notes tuned too high (if possible)
 	{
 		if (glonomin>=12 && glonomax>36+5)
 		{
-			int noteshift=256-12;	//o oktavu niz
+			int noteshift=256-12;	//1 octave lower
 			for(i=1; i<=modsamples; i++)
 			{
 				if (!imark[i].used) continue;
@@ -1638,27 +1642,27 @@ OutOfSongLines:
 		}
 	}
 
-	//imitace volume dle samplu
+	//imitation volume according to sample
 	int smpfrom=patstart + (maxpat+1)*patternsize;
 	int samplen=0;
 	int nonemptysamples=0;
-	for(i=1; i<=modsamples; i++,smpfrom+=samplen)	//na konci smycky vzdycky posun na dalsi sampl
+	for(i=1; i<=modsamples; i++,smpfrom+=samplen)	//at the end of the loop, always move to the next sample
 	{
 		TMODInstrumentMark *im = &imark[i];
 		TInstrument *rmti= &m_instrs.m_instr[i];
 
 		samplen=im->samplen;
 
-		if (samplen<=2)	continue;		//nulova delka => prazdny sampl
+		if (samplen<=2)	continue;		//zero length => empty sample
 
 		BYTE *smpdata = new BYTE[samplen];
 
-		if (!smpdata) continue;		//nepodarilo se alokovat
-		memset(smpdata,0,samplen);	//vynuluje
+		if (!smpdata) continue;		//could not be allocated
+		memset(smpdata,0,samplen);	//clear
 
-		in.clear();		//kvuli dosahovani konce, kdy se nastavi eof
+		in.clear();		//due to reaching the end when eof is set
 		in.seekg(smpfrom,ios::beg);
-		if ((int)in.tellg()!=smpfrom)
+		if ((int)in.tellg() != smpfrom)
 		{
 			CString s;
 			s.Format("Can't seek sample #%02X data.",i);
@@ -1666,7 +1670,7 @@ OutOfSongLines:
 		}
 		else
 		{
-			in.read((char*)smpdata,samplen);
+			in.read((char*)smpdata, samplen);
 			if (in.gcount()!=samplen)
 			{
 				CString s;
@@ -1681,66 +1685,66 @@ OutOfSongLines:
 		if (parts<1) parts=1;
 		if (im->replen>2 || im->reppoint>0 )
 		{
-			//je tam smycka
+			//there is a loop
 			if (parts>32) parts=32;
 		}
 		else
 		{
-			//neni tam smycka
-			if (parts>31) parts=31; //32 dilek si rezervuje pro ticho
+			//there is no loop
+			if (parts>31) parts=31; //32 parts reserved for silence
 		}
 		int blocksize=samplen/parts;
-		int blockp=blocksize-1;		//-1 aby se hranice mezi oddily posunula o 1 doleva
-									//a provedlo se i zapocitani posledniho oddilu
+		int blockp=blocksize-1;		//-1 to shift the boundaries between partitions by 1 to the left
+									//and the last section was counted
 		long sum=0;
 		BYTE lastsd=0;
-		long maxsum=1;	//maximalne dosazitelna suma v bloku samplu (je to 1 protoze se tim deli)
+		long maxsum=1;	//the maximum achievable amount in a sample block (it's 1 because it is divided)
 
 		int ix=0;
 		long sumtab[32];
 		for(int k=0; k<samplen; k++)
 		{
 			sum+= abs((int)smpdata[k]-(int)lastsd);
-			lastsd=smpdata[k];		//posledni stav krivky
-			if (k==blockp)			//hranice mezi oddily
+			lastsd=smpdata[k];		//last state of the curve
+			if (k==blockp)			//borders between divisions
 			{
 				sumtab[ix]= sum;
-				if (sum>maxsum) maxsum=sum;	//nejvyssi
+				if (sum>maxsum) maxsum=sum;	//the highest
 				sum=0;
-				blockp+=blocksize;	//posunuti hranice o delku oddilu
+				blockp+=blocksize;	//shifting the boundaries by the length of the section
 				ix++;
 				if (ix>=parts) break;
 			}
 		}
 
-		double sampvol= (x_decreaseinstrument)? ((double)im->volume/0x3f) : 1;	//desetinne cislo 0 az 1
-		if (x_volumeincrease) sampvol/=im->trackvolumeincrease;		//snizi dle toho jak zvysil volume v trackach
-		for(int k=0; k<ix; k++)
+		double sampvol= (x_decreaseinstrument)? ((double)im->volume/0x3f) : 1;	//decimal number 0 to 1
+		if (x_volumeincrease) sampvol/=im->trackvolumeincrease;		//decreases as you increase the volume in treks
+		for (int k = 0; k < ix; k++)
 		{
 			int avol = (int) ((double)16*((double)sumtab[k]/maxsum)*sampvol+0.5);
 			if (avol>15) avol=15;
 			rmti->env[k][ENV_VOLUMEL]=rmti->env[k][ENV_VOLUMER]=avol;
-			rmti->env[k][ENV_DISTORTION]=0x0a;	//cisty ton
+			rmti->env[k][ENV_DISTORTION]=0x0a;	//pure tone
 		}
 
 		rmti->par[PAR_ENVLEN]=ix-1;
-		if (im->replen>2 || im->reppoint>0 ) //je tam nejaka smycka?
+		if (im->replen>2 || im->reppoint>0 ) //is there a loop?
 		{
-			//smycka
+			//loop
 			int ego= (int)((double)im->reppoint/blocksize +0.5);
 			if (ego>ix-1) ego=ix-1;
 			rmti->par[PAR_ENVGO]=ego;
-			//a predela konec instrumentu podle delky loopu
+			//and divides the end of the instrument according to the length of the loop
 			int lopend= (int)((double)(im->reppoint+im->replen)/blocksize +0.5);
 			if (lopend>ix-1) lopend=ix-1;
 			rmti->par[PAR_ENVLEN];
 		}
 		else
 		{
-			//bez smycky (ix je max 31, aby mohl pridat na konec "tichou smycku")
-			rmti->env[ix][ENV_VOLUMEL]=rmti->env[ix][ENV_VOLUMER]=0; //ticho na konci
-			rmti->par[PAR_ENVLEN]=ix;	//delka o 1 vic
-			rmti->par[PAR_ENVGO]=ix;	//skok na to samo
+			//no loop (ix is max 31, so it can add a "silent loop" to the end)
+			rmti->env[ix][ENV_VOLUMEL]=rmti->env[ix][ENV_VOLUMER]=0; //silence at the end
+			rmti->par[PAR_ENVLEN]=ix;	//length of 1 vic
+			rmti->par[PAR_ENVGO]=ix;	//jump on the same thing
 		}
 
 		//Fourier
@@ -1799,34 +1803,34 @@ OutOfSongLines:
 		//konec Fouriera		
 		*/
 
-		//pocet neprazdnych samplu
+		//number of non-empty samples
 		nonemptysamples++;
 
-		//uvolni pamet
+		//free memory
 		if (smpdata) { delete[] smpdata; smpdata=NULL; }
 
 	}
 
-	//kontrola konce modulu s koncem posledniho samplu
+	//checking the end of the module with the end of the last sample
 	if (smpfrom!=modulelength)
 	{
-		//lisi se
+		//is different
 		CString s;
 		s.Format("Bad length of module.\n(Last sample's end is at %i, but length of module is %i.)",smpfrom,modulelength);
 		MessageBox(g_hwnd, s,"Warning",MB_ICONWARNING);
 	}
 
-	//a az tedka na konci
+	//and only at the end
 	for(i=1; i<=modsamples; i++)
 	{
-		//promitnout do Atarka
+		//send to Atari
 		m_instrs.ModificationInstrument(i);
 	}
 
-	//UVOLNENI PAMETI
+	//CLEAR MEMORY 
 	if (mem) {	delete[] mem;	mem=NULL; }
 
-	//ZAVERECNY DIALOG PO DOKONCENI IMPORTU
+	//FINAL DIALOGUE AFTER IMPORT
 	CImportModFinishedDlg imfdlg;
 	imfdlg.m_info.Format("%i tracks, %i instruments, %i songlines",destnum,nonemptysamples,dsline);
 
@@ -1851,8 +1855,8 @@ OutOfSongLines:
 
 	if (imfdlg.DoModal()!=IDOK)
 	{
-		//nedal Ok, takze to smaze
-		g_tracks4_8=originalg_tracks4_8;	//vrati puvodni hodnotu
+		//did not give Ok, so it deletes
+		g_tracks4_8=originalg_tracks4_8;	//returns the original value
 		ClearSong(g_tracks4_8);
 		MessageBox(g_hwnd,"Module import aborted.","Import...",MB_ICONINFORMATION);
 	}

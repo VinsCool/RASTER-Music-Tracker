@@ -1,5 +1,5 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -11,6 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
+    <ProjectGuid>{E3235CA6-2F97-40C9-AFFC-B8F2CE8F1CA3}</ProjectGuid>
     <SccProjectName />
     <SccLocalPath />
     <Keyword>MFCProj</Keyword>
@@ -18,152 +19,254 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>Dynamic</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
     <UseOfMfc>Dynamic</UseOfMfc>
     <CharacterSet>MultiByte</CharacterSet>
+    <EnableUnitySupport>true</EnableUnitySupport>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="$(VCTargetsPath)Microsoft.Cpp.UpgradeFromVC60.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>16.0.31727.243</_ProjectFileVersion>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>.\Release\</OutDir>
     <IntDir>.\Release\</IntDir>
     <LinkIncremental>false</LinkIncremental>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules />
+    <CodeAnalysisRuleAssemblies />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>.\Debug\</OutDir>
     <IntDir>.\Debug\</IntDir>
-    <LinkIncremental>true</LinkIncremental>
+    <LinkIncremental>false</LinkIncremental>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules />
+    <CodeAnalysisRuleAssemblies />
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
-      <StringPooling>true</StringPooling>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <Optimization>MaxSpeed</Optimization>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <WarningLevel>Level3</WarningLevel>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AssemblerListingLocation>.\Release\</AssemblerListingLocation>
-      <BrowseInformation>true</BrowseInformation>
-      <PrecompiledHeaderOutputFile>.\Release\Rmt.pch</PrecompiledHeaderOutputFile>
+      <StringPooling>true</StringPooling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
-      <ObjectFileName>.\Release\</ObjectFileName>
-      <ProgramDataBaseFileName>.\Release\</ProgramDataBaseFileName>
-    </ClCompile>
-    <Midl>
+      <PrecompiledHeaderOutputFile>.\Release/Rmt.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\Release/</AssemblerListingLocation>
+      <ObjectFileName>.\Release/</ObjectFileName>
+      <ProgramDataBaseFileName>.\Release/</ProgramDataBaseFileName>
+      <BrowseInformation>true</BrowseInformation>
+      <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <Optimization>Full</Optimization>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+    <Link>
+      <AdditionalOptions>/MACHINE:I386 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>dsound.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>.\Release/Rmt.exe</OutputFile>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <ProgramDatabaseFile>.\Release/Rmt.pdb</ProgramDatabaseFile>
+      <SubSystem>Windows</SubSystem>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <OptimizeReferences>false</OptimizeReferences>
+    </Link>
+    <Midl>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TypeLibraryName>.\Release\Rmt.tlb</TypeLibraryName>
       <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
       <TargetEnvironment>Win32</TargetEnvironment>
+      <TypeLibraryName>.\Release/Rmt.tlb</TypeLibraryName>
     </Midl>
     <ResourceCompile>
+      <PreprocessorDefinitions>_AFXDLL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0405</Culture>
-      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ResourceCompile>
-    <Bscmake>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Release\Rmt.bsc</OutputFile>
-    </Bscmake>
-    <Link>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <SubSystem>Windows</SubSystem>
-      <OutputFile>.\Release\Rmt.exe</OutputFile>
-      <AdditionalDependencies>dsound.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
-      <FunctionLevelLinking>false</FunctionLevelLinking>
       <Optimization>Disabled</Optimization>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <WarningLevel>Level3</WarningLevel>
-      <MinimalRebuild>true</MinimalRebuild>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AssemblerListingLocation>.\Debug\</AssemblerListingLocation>
-      <BrowseInformation>true</BrowseInformation>
-      <PrecompiledHeaderOutputFile>.\Debug\Rmt.pch</PrecompiledHeaderOutputFile>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>stdafx.h</PrecompiledHeaderFile>
-      <ObjectFileName>.\Debug\</ObjectFileName>
-      <ProgramDataBaseFileName>.\Debug\</ProgramDataBaseFileName>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <PrecompiledHeaderOutputFile>.\Debug/Rmt.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\Debug/</AssemblerListingLocation>
+      <ObjectFileName>.\Debug/</ObjectFileName>
+      <ProgramDataBaseFileName>.\Debug/</ProgramDataBaseFileName>
+      <BrowseInformation>true</BrowseInformation>
+      <WarningLevel>Level3</WarningLevel>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
-    <Midl>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TypeLibraryName>.\Debug\Rmt.tlb</TypeLibraryName>
-      <MkTypLibCompatible>true</MkTypLibCompatible>
-      <TargetEnvironment>Win32</TargetEnvironment>
-    </Midl>
-    <ResourceCompile>
-      <Culture>0x0405</Culture>
-      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ResourceCompile>
-    <Bscmake>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Debug\Rmt.bsc</OutputFile>
-    </Bscmake>
     <Link>
+      <AdditionalOptions>/MACHINE:I386 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalDependencies>dsound.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>.\Debug/Rmt.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ProgramDatabaseFile>.\Debug/Rmt.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
-      <OutputFile>.\Debug\Rmt.exe</OutputFile>
-      <AdditionalDependencies>dsound.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <Midl>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MkTypLibCompatible>true</MkTypLibCompatible>
+      <SuppressStartupBanner>true</SuppressStartupBanner>
+      <TargetEnvironment>Win32</TargetEnvironment>
+      <TypeLibraryName>.\Debug/Rmt.tlb</TypeLibraryName>
+    </Midl>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_AFXDLL;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Culture>0x0405</Culture>
+    </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Atari6502.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-      </PrecompiledHeader>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </PrecompiledHeader>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
     </ClCompile>
-    <ClCompile Include="ConfigDlg.cpp" />
-    <ClCompile Include="EffectsDlg.cpp" />
-    <ClCompile Include="ExportDlgs.cpp" />
-    <ClCompile Include="FileNewDlg.cpp" />
-    <ClCompile Include="FilePathDlg.cpp" />
-    <ClCompile Include="import.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+    <ClCompile Include="ConfigDlg.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
     </ClCompile>
-    <ClCompile Include="importdlgs.cpp" />
-    <ClCompile Include="MainFrm.cpp" />
-    <ClCompile Include="r_music.cpp" />
-    <ClCompile Include="Rmt.cpp" />
-    <ClCompile Include="RmtDoc.cpp" />
-    <ClCompile Include="RmtMidi.cpp" />
-    <ClCompile Include="RmtView.cpp" />
+    <ClCompile Include="EffectsDlg.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="ExportDlgs.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="FileNewDlg.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="FilePathDlg.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="getopt.cpp" />
+    <ClCompile Include="importdlgs.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="lzss_sap.cpp">
+      <LanguageStandard_C Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdc17</LanguageStandard_C>
+    </ClCompile>
+    <ClCompile Include="MainFrm.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="Rmt.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="RmtDoc.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="RmtMidi.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="RmtView.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="r_music.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
+    <ClCompile Include="libfmemopen.cpp" />
+    <ClCompile Include="Tuning.cpp" />
     <ClCompile Include="StdAfx.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdafx.h</PrecompiledHeaderFile>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">stdafx.h</PrecompiledHeaderFile>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
     </ClCompile>
-    <ClCompile Include="XPokey.cpp" />
+    <ClCompile Include="TuningDlg.cpp" />
+    <ClCompile Include="XPokey.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
+      <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Rmt.rc" />
+    <ResourceCompile Include="Rmt.rc">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_AFXDLL;_DEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">_AFXDLL;NDEBUG</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Atari6502.h" />
@@ -172,41 +275,49 @@
     <ClInclude Include="ExportDlgs.h" />
     <ClInclude Include="FileNewDlg.h" />
     <ClInclude Include="FilePathDlg.h" />
+    <ClInclude Include="getopt.h" />
     <ClInclude Include="global.h" />
+    <ClInclude Include="libfmemopen.h" />
+    <ClInclude Include="lzss_sap.h" />
+    <ClInclude Include="Tuning.h" />
     <ClInclude Include="importdlgs.h" />
     <ClInclude Include="MainFrm.h" />
-    <ClInclude Include="r_music.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="Rmt.h" />
     <ClInclude Include="RmtDoc.h" />
     <ClInclude Include="RmtMidi.h" />
     <ClInclude Include="RmtView.h" />
+    <ClInclude Include="r_music.h" />
     <ClInclude Include="StdAfx.h" />
+    <ClInclude Include="TuningDlg.h" />
     <ClInclude Include="XPokey.h" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="res\asciagr.bmp" />
-    <CustomBuild Include="res\bmp00001.bmp" />
-    <CustomBuild Include="res\cur00001.cur" />
-    <CustomBuild Include="res\cur00002.cur" />
-    <CustomBuild Include="res\cur00003.cur" />
-    <CustomBuild Include="res\cursor1.cur" />
-    <CustomBuild Include="res\cursorch.cur" />
-    <CustomBuild Include="res\cursoren.cur" />
-    <CustomBuild Include="res\cursorgo.cur" />
-    <CustomBuild Include="res\icon1.ico" />
-    <CustomBuild Include="res\Rmt.ico" />
-    <CustomBuild Include="res\Rmt.rc2">
-      <FileType>RC</FileType>
-    </CustomBuild>
-    <CustomBuild Include="res\RmtDoc.ico" />
-    <CustomBuild Include="res\Toolbar.bmp" />
-    <CustomBuild Include="res\toolbar1.bmp" />
-    <CustomBuild Include="res\toolbarp.bmp" />
-    <CustomBuild Include="changes.txt" />
-    <CustomBuild Include="midi.txt" />
-    <CustomBuild Include="ReadMe.txt" />
-    <CustomBuild Include="todo.txt" />
+    <Image Include="res\asciagr.bmp" />
+    <Image Include="res\bmp00001.bmp" />
+    <Image Include="res\icon1.ico" />
+    <Image Include="res\Rmt.ico" />
+    <Image Include="res\RmtDoc.ico" />
+    <Image Include="res\Toolbar.bmp" />
+    <Image Include="res\toolbar1.bmp" />
+    <Image Include="res\toolbarp.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="res\cur00001.cur" />
+    <None Include="res\cur00002.cur" />
+    <None Include="res\cur00003.cur" />
+    <None Include="res\cursor1.cur" />
+    <None Include="res\cursorch.cur" />
+    <None Include="res\cursoren.cur" />
+    <None Include="res\cursorgo.cur" />
+    <None Include="res\Rmt.rc2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="moduleformatdescription.txt" />
+    <Text Include="RMT CHANGES WIP.txt" />
+    <Text Include="rmt_format1x.txt" />
+    <Text Include="todo eng.txt" />
+    <Text Include="trackerdesign_x_uzsi.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

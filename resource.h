@@ -3,7 +3,10 @@
 // Used by Rmt.rc
 //
 #define IDDEFAULT                       3
+#define IDOK2                           3
+#define IDTESTNOW                       3
 #define IDTRY                           4
+#define IDRESET                         4
 #define IDRESTORE                       5
 #define IDPLAYSTOP                      6
 #define IDD_ABOUTBOX                    100
@@ -40,10 +43,12 @@
 #define IDD_OCTAVESELECT                160
 #define IDD_INSTRUMENTSELECT            161
 #define IDD_VOLUMESELECT                162
+#define IDD_CONFIG2                     162
 #define IDD_PATHS                       163
 #define IDD_FILEPATHDLG                 164
 #define IDD_CHANNELSSELECT              165
 #define IDD_CHANGEMAXTRACKLEN           166
+#define IDD_TUNING                      167
 #define IDC_MAXTRACKLEN                 1002
 #define IDC_COMBOTYPE                   1003
 #define IDC_RMTVERSION                  1004
@@ -56,7 +61,9 @@
 #define IDC_INFO                        1011
 #define IDC_RASTERLINE                  1017
 #define IDC_EDIT                        1018
+#define IDC_MSXSHUFFLE                  1019
 #define IDC_PREV                        1020
+#define IDC_MSXREGIONAUTO               1021
 #define IDC_ABOUTPOKEY                  1023
 #define IDC_ABOUT6502                   1025
 #define IDC_RMTFEAT                     1025
@@ -69,10 +76,9 @@
 #define IDC_MIDI_VOLUMEOFFSET           1031
 #define IDC_TRACKLINEHIGHLIGHT          1032
 #define IDC_EFF_COMBO                   1033
+#define IDC_SCALINGPERCENTAGE           1033
 #define IDC_KEYBOARD_ESCRESETATARISOUND 1034
 #define IDC_KEYBOARD_ASKWHENCONTROL_S   1035
-#define IDC_KEYBOARD_ASKWHENCONTROL_S2  1036
-#define IDC_KEYBOARD_USENUMLOCK         1036
 #define IDC_EFF_EDIT1                   1037
 #define IDC_NTSC                        1038
 #define IDC_EFF_EDIT2                   1038
@@ -175,10 +181,41 @@
 #define IDC_EDIT3                       1119
 #define IDC_DRIVELIST                   1119
 #define IDC_CURSORMAXLATITUDE           1120
-#define IDC_TRACKCURSORVERTICALRANGE    1120
+#define IDC_DISPLAYFLATNOTES            1120
 #define IDC_GLOBALVOLUMEFADE            1121
 #define IDC_NOSTARTINGSONGLINE          1122
 #define IDC_SPEEDINFO                   1122
+#define IDC_USEGERMANNOTATION           1123
+#define IDC_DRIVERVERSION               1123
+#define IDC_BASETUNING                  1124
+#define IDC_UNISON_L                    1127
+#define IDC_MINOR_2ND_L                 1128
+#define IDC_MAJOR_2ND_L                 1129
+#define IDC_MINOR_3RD_L                 1130
+#define IDC_MAJOR_3RD_L                 1131
+#define IDC_PERFECT_4TH_L               1132
+#define IDC_TRITONE_L                   1133
+#define IDC_PERFECT_5TH_L               1134
+#define IDC_MINOR_6TH_L                 1135
+#define IDC_MAJOR_6TH_L                 1136
+#define IDC_MINOR_7TH_L                 1137
+#define IDC_MAJOR_7TH_L                 1138
+#define IDC_UNISON_R                    1139
+#define IDC_MINOR_2ND_R                 1140
+#define IDC_MAJOR_2ND_R                 1141
+#define IDC_MINOR_3RD_R                 1142
+#define IDC_MAJOR_3RD_R                 1143
+#define IDC_PERFECT_4TH_R               1144
+#define IDC_TRITONE_R                   1145
+#define IDC_PERFECT_5TH_R               1146
+#define IDC_MINOR_6TH_R                 1147
+#define IDC_MAJOR_6TH_R                 1148
+#define IDC_MINOR_7TH_R                 1149
+#define IDC_MAJOR_7TH_R                 1150
+#define IDC_BASENOTE                    1151
+#define IDC_TEMPERAMENT                 1152
+#define IDC_OCTAVE_L                    1153
+#define IDC_OCTAVE_R                    1154
 #define IDC_COMBO_LINESAFTER            9999
 #define ID_INSTR_SAVE                   32771
 #define ID_INSTR_LOAD                   32772
@@ -298,10 +335,8 @@
 #define ID_INSTRUMENT_PASTESPECIAL_INSERTVOLUMEENVSANDENVELOPEPARSTOCURSORPOSITION 32903
 #define ID_TRACK_CURSORGOTOTHESPEEDCOLUMN 32904
 #define ID_SONG_SONGCHANGEMAXIMALLENGTHOFTRACKS 32905
-#define ID_FILE_RECENT                  32906
-#define ID_RECENT_FILE3                 32907
-#define ID_RECENT_FILE4                 32908
-#define ID_RECENT_FILE5                 32909
+#define ID_Menu                         32906
+#define ID_VIEW_TUNING                  32907
 #define IDS_RMTVERSION                  61446
 #define IDS_RMTAUTHOR                   61447
 
@@ -310,9 +345,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        167
-#define _APS_NEXT_COMMAND_VALUE         32910
-#define _APS_NEXT_CONTROL_VALUE         1123
+#define _APS_NEXT_RESOURCE_VALUE        170
+#define _APS_NEXT_COMMAND_VALUE         32908
+#define _APS_NEXT_CONTROL_VALUE         1152
 #define _APS_NEXT_SYMED_VALUE           105
 #endif
 #endif

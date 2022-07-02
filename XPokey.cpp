@@ -1,11 +1,13 @@
 // 2PokeysDlg.cpp : implementation file
-//
+// Original code by Raster, 2002-2009
+// Experimental changes and additions by VinsCool, 2021-2022
+// TODO: fix apokeysnd support, and backport sapokey changes to alternative plugins
 
 #include "stdafx.h"
 #include "XPokey.h"
-//#include "Pokey.h"
-//#include "Pokeysnd.h"
-
+#include "RmtView.h"
+#include "Atari6502.h"
+#include "global.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -16,15 +18,6 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CAboutDlg dialog used for App About
 
-/*
-	Pokey_Initialise	@1
-	Pokey_SoundInit 	@2
-	Pokey_Process		@3
-	Pokey_GetByte		@4
-	Pokey_PutByte		@5
-	Pokey_About 		@6
-*/
-
 typedef enum {
 	ASAP_FORMAT_U8 = 8,       /* unsigned char */
 	ASAP_FORMAT_S16_LE = 16,  /* signed short, little-endian */
@@ -33,41 +26,17 @@ typedef enum {
 
 typedef int abool;
 
-
 typedef void (* APokeySound_Initialize_PROC)(abool stereo);
 typedef void (* APokeySound_PutByte_PROC)(int addr, int data);
 typedef int  (* APokeySound_GetRandom_PROC)(int addr, int cycle);
 typedef int  (* APokeySound_Generate_PROC)(int cycles, byte buffer[], ASAP_SampleFormat format);
 typedef void (* APokeySound_About_PROC)(const char **name, const char **author, const char **description);
 
-/*
-void APokeySound_Initialize(abool stereo);
-void APokeySound_PutByte(int addr, int data);
-int APokeySound_GetRandom(int addr, int cycle);
-int APokeySound_Generate(int cycles, byte buffer[], ASAP_SampleFormat format);
-void APokeySound_About(const char **name, const char **author, const char **description);
-*/
-
 APokeySound_Initialize_PROC APokeySound_Initialize;
 APokeySound_PutByte_PROC APokeySound_PutByte;
 APokeySound_GetRandom_PROC APokeySound_GetRandom;
 APokeySound_Generate_PROC APokeySound_Generate;
 APokeySound_About_PROC APokeySound_About;
-
-//44100 Hz
-//882 samples/screen
-//35568 cycles/screen
-//1778400 cycles/s
-//=>
-//
-//FoxPokey
-//Hardcoded to 1773447 Hz
-//=> 35469 cycles/screen	(35468,94)
-
-#define CYCLESPERSECOND	1773447
-#define CYCLESPERSCREEN ((float)CYCLESPERSECOND/50)
-#define CYCLESPERSAMPLE	((float)CYCLESPERSECOND/44100)
-
 
 typedef void (* Pokey_Initialise_PROC)(int*, char**);
 typedef void (* Pokey_SoundInit_PROC)(DWORD, WORD, BYTE);
@@ -83,44 +52,32 @@ Pokey_GetByte_PROC Pokey_GetByte;
 Pokey_PutByte_PROC Pokey_PutByte;
 Pokey_About_PROC Pokey_About;
 
-
-
-int stereo_enabled=1;
+//needed for proper Stereo detection with POKEY plugins
+int tracks = g_tracks4_8;
 
 static LPDIRECTSOUND          g_lpds;
 static LPDIRECTSOUNDBUFFER    g_lpdsbPrimary;
 
-
-//#include <fstream.h>
-//ofstream g_log;
-
-
 CXPokey::CXPokey()
 {
-//	InitSound();
 	m_rendersound=0;
 	m_SoundBuffer=NULL;
 }
 
 CXPokey::~CXPokey()
 {
-	// TODO: Add your specialized code here and/or call the base class
 	DeInitSound();
 }
 
 BOOL CXPokey::DeInitSound()
 {
 	m_rendersound = 0;
-
 	if (m_pokey_dll)
 	{
 		FreeLibrary(m_pokey_dll);
 		m_pokey_dll = NULL;
 	}
-
 	g_aboutpokey = "No Pokey sound emulation.";
-
-	//g_log.close();
 
 	if (m_SoundBuffer )
 	{
@@ -154,57 +111,53 @@ BOOL CXPokey::RenderSound1_50(int instrspeed)
 	//      m_WriteCursor           m_LoadPos
 
 	int delta = (m_LoadPos - m_WriteCursor) & (BUFFER_SIZE-1);
+	int CHUNK_SIZE = (g_ntsc) ? CHUNK_SIZE_NTSC : CHUNK_SIZE_PAL;
 
-	m_LoadSize = CHUNK_SIZE;	//1764  (882samplu *2kanaly)
+	m_LoadSize = CHUNK_SIZE;	//1764  (882 samples * 2 channels)
 	if ( delta > LATENCY_SIZE )
 	{
 		if (delta > (BUFFER_SIZE/2))
 		{
-			//uteklo nam to (jsme vic nez pul bufferu pozde
-			//takze se na to vyprdnem a posunem se tam co bychom meli spravne byt
+			//we missed it, we're more than half a buffer late, so get to it and move on to what we should be right
 			m_LoadPos = (m_WriteCursor+LATENCY_SIZE) & (BUFFER_SIZE-1);
 		}
 		else 
 		{
-			//utekli jsme tomu moc dopredu
-			//takze trosku pribrzdime (budeme renderovat mensi kousky nez CHUNK_SIZE)
-			m_LoadSize = CHUNK_SIZE - ( ((delta-LATENCY_SIZE) /16) & (BUFFER_SIZE-1-1) );	//-1-1 <=JEN SUDA CISLA!!!
-			
-			//hlidani
-			if (m_LoadSize <= 0 ) return 0; //jsme tak moc vepredu, ze vubec nebudem renderovat
-			//MessageBeep(-1);
+			//we ran too far ahead so we slow down a bit (we will render smaller pieces than CHUNK_SIZE)
+			m_LoadSize = CHUNK_SIZE - ( ((delta-LATENCY_SIZE) /16) & (BUFFER_SIZE-1-1) );	//-1-1 <=Just the numbers!
+			//watched
+			if (m_LoadSize <= 0 ) return 0; //we are so far ahead that it will not render at all
 		}
 	}
 	else // delta <=LATENCY_SIZE
 	{
-		//jsme bliz nez pozadovana latence, to je sice super, ale radej
-		//trosicku zrychlime, aby nas nedohnal m_WriteCursor (budeme renderovat vetsi kousky nez CHUNK_SIZE)
-		m_LoadSize = CHUNK_SIZE + ( ((LATENCY_SIZE-delta) /16) & (BUFFER_SIZE-1-1) );	//-1-1 <=JEN SUDA CISLA!!!		
+		//we are closer than the required latency, that's great, but we'd rather speed up so that m_WriteCursor doesn't catch up with us (we'll render bigger chunks than CHUNK_SIZE)
+		m_LoadSize = CHUNK_SIZE + ( ((LATENCY_SIZE-delta) /16) & (BUFFER_SIZE-1-1) );	//-1-1 <=Just the numbers!
 
-		//hlidani
-		if (m_LoadSize >= BUFFER_SIZE/2 ) return 0; //to by byl uz vetsi kus nez velikost pulky bufferu
+		//watched
+		if (m_LoadSize >= BUFFER_SIZE/2 ) return 0; //that would be a bigger piece than the size of a buffer pulse
 	}
-
-	
-	//g_log << m_LoadSize << endl;
 
 	int rendersize=m_LoadSize;
 	int renderpartsize;
 	int renderoffset=0;
+
 	for( ; instrspeed>0 ; instrspeed--)
 	{
-		//--- RMT - playovani instrumentuuu ---/
-		if (g_rmtroutine) Atari_PlayRMT();			//jeden prubeh RMT rutinou (instrumenty)
-		MemToPokey(g_tracks4_8);			//prenos z g_atarimem do POKEYe (mono ci stereo)
-		renderpartsize=(rendersize/instrspeed) & 0xfffe;	//jen suda cisla
+		//--- RMT - instrument play ---/
+		if (g_rmtroutine) Atari_PlayRMT();	//one run RMT routine (instruments)
+		MemToPokey(g_tracks4_8);			//transfer from g_atarimem to POKEY (mono or stereo)
+		renderpartsize=(rendersize/instrspeed) & 0xfffe;	//just the numbers
 
 		if (m_rendersound==1)
 		{
 			//apokeysnd
+			int CYCLESPERSECOND = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
+			int FRAMERATE = (g_ntsc) ? FRAMERATE_NTSC : FRAMERATE_PAL;
 			int cycles = (unsigned short) ((float)renderpartsize/CHANNELS * CYCLESPERSAMPLE);
 			while (cycles>0 && renderpartsize>0)
 			{
-				//maximalni pocet cyklu co se da generovat je CYCLESPERSCREEN
+				//the maximum number of cycles that can be generated is CYCLESPERSCREEN
 				int rencyc = (cycles>CYCLESPERSCREEN)? (int)CYCLESPERSCREEN : cycles;
 				renderpartsize = APokeySound_Generate(rencyc, (unsigned char*)&m_PlayBuffer + renderoffset , ASAP_FORMAT_U8);
 				rendersize-=renderpartsize;
@@ -220,32 +173,31 @@ BOOL CXPokey::RenderSound1_50(int instrspeed)
 			rendersize-=renderpartsize;
 			renderoffset+=renderpartsize;
 		}
+		
 	}
 
-	m_LoadSize = renderoffset; //skutecne vygenerovana data sampluuu
+	if (!m_SoundBuffer) return 0;	//should help preventing crashes from reading NULL pointer when data is read faster than it could be processed
+
+	m_LoadSize = renderoffset; //actually generated sample data
 
 	int r;
-
 	r = m_SoundBuffer->Lock(m_LoadPos, m_LoadSize, &Data1, &dwSize1, &Data2, &dwSize2,0 ); 
-
-	//if (dwSize1 != m_LoadSize) MessageBeep(-1);
 
 	if (r==DS_OK)
 	{
-		//vyrendrujeme do bufferu najednou cele m_LoadSize
-		//Pokey_Process((unsigned char*)&m_PlayBuffer,(unsigned short) m_LoadSize);
+		//we render the whole m_LoadSize into the buffer at once
 		m_LoadPos = (m_LoadPos + m_LoadSize) & (BUFFER_SIZE-1);
 
-		//prvni kousek preneseme z bufferu na Data1
+		//we transfer the first bit from the buffer to Data1
 		memcpy(Data1,m_PlayBuffer,dwSize1);
 
 		if (Data2)
 		{
-			//pokud je to rozdeleno, tak ted ten druhy zbyvajici kousek
+			//if it is divided, now transfer the remaining bits
 			memcpy(Data2,m_PlayBuffer+dwSize1,dwSize2);
 		}
-
 		m_SoundBuffer->Unlock(Data1, dwSize1, Data2, dwSize2);
+
 		return 1;
 	}
 
@@ -254,9 +206,10 @@ BOOL CXPokey::RenderSound1_50(int instrspeed)
 
 BOOL CXPokey::InitSound()
 {
-	if (m_rendersound || m_pokey_dll) DeInitSound();	//pro jistotu
+	if (m_rendersound || m_pokey_dll) DeInitSound();	//just in case
 
 	int pokeytype=0;
+	int CHUNK_SIZE = (g_ntsc) ? CHUNK_SIZE_NTSC : CHUNK_SIZE_PAL;
 	CString wrn="";
 
 	m_pokey_dll=LoadLibrary("apokeysnd.dll");
@@ -264,7 +217,6 @@ BOOL CXPokey::InitSound()
 	if (m_pokey_dll)
 	{
 		//apokeysnd.dll
-
 		APokeySound_Initialize = (APokeySound_Initialize_PROC) GetProcAddress(m_pokey_dll,"APokeySound_Initialize");
 		if (!APokeySound_Initialize) wrn +="APokeySound_Initialize\n";
 
@@ -286,29 +238,25 @@ BOOL CXPokey::InitSound()
 			DeInitSound();
 			return 1;
 		}
-
 		//about apokeysnd
 		const char *name, *author, *description;
 		APokeySound_About(&name,&author,&description);
 		g_aboutpokey.Format("%s\n%s\n%s",name,author,description);
-
-		APokeySound_Initialize(1);	//STEREO YES
-
+		APokeySound_Initialize(1);	//STEREO enabled
 		pokeytype=1;	//apokeysnd
 	}
-	else //neni apokeysnd.dll
+	else //not apokeysnd.dll
 	{
 		m_pokey_dll=LoadLibrary("sa_pokey.dll");
 		if(!m_pokey_dll)
 		{
-			//neni ani sa_pokey.dll
+			//not sa_pokey.dll either
 			MessageBox(g_hwnd,"Warning:\nNone of 'apokeysnd.dll' or 'sa_pokey.dll' found,\ntherefore the Pokey sound can't be performed.","LoadLibrary error",MB_ICONEXCLAMATION);
 			DeInitSound();
 			return 1;
 		}
 
 		//sa_pokey.dll
-
 		Pokey_Initialise = (Pokey_Initialise_PROC) GetProcAddress(m_pokey_dll,"Pokey_Initialise");
 		if(!Pokey_Initialise) wrn +="Pokey_Initialise\n";
 
@@ -338,14 +286,19 @@ BOOL CXPokey::InitSound()
 		char *name, *author, *description;
 		Pokey_About(&name,&author,&description);
 		g_aboutpokey.Format("%s\n%s\n%s",name,author,description);
-
 		Pokey_Initialise(0,0);
-		Pokey_SoundInit(FREQ_17_EXACT, OUTPUTFREQ, 2);//22050,(stereo_enabled)?2:1);
+
+		//specify the machine region and if it uses Stereo or not.
+		//this was originally implemented specifically for Altirra's POKEY sound emulation plugins, which also had to be modified to respond to these parameters accordingly
+		//other plugins can benefit from these changes if they are also updated to match this different setup
+		int FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
+		int WANT_STEREO = (g_tracks4_8 == 8) ? 1 : 0;
+
+		//now send these value to the Pokey_SoundInit procedure, if the plugin code was updated accordingly, this should work exactly as expected, and could be changed at any time.
+		Pokey_SoundInit(FREQ_17, OUTPUTFREQ, WANT_STEREO);
 
 		pokeytype=2;	//sa_pokey
 	}
-
-	//g_log.open("log.log");	//,ios::binary);
 
     WAVEFORMATEX        wfm;
 
@@ -355,16 +308,14 @@ BOOL CXPokey::InitSound()
 		return FALSE;		
 	}
 	
-	// Set cooperative level.
-	//if(g_lpds->SetCooperativeLevel( AfxGetApp()->GetMainWnd()->m_hWnd, DSSCL_WRITEPRIMARY ) !=DS_OK)
-	//if(g_lpds->SetCooperativeLevel( AfxGetApp()->GetMainWnd()->m_hWnd, DSSCL_EXCLUSIVE) !=DS_OK)
+	//Set cooperative level.
 	if(g_lpds->SetCooperativeLevel( AfxGetApp()->GetMainWnd()->m_hWnd, DSSCL_PRIORITY) !=DS_OK)
 	{
 		MessageBox(g_hwnd,"Error: SetCooperativeLevel","DirectSound Error!",MB_OK|MB_ICONSTOP);
 		return FALSE;
 	}
 
-  // Set primary buffer format.
+	//Set primary buffer format.
     ZeroMemory( &wfm, sizeof( WAVEFORMATEX ) ); 
     wfm.wFormatTag      = WAVE_FORMAT_PCM; 
     wfm.nChannels       = CHANNELS;			//2
@@ -374,14 +325,10 @@ BOOL CXPokey::InitSound()
     wfm.nAvgBytesPerSec = wfm.nSamplesPerSec * wfm.nBlockAlign;
 	wfm.cbSize			= 0;
 	
-	
-    // Create primary buffer.
+    //Create primary buffer.
     ZeroMemory( &dsbdesc, sizeof( DSBUFFERDESC ) );
     dsbdesc.dwSize  = sizeof( DSBUFFERDESC );
 	dsbdesc.dwFlags = DSBCAPS_PRIMARYBUFFER;
-//	dsbdesc.dwBufferBytes       = BUFFER_SIZE;
-    //dsbdesc.lpwfxFormat         = &wfm;
-
 
 	if (g_lpds->CreateSoundBuffer(&dsbdesc, &g_lpdsbPrimary, NULL) != DS_OK )
 	{
@@ -389,13 +336,11 @@ BOOL CXPokey::InitSound()
 		return FALSE;
 	}
 
-
 	if (g_lpdsbPrimary->SetFormat( &wfm ) != DS_OK )
 	{
 		MessageBox(g_hwnd,"Error: SetFormat","DirectSound Error!",MB_OK|MB_ICONSTOP);
 		return FALSE;
 	}
-
 
     ZeroMemory( &dsbdesc, sizeof( DSBUFFERDESC ) );
     dsbdesc.dwSize  = sizeof( DSBUFFERDESC );
@@ -416,10 +361,7 @@ BOOL CXPokey::InitSound()
 
 	DSBCAPS bc;
 	bc.dwSize = sizeof(bc);
-	m_SoundBuffer->GetCaps(&bc);//IDirectSoundBuffer_GetCaps(pDSB, &bc);
-	//sbufsize = bc.dwBufferBytes;
-
-
+	m_SoundBuffer->GetCaps(&bc);
 
 	int r = m_SoundBuffer->Lock(0, BUFFER_SIZE, &Data1, &dwSize1, &Data2, &dwSize2,DSBLOCK_FROMWRITECURSOR); 
 	if (r==DS_OK)
@@ -430,75 +372,118 @@ BOOL CXPokey::InitSound()
 	}
 
 	m_SoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
-
 	m_SoundBuffer->GetCurrentPosition(&m_PlayCursor,&m_WriteCursorStart);
-
-	m_LoadPos = (m_WriteCursorStart+LATENCY_SIZE) & (BUFFER_SIZE-1);  //uvodni latence (v setinach sekundy)
-
+	m_LoadPos = (m_WriteCursorStart+LATENCY_SIZE) & (BUFFER_SIZE-1);  //initial latency (in hundredths of a second)
 	m_rendersound = pokeytype;	//1 or 2
-	//m_rendersound = 0;	//DEBUG !!!!!!!!!!!!!!!!!!!!
 
 	return 1;
 }
 
-
 BOOL CXPokey::MemToPokey(int tracks4_8)
 {
-	//if (!m_rendersound) return 0;
-	int i;
+	if (tracks != g_tracks4_8)	//must be reset if the channels number is mismatched! This was added specifically to autodetect Mono/Stereo configuration with POKEY plugins
+	{
+		ReInitSound();
+		tracks = g_tracks4_8;
+		return 0;
+	}
+
+	if (SAPRDUMP) DumpSAPR();	//dump the registers if the flag is set, this is a big hack and must be rewritten better later, however this does work fine so whatever, it doesn't harm anything
+
 	if (m_rendersound==1)
 	{
 		//apokey
-		for(i=0; i<=8; i++)	//0-7 + 8audctl
+		for (int i = 0; i <= 8; i++)	//0-7 + 8audctl
 		{
 			APokeySound_PutByte(i,(i&0x01) && !GetChannelOnOff(i/2)? 0 : g_atarimem[0xd200+i]);
 			if (tracks4_8 == 8) 
 				APokeySound_PutByte(i+16,(i&0x01) && !GetChannelOnOff(i/2+4)? 0 : g_atarimem[0xd210+i]);	//stereo
-			else
-				APokeySound_PutByte(i+16,(i&0x01) && !GetChannelOnOff(i/2)? 0 : g_atarimem[0xd200+i]);		//mono - do obou pokeyu to samo
 		}
 	}
 	else
 	if (m_rendersound==2)
 	{
 		//sa_pokey
-		for(i=0; i<=8; i++)	//0-7 + 8audctl
+		for (int i = 0; i <= 8; i++)	//0-7 + 8audctl
 		{
 			Pokey_PutByte(i,(i&0x01) && !GetChannelOnOff(i/2)? 0 : g_atarimem[0xd200+i]);
 			if (tracks4_8 == 8) 
 				Pokey_PutByte(i+16,(i&0x01) && !GetChannelOnOff(i/2+4)? 0 : g_atarimem[0xd210+i]);		//stereo
-			else
-				Pokey_PutByte(i+16,(i&0x01) && !GetChannelOnOff(i/2)? 0 : g_atarimem[0xd200+i]);		//mono - do obou pokeyu to samo
 		}
 	}
-	else //rendersound==0
+	else 
 		return 0;
 
 	return 1;
 }
 
-/*
-BOOL CXPokey::Test()
+//using the ofstream data pointer, write the data to the specified file and path
+void CXPokey::WriteFileToSAPR(ofstream& ou, int frames, int offset)
 {
-	//DEBUG HACK pro KLAVESU "F1" !!!
-	//a v Initu je 	m_rendersound = 0;	//DEBUG !!!!!!!!!!!!!!!!!!!!
-	// ^ nutno oboje vratit do spravneho stavu
-
-	unsigned char buff[2048];
-	memset(buff,255,sizeof(buff));		//buff init
-	APokeySound_Initialize(1);			//stereo
-	APokeySound_PutByte(0x08,0);		//audctl
-	APokeySound_PutByte(0x0f,3);		//
-	APokeySound_PutByte(0x08,0);		//audctl
-	APokeySound_PutByte(0x00,15);		//frq=15
-	APokeySound_PutByte(0x01,175);		//distor=160+15 pure tone
-	int renderpartsize = 882;	//882 samples (for 1/50 sec)
-	int cycles = (int)((float)renderpartsize * CYCLESPERSAMPLE);
-	int generated = APokeySound_Generate(cycles, buff, ASAP_FORMAT_U8);
-	int testrandom;
-	testrandom=APokeySound_GetRandom(53770,1);
-	testrandom=APokeySound_GetRandom(53770,1);
-	testrandom=APokeySound_GetRandom(53770,1);
-	return 0;
+	int bytenum = (g_tracks4_8 == 8) ? 18 : 9;
+	int len = frames * bytenum;
+	int off = offset * bytenum;
+	ou.write((char*)SAPRSTREAM + off, len);
 }
-*/
+
+//TODO: rewrite this thing better, this is currently a big hack that was originally meant to be a proof of concept.
+//It *does* work, but seriously, this is mostly just by luck, if anything, that's very cursed programming and shouldn't be used as a reference
+void CXPokey::DumpSAPR()
+{
+	if (SAPRDUMP == 3) return;	//too soon, must first be initialised to get a constant rate every time, this prevents writing garbage in memory for the first few frames
+
+	int bytenum = (g_tracks4_8 == 8) ? 18 : 9;	//Stereo support makes the data dumped doubled
+	int fof = framecount * bytenum;	// 4 AUDC, 4 AUDF, 1 AUDCTL + Second POKEY if used
+
+	if (fof > 0xFFFFFF)
+	{	//Buffer overflow!
+		MessageBox(g_hwnd, 
+			"The SAP-R dumper went WAY beyond the expected range of memory!\n\n"
+			"The current memory dump will be aborted.", 
+			"SAP-R Dumper - Error", MB_ICONEXCLAMATION);
+		framecount--;	//previous frame was technically within range, so go with that one for the total
+		int fof = framecount * bytenum;	// 4 AUDC, 4 AUDF, 1 AUDCTL + Second POKEY if used
+		SAPRDUMP = 2;	//stop any dump in process
+		loops = 2;	//and force the dumper to end prematurely, data currently in memory will then be written, in case it is still of interest to save it
+	}
+
+	//dump memory at position defined by the frames counter
+	for (int i = 0; i < 9; i++)
+	{
+		int j = (bytenum == 18) ? 9 : 0;		//slight offset for i count, memory can then be aligned as it is expected
+
+		SAPRSTREAM[fof + i + j] = g_atarimem[0xd200 + i];
+		if (i == 1)	//AUDC1
+		{	//test SKCTL, if Two-Tone is expected, set the Volume Only bit in the current AUDC1 offset
+			SAPRSTREAM[fof + i + j] |= (g_atarimem[0xd20F] == 0x8B) ? 0x10 : 0x00;
+		}
+
+		if (bytenum == 9) 
+			continue;	//no second POKEY 
+
+		SAPRSTREAM[fof + i] = g_atarimem[0xd210 + i];
+		if (i == 1)	//AUDC1
+		{	//test SKCTL, if Two-Tone is expected, set the Volume Only bit in the current AUDC1 offset
+			SAPRSTREAM[fof + i] |= (g_atarimem[0xd21F] == 0x8B) ? 0x10 : 0x00;
+		}
+	}
+
+	//if the end was reached, do nothing, simply ignore the last frame
+	if (loops == 2) return;
+
+	framecount++;	//increment the frames counter for the next iteration
+}
+
+//TODO: rewrite this thing better
+void CXPokey::DoneSAPR()
+{
+	SAPRDUMP = 0;	//reset the SAPR dump flag now it is done
+	framecount = 0;	//also reset the framecount once finished
+	loops = 0;		//reset the playback counter
+
+	//clear the allocated memory for the SAP-R dumper, TODO: manage memory dynamically instead
+	for (int i = 0; i < 0xFFFFFF; i++) { SAPRSTREAM[i] = 0x00; }
+
+	Atari_InitRMTRoutine();	//reset the Atari memory 
+	SetChannelOnOff(-1, 1);	//switch all channels back on, since they were purposefully turned off during the recording
+}

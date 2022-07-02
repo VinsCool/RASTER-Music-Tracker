@@ -71,9 +71,6 @@ public:
 	int m_len;
 	int m_len2;
 
-	//CString	m_rmtfeat;
-	//CString	m_rmtfeat2;
-
 	BOOL m_sfx;
 	BOOL m_gvf;
 	BOOL m_nos;
@@ -103,7 +100,7 @@ protected:
 	afx_msg void OnChangeAddr();
 	afx_msg void OnCopytoclipboard();
 	afx_msg void OnSfx();
-	afx_msg void OnGlobalvolumeslide();
+	//afx_msg void OnGlobalvolumeslide();
 	afx_msg void OnNostartingsongline();
 	afx_msg void OnGlobalvolumefade();
 	//}}AFX_MSG
@@ -127,6 +124,9 @@ public:
 	CEdit	m_prev;
 	CEdit	m_edit;
 	BOOL	m_meter;
+	BOOL	m_msx_shuffle;
+	BOOL	m_region_auto;
+
 	CString	m_speedinfo;
 	//}}AFX_DATA
 
@@ -176,7 +176,6 @@ public:
 	int m_type;
 	int m_notes;
 	int m_durations;
-	//int m_merge;
 
 // Overrides
 	// ClassWizard generated virtual function overrides

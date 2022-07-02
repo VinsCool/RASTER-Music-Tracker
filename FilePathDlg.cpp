@@ -4,8 +4,7 @@
 #include "stdafx.h"
 #include "Rmt.h"
 #include "FilePathDlg.h"
-
-#include <io.h>		//kvuli findfirst,next
+#include <io.h>		//due to findfirst, findnext
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -16,7 +15,6 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CFilePathDlg dialog
 
-
 CFilePathDlg::CFilePathDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CFilePathDlg::IDD, pParent)
 {
@@ -24,7 +22,6 @@ CFilePathDlg::CFilePathDlg(CWnd* pParent /*=NULL*/)
 	m_path = _T("");
 	//}}AFX_DATA_INIT
 }
-
 
 void CFilePathDlg::DoDataExchange(CDataExchange* pDX)
 {
@@ -35,7 +32,6 @@ void CFilePathDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT1, m_path);
 	//}}AFX_DATA_MAP
 }
-
 
 BEGIN_MESSAGE_MAP(CFilePathDlg, CDialog)
 	//{{AFX_MSG_MAP(CFilePathDlg)
@@ -50,17 +46,13 @@ END_MESSAGE_MAP()
 BOOL CFilePathDlg::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
-
-	//if (m_path=="") m_path="\\";
 	char bf[1024];
 	bf[0]=0;
 	DlgDirList(bf, IDC_DRIVELIST, 0, DDL_DRIVES);
-
 	if (m_path!="")
 	{
-		ActiveIndex(-1); //aby nezobrazoval obsah dokud si nevybere "drive:"
+		ActiveIndex(-1); //not to display content until it selects "drive:"
 	}
-	
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
@@ -72,13 +64,10 @@ void CFilePathDlg::ActiveIndex(int idx)
 	char a;
 	int len=m_path.GetLength();
 	if (len>0 && (a=m_path[len-1])!='/' && a!='\\') m_path+="\\";
-	
 	if (idx>=0)
 	{
 		m_dirlist.GetText(idx,s);
-		//s=s.Mid(1,s.GetLength()-2);
 	}
-
 	if (s=="..")
 	{
 		for(i=len-2; i>=0; i--)
@@ -95,9 +84,6 @@ void CFilePathDlg::ActiveIndex(int idx)
 	}
 	char bf[1024];
 	strcpy(bf,(LPCTSTR)m_path);
-	
-	//DlgDirList(bf, IDC_DIRLIST, 0, DDL_EXCLUSIVE | DDL_DIRECTORY); //(neumi dlouhe nazvy)
-
 	m_dirlist.ResetContent();
 	strcat(bf,"*.*");
     struct _finddata_t c_file;
@@ -107,13 +93,12 @@ void CFilePathDlg::ActiveIndex(int idx)
 		do
 		{
 			if ( (c_file.attrib & _A_SUBDIR)
-				&& !(c_file.name[0]=='.' && c_file.name[1]==0) ) //krome "."
+				&& !(c_file.name[0]=='.' && c_file.name[1]==0) ) //except "."
 				m_dirlist.AddString(c_file.name);
 		}
 		while ( _findnext( hFile, &c_file )==0);
        _findclose( hFile );
 	}
-
 	((CWnd*)GetDlgItem(IDC_EDIT1))->SetWindowText(m_path);
 }
 

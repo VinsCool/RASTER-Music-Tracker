@@ -185,6 +185,8 @@ CExpMSXDlg::CExpMSXDlg(CWnd* pParent /*=NULL*/)
 {
 	//{{AFX_DATA_INIT(CExpMSXDlg)
 	m_meter = FALSE;
+	m_msx_shuffle = FALSE;
+	m_region_auto = FALSE;
 	m_speedinfo = _T("");
 	//}}AFX_DATA_INIT
 }
@@ -200,6 +202,8 @@ void CExpMSXDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_PREV, m_prev);
 	DDX_Control(pDX, IDC_EDIT, m_edit);
 	DDX_Check(pDX, IDC_RASTERLINE, m_meter);
+	DDX_Check(pDX, IDC_MSXSHUFFLE, m_msx_shuffle);
+	DDX_Check(pDX, IDC_MSXREGIONAUTO, m_region_auto);
 	DDX_Text(pDX, IDC_SPEEDINFO, m_speedinfo);
 	//}}AFX_DATA_MAP
 }
@@ -211,14 +215,18 @@ BEGIN_MESSAGE_MAP(CExpMSXDlg, CDialog)
 	ON_BN_CLICKED(IDC_CHECK2, OnCheck2)
 	ON_WM_HSCROLL()
 	ON_BN_CLICKED(IDC_RASTERLINE, OnRasterline)
+	ON_BN_CLICKED(IDC_MSXSHUFFLE, OnRasterline)
+
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CExpMSXDlg message handlers
 
-BOOL g_msxcheck=1;
-int g_msxcol=6;
+BOOL g_msxcheck = 1;
+BOOL g_msx_shuffle = 1;
+BOOL g_region_auto = 1;
+int g_msxcol = 6;
 
 BOOL CExpMSXDlg::OnInitDialog() 
 {
@@ -229,8 +237,11 @@ BOOL CExpMSXDlg::OnInitDialog()
 
 	((CButton*)GetDlgItem(IDC_RASTERLINE))->SetCheck(g_msxcheck);
 
+	((CButton*)GetDlgItem(IDC_MSXSHUFFLE))->SetCheck(g_msx_shuffle);
+
+	((CButton*)GetDlgItem(IDC_MSXREGIONAUTO))->SetCheck(g_region_auto);
+
 	m_scroll1.SetScrollRange(1,127);
-	//m_scroll1.SetScrollPos(g_msxcol);
 	OnHScroll(SB_THUMBPOSITION,g_msxcol/2,&m_scroll1);
 
 	// TODO: Add extra initialization here
@@ -256,8 +267,8 @@ void CExpMSXDlg::ChangeParams()
 			if (len>40) len=40;
 			l = s.Mid(from,len)+"\x0d\x0a"; 
 			d+=l;
-			if (line!=4) d4th+=l;	//bez line 5
-			if (line!=3) d5th+=l;	//bez line 4
+			if (line!=4) d4th+=l;	//without line 5
+			if (line!=3) d5th+=l;	//without line 4
 			from = i+1;
 			line++;
 		}
@@ -265,8 +276,8 @@ void CExpMSXDlg::ChangeParams()
 		{
 			l=s.Mid(from,40);
 			d+=l;
-			if (line!=4) d4th+=l;	//bez line 5
-			if (line!=3) d5th+=l;	//bez line 4
+			if (line!=4) d4th+=l;	//without line 5
+			if (line!=3) d5th+=l;	//without line 4
 			break;
 		}
 	}
@@ -276,9 +287,12 @@ void CExpMSXDlg::ChangeParams()
 	m_prev.SetWindowText((shift)? d5th : d4th);
 	m_txt = d;
 
-	BOOL meter=((CButton*)GetDlgItem(IDC_RASTERLINE))->GetCheck();
+	BOOL meter = ((CButton*)GetDlgItem(IDC_RASTERLINE))->GetCheck();
+
 	m_scroll1.EnableWindow(meter);
 	m_colorinfotext.EnableWindow(meter);
+
+	GetDlgItem(IDC_MSXSHUFFLE)->EnableWindow(meter);	//disable the checkbox
 
 }
 
@@ -319,12 +333,16 @@ void CExpMSXDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 		if (c<1) c=1;
 
 		g_msxcol=c*2;
-
 		m_scroll1.SetScrollPos(c);
-
+		CString s;
+	
 		const char *bar[]={"Gray","Rust","Orange","Red-orange","Pink","Purple","Cobalt blue","Blue",
 			"Medium blue","Dark blue","Blue-grey","Olive green","Medium green","Dark green","Orange-green","Brown"};
-		CString s;
+		
+		//NTSC colour names may or may not be correct yet
+		//const char *bar[]={"Black","Rust","Red-orange","Dark-orange","Red","Lavender","Cobalt blue","Ultramarine",
+		//	"Medium blue","Dark blue","Blue-grey","Olive green","Medium green","Dark green","Orange-green","Orange"};		
+
 		s.Format("%i = %s %i",g_msxcol,bar[g_msxcol/16],g_msxcol%16);
 		m_colorinfotext.SetWindowText((LPCTSTR)s);
 	}
@@ -335,6 +353,8 @@ void CExpMSXDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 void CExpMSXDlg::OnOK() 
 {
 	m_metercolor=g_msxcol;	
+	g_msx_shuffle=((CButton*)GetDlgItem(IDC_MSXSHUFFLE))->GetCheck();
+	g_region_auto=((CButton*)GetDlgItem(IDC_MSXREGIONAUTO))->GetCheck();
 	g_msxcheck=((CButton*)GetDlgItem(IDC_RASTERLINE))->GetCheck();
 	CDialog::OnOK();
 }
@@ -407,9 +427,7 @@ void CExpASMDlg::OnOK()
 	for(i=1; i<=7; i++) r[i]=((CButton*)GetDlgItem(IDC_RADIO1-1+i))->GetCheck();
 	m_type=r[1]+r[2]*2;
 	m_notes=r[3]+r[4]*2;
-	m_durations=r[5]+r[6]*2+r[7]*3;
-	//m_merge=m_check_merge.GetCheck() && r[2] && (r[6] || r[7]);
-	
+	m_durations=r[5]+r[6]*2+r[7]*3;	
 	CDialog::OnOK();
 }
 

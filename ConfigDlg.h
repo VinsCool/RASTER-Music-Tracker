@@ -7,9 +7,9 @@
 // ConfigDlg.h : header file
 //
 
-extern CString g_path_songs;		//default cesta pro songy
-extern CString g_path_instruments;	//default cesta pro instrumenty
-extern CString g_path_tracks;		//default cesta pro tracky
+extern CString g_path_songs;		//default path for songs
+extern CString g_path_instruments;	//default path for instruments
+extern CString g_path_tracks;		//default path for tracks
 
 extern CString g_lastloadpath_songs;
 extern CString g_lastloadpath_instruments;
@@ -27,14 +27,17 @@ public:
 // Dialog Data
 	//{{AFX_DATA(CConfigDlg)
 	enum { IDD = IDD_CONFIG };
-//	CComboBox	m_c_trackcursorverticalrange;
 	CComboBox	m_keyboard_c_layout;
 	CComboBox	m_midi_c_device;
 	BOOL	m_midi_tr;
 	BOOL	m_keyboard_playautofollow;
 	int		m_midi_volumeoffset;
 	int		m_tracklinehighlight;
+	int     m_scaling_percentage;
+	double	m_tuning;
 	BOOL	m_ntsc;
+	BOOL	m_displayflatnotes;
+	BOOL	m_usegermannotation;
 	BOOL	m_midi_noteoff;
 	BOOL	m_keyboard_updowncontinue;
 	BOOL	m_nohwsoundbuffer;
@@ -43,10 +46,8 @@ public:
 	BOOL	m_keyboard_rememberoctavesandvolumes;
 	BOOL	m_keyboard_escresetatarisound;
 	BOOL	m_keyboard_askwhencontrol_s;
-	BOOL	m_keyboard_usenumlock;
 	//}}AFX_DATA
 
-	int		m_trackcursorverticalrange;
 	int		m_midi_device;
 	int		m_keyboard_layout;
 
@@ -70,7 +71,7 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnBnClickedKeyboardAskwhencontrolS2();
+	//afx_msg void OnBnClickedDisplayflatnotes();
 };
 
 /////////////////////////////////////////////////////////////////////////////

@@ -64,9 +64,13 @@ END
 //
 
 IDB_GFX                 BITMAP                  "res\\asciagr.bmp"
+
 IDR_TOOLBARPLAY         BITMAP                  "res\\toolbarp.bmp"
+
 IDR_TOOLBARBLOCK        BITMAP                  "res\\toolbar1.bmp"
+
 IDR_TOOLBARCHANNELS     BITMAP                  "res\\bmp00001.bmp"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -117,24 +121,24 @@ END
 // Dialog
 //
 
-IDD_FILENEW DIALOG 0, 0, 186, 106
+IDD_FILENEW DIALOGEX 0, 0, 186, 106
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "New RMT module"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     EDITTEXT        IDC_MAXTRACKLEN,119,14,29,14,ES_AUTOHSCROLL
     COMBOBOX        IDC_COMBOTYPE,37,34,112,38,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     DEFPUSHBUTTON   "OK",IDOK,75,86,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,129,86,50,14
     LTEXT           "Maximal length of tracks",IDC_STATIC,37,17,77,8
-    CTEXT           "Warning: It will discard all current data completely!",IDC_STATIC,7,55,172,11
-    CTEXT           "Warning: Undo operation won't be possible!!!",IDC_STATIC,1,69,184,11
+    CTEXT           "Warning: Current data will be discarded!",IDC_STATIC,7,55,172,11
+    CTEXT           "This operation could not be undone!",IDC_STATIC,1,69,184,11
 END
 
-IDD_EXPSAP DIALOG 0, 0, 280, 129
+IDD_EXPSAP DIALOGEX 0, 0, 280, 129
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Export SAP file"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     EDITTEXT        IDC_AUTHOR,7,41,266,12,ES_AUTOHSCROLL
     EDITTEXT        IDC_DATE,7,67,50,12,ES_AUTOHSCROLL
@@ -145,13 +149,13 @@ BEGIN
     LTEXT           "NAME",IDC_STATIC,7,7,80,8
     LTEXT           "AUTHOR",IDC_STATIC,7,32,80,8
     LTEXT           "DATE",IDC_STATIC,7,58,80,8
-    LTEXT           "Subsongs (one hexadecimal song line number for each subsong, first is default song):",IDC_STATIC,7,82,270,8
+    LTEXT           "Subsongs (hexadecimal song line number for each subsong, first is default song):",IDC_STATIC,7,82,270,8
 END
 
-IDD_EXPRMT DIALOG 0, 0, 280, 250
+IDD_EXPRMT DIALOGEX 0, 0, 280, 250
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Export RMT stripped file"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,169,230,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,223,230,50,14
@@ -167,69 +171,80 @@ BEGIN
     LTEXT           "RMT FEATures definitions (for optimizations of RMT player assembler routine)",IDC_STATIC,7,81,266,8
     CONTROL         "GlobalVolumeFade support (RMTGLOBALVOLUMEFADE variable)",IDC_GLOBALVOLUMEFADE,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,49,267,10
-    CONTROL         "No starting songline (start from songline 0 always)",IDC_NOSTARTINGSONGLINE,
+    CONTROL         "No songline start (always start from songline 0)",IDC_NOSTARTINGSONGLINE,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,63,267,10
 END
 
-IDD_EXPMSX DIALOG 0, 0, 280, 230
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_EXPMSX DIALOGEX 0, 0, 280, 230
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+EXSTYLE WS_EX_TOPMOST
 CAPTION "Export Atari executable MSX"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,170,210,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,224,210,50,14
     EDITTEXT        IDC_EDIT,7,28,266,54,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_WANTRETURN | WS_VSCROLL | WS_HSCROLL
     EDITTEXT        IDC_PREV,30,99,220,44,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | ES_WANTRETURN
     CONTROL         "Atari SHIFTkey test",IDC_CHECK2,"Button",BS_AUTOCHECKBOX | BS_PUSHLIKE | WS_TABSTOP,30,145,81,14
-    CONTROL         "Show rasterline meter of processor usage",IDC_RASTERLINE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,164,147,10
-    LTEXT           "Text which will be showed on Atari screen during playing music\n(4+1 lines, 40 chars max on line. 5th line is showed instead of 4th if Shift is pressed.)",IDC_STATIC,7,7,266,18
+    CONTROL         "Display rasterbar for CPU usage",IDC_RASTERLINE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,164,147,10
+    LTEXT           "Text displayed on screen during music playback. 4+1 lines, 40 characters per line.\nThe 5th line of text is shown instead of 4th line when the Shift key is held down.",IDC_STATIC,7,7,266,18
     CTEXT           "MSX screen preview",IDC_STATIC,7,88,266,8
-    LTEXT           "Color:",IDC_STATIC,8,177,19,8
-    LTEXT           "123...",IDC_COLORNUMBER,182,177,82,8
-    SCROLLBAR       IDC_SCROLLBAR1,28,176,149,11,WS_TABSTOP
+    LTEXT           "Colour:",IDC_STATIC,8,177,23,8
+    LTEXT           "123...",IDC_COLORNUMBER,186,177,82,8
+    SCROLLBAR       IDC_SCROLLBAR1,32,176,149,11,WS_TABSTOP
     LTEXT           "Speed info...",IDC_SPEEDINFO,7,196,266,8
+    CONTROL         "Shuffle the rasterbar colours",IDC_MSXSHUFFLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,155,164,124,10
+    CONTROL         "Automatically adjust playback speed",IDC_MSXREGIONAUTO,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,210,151,10
 END
 
-IDD_CONFIG DIALOGEX 0, 0, 251, 242
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_CONFIG DIALOGEX 0, 0, 251, 262
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "RMT configuration"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,139,223,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,194,223,50,14
-    EDITTEXT        IDC_TRACKLINEHIGHLIGHT,93,15,17,12,ES_NUMBER
-    CONTROL         "Alternative trackline numbering",IDC_TRACKLINEALTNUMBERING,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,118,17,113,10
-    CONTROL         "NTSC system speed 60Hz",IDC_NTSC,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,30,99,10
+    DEFPUSHBUTTON   "OK",IDOK,139,243,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,194,243,50,14
+    EDITTEXT        IDC_TRACKLINEHIGHLIGHT,202,15,23,12,ES_NUMBER
+    CONTROL         "Alternative track line numbering",IDC_TRACKLINEALTNUMBERING,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,122,28,115,10
+    CONTROL         "Display accidentals as Flats instead of Sharps",IDC_DISPLAYFLATNOTES,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,38,168,12
+    CONTROL         "Use German notation",IDC_USEGERMANNOTATION,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,27,82,12
+    CONTROL         "NTSC system speed (60Hz)",IDC_NTSC,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,51,103,10
     CONTROL         "Don't use hardware soundbuffer",IDC_NOHWSOUNDBUFFER,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,118,30,122,10
-    COMBOBOX        IDC_KEYBOARD_LAYOUT,92,61,146,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Playing hotkeys with autofollow (SHIFT key for no autofollow)",IDC_KEYBOARD_PLAYAUTOFOLLOW,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,79,208,10
-    CONTROL         "Swap replay note / all notes function (Enter / Control+Enter hotkeys)",IDC_KEYBOARD_SWAPENTER,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,90,229,10
-    CONTROL         "Continue on previous/next song track upon the first/last track line",IDC_KEYBOARD_UPDOWNCONTINUE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,101,224,10
-    CONTROL         "Remembering octaves and volumes separately for each instrument",IDC_KEYBOARD_REMEMBEROCTAVESANDVOLUMES,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,112,224,10
-    CONTROL         "Reset of Atari sound routine when ESC is pressed",IDC_KEYBOARD_ESCRESETATARISOUND,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,123,172,10
-    CONTROL         "Ask when Control+S hotkey is used for save",IDC_KEYBOARD_ASKWHENCONTROL_S,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,134,155,10
-    COMBOBOX        IDC_MIDI_DEVICE,68,177,170,59,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "Touch response",IDC_MIDI_TR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,194,70,10
-    EDITTEXT        IDC_MIDI_VOLUMEOFFSET,222,193,15,12,ES_NUMBER
-    CONTROL         "Record Note off",IDC_MIDI_NOTEOFF,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,206,67,10
-    LTEXT           "Atari volume offset",IDC_STATIC,159,195,59,8
-    GROUPBOX        "MIDI",IDC_STATIC,7,167,237,53
-    LTEXT           "MIDI IN device",IDC_STATIC,13,180,52,8
-    GROUPBOX        "Keyboard",IDC_STATIC,7,49,237,116
-    GROUPBOX        "General",IDC_STATIC,7,7,237,42
-    LTEXT           "Track line highlight step",IDC_STATIC,13,17,76,8
-    LTEXT           "F1-F8 keyboard layout:",IDC_STATIC,13,63,76,8
-    PUSHBUTTON      "Paths...",IDC_PATHS,7,223,50,14
-    CONTROL         "Use NumLock",IDC_KEYBOARD_USENUMLOCK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,145,61,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,122,51,122,10
+    COMBOBOX        IDC_KEYBOARD_LAYOUT,92,93,146,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "*Hotkeys play with autofollow (SHIFT key for no autofollow)",IDC_KEYBOARD_PLAYAUTOFOLLOW,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,108,202,10
+    CONTROL         "*Swap replay note/all notes function (Enter/Control+Enter hotkeys)",IDC_KEYBOARD_SWAPENTER,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,119,229,10
+    CONTROL         "Move to previous/next song line while track boundaries are crossed",IDC_KEYBOARD_UPDOWNCONTINUE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,130,229,10
+    CONTROL         "Remember octaves and volumes separately for each instrument",IDC_KEYBOARD_REMEMBEROCTAVESANDVOLUMES,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,141,224,10
+    CONTROL         "Reset the Atari sound routines each time ESC is pressed",IDC_KEYBOARD_ESCRESETATARISOUND,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,152,193,10
+    CONTROL         "Prompt a save dialog box each time CTRL+S is pressed",IDC_KEYBOARD_ASKWHENCONTROL_S,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,163,191,10
+    COMBOBOX        IDC_MIDI_DEVICE,68,197,170,59,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Touch response",IDC_MIDI_TR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,214,70,10
+    EDITTEXT        IDC_MIDI_VOLUMEOFFSET,222,213,15,12,ES_NUMBER
+    CONTROL         "Record Note off",IDC_MIDI_NOTEOFF,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,226,67,10
+    LTEXT           "Atari volume offset",IDC_STATIC,159,215,59,8
+    GROUPBOX        "MIDI",IDC_STATIC,7,187,237,53
+    LTEXT           "MIDI IN device",IDC_STATIC,13,200,52,8
+    GROUPBOX        "Keyboard",IDC_STATIC,7,85,237,100
+    GROUPBOX        "General",IDC_STATIC,7,7,237,77
+    LTEXT           "Track line highlight step",IDC_STATIC,121,17,76,8
+    LTEXT           "F1-F8 keyboard layout:",IDC_STATIC,13,95,76,8
+    PUSHBUTTON      "Paths...",IDC_PATHS,7,243,50,14
+    LTEXT           "*This option will be changed or removed in an upcoming update",IDC_STATIC,13,174,204,8
+    LTEXT           "Interface size (in %)",IDC_STATIC,14,17,62,8
+    EDITTEXT        IDC_SCALINGPERCENTAGE,82,15,23,12,ES_NUMBER
+    EDITTEXT        IDC_TUNING,63,64,70,12,WS_DISABLED
+    LTEXT           "A-4 tuning (Hz)",IDC_STATIC,14,66,48,8
+    LTEXT           "eg: 440, 440.83751645933, 432,\n443.9, 444.895778867913, etc",IDC_STATIC,136,63,104,16
 END
 
 IDD_EFFECTS DIALOG 0, 0, 280, 156
@@ -433,20 +448,20 @@ BEGIN
     LTEXT           "Are you sure?",IDC_STATIC,7,38,172,8
 END
 
-IDD_RENUMBERINSTRUMENTS DIALOG 0, 0, 186, 94
+IDD_RENUMBERINSTRUMENTS DIALOGEX 0, 0, 205, 95
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Renumber all instruments"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,75,73,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,129,73,50,14
-    CONTROL         "No order change. Remove gaps between  used or nonempty instruments only.",IDC_RADIO1,
-                    "Button",BS_AUTORADIOBUTTON | BS_TOP | BS_MULTILINE,7,17,172,19
-    CONTROL         "Order by using in tracks.",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,7,36,172,10
+    CONTROL         "No order change. Remove gaps between instrument slots.",IDC_RADIO1,
+                    "Button",BS_AUTORADIOBUTTON | BS_TOP | BS_MULTILINE,7,21,197,12
+    CONTROL         "Order by use in tracks.",IDC_RADIO2,"Button",BS_AUTORADIOBUTTON,7,32,172,10
     CONTROL         "Order by instrument names (alphabetical).",IDC_RADIO3,
-                    "Button",BS_AUTORADIOBUTTON,7,48,172,10
+                    "Button",BS_AUTORADIOBUTTON,7,44,172,10
     LTEXT           "Renumber all instruments:",IDC_STATIC,7,7,172,10
-    LTEXT           "Are you sure?",IDC_STATIC,7,63,172,8
+    LTEXT           "Are you sure?",IDC_STATIC,7,59,172,8
 END
 
 IDD_SONGINSERTCOPYORCLONEOFSONGLINES DIALOG 0, 0, 186, 84
@@ -518,13 +533,13 @@ BEGIN
     PUSHBUTTON      "1 - 2",IDC_OCTAVE1,0,52,51,13
 END
 
-IDD_INSTRUMENTSELECT DIALOGEX 0, 0, 99, 256
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_INSTRUMENTSELECT DIALOGEX 0, 0, 163, 257
+STYLE DS_ABSALIGN | DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_TOOLWINDOW | WS_EX_CLIENTEDGE
 CAPTION "Instrument"
-FONT 8, "MS Sans Serif", 0, 0, 0x1
+FONT 9, "MS Gothic", 700, 0, 0x0
 BEGIN
-    LISTBOX         IDC_LIST1,0,0,99,256,LBS_DISABLENOSCROLL | NOT WS_BORDER | WS_VSCROLL | WS_TABSTOP
+    LISTBOX         IDC_LIST1,0,0,163,257,LBS_DISABLENOSCROLL | NOT WS_BORDER | WS_VSCROLL | WS_TABSTOP
 END
 
 IDD_VOLUMESELECT DIALOGEX 0, 0, 51, 155
@@ -587,18 +602,77 @@ BEGIN
     GROUPBOX        "Right",IDC_STATIC,124,3,114,27
 END
 
-IDD_CHANGEMAXTRACKLEN DIALOG 0, 0, 186, 108
+IDD_CHANGEMAXTRACKLEN DIALOGEX 0, 0, 186, 108
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Change maximal length of tracks"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     EDITTEXT        IDC_MAXTRACKLEN,127,51,29,14,ES_NUMBER
     DEFPUSHBUTTON   "OK",IDOK,76,88,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,130,88,50,14
     LTEXT           "New maximal length of tracks",IDC_STATIC,29,54,93,8
     LTEXT           "...\n...",IDC_INFO,7,23,173,20
-    CTEXT           "Warning: All tracks can be prolonged or truncated!",IDC_STATIC,7,72,172,10
+    CTEXT           "Warning: All tracks will be prolonged or truncated!",IDC_STATIC,7,72,172,10
     LTEXT           "Change maximal length of tracks",IDC_STATIC,7,7,103,8
+END
+
+IDD_TUNING DIALOGEX 0, 0, 269, 343
+STYLE DS_SETFONT | DS_MODALFRAME | DS_NOFAILCREATE | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Tuning configuration"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,155,325,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,210,325,50,14
+    GROUPBOX        "General",IDC_STATIC,8,2,253,58
+    LTEXT           "Base note",IDC_STATIC,151,13,33,8
+    EDITTEXT        IDC_BASETUNING,74,11,70,12
+    LTEXT           "Base tuning (Hz)",IDC_STATIC,14,13,53,8
+    LTEXT           "eg: 440, 440.83751645933, 432, 443.9, 444.895778867913, etc",IDC_STATIC,14,27,214,11
+    GROUPBOX        "RA/TIO",IDC_STATIC,8,61,253,262
+    EDITTEXT        IDC_UNISON_L,119,74,28,12,ES_NUMBER
+    EDITTEXT        IDC_MINOR_2ND_L,119,93,28,12,ES_NUMBER
+    EDITTEXT        IDC_MAJOR_2ND_L,119,112,28,12,ES_NUMBER
+    EDITTEXT        IDC_MINOR_3RD_L,119,131,28,12,ES_NUMBER
+    EDITTEXT        IDC_MAJOR_3RD_L,119,151,28,12,ES_NUMBER
+    EDITTEXT        IDC_PERFECT_4TH_L,119,170,28,12,ES_NUMBER
+    EDITTEXT        IDC_TRITONE_L,119,189,28,12,ES_NUMBER
+    EDITTEXT        IDC_PERFECT_5TH_L,119,208,28,12,ES_NUMBER
+    EDITTEXT        IDC_MINOR_6TH_L,119,227,28,12,ES_NUMBER
+    EDITTEXT        IDC_MAJOR_6TH_L,119,247,28,12,ES_NUMBER
+    EDITTEXT        IDC_MINOR_7TH_L,119,266,28,12,ES_NUMBER
+    EDITTEXT        IDC_MAJOR_7TH_L,119,285,28,12,ES_NUMBER
+    EDITTEXT        IDC_OCTAVE_L,119,304,28,12,ES_NUMBER
+    LTEXT           "Unison",IDC_STATIC,14,75,35,8
+    LTEXT           "Minor 2nd",IDC_STATIC,14,95,46,8
+    LTEXT           "Major 2nd",IDC_STATIC,14,114,52,8
+    LTEXT           "Minor 3rd",IDC_STATIC,14,133,52,8
+    LTEXT           "Major 3rd",IDC_STATIC,14,153,51,8
+    LTEXT           "Perfect 4th",IDC_STATIC,14,172,51,8
+    LTEXT           "Tritone",IDC_STATIC,14,191,38,8
+    LTEXT           "Perfect 5th",IDC_STATIC,14,210,53,8
+    LTEXT           "Minor 6th",IDC_STATIC,14,229,46,8
+    LTEXT           "Major 6th",IDC_STATIC,14,249,52,8
+    LTEXT           "Minor 7th",IDC_STATIC,14,268,46,8
+    LTEXT           "Major 7th",IDC_STATIC,14,287,50,8
+    LTEXT           "Octave",IDC_STATIC,14,306,50,8
+    EDITTEXT        IDC_UNISON_R,178,74,28,12,ES_NUMBER
+    EDITTEXT        IDC_MINOR_2ND_R,178,93,28,12,ES_NUMBER
+    EDITTEXT        IDC_MAJOR_2ND_R,178,112,28,12,ES_NUMBER
+    EDITTEXT        IDC_MINOR_3RD_R,178,131,28,12,ES_NUMBER
+    EDITTEXT        IDC_MAJOR_3RD_R,178,151,28,12,ES_NUMBER
+    EDITTEXT        IDC_PERFECT_4TH_R,178,170,28,12,ES_NUMBER
+    EDITTEXT        IDC_TRITONE_R,178,189,28,12,ES_NUMBER
+    EDITTEXT        IDC_PERFECT_5TH_R,178,208,28,12,ES_NUMBER
+    EDITTEXT        IDC_MINOR_6TH_R,178,227,28,12,ES_NUMBER
+    EDITTEXT        IDC_MAJOR_6TH_R,178,247,28,12,ES_NUMBER
+    EDITTEXT        IDC_MINOR_7TH_R,178,266,28,12,ES_NUMBER
+    EDITTEXT        IDC_MAJOR_7TH_R,178,285,28,12,ES_NUMBER
+    EDITTEXT        IDC_OCTAVE_R,178,304,28,12,ES_NUMBER
+    COMBOBOX        IDC_BASENOTE,188,11,27,94,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_TEMPERAMENT,74,39,179,94,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Temperament",IDC_STATIC,14,42,55,8
+    PUSHBUTTON      "Test now",IDTESTNOW,9,325,50,14
+    PUSHBUTTON      "Reset",IDRESET,83,325,50,14
 END
 
 
@@ -617,6 +691,156 @@ BEGIN
     0
 END
 
+IDD_TUNING DLGINIT
+BEGIN
+    IDC_BASENOTE, 0x403, 3, 0
+0x2d43, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2d42, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2341, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2d41, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2347, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2d47, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2346, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2d46, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2d45, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2344, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2d44, "\000" 
+    IDC_BASENOTE, 0x403, 3, 0
+0x2343, "\000" 
+    IDC_TEMPERAMENT, 0x403, 28, 0
+0x7145, 0x6175, 0x206c, 0x6554, 0x706d, 0x7265, 0x6d61, 0x6e65, 0x2074, 
+0x4428, 0x6665, 0x7561, 0x746c, 0x0029, 
+    IDC_TEMPERAMENT, 0x403, 42, 0
+0x6854, 0x6d6f, 0x7361, 0x5920, 0x756f, 0x676e, 0x3120, 0x3937, 0x2739, 
+0x2073, 0x6557, 0x6c6c, 0x5420, 0x6d65, 0x6570, 0x6172, 0x656d, 0x746e, 
+0x6e20, 0x2e6f, 0x0031, 
+    IDC_TEMPERAMENT, 0x403, 42, 0
+0x6854, 0x6d6f, 0x7361, 0x5920, 0x756f, 0x676e, 0x3120, 0x3937, 0x2739, 
+0x2073, 0x6557, 0x6c6c, 0x5420, 0x6d65, 0x6570, 0x6172, 0x656d, 0x746e, 
+0x6e20, 0x2e6f, 0x0032, 
+    IDC_TEMPERAMENT, 0x403, 37, 0
+0x6854, 0x6d6f, 0x7361, 0x5920, 0x756f, 0x676e, 0x3120, 0x3038, 0x2737, 
+0x2073, 0x6557, 0x6c6c, 0x5420, 0x6d65, 0x6570, 0x6172, 0x656d, 0x746e, 
+"\000" 
+    IDC_TEMPERAMENT, 0x403, 46, 0
+0x6e41, 0x7264, 0x6165, 0x2073, 0x6557, 0x6372, 0x6d6b, 0x6965, 0x7473, 
+0x7265, 0x7327, 0x5420, 0x6d65, 0x6570, 0x6172, 0x656d, 0x746e, 0x4920, 
+0x4949, 0x2820, 0x3631, 0x3138, 0x0029, 
+    IDC_TEMPERAMENT, 0x403, 34, 0
+0x6554, 0x706d, 0x72e9, 0x6d61, 0x6e65, 0x2074, 0x67c9, 0x6c61, 0x6120, 
+0x5120, 0x6975, 0x746e, 0x7365, 0x4a20, 0x7375, 0x6574, 0x0073, 
+    IDC_TEMPERAMENT, 0x403, 58, 0
+0x2764, 0x6c41, 0x6d65, 0x6562, 0x7472, 0x6120, 0x646e, 0x5220, 0x756f, 
+0x7373, 0x6165, 0x2075, 0x6554, 0x706d, 0x72e9, 0x6d61, 0x6e65, 0x2074, 
+0x724f, 0x6964, 0x616e, 0x7269, 0x2065, 0x3128, 0x3537, 0x2f32, 0x3731, 
+0x3736, 0x0029, 
+    IDC_TEMPERAMENT, 0x403, 48, 0
+0x7241, 0x6e6f, 0x2d20, 0x4e20, 0x6965, 0x6864, 0x7261, 0x7464, 0x4520, 
+0x7571, 0x6c61, 0x4220, 0x6165, 0x6974, 0x676e, 0x5720, 0x6c65, 0x206c, 
+0x6554, 0x706d, 0x7265, 0x6d61, 0x6e65, 0x0074, 
+    IDC_TEMPERAMENT, 0x403, 19, 0
+0x7441, 0x6d6f, 0x5320, 0x6863, 0x7369, 0x616d, 0x5320, 0x6163, 0x656c, 
+"\000" 
+    IDC_TEMPERAMENT, 0x403, 49, 0
+0x3231, 0x542d, 0x5445, 0x4120, 0x7070, 0x6f72, 0x6978, 0x616d, 0x6974, 
+0x6e6f, 0x7720, 0x7469, 0x2068, 0x694d, 0x696e, 0x616d, 0x206c, 0x724f, 
+0x6564, 0x2072, 0x3731, 0x4220, 0x6165, 0x7374, "\000" 
+    IDC_TEMPERAMENT, 0x403, 45, 0
+0x6150, 0x6c75, 0x4220, 0x6961, 0x656c, 0x2779, 0x2073, 0x6f4d, 0x6564, 
+0x6e72, 0x5720, 0x6c65, 0x206c, 0x6554, 0x706d, 0x7265, 0x6d61, 0x6e65, 
+0x2074, 0x3228, 0x3030, 0x2932, "\000" 
+    IDC_TEMPERAMENT, 0x403, 79, 0
+0x6f4a, 0x6e68, 0x4220, 0x7261, 0x656e, 0x2773, 0x5420, 0x6d65, 0x6570, 
+0x6172, 0x656d, 0x746e, 0x2820, 0x3931, 0x3737, 0x2029, 0x614d, 0x6564, 
+0x4120, 0x7466, 0x7265, 0x4120, 0x616e, 0x796c, 0x6973, 0x2073, 0x666f, 
+0x5720, 0x686f, 0x746c, 0x6d65, 0x6570, 0x6972, 0x7265, 0x6574, 0x4b20, 
+0x616c, 0x6976, 0x7265, "\000" 
+    IDC_TEMPERAMENT, 0x403, 30, 0
+0x6542, 0x6874, 0x7369, 0x2079, 0x6554, 0x706d, 0x72e9, 0x6d61, 0x6e65, 
+0x2074, 0x724f, 0x6964, 0x616e, 0x7269, 0x0065, 
+    IDC_TEMPERAMENT, 0x403, 9, 0
+0x6942, 0x2067, 0x7547, 0x706c, "\000" 
+    IDC_TEMPERAMENT, 0x403, 78, 0
+0x3231, 0x5420, 0x6e6f, 0x2065, 0x6353, 0x6c61, 0x2065, 0x7962, 0x4220, 
+0x686f, 0x656c, 0x206e, 0x6547, 0x656e, 0x6172, 0x6574, 0x2064, 0x7266, 
+0x6d6f, 0x7420, 0x6568, 0x3420, 0x373a, 0x3a20, 0x3120, 0x2030, 0x7254, 
+0x6169, 0x2c64, 0x4120, 0x7563, 0x7473, 0x6369, 0x2061, 0x3933, 0x322f, 
+0x312f, 0x3739, 0x0038, 
+    IDC_TEMPERAMENT, 0x403, 49, 0
+0x6854, 0x7369, 0x5320, 0x6163, 0x656c, 0x4d20, 0x7961, 0x4120, 0x736c, 
+0x206f, 0x6562, 0x4320, 0x6c61, 0x656c, 0x2064, 0x6874, 0x2065, 0x5722, 
+0x6465, 0x6964, 0x676e, 0x4320, 0x6b61, 0x2265, "\000" 
+    IDC_TEMPERAMENT, 0x403, 40, 0
+0x7055, 0x6973, 0x6564, 0x4420, 0x776f, 0x206e, 0x6557, 0x6464, 0x6e69, 
+0x2067, 0x6143, 0x656b, 0x2820, 0x6944, 0x6f76, 0x6372, 0x2065, 0x6143, 
+0x656b, 0x0029, 
+    IDC_TEMPERAMENT, 0x403, 26, 0
+0x3231, 0x5420, 0x6e6f, 0x2065, 0x7950, 0x6874, 0x6761, 0x726f, 0x6165, 
+0x206e, 0x6353, 0x6c61, 0x0065, 
+    IDC_TEMPERAMENT, 0x403, 44, 0
+0x6f52, 0x6562, 0x7472, 0x5320, 0x6863, 0x656e, 0x6469, 0x7265, 0x202c, 
+0x6353, 0x6c61, 0x2065, 0x666f, 0x4c20, 0x676f, 0x3428, 0x2029, 0x2e2e, 
+0x6f4c, 0x2867, 0x3631, 0x0029, 
+    IDC_TEMPERAMENT, 0x403, 35, 0
+0x615a, 0x6c72, 0x6e69, 0x206f, 0x6554, 0x706d, 0x72e9, 0x6d61, 0x6e65, 
+0x2074, 0x7845, 0x7274, 0x6f61, 0x6472, 0x6e69, 0x6961, 0x6572, "\000" 
+    IDC_TEMPERAMENT, 0x403, 36, 0
+0x6f46, 0x6b6b, 0x7265, 0x7327, 0x3720, 0x4c2d, 0x6d69, 0x7469, 0x3120, 
+0x2d32, 0x6f54, 0x656e, 0x4a20, 0x7375, 0x2074, 0x6353, 0x6c61, 0x0065, 
+
+    IDC_TEMPERAMENT, 0x403, 29, 0
+0x6142, 0x6863, 0x5420, 0x6d65, 0x6570, 0x6172, 0x656d, 0x746e, 0x202c, 
+0x2d41, 0x3d20, 0x3420, 0x3030, 0x7a68, "\000" 
+    IDC_TEMPERAMENT, 0x403, 81, 0
+0x6156, 0x6c6c, 0x746f, 0x6974, 0x2620, 0x5920, 0x756f, 0x676e, 0x5320, 
+0x6163, 0x656c, 0x2820, 0x6156, 0x6c6c, 0x746f, 0x6974, 0x5620, 0x7265, 
+0x6973, 0x6e6f, 0x2c29, 0x4120, 0x736c, 0x206f, 0x6e4b, 0x776f, 0x206e, 
+0x7361, 0x5420, 0x7261, 0x6974, 0x696e, 0x562d, 0x6c61, 0x6f6c, 0x7474, 
+0x2069, 0x3128, 0x3537, 0x2934, "\000" 
+    IDC_TEMPERAMENT, 0x403, 67, 0
+0x6156, 0x6c6c, 0x746f, 0x6974, 0x592d, 0x756f, 0x676e, 0x6120, 0x646e, 
+0x5720, 0x7265, 0x6b63, 0x656d, 0x7369, 0x6574, 0x2072, 0x4949, 0x2c49, 
+0x3120, 0x2030, 0x6543, 0x746e, 0x2073, 0x2d35, 0x694c, 0x696d, 0x2074, 
+0x654c, 0x6673, 0x7069, 0x5320, 0x6163, 0x656c, "\000" 
+    IDC_TEMPERAMENT, 0x403, 63, 0
+0x704f, 0x6974, 0x616d, 0x6c6c, 0x2079, 0x6f43, 0x736e, 0x6e6f, 0x6e61, 
+0x2074, 0x614d, 0x6f6a, 0x2072, 0x6550, 0x746e, 0x7461, 0x6e6f, 0x6369, 
+0x202c, 0x6f4a, 0x6e68, 0x6420, 0x4c65, 0x7561, 0x6562, 0x666e, 0x6c65, 
+0x2073, 0x3228, 0x3030, 0x2931, "\000" 
+    IDC_TEMPERAMENT, 0x403, 67, 0
+0x6e41, 0x6963, 0x6e65, 0x2074, 0x7247, 0x6565, 0x206b, 0x6541, 0x6c6f, 
+0x6369, 0x202c, 0x6c41, 0x6f73, 0x5420, 0x6972, 0x7274, 0x6169, 0x6369, 
+0x5320, 0x6163, 0x656c, 0x6f20, 0x2066, 0x6874, 0x2065, 0x3435, 0x363a, 
+0x2034, 0x203a, 0x3138, 0x5420, 0x6972, 0x6461, "\000" 
+    IDC_TEMPERAMENT, 0x403, 48, 0
+0x6641, 0x6972, 0x6163, 0x206e, 0x6142, 0x6170, 0x6572, 0x5820, 0x6c79, 
+0x706f, 0x6f68, 0x656e, 0x2820, 0x6449, 0x6f69, 0x6870, 0x6e6f, 0x2c65, 
+0x4c20, 0x6f6f, 0x6573, 0x4c20, 0x676f, 0x0029, 
+    IDC_TEMPERAMENT, 0x403, 69, 0
+0x6641, 0x6972, 0x6163, 0x206e, 0x6159, 0x7773, 0x2061, 0x7958, 0x6f6c, 
+0x6870, 0x6e6f, 0x2065, 0x4928, 0x6964, 0x706f, 0x6f68, 0x656e, 0x202c, 
+0x6143, 0x626c, 0x7361, 0x5220, 0x7365, 0x6e6f, 0x7461, 0x726f, 0x2073, 
+0x6977, 0x6874, 0x4d20, 0x6d65, 0x7262, 0x6e61, 0x2965, "\000" 
+    IDC_TEMPERAMENT, 0x403, 38, 0
+0x3931, 0x452d, 0x4f44, 0x4720, 0x6e65, 0x7265, 0x7461, 0x6465, 0x5520, 
+0x6973, 0x676e, 0x5320, 0x6163, 0x656c, 0x5720, 0x726f, 0x736b, 0x6f68, 
+0x0070, 
+    IDC_TEMPERAMENT, 0x403, 31, 0
+0x7543, 0x7473, 0x6d6f, 0x5420, 0x6d65, 0x6570, 0x6172, 0x656d, 0x746e, 
+0x7720, 0x7469, 0x2068, 0x4152, 0x542f, 0x4f49, "\000" 
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -624,11 +848,17 @@ END
 //
 
 IDC_CURSORCHANNELONOFF  CURSOR                  "res\\cursor1.cur"
+
 IDC_CURSORENVVOLUME     CURSOR                  "res\\cur00001.cur"
+
 IDC_CURSORGOTO          CURSOR                  "res\\cursoren.cur"
+
 IDC_CURSORDLG           CURSOR                  "res\\cursorgo.cur"
+
 IDC_CURSORCHANNELONOFF1 CURSOR                  "res\\cursorch.cur"
+
 IDC_CURSORSETPOS        CURSOR                  "res\\cur00003.cur"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -639,6 +869,7 @@ IDC_CURSORSETPOS        CURSOR                  "res\\cur00003.cur"
 // remains consistent on all systems.
 IDI_ICONEXCLAMATION     ICON                    "res\\icon1.ico"
 
+
 /////////////////////////////////////////////////////////////////////////////
 //
 // DESIGNINFO
@@ -647,6 +878,18 @@ IDI_ICONEXCLAMATION     ICON                    "res\\icon1.ico"
 #ifdef APSTUDIO_INVOKED
 GUIDELINES DESIGNINFO
 BEGIN
+    IDD_FILENEW, DIALOG
+    BEGIN
+    END
+
+    IDD_EXPSAP, DIALOG
+    BEGIN
+    END
+
+    IDD_EXPRMT, DIALOG
+    BEGIN
+    END
+
     IDD_EXPMSX, DIALOG
     BEGIN
         BOTTOMMARGIN, 228
@@ -654,12 +897,20 @@ BEGIN
 
     IDD_CONFIG, DIALOG
     BEGIN
-        BOTTOMMARGIN, 237
+        BOTTOMMARGIN, 257
     END
 
     IDD_EFFECTS, DIALOG
     BEGIN
         BOTTOMMARGIN, 151
+    END
+
+    IDD_IMPORTMOD, DIALOG
+    BEGIN
+    END
+
+    IDD_IMPORTMODFINISHED, DIALOG
+    BEGIN
     END
 
     IDD_SONGTRACKSORDER, DIALOG
@@ -673,12 +924,27 @@ BEGIN
         BOTTOMMARGIN, 224
     END
 
+    IDD_IMPORTTMC, DIALOG
+    BEGIN
+    END
+
+    IDD_IMPORTTMCFINISHED, DIALOG
+    BEGIN
+    END
+
+    IDD_RENUMBERINSTRUMENTS, DIALOG
+    BEGIN
+        BOTTOMMARGIN, 94
+    END
+
     IDD_EXPASM, DIALOG
     BEGIN
     END
 
-    IDD_OCTAVESELECT, DIALOG
+    IDD_INSTRUMENTSELECT, DIALOG
     BEGIN
+        RIGHTMARGIN, 157
+        BOTTOMMARGIN, 256
     END
 
     IDD_PATHS, DIALOG
@@ -703,8 +969,45 @@ BEGIN
         RIGHTMARGIN, 238
         BOTTOMMARGIN, 50
     END
+
+    IDD_CHANGEMAXTRACKLEN, DIALOG
+    BEGIN
+    END
+
+    IDD_TUNING, DIALOG
+    BEGIN
+        LEFTMARGIN, 8
+        RIGHTMARGIN, 261
+        BOTTOMMARGIN, 339
+    END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_CONFIG AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_INSTRUMENTSELECT AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_EXPMSX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_TUNING AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -718,9 +1021,9 @@ BEGIN
     ID_BLOCK_VOLUMEDOWN     "Volume down\nVolume down"
     ID_BLOCK_INSTRLEFT      "Instrument number change\nChange instrument"
     ID_BLOCK_INSTRRIGHT     "Instrument number change\nChange instrument"
-    ID_BLOCK_PLAY           "Play block top-bottom area\nPlay block"
+    ID_BLOCK_PLAY           "Play selected block\nPlay block"
     ID_BLOCK_INSTRALL       "Block modification mode\nBlock mode"
-    ID_BLOCK_BACKUP         "Restore block from the backup\nRestore block"
+    ID_BLOCK_BACKUP         "Restore block from backup\nRestore block"
 END
 
 STRINGTABLE
@@ -751,6 +1054,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 //
 
 IDR_MAINFRAME           BITMAP                  "res\\Toolbar.bmp"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -791,22 +1095,23 @@ END
 // Dialog
 //
 
-IDD_ABOUTBOX DIALOG 0, 0, 342, 205
+IDD_ABOUTBOX DIALOGEX 0, 0, 343, 216
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About Rmt"
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,285,184,50,14,WS_GROUP
-    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,20,20
+    DEFPUSHBUTTON   "OK",IDOK,286,195,50,14,WS_GROUP
+    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,21,20
     LTEXT           "RASTER Music Tracker",IDC_RMTVERSION,47,7,185,8,SS_NOPREFIX
-    LTEXT           "by Radek Sterba, Raster/C.P.U.",IDC_RMTAUTHOR,47,17,185,8
-    LTEXT           "http://raster.atari.org",IDC_STATIC,47,30,131,10
-    LTEXT           "Credits and greetings:",IDC_STATIC,7,43,328,8
-    EDITTEXT        IDC_CREDITS,7,52,328,32,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY
-    LTEXT           "External Pokey sound emulation provided by:",IDC_STATIC,7,90,328,8
-    EDITTEXT        IDC_ABOUTPOKEY,7,99,328,32,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY
-    LTEXT           "External Atari 6502 processor emulation provided by:",IDC_STATIC,7,136,328,8
-    EDITTEXT        IDC_ABOUT6502,7,146,328,32,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY
+    LTEXT           "by Radek Sterba, Raster/C.P.U.",IDC_RMTAUTHOR,47,18,260,8
+    LTEXT           "http://raster.atari.org",IDC_STATIC,47,29,91,10
+    LTEXT           "Credits and greetings:",IDC_STATIC,7,43,329,8
+    EDITTEXT        IDC_CREDITS,7,52,329,46,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | WS_VSCROLL
+    LTEXT           "External Pokey sound emulation provided by:",IDC_STATIC,7,104,329,8
+    EDITTEXT        IDC_ABOUTPOKEY,7,113,329,32,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY
+    LTEXT           "External Atari 6502 processor emulation provided by:",IDC_STATIC,7,150,329,8
+    EDITTEXT        IDC_ABOUT6502,7,160,329,32,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY
+    LTEXT           "RMT driver",IDC_DRIVERVERSION,7,199,268,10
 END
 
 
@@ -818,7 +1123,9 @@ END
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDR_MAINFRAME           ICON                    "res\\Rmt.ico"
+
 IDR_RMTTYPE             ICON                    "res\\RmtDoc.ico"
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -831,12 +1138,23 @@ BEGIN
     IDD_ABOUTBOX, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 335
+        RIGHTMARGIN, 336
         TOPMARGIN, 7
-        BOTTOMMARGIN, 198
+        BOTTOMMARGIN, 209
     END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_ABOUTBOX AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -848,9 +1166,9 @@ IDR_MAINFRAME MENU
 BEGIN
     POPUP "&File"
     BEGIN
-        MENUITEM "&New",                        ID_FILE_NEW
+        MENUITEM "Ne&w\tCtrl+W",                ID_FILE_NEW
         MENUITEM "&Load...\tCtrl+L",            ID_FILE_OPEN
-        MENUITEM "Reload",                      ID_FILE_RELOAD
+        MENUITEM "&Reload\tCtrl+R",             ID_FILE_RELOAD
         MENUITEM SEPARATOR
         MENUITEM "&Save\tCtrl+S",               ID_FILE_SAVE
         MENUITEM "Save &As...",                 ID_FILE_SAVE_AS
@@ -860,22 +1178,16 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "&Print...",                   ID_FILE_PRINT
         MENUITEM "Print Pre&view",              ID_FILE_PRINT_PREVIEW
-        MENUITEM "P&rint Setup...",             ID_FILE_PRINT_SETUP
+        MENUITEM "Prin&t Setup...",             ID_FILE_PRINT_SETUP
         MENUITEM SEPARATOR
-        MENUITEM "File 1",                      ID_FILE_MRU_FILE1
-        MENUITEM "File 2",                      ID_FILE_MRU_FILE2
-        MENUITEM "File 3",                      ID_FILE_MRU_FILE3
-        MENUITEM "File 4",                      ID_FILE_MRU_FILE4
-        MENUITEM "File 5",                      ID_FILE_MRU_FILE5
-        MENUITEM SEPARATOR
-        MENUITEM "E&xit",                       ID_WANTEXIT
+        MENUITEM "E&xit\tAlt+F4",               ID_WANTEXIT
     END
-    POPUP "&Undo"
+    POPUP "&Edit"
     BEGIN
         MENUITEM "&Undo",                       ID_UNDO_UNDO
         MENUITEM "&Redo",                       ID_UNDO_REDO
         MENUITEM SEPARATOR
-        MENUITEM "&Clear Undo&&Redo history",   ID_UNDO_CLEARUNDOREDO
+        MENUITEM "&Clear Undo && Redo history", ID_UNDO_CLEARUNDOREDO
     END
     POPUP "&Track"
     BEGIN
@@ -884,40 +1196,38 @@ BEGIN
         MENUITEM "Cu&t",                        ID_TRACK_CUT
         MENUITEM "&Delete",                     ID_TRACK_DELETE
         MENUITEM SEPARATOR
-        MENUITEM "Cursor go to the speed column\tCtrl+Z", ID_TRACK_CURSORGOTOTHESPEEDCOLUMN
-        MENUITEM SEPARATOR
-        MENUITEM "&Info about using of actual track", ID_TRACK_INFOABOUTUSINGOFACTUALTRACK
+        MENUITEM "&Info about current track...", ID_TRACK_INFOABOUTUSINGOFACTUALTRACK
         MENUITEM "Search and &build wise loop", ID_TRACK_SEARCHANDBUILDLOOP
         MENUITEM "E&xpand loop",                ID_TRACK_EXPANDLOOP
         MENUITEM SEPARATOR
-        MENUITEM "Search and rebuild wise loops in all tracks", ID_SONG_SEARCHANDBUILDLOOPSINALLTRACKS
+        MENUITEM "Search and rebuild wise loops in all tracks...", ID_SONG_SEARCHANDBUILDLOOPSINALLTRACKS
         MENUITEM "Expand loops in all tracks",  ID_SONG_EXPANDLOOPSINALLTRACKS
-        MENUITEM "Renumber all tracks",         ID_TRACK_RENUMBERALLTRACKS
+        MENUITEM "Renumber all tracks...",      ID_TRACK_RENUMBERALLTRACKS
         MENUITEM SEPARATOR
-        MENUITEM "&Load and paste to actual track", ID_TRACK_LOAD
-        MENUITEM "&Save actual track as...",    ID_TRACK_SAVE
+        MENUITEM "&Load track from file...",    ID_TRACK_LOAD
+        MENUITEM "&Save track as...",           ID_TRACK_SAVE
         MENUITEM SEPARATOR
-        MENUITEM "Clear all duplicated tracks, adjust song", ID_TRACK_CLEARALLDUPLICATEDTRACKS
-        MENUITEM "Clear all tracks unused in song", ID_TRACK_CLEARALLTRACKSUNUSEDINSONG
-        MENUITEM "All tracks cleanup",          ID_TRACK_ALLTRACKSCLEANUP
+        MENUITEM "Clear all duplicated tracks, adjust song...", ID_TRACK_CLEARALLDUPLICATEDTRACKS
+        MENUITEM "Clear all tracks unused in song...", ID_TRACK_CLEARALLTRACKSUNUSEDINSONG
+        MENUITEM "All tracks cleanup...",       ID_TRACK_ALLTRACKSCLEANUP
     END
     POPUP "&Block"
     BEGIN
         MENUITEM "Restore from &backup\tCtrl+B", ID_BLOCK_BACKUP
         MENUITEM SEPARATOR
-        MENUITEM "&Copy\tCtrl+C, Ctrl+Ins",     ID_BLOCK_COPY
-        MENUITEM "&Paste\tCtrl+V, Shift+Ins",   ID_BLOCK_PASTE
+        MENUITEM "&Copy\tCtrl+C",               ID_BLOCK_COPY
+        MENUITEM "&Paste\tCtrl+V",              ID_BLOCK_PASTE
         POPUP "Paste sp&ecial"
         BEGIN
-            MENUITEM "&Merge with current content", ID_BLOCK_PASTESPECIAL_MERGEWITHCURRENTCONTENT
+            MENUITEM "&Merge with current content\tCtrl+M", ID_BLOCK_PASTESPECIAL_MERGEWITHCURRENTCONTENT
             MENUITEM "&Volume values only",         ID_BLOCK_PASTESPECIAL_VOLUMEVALUESONLY
             MENUITEM "&Speed values only",          ID_BLOCK_PASTESPECIAL_SPEEDVALUESONLY
         END
         MENUITEM "Cu&t\tCtrl+X",                ID_BLOCK_CUT
         MENUITEM "&Delete\tDel",                ID_BLOCK_DELETE
-        MENUITEM "Exchange block and clipboard\tCtrl+E", ID_BLOCK_EXCHANGE
+        MENUITEM "Exchange block and Clipboard\tCtrl+E", ID_BLOCK_EXCHANGE
         MENUITEM SEPARATOR
-        MENUITEM "E&ffects/tools\tCtrl+F",      ID_BLOCK_EFFECT
+        MENUITEM "E&ffects/tools...\tCtrl+F",   ID_BLOCK_EFFECT
         MENUITEM SEPARATOR
         MENUITEM "Select &all\tCtrl+A",         ID_BLOCK_SELECTALL
     END
@@ -942,15 +1252,15 @@ BEGIN
         MENUITEM "Cu&t",                        ID_INSTR_CUT
         MENUITEM "&Delete",                     ID_INSTR_DELETE
         MENUITEM SEPARATOR
-        MENUITEM "&Info about using of actual instrument", ID_INSTRUMENT_INFO
-        MENUITEM "Change all the instrument occurences", ID_INSTRUMENT_CHANGE
-        MENUITEM "Renumber all instruments",    ID_INSTRUMENT_RENUMBERALLINSTRUMENTS
+        MENUITEM "&Info about current instrument...", ID_INSTRUMENT_INFO
+        MENUITEM "Change all the instrument occurences...", ID_INSTRUMENT_CHANGE
+        MENUITEM "Renumber all instruments...", ID_INSTRUMENT_RENUMBERALLINSTRUMENTS
         MENUITEM SEPARATOR
-        MENUITEM "&Load and paste to actual instrument", ID_INSTR_LOAD
-        MENUITEM "&Save actual instrument as...", ID_INSTR_SAVE
+        MENUITEM "&Load instrument from file...", ID_INSTR_LOAD
+        MENUITEM "&Save instrument as...",      ID_INSTR_SAVE
         MENUITEM SEPARATOR
-        MENUITEM "Clear all unused instruments", ID_INSTRUMENT_CLEARALLUNUSEDINSTRUMENTS
-        MENUITEM "All instruments cleanup",     ID_INSTR_ALLINSTRUMENTSCLEANUP
+        MENUITEM "Clear all unused instruments...", ID_INSTRUMENT_CLEARALLUNUSEDINSTRUMENTS
+        MENUITEM "All instruments cleanup...",  ID_INSTR_ALLINSTRUMENTSCLEANUP
     END
     POPUP "&Song"
     BEGIN
@@ -958,22 +1268,24 @@ BEGIN
         MENUITEM "&Paste line",                 ID_SONG_PASTELINE
         MENUITEM "Cl&ear line",                 ID_SONG_CLEARLINE
         MENUITEM SEPARATOR
-        MENUITEM "Delete act&ual line\tCtrl+U", ID_SONG_DELETEACTUALLINE
+        MENUITEM "Delete c&urrent line\tCtrl+U", ID_SONG_DELETEACTUALLINE
         MENUITEM "&Insert new empty line\tCtrl+I", ID_SONG_INSERTNEWEMPTYLINE
         MENUITEM "Insert new line with unused empty tracks\tCtrl+P", ID_SONG_INSERTNEWLINEWITHUNUSEDTRACKS
-        MENUITEM "Insert c&opy or clone of song line(s)\tCtrl+O", ID_SONG_INSERTCOPYORCLONEOFSONGLINES
-        MENUITEM "Put &new empty unused track to actual song position\tCtrl+N", ID_SONG_PUTNEWEMPTYUNUSEDTRACK
-        MENUITEM "&Make track's duplicate and put it to actual song pos.\tCtrl+M", ID_SONG_MAKETRACKSDUPLICATE
+        MENUITEM "Insert c&opy or clone of song line(s)...\tCtrl+O", ID_SONG_INSERTCOPYORCLONEOFSONGLINES
+        MENUITEM "Insert &new empty unused track to current song position\tCtrl+N", ID_SONG_PUTNEWEMPTYUNUSEDTRACK
+        MENUITEM "Make a track &duplicate to current song position\tCtrl+D", ID_SONG_MAKETRACKSDUPLICATE
         MENUITEM SEPARATOR
-        MENUITEM "Song switch to 4ch/8ch...",   ID_SONG_SONGSWITCH4_8
-        MENUITEM "Song columns' order change/copy/clear", ID_SONG_TRACKSORDERCHANGE
-        MENUITEM "Song change maximal length of tracks", ID_SONG_SONGCHANGEMAXIMALLENGTHOFTRACKS
+        MENUITEM "Switch song between 4 or 8 channels...", ID_SONG_SONGSWITCH4_8
+        MENUITEM "Song columns' order change/copy/clear...", ID_SONG_TRACKSORDERCHANGE
+        MENUITEM "Change maximal length of tracks...", ID_SONG_SONGCHANGEMAXIMALLENGTHOFTRACKS
         MENUITEM SEPARATOR
-        MENUITEM "All size optimizations",      ID_SONG_SIZEOPTIMIZATION
+        MENUITEM "All size optimizations...",   ID_SONG_SIZEOPTIMIZATION
     END
     POPUP "&View"
     BEGIN
-        MENUITEM "&Configuration",              ID_VIEW_CONFIGURATION
+        MENUITEM "&Configuration...",           ID_VIEW_CONFIGURATION
+        MENUITEM SEPARATOR
+        MENUITEM "&Tuning...",                  ID_VIEW_TUNING
         MENUITEM SEPARATOR
         MENUITEM "Main &toolbar",               ID_VIEW_TOOLBAR
         MENUITEM "&Block toolbar",              ID_VIEW_BLOCKTOOLBAR
@@ -999,13 +1311,13 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,0,0,1
- PRODUCTVERSION 1,0,0,1
+ FILEVERSION 1,34,0,0
+ PRODUCTVERSION 1,34,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
- FILEFLAGS 0x1L
+ FILEFLAGS 0x9L
 #else
- FILEFLAGS 0x0L
+ FILEFLAGS 0x8L
 #endif
  FILEOS 0x4L
  FILETYPE 0x1L
@@ -1016,12 +1328,12 @@ BEGIN
         BLOCK "040904b0"
         BEGIN
             VALUE "FileDescription", "RASTER Music Tracker"
-            VALUE "FileVersion", "1, 0, 0, 1"
-            VALUE "InternalName", "RASTER Music Tracker by Raster/C.P.U."
-            VALUE "LegalCopyright", "Copyright (C) 2002-2009"
+            VALUE "FileVersion", "1.34.0.0"
+            VALUE "InternalName", "RASTER Music Tracker by Raster/C.P.U. and VinsCool"
+            VALUE "LegalCopyright", "Copyright (C) 2002-2009, 2021-2022"
             VALUE "OriginalFilename", "Rmt.EXE"
-            VALUE "ProductName", "Rmt Application"
-            VALUE "ProductVersion", "1, 0, 0, 1"
+            VALUE "ProductName", "RASTER Music Tracker"
+            VALUE "ProductVersion", "1.34.0.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -1063,10 +1375,11 @@ BEGIN
     ID_FILE_OPEN            "Load an existing song\nLoad"
     ID_FILE_CLOSE           "Close the active document\nClose"
     ID_FILE_SAVE            "Save the song\nSave"
-    ID_FILE_SAVE_AS         "Save the song with a new name"
+    ID_FILE_SAVE_AS         "Save the song with a new filename"
     ID_FILE_PAGE_SETUP      "Change the printing options\nPage Setup"
     ID_FILE_PRINT_SETUP     "Change the printer and printing options\nPrint Setup"
     ID_FILE_PRINT           "Print the active view"
+    ID_FILE_PRINT_PREVIEW   "Preview the page"
 END
 
 STRINGTABLE
@@ -1110,8 +1423,8 @@ STRINGTABLE
 BEGIN
     ID_EDIT_CLEAR           "Erase the selection\nErase"
     ID_EDIT_CLEAR_ALL       "Erase everything\nErase All"
-    ID_EDIT_COPY            "Copy the actual track and put it on the Clipboard\nCopy"
-    ID_EDIT_CUT             "Cut the actual track\nCut"
+    ID_EDIT_COPY            "Copy the current track to Clipboard\nCopy"
+    ID_EDIT_CUT             "Cut the current track\nCut"
     ID_EDIT_FIND            "Find the specified text\nFind"
     ID_EDIT_PASTE           "Insert Clipboard contents\nPaste"
     ID_EDIT_REPEAT          "Repeat the last action\nRepeat"
@@ -1147,21 +1460,21 @@ END
 STRINGTABLE
 BEGIN
     AFX_IDS_PREVIEW_CLOSE   "Close print preview mode\nCancel Preview"
-    IDS_RMTVERSION          "RASTER Music Tracker v1.30"
-    IDS_RMTAUTHOR           "by Radek Sterba, © Raster/C.P.U., 2002-2009"
+    IDS_RMTVERSION          "RASTER Music Tracker v1.34.00"
+    IDS_RMTAUTHOR           "by Radek Sterba, © Raster/C.P.U., 2002-2009, and VinsCool, 2021-2022"
 END
 
 STRINGTABLE
 BEGIN
-    ID_BUTTPLAY1            "Play song from the begin"
-    ID_BUTTON32790          "Play song from actual possition"
-    ID_BUTTON32791          "Cyclic playing actual set of tracks"
+    ID_BUTTPLAY1            "Play song from start position"
+    ID_BUTTON32790          "Play song from current position"
+    ID_BUTTON32791          "Cyclic play of track"
     ID_BUTTON32792          "Stop song, mute all sounds"
-    ID_PLAYFOLLOW           "Follow the playing possition (turn on/off)\nFollow song"
-    ID_PLAY1                "Play song from start\nPlay from start"
-    ID_PLAY2                "Play song from currently edit possition\nPlay"
-    ID_PLAY3                "Cyclic playing of currently edit set of tracks\nReplay actual tracks"
-    ID_PLAYSTOP             "Stop the song. Mute all sounds.\nStop"
+    ID_PLAYFOLLOW           "Follow the currently playing position (turn on/off)\nFollow song"
+    ID_PLAY1                "Play song from start position\nPlay from start"
+    ID_PLAY2                "Play song from current position\nPlay"
+    ID_PLAY3                "Play and loop current tracks pattern\nLoop pattern"
+    ID_PLAYSTOP             "Stop playing the song. Mute all sounds.\nStop"
 END
 
 STRINGTABLE
@@ -1172,32 +1485,40 @@ BEGIN
     ID_BUTTON32803          "Info edit"
     ID_EDIT_SONG            "Song edit"
     ID_EDIT_INFO            "Info edit"
-    ID_EM_TRACKS            "Track edit\nTrack edit"
-    ID_EM_INSTRUMENTS       "Instrument edit\nInstrument edit"
-    ID_EM_INFO              "Info edit\nInfo edit"
-    ID_EM_SONG              "Song edit\nSong edit"
-    ID_PROVEMODE            "Prove mode\nProve mode"
+    ID_EM_TRACKS            "Move to track edit view\nTrack edit"
+    ID_EM_INSTRUMENTS       "Move to instrument edit view\nInstrument edit"
+    ID_EM_INFO              "Move cursor to Info edit\nInfo edit"
+    ID_EM_SONG              "Move cursor to song edit\nSong edit"
+    ID_PROVEMODE            "Edit/Jam mode toggle\nJam mode"
 END
 
 STRINGTABLE
 BEGIN
     ID_MIDIONOFF            "MIDI on/off\nMIDI on/off"
+    ID_VIEW_CONFIGURATION   "Display the configuration menu"
 END
 
 STRINGTABLE
 BEGIN
-    ID_FILE_EXPORT_AS       "Export the song to file"
+    ID_FILE_EXPORT_AS       "Export song to file"
 END
 
 STRINGTABLE
 BEGIN
-    ID_FILE_IMPORT          "Import the song from a file"
+    ID_FILE_IMPORT          "Import song from file"
 END
 
 STRINGTABLE
 BEGIN
     ID_BUTTONCOMBO1         "Insert note spacing\nInsert note spacing"
-    ID_PLAY0                "Play song from bookmark\nPlay from bookmark"
+    ID_PLAY0                "Play song from bookmark position\nPlay from bookmark"
+    ID_FILE_RELOAD          "Reload song from the last saved version\nReload"
+END
+
+STRINGTABLE
+BEGIN
+    ID_WANTEXIT             "Exit RMT"
+    ID_VIEW_TUNING          "Display the tuning menu"
 END
 
 #endif    // English (United States) resources

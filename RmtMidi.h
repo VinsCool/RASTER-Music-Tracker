@@ -5,7 +5,6 @@
 #ifndef __RMTMIDI__
 #define __RMTMIDI__
 
-
 #define MIDIDEVNAMELEN	256
 
 extern int g_midi_notech[16];
@@ -13,7 +12,6 @@ extern int g_midi_voluch[16];
 extern int g_midi_instch[16];
 
 extern int g_focus;
-
 
 class CRmtMidi
 {
@@ -39,10 +37,10 @@ private:
 
 	HMIDIIN m_hmidiin;			//MIDI IN handle
 	//HMIDIOUT m_hmidiout;		//MIDI OUT handle
-	char m_midiindevname[MIDIDEVNAMELEN+1];	//jmeno MIDI IN zarizeni
-	//char m_midioutdevname[MIDIDEVNAMELEN+1]; //jmeno MIDI OUT zarizeni
-	int m_midiinid;						//id MIDI IN zarizeni
-	//int m_midioutid;					//id MIDI OUT zarizeni
+	char m_midiindevname[MIDIDEVNAMELEN+1];	//the name of the MIDI IN device
+	//char m_midioutdevname[MIDIDEVNAMELEN+1]; //the name of the MIDI OUT device
+	int m_midiinid;						//id MIDI IN device
+	//int m_midioutid;					//id MIDI OUT device
 };
 
 #endif

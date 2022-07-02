@@ -9,42 +9,84 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-
 #include "r_music.h"
 #include "RmtMidi.h"
-
 
 extern CDC* g_mem_dc;
 
 extern int g_width;
 extern int g_height;
 extern int g_tracklines;
-extern int g_songlines;
-extern int g_song_x;
+extern int g_scaling_percentage;
+
+extern double g_basetuning;
+extern int g_basenote;
+extern int g_temperament;
+
+//ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!!
+extern double g_UNISON;
+extern double g_MIN_2ND;
+extern double g_MAJ_2ND;
+extern double g_MIN_3RD;
+extern double g_MAJ_3RD;
+extern double g_PERF_4TH;
+extern double g_TRITONE;
+extern double g_PERF_5TH;
+extern double g_MIN_6TH;
+extern double g_MAJ_6TH;
+extern double g_MIN_7TH;
+extern double g_MAJ_7TH;
+
+//ratio left
+extern int g_UNISON_L;
+extern int g_MIN_2ND_L;
+extern int g_MAJ_2ND_L;
+extern int g_MIN_3RD_L;
+extern int g_MAJ_3RD_L;
+extern int g_PERF_4TH_L;
+extern int g_TRITONE_L;
+extern int g_PERF_5TH_L;
+extern int g_MIN_6TH_L;
+extern int g_MAJ_6TH_L;
+extern int g_MIN_7TH_L;
+extern int g_MAJ_7TH_L;
+
+//ratio right
+extern int g_UNISON_R;
+extern int g_MIN_2ND_R;
+extern int g_MAJ_2ND_R;
+extern int g_MIN_3RD_R;
+extern int g_MAJ_3RD_R;
+extern int g_PERF_4TH_R;
+extern int g_TRITONE_R;
+extern int g_PERF_5TH_R;
+extern int g_MIN_6TH_R;
+extern int g_MAJ_6TH_R;
+extern int g_MIN_7TH_R;
+extern int g_MAJ_7TH_R;
 
 extern CDC* g_gfx_dc;
 extern HWND g_hwnd;
 extern HWND g_viewhwnd;
-
 extern BOOL g_changes;
-//extern int g_rmtexit;
+
 extern int g_shiftkey;
 extern int g_controlkey;
-extern int g_numlock;
-extern int g_capslock_rmt;
-extern int g_capslock_other;
-extern int g_scrolllock_rmt;
-extern int g_scrolllock_other;
+extern int g_altkey;	//does not work yet
 
 extern int g_tracks4_8;
 
 extern BOOL volatile g_screenupdate;
 extern BOOL volatile g_invalidatebytimer;
+
 extern int volatile g_screena;
 extern int volatile g_screenwait;
 
 extern int g_activepart;
 extern int g_active_ti;	
+
+extern BOOL is_editing_instr;	//will always return 1 in the Instrument Name area
+extern BOOL is_editing_infos;	//will always return 1 in the Song Name area
 
 extern BOOL volatile g_prove;
 extern BOOL volatile g_respectvolume;
@@ -65,7 +107,8 @@ extern UINT g_mousebutt;
 
 extern int g_tracklinehighlight;
 extern BOOL g_tracklinealtnumbering;
-extern int g_trackcursorverticalrange;
+extern BOOL g_displayflatnotes;
+extern BOOL g_usegermannotation;
 extern BOOL g_ntsc;
 extern BOOL g_nohwsoundbuffer;
 
@@ -76,21 +119,18 @@ extern BOOL g_keyboard_updowncontinue;
 extern BOOL g_keyboard_rememberoctavesandvolumes;
 extern BOOL g_keyboard_escresetatarisound;
 extern BOOL g_keyboard_askwhencontrol_s;
-extern BOOL g_keyboard_usenumlock;
 
 extern BOOL g_midi_tr;
 extern int g_midi_volumeoffset;
 extern BOOL g_midi_noteoff;
 
 extern void SetStatusBarText(const char* text);
-
-
-
 extern void TextXY(char *txt,int x,int y,int c=0);
 
 extern void Memory_Clear();
 extern int Atari_LoadRMTRoutines();
 extern int Atari_InitRMTRoutine();
+extern void Get_Driver_Version();	
 
 extern char CharH4(unsigned char b);
 extern char CharL4(unsigned char b);
@@ -113,8 +153,6 @@ extern void Atari6502_DeInit();
 extern void SetChannelOnOff(int ch,int onoff);
 extern void SetChannelSolo(int ch);
 
-extern void SetCapsLockOff();
-
 extern void Atari_InstrumentTurnOff(int instr);
 
 class CRmtView : public CView
@@ -134,26 +172,19 @@ public:
 	void DrawAnalyzer();
 	void DrawPlaytimecounter();
 
-	//int GetMouseArea(CPoint point, int& px, int& py);
 	int MouseAction(CPoint point,UINT mousebutt,short wheelzDelta);
-
-	BOOL GetNumLock();
-	void SetNumLock(BOOL onoff);
-
 	void ChangeViewElements(BOOL writeconfig=1);
 
-	void UpdateModule();
+	//used to handle the window size and most dynamic elements related to it
 	bool Resize(int width, int height);
 	int  m_width;
 	int  m_height;
 
-	//void TextXY(char *txt,int x,int y);
-
-	//my
 	CBitmap m_mem_bitmap;
 	CDC		m_mem_dc;
 	CBitmap m_gfx_bitmap;
 	CDC		m_gfx_dc;
+
 	CPen*	m_pen1;
 	CPen*	m_penorig;
 
@@ -169,19 +200,15 @@ public:
 
 	UINT m_timeranalyzer;
 
-	BOOL m_setnumlockfunction;
-
 // Operations
 public:
-
 
 // Overrides
 	// ClassWizard generated virtual function overrides
 	//{{AFX_VIRTUAL(CRmtView)
 	public:
 	virtual void OnDraw(CDC* pDC);  // overridden to draw this view
-	virtual void OnSize(UINT nType, int cx, int cy);
-
+	virtual void OnSize(UINT nType, int cx, int cy);	//allows proper window resize and adjust things related to it
 	virtual BOOL PreCreateWindow(CREATESTRUCT& cs);
 	virtual void OnInitialUpdate();
 	protected:
@@ -210,7 +237,6 @@ protected:
 	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg void OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags);
 	afx_msg void OnFileOpen();
-	afx_msg void OnFileOpenRecent(UINT i);
 	afx_msg void OnFileSave();
 	afx_msg void OnFileSaveAs();
 	afx_msg void OnFileNew();
@@ -302,6 +328,7 @@ protected:
 	afx_msg void OnMidionoff();
 	afx_msg void OnUpdateMidionoff(CCmdUI* pCmdUI);
 	afx_msg void OnViewConfiguration();
+	afx_msg void OnViewTuning();
 	afx_msg void OnBlockCopy();
 	afx_msg void OnBlockCut();
 	afx_msg void OnBlockDelete();

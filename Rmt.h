@@ -14,9 +14,10 @@
 
 #include "resource.h"       // main symbols
 
-
 extern CString g_aboutpokey;
 extern CString g_about6502;
+
+extern CString g_driverversion;	//used to display the RMT Driver "tracker.obx" version number
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtApp:
@@ -42,8 +43,6 @@ public:
 		//    DO NOT EDIT what you see in these blocks of generated code !
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
-public:
-	CString& GetRecentFile(int i);
 };
 
 

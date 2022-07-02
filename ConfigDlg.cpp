@@ -15,17 +15,19 @@ static char THIS_FILE[] = __FILE__;
 /////////////////////////////////////////////////////////////////////////////
 // CConfigDlg dialog
 
-
 CConfigDlg::CConfigDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CConfigDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CConfigDlg)
 	m_midi_tr = FALSE;
 	m_keyboard_playautofollow = FALSE;
-	m_keyboard_usenumlock = TRUE;
 	m_midi_volumeoffset = 0;
 	m_tracklinehighlight = 0;
+	m_scaling_percentage = 100;
+	m_tuning = 0;
 	m_ntsc = FALSE;
+	m_displayflatnotes = FALSE;
+	m_usegermannotation = FALSE;
 	m_midi_noteoff = FALSE;
 	m_keyboard_updowncontinue = FALSE;
 	m_nohwsoundbuffer = FALSE;
@@ -37,12 +39,11 @@ CConfigDlg::CConfigDlg(CWnd* pParent /*=NULL*/)
 	//}}AFX_DATA_INIT
 }
 
-
 void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CConfigDlg)
-//	DDX_Control(pDX, IDC_TRACKCURSORVERTICALRANGE, m_c_trackcursorverticalrange);
+	//DDX_Control(pDX, IDC_TRACKCURSORVERTICALRANGE, m_c_trackcursorverticalrange);
 	DDX_Control(pDX, IDC_KEYBOARD_LAYOUT, m_keyboard_c_layout);
 	DDX_Control(pDX, IDC_MIDI_DEVICE, m_midi_c_device);
 	DDX_Check(pDX, IDC_MIDI_TR, m_midi_tr);
@@ -51,6 +52,12 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	DDV_MinMaxInt(pDX, m_midi_volumeoffset, 0, 15);
 	DDX_Text(pDX, IDC_TRACKLINEHIGHLIGHT, m_tracklinehighlight);
 	DDV_MinMaxInt(pDX, m_tracklinehighlight, 2, 256);
+	DDX_Text(pDX, IDC_SCALINGPERCENTAGE, m_scaling_percentage);
+	DDV_MinMaxInt(pDX, m_scaling_percentage, 100, 300);
+	DDX_Text(pDX, IDC_TUNING, m_tuning);
+	DDV_MinMaxDouble(pDX, m_tuning, 230, 850);	//nearly a full octave accross, should be more than enough
+	DDX_Check(pDX, IDC_DISPLAYFLATNOTES, m_displayflatnotes);
+	DDX_Check(pDX, IDC_USEGERMANNOTATION, m_usegermannotation);
 	DDX_Check(pDX, IDC_NTSC, m_ntsc);
 	DDX_Check(pDX, IDC_MIDI_NOTEOFF, m_midi_noteoff);
 	DDX_Check(pDX, IDC_KEYBOARD_UPDOWNCONTINUE, m_keyboard_updowncontinue);
@@ -60,10 +67,8 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_KEYBOARD_REMEMBEROCTAVESANDVOLUMES, m_keyboard_rememberoctavesandvolumes);
 	DDX_Check(pDX, IDC_KEYBOARD_ESCRESETATARISOUND, m_keyboard_escresetatarisound);
 	DDX_Check(pDX, IDC_KEYBOARD_ASKWHENCONTROL_S, m_keyboard_askwhencontrol_s);
-	DDX_Check(pDX, IDC_KEYBOARD_USENUMLOCK, m_keyboard_usenumlock);
 	//}}AFX_DATA_MAP
 }
-
 
 BEGIN_MESSAGE_MAP(CConfigDlg, CDialog)
 	//{{AFX_MSG_MAP(CConfigDlg)
@@ -80,7 +85,6 @@ BOOL CConfigDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 	
-	
 	m_midi_c_device.AddString("--- none ---");	//id=0
 
 	MIDIINCAPS micaps;
@@ -91,7 +95,6 @@ BOOL CConfigDlg::OnInitDialog()
 		m_midi_c_device.AddString(micaps.szPname);
 	}
 
-	//if (m_midi_devid>=-1) 
 	m_midi_c_device.SetCurSel(m_midi_device+1);
 	
 	OnMidiTr();
@@ -99,8 +102,6 @@ BOOL CConfigDlg::OnInitDialog()
 	m_keyboard_c_layout.AddString("RMT original layout");
 	m_keyboard_c_layout.AddString("Layout 2");
 	m_keyboard_c_layout.SetCurSel(m_keyboard_layout);
-
-//	m_c_trackcursorverticalrange.SetCurSel(m_trackcursorverticalrange);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	              // EXCEPTION: OCX Property Pages should return FALSE
@@ -110,8 +111,6 @@ void CConfigDlg::OnOK()
 {
 	m_midi_device = m_midi_c_device.GetCurSel()-1;
 	m_keyboard_layout = m_keyboard_c_layout.GetCurSel();
-//	m_trackcursorverticalrange = m_c_trackcursorverticalrange.GetCurSel();
-	//
 	CDialog::OnOK();
 }
 
@@ -209,5 +208,3 @@ void CConfigPathsDlg::OnButton3()
 {
 	BrowsePath(IDC_EDIT3);	
 }
-
-

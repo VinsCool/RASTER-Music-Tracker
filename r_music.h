@@ -1,8 +1,8 @@
 //
 // R_MUSIC.H
+// originally made by Raster, 2002-2009
+// reworked by VinsCool, 2021-2022
 //
-
-//#include "stdafx.h"
 
 #ifndef RMT_R_MUSIC_
 #define RMT_R_MUSIC_
@@ -12,65 +12,46 @@ using namespace std;
 
 #include "EffectsDlg.h"
 #include "xpokey.h"
-
+#include "Tuning.h"
 
 extern BOOL g_changes;
 
-
-//keys
+//TODO: add more keys definition to simplify things
 #define VK_PAGE_UP		33
 #define VK_PAGE_DOWN	34
 
-
+//TODO: make tuning configuration separate, also add theme configuration in the future
 #define CONFIG_FILENAME "rmt.ini"
 
-#define LINE_H  16
+#define EOL "\x0d\x0a"			//Carriage Return (\r) and Line Feed (\n), for strings used during Exports
 
 #define TRACKS_X 2*8
 #define TRACKS_Y 8*16+8
-#define TRACK_LINE_H LINE_H
-
-#define TRACKS_HEADER_H 3*LINE_H
-
-#define	SONG_X	66*8
-#define SONG_Y	1*16
-#define SONG_LINE_H 16
-#define SONG_HEADER_H 16
-#define SONG_LEFT_W 6*8
-
-#define WIN_BORDER_B 4
-
+#define	SONG_X	768
+#define SONG_Y	16
 #define INFO_X	2*8
 #define INFO_Y	1*16
 
-#define STATUS_H  20
-#define STATUS_X TRACKS_X+4*8
-#define STATUS_Y g_height-STATUS_H 
-
-#define RMTFORMATVERSION	1	//cislo verze, ktera se uklada (a tim padem nejvyssi, kterou to umi nacist)
-
+#define RMTFORMATVERSION	1	//the version number that is saved into modules, highest means more recent
 #define TRACKLEN	256			//drive 128
 #define TRACKSNUM	254			//0-253
 #define SONGLEN		256
 #define SONGTRACKS	8
 #define INSTRSNUM	64
-#define NOTESNUM	61			//noty 0-60 vcetne
+#define NOTESNUM	61			//notes 0-60 inclusive
+#define MAXVOLUME	15			//maximum volume
+#define PARCOUNT	24			//24 instrument parameters
+#define ENVCOLS		48			//48 columns in envelope (drive 32) (48 from version 1.25)
+#define ENVROWS		8			//8 line (parameter) in the envelope
+#define TABLEN		32			//maximum 32 steps in the table
 
-#define MAXVOLUME	15			//maximalni hlasitost
+#define INSTRNAMEMAXLEN	32		//maximum length of instrument name
+#define SONGNAMEMAXLEN	64		//maximum length of song name
+#define TRACKMAXSPEED	256		//maximum speed values, highest the slowest
 
-#define PARCOUNT	24			//24 parametru instrumentu
-#define ENVCOLS		48			//48 sloupcu v envelope (drive 32)(48 od verze 1.25)
-#define ENVROWS		8			//8 radku (parametru) v envelope
-#define TABLEN		32			//maximalne 32 kroku v table
-
-
-#define INSTRNAMEMAXLEN	32		//maximalni delka nazvu nastroje
-#define SONGNAMEMAXLEN	64		//maximalni delka nazvu songu
-#define TRACKMAXSPEED	256		//maximalni rychlost 1 beatu
-
-#define MAXATAINSTRLEN	256		//16+(ENVCOLS*3)	//atari instrument ma maximalne 16 parametru + 32*3 bytu envelope
-#define MAXATATRACKLEN	256		//atari track ma max. 256 bytu (index tracku je 0-255)
-#define MAXATASONGLEN	SONGTRACKS*SONGLEN	//maximalni datova velikost atari song casti
+#define MAXATAINSTRLEN	256		//16+(ENVCOLS*3)	//atari instrument has a maximum of 16 parameters + 32 * 3 bytes envelope
+#define MAXATATRACKLEN	256		//atari track has maximum 256 bytes (track index is 0-255)
+#define MAXATASONGLEN	SONGTRACKS*SONGLEN	//maximum data size atari song part
 
 #define PARTINFO	0
 #define PARTTRACKS	1
@@ -83,6 +64,14 @@ extern BOOL g_changes;
 #define MPLAY_TRACK	3
 #define MPLAY_BLOCK	4
 #define MPLAY_BOOKMARK 5
+#define MPLAY_SEEK_NEXT	6	//added for Media keys
+#define MPLAY_SEEK_PREV	7	//added for Media keys
+
+#define MPLAY_SAPR_SONG		255	//SAPR dump from song start
+#define MPLAY_SAPR_FROM		254	//SAPR dump from song cursor position
+#define MPLAY_SAPR_TRACK	253	//SAPR dump from track (loop optional)
+#define MPLAY_SAPR_BLOCK	252	//SAPR dump from selection block (loop optional)
+#define MPLAY_SAPR_BOOKMARK	251	//SAPR dump from bookmak position
 
 #define IOTYPE_RMT			1
 #define IOTYPE_RMW			2
@@ -93,19 +82,24 @@ extern BOOL g_changes;
 #define IOTYPE_ASM			7
 #define IOTYPE_RMF			8
 
+#define IOTYPE_SAPR			9
+#define IOTYPE_LZSS			10
+#define IOTYPE_LZSS_SAP		11
+#define IOTYPE_LZSS_XEX		12
+
 #define IOTYPE_TMC			101		//import TMC
 
-#define IOINSTR_RTI			1		//odpovidajici IOTYPE_RMT
-#define IOINSTR_RMW			2		//odpovidajici IOTYPE_RMW
-#define IOINSTR_TXT			6		//odpovidajici IOTYPE_TXT
+#define IOINSTR_RTI			1		//corresponding IOTYPE_RMT
+#define IOINSTR_RMW			2		//corresponding IOTYPE_RMW
+#define IOINSTR_TXT			6		//corresponding IOTYPE_TXT
 
-#define MAXSUBSONGS			128		//v exportovanem SAPu maximalne tolik subsonguu
+#define MAXSUBSONGS			128		//in exported SAP maximum number of subsongs
 
-//bity v TRACKFLAGU
+//bits in TRACKFLAG
 #define TF_NOEMPTY		1
 #define TF_USED			2
 
-//bity v INSTRUMENTFLAGU
+//bits in INSTRUMENTFLAG
 #define IF_NOEMPTY		1
 #define IF_USED			2
 #define IF_FILTER		4
@@ -113,10 +107,9 @@ extern BOOL g_changes;
 #define IF_PORTAMENTO	16
 #define IF_AUDCTL		32
 
-//Undo operace (jedna muze spotrebovat az 3 zaznamy)
+//Undo operation (one can consume up to 3 records)
 #define UNDOSTEPS		100
-#define MAXUNDO			(UNDOSTEPS*3+8)	//302	//2 navic oddelovaci mezera
-
+#define MAXUNDO			(UNDOSTEPS*3+8)	//302	//2 extra separating gap
 
 //-----------------------------------------------------
 
@@ -138,8 +131,6 @@ extern BOOL g_changes;
 #define UETYPE_INFODATA				69
 
 #define POSGROUPTYPE128_191SIZE 3
-//#define UETYPE_SONGTRACKANDTRACKDATA	129
-
 
 struct TInfo
 {
@@ -147,19 +138,17 @@ struct TInfo
 	int speed;
 	int mainspeed;
 	int instrspeed;
-	//navic
-	int songnamecur; //aby pri undo zmen v nazvu songu vracel kurzor na prislusnou pozici
+	int songnamecur; //to return the cursor to the appropriate position when undo changes in the song name
 };
-
 
 struct TUndoEvent
 {
-	int part;		//cast ve ktere je provadena editace
-	int *cursor;	//kurzor
-	int type;		//typ menenych dat
-	int *pos;		//pozice menenych dat
-	void *data;		//menena data
-	char separator;	//=0 kumulovat prubezne zmeny, =1 ukoncena zmena, =-1 vice eventu pro jeden krok
+	int part;		//the part in which the editing is performed
+	int *cursor;	//cursor
+	int type;		//type of changed data
+	int *pos;		//position of changed data
+	void *data;		//change data
+	char separator;	//= 0 accumulate continuous changes, = 1 completed change, = -1 more events for one step
 };
 
 //-----------------------------------------------------
@@ -175,8 +164,6 @@ public:
 	char DeleteEvent(int i);
 	char PerformEvent(int i);
 	void DropLast();
-
-	//void CheckPoint(BOOL force=0);
 	
 	BOOL Undo();
 	BOOL Redo();
@@ -188,7 +175,6 @@ public:
 	void Separator(int sep=1);
 	void ChangeTrack(int tracknum,int trackline, int type, char separator=0);
 	void ChangeSong(int songline,int trackcol,int type, char separator=0);
-	//void ChangeSongAndTrack(int songline,int trackcol,int tracknum,int type, char separator=0);
 	void ChangeInstrument(int instrnum,int paridx,int type, char separator=0);
 	void ChangeInfo(int paridx,int type, char separator=0);
 
@@ -199,10 +185,7 @@ private:
 	TUndoEvent *m_uar[MAXUNDO];
 	int m_head,m_tail,m_headmax;
 	int m_undosteps,m_redosteps;
-	//TNoteState m_backup;
 };
-
-
 
 //-----------------------------------------------------
 
@@ -216,14 +199,13 @@ struct TTrack
 	int speed[TRACKLEN];
 };
 
-struct TTracksAll	//pro undo
+struct TTracksAll	//for undo
 {
 	int maxtracklength;
 	TTrack tracks[TRACKSNUM];
 };
 
 //-----------------------------------------------------
-
 
 class CTracks
 {
@@ -233,7 +215,7 @@ public:
 	BOOL InitTracks();
 	BOOL ClearTrack(int t);
 	BOOL IsEmptyTrack(int track);
-	BOOL DrawTrack(int col,int x,int y,int tr,int line_cnt,int aline,int cactview,int pline,BOOL isactive,int acu=0);
+	BOOL DrawTrack(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu = 0);
 	BOOL DelNoteInstrVolSpeed(int noteinstrvolspeed,int track,int line);
 	BOOL SetNoteInstrVol(int note,int instr,int vol,int track,int line);
 	BOOL SetInstr(int instr,int track,int line);
@@ -308,7 +290,7 @@ struct TInstrument
 	int volume;
 };
 
-struct TInstrumentsAll		//pro undo
+struct TInstrumentsAll		//for undo
 {
 	TInstrument instruments[INSTRSNUM];
 };
@@ -319,7 +301,7 @@ public:
 	CInstruments();
 	BOOL InitInstruments();
 	BOOL ClearInstrument(int it);
-	//void RandomInstrument(int it);
+	//void RandomInstrument(int it);	
 
 	BOOL DrawInstrument(int it);
 	BOOL ModificationInstrument(int it);
@@ -340,7 +322,7 @@ public:
 	BYTE InstrToAtaRMF(int instr,unsigned char *ata,int max);
 	BOOL AtaToInstr(unsigned char *ata, int instr);
 
-	BOOL AtaV0ToInstr(unsigned char *ata, int instr);	//KVULI NACTENI STARE VERZE
+	BOOL AtaV0ToInstr(unsigned char *ata, int instr);	//Due to the loading of the old version
 
 	BOOL CalculateNoEmpty(int instr);
 
@@ -376,10 +358,10 @@ struct TBookmark
 	int speed;
 };
 
-struct TSong	//kvuli Undo
+struct TSong	//due to Undo
 {
 	int song[SONGLEN][SONGTRACKS];
-	int songgo[SONGLEN];					//je-li>=0, pak plati GO
+	int songgo[SONGLEN];					//if> = 0, then GO applies
 	TBookmark bookmark;
 };
 
@@ -388,7 +370,6 @@ struct TSongTrackAndTrackData
 	int tracknum;
 	TTrack trackdata;
 };
-
 
 class CSong
 {
@@ -404,7 +385,7 @@ public:
 	BOOL DrawSong();
 	BOOL DrawTracks();
 	BOOL DrawInstrument();
-	BOOL DrawInfo();			//levy horni roh
+	BOOL DrawInfo();			//top left corner
 	BOOL DrawAnalyzer(CDC *pDC);
 	BOOL DrawPlaytimecounter(CDC *pDC);
 
@@ -426,12 +407,10 @@ public:
 	void SetActiveLine(int line)	{ m_trackactiveline = line; };
 
 	BOOL CursorToSpeedColumn();
-
 	BOOL ProveKey(int vk,int shift,int control);
-
 	BOOL TrackKey(int vk,int shift,int control);
 	BOOL TrackCursorGoto(CPoint point);
-	BOOL TrackUp();
+	BOOL TrackUp(int lines);
 	BOOL TrackDown(int lines, BOOL stoponlastline=1);
 	BOOL TrackLeft(BOOL column=0);
 	BOOL TrackRight(BOOL column=0);
@@ -452,12 +431,6 @@ public:
 
 	void TrackGetLoopingNoteInstrVol(int track,int& note,int& instr,int& vol);
 
-	/*
-	void TrackGetPosition(TNoteState *state);
-	void TrackGetNoteDataByPosition(TNoteState *dest, TNoteState *pos);
-	void TrackSetByNoteState(TNoteState *state);
-	void UndoCheckPoint()	{ m_undo.CheckPoint(); };
-	*/
 	int* GetUECursor(int part);
 	void SetUECursor(int part,int* cursor);
 	BOOL UECursorIsEqual(int* cursor1, int* cursor2, int part);
@@ -566,7 +539,6 @@ public:
 	int MakeRMFModule(unsigned char* mem,int adr,BYTE *instrsaved,BYTE* tracksaved);
 	int DecodeModule(unsigned char* mem,int adrfrom,int adrend,BYTE *instrloaded,BYTE* trackloaded);
 
-	//
 	void TrackCopy();
 	void TrackPaste();
 	void TrackCut();
@@ -582,7 +554,6 @@ public:
 
 	void InstrInfo(int instr,TInstrInfo* iinfo=NULL,int instrto=-1);
 	int InstrChange(int instr);
-
 	void TrackInfo(int track);
 
 	void SongCopyLine();
@@ -604,11 +575,8 @@ public:
 	void RenumberAllTracks(int type);
 	void RenumberAllInstruments(int type);
 
-	//
 	CString GetFilename()				{ return m_filename; };
 	int GetFiletype()					{ return m_filetype; };
-
-	//
 
 	CXPokey* GetPokey()					{ return &m_pokey; };
 	CTracks* GetTracks()				{ return &m_tracks; };
@@ -624,8 +592,9 @@ public:
 	void SetSongInfoPars(TInfo* info)	{ memcpy(m_songname,info->songname,SONGNAMEMAXLEN); m_speed=info->speed; m_mainspeed=info->mainspeed; m_instrspeed=info->instrspeed; m_songnamecur=info->songnamecur; };
 
 	BOOL volatile m_followplay;
+	int volatile m_play;
 
-	int TopLine();
+	int m_playcount[256] = { 0 };	//used for keeping track of loop points, useful for SAP-R recording specifically, maybe more sometime later...
 
 private:
 	CXPokey m_pokey;
@@ -634,10 +603,9 @@ private:
 	CTracks m_tracks;
 
 	int m_song[SONGLEN][SONGTRACKS];
-	int m_songgo[SONGLEN];					//je-li>=0, pak plati GO
+	int m_songgo[SONGLEN];					//if> = 0, then GO applies
 
 	int m_songactiveline;
-	int m_songtopline;
 	int volatile m_songplayline;
 
 	int m_trackactiveline;
@@ -652,13 +620,19 @@ private:
 	int m_volume;
 	int m_octave;
 
+	//MIDI input variables, used for tests through MIDI CH15 
+	int m_mod_wheel = 0;
+	int m_vol_slider = 0;
+	int m_heldkeys = 0;
+	int m_midi_distortion = 0;
+	BOOL m_ch_offset = 0;
+
 	int m_infoact;
 	char m_songname[SONGNAMEMAXLEN+1];
 	int m_songnamecur;
 
 	TBookmark m_bookmark;
 
-	int volatile m_play;
 	int volatile m_mainspeed;
 	int volatile m_speed;
 	int volatile m_speeda;
@@ -680,12 +654,11 @@ private:
 	UINT m_timer;
 
 	CString m_filename;
-	//BOOL m_fileunsaved;
 	int m_filetype;
 	int m_exporttype;
 
-	int m_TracksOrderChange_songlinefrom; //je definovano jako member promenna aby pri dalsim pouziti
-    int m_TracksOrderChange_songlineto;	  //zustaly posledne pouzite hodnoty
+	int m_TracksOrderChange_songlinefrom; //is defined as a member variable to keep in use
+    int m_TracksOrderChange_songlineto;	  //the last values used remain
 
 	CUndo m_undo;
 };
@@ -712,19 +685,17 @@ public:
 	void GetFromTo(int& from, int& to);
 	int	GetCol()				{ return m_selcol; };
 
-	//
 	void BlockNoteTransposition(int instr,int addnote);
 	void BlockInstrumentChange(int instr,int addinstr);
 	void BlockVolumeChange(int instr,int addvol);
 
-	//block efekty
+	//block effect
 	BOOL BlockEffect();
 
-	//
 	void BlockAllOnOff();
 	void BlockInitBase(int track);
 
-	//bloky
+	//block
 	int m_selcol;					//0-7
 	int m_seltrack;
 	int m_selsongline;
@@ -732,8 +703,8 @@ public:
 	int m_selto;
 	TTrack m_track;
 
-	//zmeny v bloku
-	BOOL m_all;						//TRUE = zmeny vsech / FALSE = zmeny jen u instrumentu stejnych jako aktualni
+	//block changes
+	BOOL m_all;						//TRUE = changes all / FALSE = changes only for the same instrument as the current one
 	int m_instrbase;
 	int m_changenote;
 	int	m_changeinstr;
@@ -742,7 +713,7 @@ public:
 
 	TTrack m_trackbackup;
 
-	//kopirovani celych tracku
+	//copying entire tracks
 	TTrack m_trackcopy;
 
 private:
@@ -752,6 +723,5 @@ private:
 };
 
 //-----------------------------------------------------
-
 
 #endif

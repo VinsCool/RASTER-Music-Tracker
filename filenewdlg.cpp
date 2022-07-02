@@ -53,10 +53,9 @@ void CFileNewDlg::OnOK()
 	int mtl = atoi((LPCTSTR)s);
 	if (mtl>64 && mtl<=TRACKLEN)
 	{
-		int r=MessageBox("Warning:\nMaximal length of tracks is greater than 64.\nRMT Atari internal module format allows 256 bytes max. for each track data,\nso you may not use too many events in such longer tracks.\nOne event (note or speed command) spend 2 bytes approximately.\n\nIf a problem appears, you will see a warning during the file output function.\nOk?","New RMT module - Warning",MB_YESNO | MB_ICONQUESTION);
+		int r=MessageBox("Warning:\nMaximal length of tracks is greater than 64.\nRMT Atari internal module format allows 256 bytes max. for each track data,\nso you may not use too many events in such longer tracks.\nOne event (note or speed command) spends 2 bytes approximately.\n\nIf a problem appears, you will see a warning during the file output function.\nOk?","New RMT module - Warning",MB_YESNO | MB_ICONQUESTION);
 		if (r!=IDYES) return;
 	}
-	
 	CDialog::OnOK();
 }
 /////////////////////////////////////////////////////////////////////////////

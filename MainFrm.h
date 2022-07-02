@@ -9,9 +9,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-
 extern BOOL g_viewblocktoolbar;
-//extern int g_rmtexit;
 extern int g_linesafter;
 
 class CMainFrame : public CFrameWnd
@@ -45,7 +43,6 @@ public:
 	void OnSelchangeComboLinesAfter();
 	void OnSelendok();
 
-
 	CToolBar    m_wndToolBar;
 
 	CStatusBar  m_wndStatusBar;
@@ -63,8 +60,8 @@ protected:
 	//{{AFX_MSG(CMainFrame)
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
 	afx_msg void OnClose();
-	afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
-	afx_msg void OnGetMinMaxInfo( MINMAXINFO* lpMMI);
+	//afx_msg void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+	afx_msg void OnGetMinMaxInfo(MINMAXINFO* lpMMI);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
