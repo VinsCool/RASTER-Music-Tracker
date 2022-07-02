@@ -1,0 +1,236 @@
+KOD	SHIFT	CONTROL	KEY	POPIS_CZ	POPIS_EN				
+TITLE				RASTER Music Tracker v1.28	RASTER Music Tracker v1.28				
+TXT				vytvoøil Radek Štìrba, RASTER/C.P.U. 2002-2009	by Radek Sterba, RASTER/C.P.U. 2002-2009				
+TXT				manuál verze 1.28.001	operation manual version 1.28.001				
+H3				Dùležité upozornìní:	Disclaimer:				
+TXT				PROGRAM RMT JE BEZ ZÁRUK A SPOUŠTÍTE HO NA SVÉ VLASTNÍ NEBEZPEÈÍ. AUTOR SE ZØÍKÁ VEŠKERÉ ODPOVÌDNOSTI ZA CHOVÁNÍ PROGRAMU A ZA JAKÉKOLIV PØÍPADNÉ ŠKODY PROGRAMEM ZPÙSOBENÉ.	RMT IS SOFTWARE WITHOUT WARRANTY OF ANY KIND. AUTHOR DOES NOT WARRANT, GUARANTEE, OR MAKE ANY REPRESENTATIONS REGARDING THE USE, OR THE RESULTS OF USE, OF THE SOFTWARE OR WRITTEN MATERIALS IN TERMS OF CORRECTNESS, ACCURACY, RELIABILITY, CURRENTNESS, OR OTHERWISE. THE ENTIRE RISK AS TO THE RESULTS AND PERFORMANCE OF THE SOFTWARE IS ASSUMED BY YOU.				
+									
+
+H3				Všechny editaèní módy	All edit modes				
+H4				Klávesy	Hotkeys				
+KEY			ESC	Stop pøehrávání, vypnutí všech zvukù. Pokud byl aktivní PROVE mód, zrušení PROVE módu.	Stop playing song, mute all sounds. If PROVE mode is active, deactivate it.				
+KEY		CONTROL	F1	Nastavení záložky na aktuální pozici (vèetnì uložení aktuální rychlosti taktu).	Set bookmark to the current position (also current beat speed is stored).				
+KEY			F1	Start pøehrávání z místa záložky (pouze byla-li nastavena) vèetnì inicializace rychlosti taktu.	Play song from the bookmark position (only if bookmark is set up) include beat speed initialization by stored bookmark beat speed.				
+KEY	SHIFT		F1	Jako F1, ale s autoposunem na aktuálnì pøehrávané místo.	Similar to F1, but with autofollow of the currently played position.				
+KEY			F2	Start pøehrávání celého songu od zaèátku vèetnì inicializace rychlosti taktu.	Play song from the begin include beat speed initialization by main speed.				
+KEY	SHIFT		F2	Jako F2, ale s autoposunem na aktuálnì pøehrávané místo.	Similar to F2, but with autofollow of the currently played position.				
+KEY			F3	Start pøehrávání songu od aktuálnì editovaného místa.	Play song from currently edited position.			
+KEY	SHIFT		F3	Jako F3, ale s autoposunem na aktuálnì pøehrávané místo.	Similar to F3, but with autofollow of the currently played position.			
+KEY			F4	Cyklické pøehrávání aktuálnì editované sady trackù.	Cyclic playing of the currently edited set of tracks.			
+KEY	SHIFT		F4	Jako F4, ale s autoposunem na aktuálnì pøehrávané místo.	Similar to F4, but with autofollow of the currently played position.			
+KEY		CONTROL	F4	Cyklické pøehrávání èásti vybrané do bloku.	Cyclic playing of the selected block.			
+KEY			F5	Pøechod na editaci TRACKù.	Switch to TRACK EDIT.			
+KEY			F6	Pøechod na editaci INSTRUMENTù.	Switch to INSTRUMENT EDIT.			
+KEY			F7	Pøechod na editaci INFOrmací o songu a nastavování rychlostí.	Go to INFO EDIT.			
+KEY			F8	Pøechod na editaci SONGu.	Go to SONG EDIT.			
+KEY			F9	PROVE mód 1-mono / 2-stereo / vypnutí PROVE módu.	PROVE mode 1 - mono / 2 - stereo / off.			
+KEY			F11	RESPECT VOLUME mód zapnutí / vypnutí.	RESPECT VOLUME mode on / off.			
+KEY			F12	Pøechod na editaci TRACKù / INSTRUMENTù.	Switch to TRACK EDIT / INSTRUMENT EDIT.			
+KEY			SCROLL_LOCK	Zapnutí / vypnutí režimu autoposunu na aktuálnì pøehrávané místo.	Turn on / off autofollow mode.			
+KEY			PAUSE	Vypnutí všech zvukù a reinicializace Atari zvukové rutiny.	Mute all sounds and reinitialize the Atari sound routine.			
+KEY	SHIFT		PAUSE	Jako PAUSE, ale s reinicializací zvukového výstupu.	Similar to PAUSE, but with reinitialize of the sound output.			
+KEY			numblock /	Pøechod doleva na vedlejší track (respektive zvukový generátor).	Move left to previous track (i.e. previous sound generator).			
+KEY			numblock *	Pøechod doprava na vedlejší track (respektive zvukový generátor).	Move right to following track (i.e. following sound generator).
+KEY			numblock -	Snižování hlasitosti pro novì zapisované noty.	Decrease volume for newly entered notes.
+KEY			numblock +	Zvyšování hlasitosti pro novì zapisované noty.	Increase volume for newly entered notes.
+KEY	SHIFT		tonekeys	Pøehrání noty aktuálním nástrojem, aktuální hlasitostí na aktuálním zvukovém generátoru.	Play note with current instrument and volume on the selected sound generator.
+KEY	SHIFT	CONTROL	tonekeys	Pøehrání noty aktuálním nástrojem, aktuální hlasitostí ve stereo provedení (tj. levý a pravý zvukový generátor).	Play stereo note with current instrument and volume on the selected sound generator (i.e. on the both, left and right, sound generators).
+KEY	SHIFT		SPACE	Ukonèení pøehrávání noty na aktuálním zvukovém generátoru.	Stop playing note on the selected sound generator.
+KEY	SHIFT	CONTROL	SPACE	Ukonèení pøehrávání noty ve stereo provedení (tj. na levém i na pravém generátoru).	Stop playing stereo note (i.e. on the both, left and right, sound generators).
+KEY			CAPSLOCK	Zapnutí / vypnutí CapsLock režimu (je indikováno vpravo dole ve statusbaru "CAP"). CapsLock režim se používá pøi editaci textových parametrù (názvy instrumentù, songu) pro zadávání velkých písmen a znakù !@#$%^&*()_+:"<>?| pøes klávesu Shift.	Turn on / off CapsLock mode (indicated by "CAP" in the statusbar). CapsLock mode is used while the text parameters are edited for entering uppercase and other special characters (!@#$%^&*()_+:"<>?|) by Shift key.
+KEY		CONTROL	1-8	Zapnutí / vypnutí zvukového generátoru (tracku) 1 až 8.	Turn on / off the sound generator (track) 1 to 8.
+KEY		CONTROL	9	Zapnutí všech zvukových generátorù (trackù).	Turn on all the sound generators (tracks).
+KEY		CONTROL	0	Vypnutí všech zvukových generátorù (trackù).	Turn off all the sound generators (tracks).
+KEY		CONTROL	BACKQUOTE	Zapnutí / vypnutí aktivního zvukového generátoru (tracku).	Turn on / off the active sound generator (track).
+KEY	SHIFT		BACKQUOTE	Negace zap/vyp stavù všech zvukových generátorù (trackù).	Inversion of on/off states of the all sound generators (tracks).
+KEY			BACKQUOTE	Sólová hra pouze aktivního zvukového generátoru (tracku) / zapnutí všech generátorù (trackù).	Solo play of the active sound generator (track) / turn on all the generators (tracks).
+KEY			NUMLOCK	Zvýšení hodnoty posunu kurzoru po vložení noty nebo po stisku klávesy SPACE	Increase parameter for cursor scroll down after entering note or space key.
+KEY	SHIFT		NUMLOCK	Snížení hodnoty posunu kurzoru po vložení noty nebo po stisku klávesy SPACE	Decrease parameter for cursor scroll down after entering note or space key.
+KEY	ALT		BACKSPACE	Zrušení poslednì provedené zmìny.	Undo last change.
+					
+					
+
+H3				Editace TRACKù	TRACK EDIT
+PRE			NNN TT VSS		
+PAR			NNN	Nota C-1 až C-6.	Notes from C-1 to C-6.
+PAR			TT	Èíslo instrumentu $00 až $3F.	Number of instrument from $00 to $3F.
+PAR			V	Úroveò hlasitosti $0 až $F (mùže být použita i bez noty a instrumentu).	Volume from $0 to $F (also can be used without note and instrument).
+PAR			SS	Rychlost 1 taktu $01 až $FF (speed sloupec).	Beat speed from $01 to $FF (speed column).
+H4				Klávesy	Hotkeys
+KEY			UP, DOWN, LEFT, RIGHT, TAB, SHIFT+TAB, PAGE UP, PAGE DOWN	Posun kurzoru.	Move cursor.
+KEY	SHIFT		PAGE UP, PAGE DOWN	Nastavení akuální oktávy.	Preset octave up / down.
+KEY	SHIFT		LEFT, RIGHT, numblock 0-9	Výbìr aktuálního instrumentu.	Set current instrument.
+KEY		CONTROL	UP, DOWN	Posun v songu nahoru / dolù.	Move up / down in the song.
+KEY		CONTROL	LEFT, RIGHT, BACKSPACE	Nastavení èísla tracku do songu na aktuální pozici.	Set track number into the song at current possition.
+KEY		CONTROL	Z	Pøechod do speed sloupce.	Go to the speed column.
+KEY		CONTROL	G	Zapnutí / vypnutí "go to line" v songu na aktuální pozici.	Turn on / off "go to line" command in the song at current position.
+KEY			HOME	Pøechod na zaèátek tracku / na zaèátek "track loop".	Move cursor to begin of the track / begin of the "track loop".
+KEY		CONTROL	HOME	Nastavení / zrušení zaèátku "track loop".	Set up / clear begin of the "track loop".
+KEY			END	Pøechod na konec tracku.	Move cursor to the end of track.
+KEY		CONTROL	END	Nastavení / zrušení konce tracku.	Set up / clear the end of track.
+KEY		CONTROL	PAGE UP	Pøechod na zaèátek subsongu nebo na zaèátek pøedchozího subsongu.	Move cursor to begin of subsong or begin of previous subsong.
+KEY		CONTROL	PAGE DOWN	Pøechod na zaèátek následujícího subsongu.	Move cursor to begin of next subsong.
+KEY			ENTER	Pøehrání noty na aktuální pozici kurzoru.	Replay note at the cursor position.
+KEY	SHIFT		ENTER	Pøehrání noty na aktuální pozici kurzoru a pøebrání jejího instrumentu a hlasitosti pro pøedvolené hodnoty.	Replay note at the cursor position and get its instrument number and volume for preset values.
+KEY		CONTROL	ENTER	Pøehrání not všech trackù na aktuálnì editovaném øádku.	Replay all notes at the currently edited line.
+KEY			INSERT, DELETE	Vkládání / mazání øádku v tracku.	Insert / delete lines in the track.
+KEY		CONTROL	I, U	Vkládání / mazání øádku v songu (s odpovídajícím automatickým posunem všech "go to line" hodnot).	Insert / delete lines in the song (with auto-change of the all relevant "go to line" values).
+KEY		CONTROL	P	Vložení øádku s nepoužitými prázdnými tracky do songu.	Insert new line with unused empty tracks.
+KEY		CONTROL	O	Vložení kopie nebo klonování øádkù v songu.	Insert copy or clone of song line(s).
+KEY		CONTROL	N	Umístìní nového prázdného nepoužitého tracku do songu na aktuální pozici.	Put new empty unused track to actual song position.
+KEY		CONTROL	M	Vytvoøení kopie tracku a její vložení do songu na aktuální pozici. (Poznámka: Nejdøíve se provìøí, zda je track v songu použit vícekrát. Není-li, zobrazí dotaz zda se má kopie opravdu vytváøet.)	Make track's duplicate and put it to actual song position. (Note: If track is used only once in song, messagebox with question appears.)	
+KEY			SPACE	Smazání noty, instrumentu, hlasitosti i rychlosti v tracku na pozici kurzoru.	Delete note, instrument, volume and speed values in the track at the cursor position.	Delete the actual track line.
+H4				Sloupec not	Note column	
+KEY			tonekeys	Vložení noty, aktuálního instrumentu a hlasitosti, a její pøehrání. (Poznámka: Je-li aktivní mód RESPECT VOLUME, nedojde k pøepsání døíve nastavené hlasitosti.)	Insert note and play it. (Note: If RESPECT VOLUME is active, previous volume value won't be replaced.)	
+KEY			numblock 1-6	Zmìna oktávy u aktuální noty (je-li kurzor na nìjaké notì) a její pøehrání.	Change octave of the note at the cursor position and play it.	
+KEY			BACKSPACE	Smazání noty a instrumentu (ponechání hlasitosti a rychlosti).	Delete note and instrument values (volume and speed values will not be cleared).	
+H4				Sloupec èísel instrumentù	Instrument number column	
+KEY			0-F	Zapsání / zmìna èísla instrumentu.	Set up / change instrument number.	
+KEY			BACKSPACE	Smazání noty a instrumentu (ponechání hlasitosti a rychlosti).	Delete note and instrument values (volume and speed values will not be cleared).	
+H4				Sloupec hlasitostí	Volume column	
+KEY			0-F	Zapsání / zmìna hlasitosti.	Set up / change volume.	
+KEY			BACKSPACE	Smazání noty, instrumentu a hlasitosti (ponechání rychlosti).	Delete note, instrument and volume values (speed value will not be cleared).	
+H4				Sloupec rychlostí	Speed column	
+KEY			0-F	Zapsání/zmìna rychlosti.	Set up / change beat speed.	
+KEY			BACKSPACE	Smazání rychlosti.	Delete beat speed.	
+H4				Blokové operace	Block operations	
+KEY	SHIFT		UP, DOWN, HOME, END	Výbìr bloku.	Select block.
+KEY		CONTROL	A	Výbìr všech platných dat v aktuálním tracku do bloku.	Select all valid data in the currently edited track to block.
+KEY		CONTROL	INSERT, C	Kopírování obsahu bloku do clipboardu.	Copy block data to the clipboard.
+KEY			SHIFT+INSERT, CONTROL+V	Vložení dat z clipboardu do tracku na aktuální pozici. (Poznámka: Pokud je oznaèen nìjaký blok, data budou vložena pouze do oblasti jím vymezené.)	Paste data from the clipboard to the cursor position.
+KEY		CONTROL	E	Výmìna dat v bloku s daty v clipboardu.	Exchange of block select data and the clipboard data.
+KEY		CONTROL	X	Pøesun dat z bloku do clipboardu.	Move block data to the clipboard.
+KEY			DELETE	Vymazání dat v bloku.	Delete block data.
+KEY		CONTROL	B	Obnovení dat v bloku ze zálohy. Záloha je vytváøena vždy v okamžiku kdy se zahájí výbìr bloku.	Restore block data from backup. The backup is created when the block is getting start to select.
+KEY			HOME, END	Pøechod na zaèátek, konec bloku.	Go to the begin / the end of the block.
+KEY		CONTROL	F4	Cyklické pøehrávání všech trackù v oblasti shora-zdola vymezené blokem.	Cyclicly play all tracks in the area according to the block top-bottom.
+KEY	SHIFT	CONTROL	F4	Jako CONTROL+F4, ale s autoposunem na aktuálnì pøehrávané místo.	Similar to CONTROL+F4, but with autofollow of the currently played position.
+KEY			ENTER	Krokové pøehrávání not cyklicky uvnitø bloku.	Replay notes step-by-step cyclicly inside the block.
+H4				Úpravy dat v bloku	Block data modifications
+KEY	SHIFT	CONTROL	A	Pøepínání módu úprav. Úpravy se provádìjí buïto na všech øádcích v bloku, nebo pouze na øádcích používajících aktuálnì vybraný instrument.	Block modifications mode. All changes are provided either on each line of the block, or only on lines with instrument numbers equal to preset instrument.
+KEY	SHIFT	CONTROL	PAGE UP, PAGE DOWN	Transpozice not nahoru èi dolù po pùltónech (maximálnì o 5 oktáv).	Transpose note up / down by semitones (5 octaves max.).
+KEY	SHIFT	CONTROL	LEFT, RIGHT	Zmìna instrumentù (maximálnì o $3F).	Instrument change (by $3F value max.).
+KEY	SHIFT	CONTROL	numblock +, numblock -	Zvyšování / snižování hlasitostí (maximálnì o $F).	Volume up / down (by $F value max.).				
+KEY		CONTROL	F	Blokové efekty/nástroje.	Block effects/tools.				
+H4				Ovládání myší	Mouse control				
+H4				Oblast hlavièek trackù (nápisy TRACK_L1 až TRACK_R4)	Track head area (titles TRACK_L1 to TRACK_R4)				
+KEY			LeftMouseButton	Zapnutí / vypnutí pøíslušného zvukového generátoru (tracku).	Turn on / off the relevant sound generator (track).				
+KEY			RightMouseButton	Sólová hra pouze pøíslušného zvukového generátoru (tracku) / zapnutí všech generátorù (trackù).	Solo play of the relevant sound generator (track) / turn on all the generators (tracks).				
+									
+									
+H3				Editace INSTRUMENTù	INSTRUMENT EDIT				
+PAR			NAME	Název instrumentu, max. 32 znakù.	Name of the instrument, 32 chars max.				
+PAR			ENVELOPE LEN	Délka "envelope" $01 až $20 (tj. maximálnì 32).	Length of the envelope, from $01 to $20 (i.e. 32 max.).		Kromì následujících cca. 20 øádkù jsem všude u rozsahu dopisoval 'from', ale fakt nevím, jestli je to nutné. Já totiž zastávám názor, že by tam buï mìlo bejt bud obojí 'from' a 'to' a nebo jen pomlèka. Podobnì nesnáším, když mají nìkde na obchodì napsáno: 'Ottevøeno: od 8:00 - 18:00'.		
+PAR			ENVELOPE GO	Skok na pøíslušný sloupec po dosažení konce "envelope".	Jump to given envelope column when envelope end reached.				
+PAR			VSLIDE	Ubývání hlasitosti od okamžiku prvního dosažení konce "envelope". $00 = vùbec, $FF = nejrychleji.	Volume slide when end of envelope reached for the first time. $00 = no volume slide, $FF = maximal volume slide. 				
+PAR			VMIN	Minimální úroveò hlasitosti, na kterou hlasitost klesne parametrem VSLIDE, $0 až $F.	Minimal volume value reached by VSLIDE parameter.				
+PAR			TABLE LEN	Délka "table" $01 až $20 krokù (tj. maximálnì 32).	Length of the table, from $01 to $20 steps (i.e. 32 max.).				
+PAR			TABLE GO	Skok na pøíslušný øádek po dosažení konce "table".	Jump to given table line when table end reached.				
+PAR			TABLE SPD	Rychlost 1 kroku, $01 až $40 vbi.	Speed for the each table step, from $01 to $40 vbi.				
+PAR			TABLE TYPE	Typ "table". 0 = noty, 1 = frekvence	Table type. 0 = notes, 1 = frequencies				
+PAR			TABLE MODE	Mód "table". 0 = pøièítání noty (respektive frekvence) k výchozí notì, 1 = pøièítání noty (respektive frekvence) k poslednì vypoèítané notì (respektive frekvenci). Poznámka: Pokud se vlivem notových posunù dostane výsledná nota mimo rozsah C-1 (hex $00) až C-6 (hex $3D), pak bude výstupní hlasitost nulová. Toto neplatí u frekvenèních posunù.	Table mode. 0 = add note (or frequency) to base note, 1 = add note (or frequency) to last calculated note (or frequency). Notice: If resulting note by reason of note adding is out of C-1 to C-6 range (hex values $00 to $3D), then output volume will be zero. But frequency addings are not limited.				
+PAR			EFFECT DELAY	Zpoždìní efektù VIBRATO a FSHIFT o $01 až $FF vbi, $00 = efekty se vùbec nebudou provádìt.	Delay before start of VIBRATO and FSHIFT effects by $01 to $FF vbi, $00 = no effects.				
+PAR			EFFECT VIBRATO	Efekt vibrato, tøi úrovnì $01 až $03, $00 = žádné vibrato.	Effect vibrato, 3 levels from $01 to $03, $00 = no vibrato.				
+PAR			EFFECT FSHIFT	Efekt posunování frekvence o $00 až $FF každé vbi.	Effect "frequency shifting" from $00 to $FF for each vbi.				
+PAR			AUDCTL 15KHZ	Nastavení / nulová hodnota bitu "hlavní taktovací frekvence 15khz" pro AUDCTL øídící registr.	Turn on / off AUDCTL bit "main clock base 15khz".				
+PAR			AUDCTL FI2+4	Nastavení / nulová hodnota bitu "filtrování kanálu 2 kanálem 4" pro AUDCTL øídící registr.	Turn on / off AUDCTL bit "high pass filter to channel 2 clocked by channel 4".				
+PAR			AUDCTL FI1+3	Nastavení / nulová hodnota bitu "filtrování kanálu 1 kanálem 3" pro AUDCTL øídící registr.	Turn on / off AUDCTL bit "high pass filter to channel 1 clocked by channel 3".				
+PAR			AUDCTL CH4+3	Nastavení / nulová hodnota bitu "spojení kanálù 4 a 3" pro AUDCTL øídící registr.	Turn on / off AUDCTL bit "join channels 4 and 3.				
+PAR			AUDCTL CH2+1	Nastavení / nulová hodnota bitu "spojení kanálù 2 a 1" pro AUDCTL øídící registr.	Turn on / off AUDCTL bit "join channels 2 and 1.				
+PAR			AUDCTL 1.79CH3	Nastavení / nulová hodnota bitu "vstupní frekvence 1.79MHz pro kanál 3" pro AUDCTL øídící registr.	Turn on / off AUDCTL bit "clock channel 3 with 1.79MHz.				
+PAR			AUDCTL 1.79CH1	Nastavení / nulová hodnota bitu "vstupní frekvence 1.79MHz pro kanál 1" pro AUDCTL øídící registr.	Turn on / off AUDCTL bit "clock channel 1 with 1.79MHz.				
+PAR			AUDCTL POLY9	Nastavení / nulová hodnota bitu "9 bitový polyèítaè" pro AUDCTL øídící registr.	Turn on / off AUDCTL bit "9 bit poly counter".				
+H4				Tabulka not / frekvencí	Table of notes / freqs				
+PAR			TABLE $00 - $1F	1 až 32 parametrù pro jednotlivé "table" kroky. Dle TABLE TYPE obsahuje buïto øadu notových posunù (v pùltónech), nebo øadu frekvenèních posunù. Pro záporné posuny použijte doplòkovou hodnotu do $100, tj. napøíklad -1 = $FF.	From 1 to 32 parameters for table. It contains array of note (in halftones) or frequency addings according to TABLE TYPE value. For negative values there are complementary numbers used, for example -1 = $FF.				
+H4				Obalová køivka	Envelope				
+PAR			VOLUME R	Hlasitost $0 až $F pro pravé kanály. Bude se používat ve stereo módu u instrumentù použitých v tracku R1 až R4.	Volume from $0 to $F for right channels. It will be used for stereo songs in tracks R1 to R4.				
+PAR			VOLUME L	Hlasitost $0 až $F. Bude se používat u trackù L1 až L4.	Volume from $0 to $F. It will be used on tracks L1 to L4.				
+PAR			DISTORTION	Typ zvuku $0 až $E (pouze sudé hodnoty).	Sound type from $0 to $E, even values only.				
+PAR			COMMAND	Povel obalové køivky $0 až $7.	Envelope command, from $0 to $7.				
+PAR			X, Y	Dva parametry v rozsahu $0 až $F pro speciální povel. Mohou mít význam buï samostatný, nebo jako jedna spojené hexa hodnota $XY.	Two parameters from $0 to $F for special command. It can be used as a two separate parameters or as one hexadecimal value $XY.				
+PAR			FILTER	Filtr. $0 = neaktivní, $1 = aktivní. Funguje jen na generátorech 1 nebo 2, obsadí 2 generátory: 1+3 nebo 2+4. Má vyšší prioritu než 16bitové basové tóny a nefiltrované hlasy, takže si dle vlastní potøeby zabírá jejich zvukové generátory èi pøepíná kolizní 16bitový bas na 8bitový a využívá pro filtrování jeho horní byte. Je-li výsledná hlasitost zvuku nulová, filtrování (a tedy ani zabírání dalších zvukových generátorù) se neprovádí.	Filter. $0 = no active, $1 = acitve. It works with sound generator 1 or 2 only. It engage two generators: 1+3 or 2+4. It has higher priority than 16bit bass tones and non filtered voices, therefore it can occupy their sound generators or it can switch 16bit bass tones to 8bit and use its high byte for filtering. If resulting volume is zero, filtering won't be used (and no occupation of other generators arrive).				
+PAR			PORTAMENTO	Portamento. $0 = neaktivní, $1 = aktivní. Je-li aktivní, pak je pro výstup místo aktuálnì pøichystané frekvence použita "portamento pøechodová frekvence".	Portamento. $0 = no active, $1 = acitve. If active, then "portamento volatile frequency" is used instead of current frequency.				
+H4				Typy zvukù (parametr DISTORTION)	Sound type (DISTORTION parameter)				
+PAR			0	Zkreslení 0. (AUDC $0v)	Distortion 0. (AUDC $0v)				
+PAR			2	Zkreslení 2. (AUDC $2v)	Distortion 2. (AUDC $2v)				
+PAR			4	Zkreslení 4. (AUDC $4v)	Distortion 4. (AUDC $4v)				
+PAR			6	Zkreslení 12 (AUDC $Cv) + slouèení 2 generátorù pro 16bitové basové tóny. Funguje jen na generátorech 2 nebo 4 (obsadí generátory 2+1 nebo 4+3), na ostatních se chová jako normální zkreslení 12 s basovou tabulkou 1.	Distortion 12 (AUDC $Cv) plus join of two sound generators for 16bit resolution bass tones. It works with generator 2 or 4 only, It engage two generators: 2+1 or 4+2. On other generators it works as a distortion 12 with bass table 1.				
+PAR			8	Zkreslení 8. (AUDC $8v)	Distortion 8. (AUDC $8v)				
+PAR			A	Zkreslení 10, èisté tóny. (AUDC $Av)	Distortion 10, pure tones. (AUDC $Av)				
+PAR			C	Zkreslení 12, basové tóny - tabulka basù 1. (AUDC $Cv)	Distortion 12, bass tones - bass table 1. (AUDC $Cv)				
+PAR			E	Zkreslení 12, basové tóny - tabulka basù 2. (AUDC $Cv)	Distortion 12, bass tones - bass table 2. (AUDC $Cv)		
+H4				Povely obalové køivky (parametr COMMAND)	Envelope command (COMMAND parameter)		
+PAR			0	Hraj základní tón posunutý o $XY pùltónù. Pokud se vlivem posunù dostane výsledná nota mimo rozsah C-1 (hex $00) až C-6 (hex $3D), pak bude výstupní hlasitost nulová.	Play the base note shifted by $XY semitones. If resulting note by reason of note shifting is out of C-1 to C-6 range (hex values $00 to $3D), then output volume will be zero.		
+PAR			1	Hraj pøímo udanou frekvenci $XY.	Play the frequency $XY directly.		
+PAR			2	Hraj základní tón posunutý o frekvenci $XY.	Play the base note shifted by frequency $XY.		
+PAR			3	Zvyš základní tón o $XY pùltónù. Hraj základní tón (novou hodnotu). Pokud se vlivem posunù dostane výsledná nota mimo rozsah C-1 (hex $00) až C-6 (hex $3D), pak bude výstupní hlasitost nulová.	Add $XY semitones to base note. Play base note (new value). If resulting note by reason of note shifting is out of C-1 to C-6 range (hex values $00 to $3D), then output volume will be zero.		
+PAR			4	Zvyš FSHIFT hodnotu o $XY. Hraj základní tón.	Add frequency $XY to FSHIFT register. Play base note.		
+PAR			5	Nastav portamento rychlostí $X, úroveò $Y (tj. každých $X vbi bude posunuta "portamento pøechodová frekvence" o $Y smìrem k aktuální frekvenci). Je-li $XY=$00, pak nastav portamento pøechodovou frekvenci pøímo na aktuální frekvenci.	Set up portamento speed $X, step $Y (each $X vbi will be "volatile portamento frequency" shifted up or down by $Y value in a direction of actual frequency). If $XY=$00, then set current frequency directly to volatile portamento frequency.		
+PAR			6	Zvyš FILTER_SHFRQ o hodnotu $XY. (Na zaèátku každé nové noty v tracku se FILTER_SHFRQ inicializuje na $01, tj. implicitnì má spojený filtrovací generátor frekvenci o 1 vyšší.)	Add $XY value to FILTER_SHFRQ. (Whenever the new note in track is getting started, FILTER_SHFRQ is initialized to $01, so that default join filter generator frequency is higher by 1.)		
+PAR			7	Nastav základní tón na hodnotu $XY. Hraj základní tón (novou hodnotu). Je-li $XY==$80, pak použij aktuální úroveò hlasitosti pro VOLUME ONLY pøímý výstup.	Set the base note to $XY value directly. Play base note (new value). If $XY=$80, then use the current volume for VOLUME ONLY forced output.		
+H4				Klávesy	Hotkeys		
+KEY			LEFT, RIGHT, UP, DOWN	Posun kurzoru mezi parametry.	Move cursor.		
+KEY			TAB	Pøechod na provádìní zmìn parametrù instrumentu / parametrù obalové køivky.	Move cursor to set up the instrument parameters / the envelope parameters.		
+KEY	SHIFT		TAB	Pøechod na zmìnu názvu instrumentu. (Ukonèí se ENTERem nebo TABelátorem.)	Move cursor to set up the name of the instrument.		
+KEY			0-F, CONTROL+LEFT, CONTROL+UP, CONTROL+RIGHT, CONTROL+DOWN, BACKSPACE	Zmìna hodnoty parametru (každý parametr jen v jemu povoleném rozsahu).	Settings of the parameter values (in a valid ranges only).		
+KEY	SHIFT		PAGE UP, PAGE DOWN	Nastavení akuální oktávy.	Preset octave up / down.		
+KEY	SHIFT		LEFT, RIGHT, numblock 0-9	Výbìr aktuálního instrumentu.	Select current instrument.		
+KEY	SHIFT	CONTROL	numblock +, numblock -	Editace hlasitostních køivek R a L. Je-li kurzor v øádku VOLUME R nebo VOLUME L, mìní se pouze jedna pøíslušná køivka, v jiném pøípadì se mìní obì køivky.	Change the R+L volume envelopes up/down. If cursor is at line "VOLUME L" or "VOLUME R", then volume envelope for left or right channel only is changed.		
+H4				Zmìny v tabulce not / frekvencí	Table of notes / freqs changes		
+KEY			HOME	Nastavení kurzoru na zaèátek table / na zaèátek "table loop".	Move cursor to the begin of the table / to the begin of "table loop".		THE THE? to the begin of table / to begin of the table / to the begin of the table? A co teprve the cursor… :-(((
+KEY		CONTROL	HOME	Nastavení zaèátku "table loop".	Set up the begin of "table loop".		THE THE?
+KEY			END	Nastavení kurzoru na konec table.	Move cursor to the end of the table.		THE THE?
+KEY		CONTROL	END	Nastavení konce table.	Set up the end of the table.		THE THE?
+KEY			INSERT	Vkládání prázdných hodnot do table (posun doprava).	Insert empty items to the table (shift to the right).		
+KEY	SHIFT		INSERT	Duplikace hodnoty v aktuálním sloupci v table.	Duplicate the current table item.		
+KEY			DELETE	Mazání hodnoty na aktuální pozici v table (posun doleva).	Delete the current table item (shift to the left).		
+KEY			SPACE	Vynulování hodnoty na aktuální pozici v table a posun kurzoru vpravo.	Clear the current table item and move cursor to the right.		
+H4				Zmìny parametrù obalové køivky	Envelope parameters		
+KEY			HOME	Nastavení kurzoru na zaèátek envelope / na zaèátek "envelope loop".	Move cursor to the begin of the envelope / to the begin of "envelope loop".		THE THE?
+KEY		CONTROL	HOME	Nastavení zaèátku "envelope loop".	Set up the begin of "envelope loop".		THE THE?
+KEY			END	Nastavení kurzoru na konec envelope.	Move cursor to the end of the envelope.		THE THE?
+KEY		CONTROL	END	Nastavení konce envelope / nastavení maximální délky envelope.	Set up the end of the envelope / set up a maximal length of the envelope.		THE THE?
+KEY			INSERT	Vkládání sloupcù do envelope (posun doprava).	Insert columns into the envelope (shift to the right).		
+KEY	SHIFT		INSERT	Duplikace aktuálního sloupce v envelope.	Duplicate the current envelope column.		
+KEY			DELETE	Mazání sloupcù v envelope (posun doleva).	Delete columns into the envelope (shift to the left).		
+KEY			SPACE	Vynulování hodnot v aktuálním sloupci envelope a posun kurzoru vpravo.	Clear the current envelope column values and move cursor to the right.		
+H4				Ovládání myší	Mouse control		
+H4				Oblast hlasitostní køivky instrumentu	Volume envelope area		
+KEY			LeftMouseButton	Kreslení hlasitostní køivky.	Draw the volume curve.		
+KEY			RightMouseButton	Nastavení nulové hlasitosti.	Set the zero volume.		
+							
+
+H3				Editace INFO parametrù	INFO EDIT		
+PAR			NAME	Název skladby a autor, max. 64 znakù.	Name of the song and author, 64 chars max.		
+PRE			MUSIC SPEED: AA/MM/S				
+PAR			AA	Právì aktuální rychlost taktu, $01 až $FF.	Current beat speed, from $01 to $FF.		
+PAR			MM	Hlavní rychlost taktu, $01 až $FF. Pøi startu pøehrávání celého songu se hodnota MM pøepíše do aktuální rychlosti AA.	Main speed, from $01 to $FF. Actual beat speed is initialized by main speed when whole song is getting started to play.		
+PAR			S	Rychlost instrumentù, $1 až $4. (X-krát bìhem 1 obrazového snímku.)	Speed of the instruments, from $1 to $4. (X times per 1 frame.)		
+H4				Klávesy	Hotkeys
+KEY			LEFT, RIGHT, TAB	Posun kurzoru mezi parametry.	Move cursor.
+KEY	SHIFT		TAB	Pøechod na zmìnu názvu songu. (Ukonèí se ENTERem nebo TABelátorem.)	Move cursor to set up name of the song.
+KEY			0-F, CONTROL+LEFT, CONTROL+UP, CONTROL+RIGHT, CONTROL+DOWN	Zmìna hodnoty parametru (každý parametr jen v jemu povoleném rozsahu).	Settings of parameter values (in valid ranges only).
+KEY			ENTER	Opuštìní editace INFO parametrù.	Exit from INFO EDIT.
+					
+
+H3				Editace SONGu	SONG EDIT
+KEY			LEFT, RIGHT, UP, DOWN, PAGE UP, PAGE DOWN	Posun kurzoru.	Move cursor.
+KEY			HOME	Pøechod na zaèátek songu.	Move cursor to begin of the song.
+KEY			END	Pøechod na poslední neprázdný øádek songu.	Move cursor to last no empty song line.
+KEY		CONTROL	PAGE UP	Pøechod na zaèátek subsongu nebo na zaèátek pøedchozího subsongu.	Move cursor to begin of subsong or begin of previous subsong.
+KEY		CONTROL	PAGE DOWN	Pøechod na zaèátek následujícího subsongu.	Move cursor to begin of next subsong.
+KEY			0-F, CONTROL+LEFT, CONTROL+RIGHT, BACKSPACE	Nastavení èísla tracku v songu nebo "go to line" hodnoty.	Set up number of track or "go to line" value in the song.
+KEY			G	Nastavení / zrušení song "go to line" øádku.	Turn on / off "go to line" command in the song.
+KEY			INSERT, CONTROL+I, DELETE, CONTROL+U	Vkládání / mazání øádkù v songu (s odpovídajícím automatickým posunem všech "go to line" hodnot).	Insert / delete lines in the song (with auto-change of all relevant "go to line" values).
+KEY		CONTROL	P	Vložení øádku s nepoužitými prázdnými tracky do songu.	Prepare song line with unused empty tracks.
+KEY		CONTROL	O	Vložení kopie nebo klonování øádkù v songu.	Insert copy or clone of song line(s).
+KEY		CONTROL	N	Umístìní nového prázdného nepoužitého tracku do songu na aktuální pozici.	Put new empty unused track to actual song position.
+KEY		CONTROL	M	Vytvoøení kopie tracku a její vložení do songu na aktuální pozici. (Poznámka: Nejdøíve se provìøí, zda je track v songu použit vícekrát. Není-li, zobrazí dotaz zda se má kopie opravdu vytváøet.)	Make track's duplicate and put it to actual song position. (Note: If track is used only once in song, messagebox with question appears.)
+KEY			ENTER	Opuštìní editace SONG parametrù.	Exit from SONG EDIT.
+					
+
+H3				PROVE mód 1 - mono / 2 - stereo	PROVE mode 1 - mono / 2 - stereo
+KEY			tonekeys	Pøehrání noty aktuálním instrumentem a hlasitostí na aktuálním zvukovém generátoru (bez zapisování do tracku).	Play note only (without tracks modify).
+KEY			SPACE	Ukonèení pøehrávání noty na aktuálním zvukovém generátoru.	Stop playing note on the selected sound generator.
+KEY			ESC	Ukonèení všech zvukù a vypnutí PROVE módu.	Mute all sounds, deactivate PROVE mode.
+					

@@ -1,0 +1,144 @@
+
+
+
+
+
+
+
+
+
+
+
+ RASTER MUSIC TRACKER v0.1 by Radek Sterba, (c) RASTER/C.P.U. 2002
+
+ Pokusna skladba befeleme pes se veze od Pokuse 2002        SONG L1 L2 L3 L4 R1 R2 R3 R4  LEN
+ MUSIC SPEED: 08/08/1  MAXTRACKLENGTH: FF  STEREO-8-TRACKS   00: 00 -- 01 -- -- -- -- --  256
+ 01: Uvodni pasaz s bubny a tichym sumem                   ->01: 00 02 03 -- -- -- -- --   64
+ INSTRUMENT       FILTER 16BASS POLY9 15KHZ    OCTAVE 1-2    02: 00 02 04 -- -- -- -- --   64
+ 00: Cisty ton                                               FF: GO 00 -- -- -- -- -- --  ^--
+                                                                                                    
+    | TRACK_L1 | TRACK_L2 | TRACK_L3 | TRACK_L4 | TRACK_R1 | TRACK_R2 | TRACK_R3 | TRACK_R4 |
+    | 00  ---- | --  ---- | 01  0300 | --  ---- | --  ---- | --  ---- | --  ---- | --  ---- |
+ ===============================================|============================================
+   0|C-1 00 F  |--- -- -  |E-2 01 F  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   1|--- -- -  |--- -- -  |--- -- B  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   2|D-1 00 F  |--- -- -  |--- -- A  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   3|--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   4|D#1 00 F08|--- -- -  |E-2 01 F  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   5|E-1 00 F  |--- -- -  |--- -- B  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   6|--- -- -  |--- -- -  |--- -- A  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   7|--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   8|--- -- -  |--- -- -  |E-2 01 F  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+   9|--- -- -  |--- -- -  |--- -- B  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+  10|--- -- -  |--- -- -  |--- -- A  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+  11|--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+  12|--- -- -  |--- -- -  |E-2 01 F  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+  13|--- -- -  |--- -- -  |--- -- B  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+  14|--- -- -  |--- -- -  |--- -- A  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+  15|--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+ 255|--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |--- -- -  |
+ ===============================================|============================================
+ 
+
+
+
+
+
+
+
+
+ RASTER MUSIC TRACKER v0.1 by Radek Sterba, (c) RASTER/C.P.U. 2002
+
+ Pokusna skladba befeleme pes se veze od Pokuse 2002        SONG L1 L2 L3 L4 R1 R2 R3 R4  LEN
+ MUSIC SPEED: 08/08/1  MAXTRACKLENGTH: FF  STEREO-8-TRACKS   00: 00 -- 01 -- -- -- -- --  256
+ 01: Uvodni pasaz s bubny a tichym sumem                   ->01: 00 02 03 -- -- -- -- --   64
+ INSTRUMENT       FILTER 16BASS POLY9 15KHZ     OCTAVE 1-2   02: 00 02 04 -- -- -- -- --   64
+ 00: Cisty ton                                    VOLUME F   FF: GO 00 -- -- -- -- -- --  ^--
+                                   
+ TABLE      ENVELOPE             LEFT/MONO    RIGHT                                                        
+  LEN:  0      LEN: 1F      |
+   GO:  0       GO: 1F      |
+  SPD: 00   VSLIDE: 00      |_-_
+ TYPE: NOTE   VMIN:  0      |  -_
+ MODE: SET                  |    -------________
+   00: 00   EFFECT          |                   ------______
+   01: 00    DELAY: 00      |                               |
+   02: 00  VIBRATO:  0      |                               |
+   03: 00   FSHIFT: 00  DIS: 8A8AAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+   04: 00               CMD: 10100000000000000000000000000000
+   05: 00   AUDCTL        X/ 00000000000000000000000000000000
+   06: 00    POLY9:  0    Y\ 10200000000000000000000000000000
+   07: 00    15KHZ:  0  FIL:  * *****************************
+                        POR:        
+                            |0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF                                   
+ ============================================================================================
+ DISTORTION   0 ..level $0            8 ..level $8                 Note:  
+              2 ..level $2            A ..level $A (pure tones)    16BASS work only in track 2 or 4
+              4 ..level $4            C ..level $C (bass table1)   and it is using also channel    
+              6 ..level $C & 16BASS   E ..level $C (bass table2)    for track 1 or 3.
+
+
+
+
+
+
+
+
+ ====================================================================================================
+ COMMAND     0 ..play NOTE + NOTE XY                   4 ..set SHIFTFRQ = SHIFTFRQ + XY, play NOTE
+ (param XY)  1 ..play FRQ XY                           5 ..set PORTAMENTO speed X depth Y, play NOTE
+             2 ..play NOTE + FRQ XY                        if XY=00 then PORTAM.ACT.FRQ = actual FRQ
+             3 ..set NOTE = NOTE + NOTE XY, play NOTE  6 ..set FILTERFRQ = FILTERFRQ + XY, play NOTE
+
+ ====================================================================================================
+ FILTER     Filter is working only in track 1 or 2 and further it use channel for track 3 or 4.
+             * ..filter on (Insert high pass filter into channel 1 or 2, clocked by channel 3 or 4.)
+               ..filter off
+ Note: It has higher priority than 16BASS.
+
+ ====================================================================================================
+ PORTAMENTO    If PORTAM is on, then PORTAMENTO ACTUAL FRQ is played instead of relevant NOTE.
+               PORTAMENTO ACTUAL FRQ is changing every X frame by depth Y, where X and Y values
+               was set by COMMAND 5.
+               
+
+
+
+
+
+
+```````````````````
+Poznamky:
+
+TRACKS EDITOR
+
+Pri pohybu kurzorem po trackach v "tracks editoru" barevne indikuje, zda se v prave aktualnim
+tracku da aktualni instrument plne vyuzit - tj. jedna se o FILTER a 16BASS nastroje.
+Napr. Pokud je aktualni instrument s FILTERem a jsem nekde v tracku L1, podbarvi se ZELENE
+nadpisy TRACK_L1 a TRACK_L3 a napis FILTER. Naopak pokud jsem s timto instrumentem
+nekde v tracku L3, podbarvi se CERVENE nadpis TRACK_L3 a napis FILTER.
+Podobne pro 16BASS. V tracku 2 podbarvi ZELENE nadpis TRACK_L2 a TRACK_L1 a napis 16BASS,
+naopak v tracku 1 podbarvi cervene TRACK_L1 a 16BASS.
+
+Zobrazovana cisla beatu vlevo vedle trackuuu a LEN udaje u songu se daji prepinat DEC nebo HEX.
+
+Sensitive help i u tracks editoru. 
+Princip pro ruzne jazykove verze. ( command {22 ..level $2}
+									        {33 ..level $3}
+									        {Hblablablabla} )    H je jednociferne Hexa cislo, tj. max. 0-f ztucneni.
+
+
+INSTRUMENT EDITOR
+
+Jestlize aktivuji FILTER a je DISTORTION==6 (16BASS), pak se automaticky zmeni DISTORTION na C.
+Podobne kdyz nastavim DISTORTION na 6 a je zapnut filter, pak se automaticky vypne filtr.
+
+Pri pohybu po polozkach se dole vypisuje "sensitive help" a podle konkretnich hodnot
+se ztucnuji prislusne pasaze (pro kazdy help existuje pole BYTU, ktere ma pro kazdy znak
+v helpu jeden BYTE, ktery urcuje souvislost tohoto pismene s aktualni hodnotou).
+
+Obalova krivka hlasitosti je zobrazena jednou barvou az po svuj konec dle delky instrumentu,
+dal je dopocitana podle goto smycky, VSLIDE a VMINIM a dokreslena slabe az do delky 33
+(o jedno dal za maximalni delku instrumentu (32) - aby bylo videt jak to pokracuje).
+Leva krivka je vykreslena plosne, pravy kanal je zobrazen jinou barvou a jen jako linka.
+

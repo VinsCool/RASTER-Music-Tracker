@@ -1,0 +1,15 @@
+
+19.2.2004 09:31 wakax (193.230.233.253)
+amazing :) my second request is a random instrument generator.
+could this be done ? for experimentation`s sake ! like when you press "ctrl+r" - it randoms instrument parameters. could be usefull. Thanks !
+ 
+16.2.2004 07:08 raster/c.p.u. 
+New RMT 1.15 tracker is out. See the file changes.txt to know all the changes. Enjoy it! :-)
+ 
+13.2.2004 13:02 raster/c.p.u. 
+wakax: Hm, It would be possible to add such function sometime in future. But I advise you to make wav output currently by Atari800WinPLus emulator (export RMT song as XEX MSX program and run it under this emulator) - it has much much more accurate POKEY sound emulation.
+ 
+12.2.2004 15:24 wakax (193.230.233.253)
+any chance to make it dump in .wav ? from file menu ?
+Thanks.
+

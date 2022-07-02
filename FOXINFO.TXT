@@ -1,0 +1,15 @@
+Hi Raster,
+
+I consider distributing apokeysnd.dll with other Windows binaries of ASAP.
+But since it will take some time before the next release and to make the 
+download easier for RMT users, I will also keep the latest version 
+always available at:
+http://asap.sourceforge.net/apokeysnd.dll
+
+I have just updated the DLL at the above URL to match the latest CVS 
+version.
+Last changes only slightly improve SKCTL emulation (INIT and two-tone mode).
+
+Greetings,
+0xF
+

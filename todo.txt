@@ -1,0 +1,378 @@
+
+TODO & changes - pracovni verze
+
+TODO:
+! Vzdy pri zmene v manualu vygenerovat nove HTMLcka
+
+Import MOD
+- opravit slajdy. Zpracovavat po sloupcich bez nulovani
+slide promennych.
+Otestovat na:
+C:\My\umt_tracker\ohlasy\PG\tiny_tunes.mod.zip
+(a porovnat novy vysledek s ...\PG\alibi_flop53.rmt <- tam chybely
+posledni noty slajdu.)
+
+
+C:\My\umt_tracker\ohlasy\PG\import volume chyba <-- chyba PG
+
+
+PG - Kdyz je cursor v editaci instrumentu v table of notes,
+aby se zvyraznil sloupec ve volume+pars. envelope kteremu
+prislusna pozice noty odpovida.
+(nutno spocitat dle tablespeed, songspedd1-4, smycek v instrumentu atd.)
+mozna to udelat v optionech vypinaci? (default zapnute)
+
+
+Stretch/squeeze track(s)
+x2 x3 x4 /2 /3 /4 delek XX-YY (vsech) tracku + goto smycky
+(snizena rychlost + upraveny zmeny rychlosti)
+* actual track
+* tracks [ ]-[ ]
+* all tracks
+
+
+Rutina pro BASIC rizeni (instrument speed 1 only) (idea by Sikor)
+start:
+A=USR(RUTINA,MUSICADR,SONGLINE)
+stop:
+A=USR(RUTINA,0,0)
+
+
+Append...
+- pripoji RMT k existujicimu RMT
+Maximal length of tracks: 64
+Free instruments: $12-$3F (24)
+Free tracks: $51-$FD (118)
+Free songlines: $30-$FF (202)
+
+
+Prikazova radka  (idea by Tebe)
+-o:output.rmt[:$4000] - ulozeni .rmt[:strippedRMTaddr]
+napr. rmt.exe song.txt -o:song.rmt
+pro primou konverzi z prikazove radky (a exit)
+
+
+
+
+PG ideas:
+
+- virtualni instrumenty?
+
+
+
+
+
+----------------------
+
+Atari ASM rutina pro mereni speed.
+[min/max],[total]
+50*40sekund = 2048 pruchodu rutinou
+
+
+
+
+! Novou RMT rutinu - vygenerovat bezpoznamkovy zdrojak a dat do ASM_SRC
+
+- MIDI synchro commands recognition (start, sync, continue, stop, position?) ?
+
+- Export As  RMT Faster routine songdata (*.rmf) <--prozatim zaremovano
+
+Moznost zmeny maxtracklength (pri zvetsovani prida vsem neukoncenym trackum bez loopu --end-- 
+podle predchozi maxtracklength a promaze vsechny casti od stareho maxtracklen po maximum,
+pri zmensovani promaze vsechny casti on noveho maxtracklen po maximum).
+Varovani na smazani dat!
+
+
+
+Zmateny IMPORT - Fourier transformation...   V IMPORTMOD dialogu je checkbox pro Fouriera
+
+Prevzit nove rutiny *.sys .
+
+
+
+
+
+
+
+
+- podivat se v RMT rutine na AUDCTL versus Portamento problem.
+
+- pri real-time zaznamu (z midi i z klavesnice) by mel zjistovat,
+zda jsi pred pulkou ci za pulkou taktu a podle toho zapsat notu
+bud do aktualniho nebo az do nasledujiciho taktu
+(na posledni note v tracku musi podle m_play zjistit, zda je to normalni
+play dal nebo dokola jen tenhle track a podle toho vypocitat prislusne 
+nasledujici misto - mno, spis nejaky registr, kam si to ulozi pro "budouci takt"
+a v kazdem dalsim taktu se nejdriv podiva, jestli v tom registru ma neco "z minula",
+a kdyz jo, tak to vybere (promaze ten registr) a pouzije. jo, to je lepsi napad)
+
+
+
+- zobrazeni statistiky  (delka modulu, pocet tracku, instrumentu (vyuzite/nevyuzite), CPU narocnost
+min, max, prumerna)
+
+prehled zatizeni CPU vpravo dole ve statusbaru:   currently/min/max/averange
+
+Pri FileLoad vyhodit varovani, ze smahnes to co mas ted
+rozdelane. Nebo tak nejak.
+
+XML file format
+
+undo, redo
+
+============================================================================
+
+OPRAVIT: 
+*ok - v instrument editu Shift+nahoru,dolu  - at nedela nic misto posunovani
+*ok - screenupdate pri zmene oktavy
+*ok - playovani pres toolbar - respektovat folow button
+*ok - control+X
+
+
+(ok) - kdyz se zmeni TABLE LEN a je mensi nez activetab, zmensit activetab
+  (a prekontrolovat i zmeny TABLE GO, at jdou jen do TABLE LEN)
+
+(ok)- globalni reset vcetne DLL reload je (pause), ale spis dat na pause jen reinit RMT rutiny
+a jen s controlem nebo shiftem + pause uplny reinit (vcetne DLL)
+
+(ok) - spojovaci cary u volume analyzeru (ted mohou nastat vsechny kombinace)
+
+(ok) - myska nesikovne zmeni obalovou krivku kdyz se odklepava jmeno souboru v LoadInstrument dialogu
+
+(ok) - pri zmene nektereho parametru instrumentu => stopnuti vsech generatoru kde zni 
+tento editovany instrument
+
+(ok) OPRAVENO!!!- nejak nesedi table speed - zkontrolovat v RMT ASM rutine, kdy se odecita a kdy se nastavuje
+a na jake hodnoty a kdy porovnava
+ALE JESTE TO ZKONTROLUJ - JO, je to OK!
+
+(ok) - do rutiny i do RMT dodelat VOLUME ONLY REZIM: command 7, value $80, pak volume = pulsni rezim
+(ok) - u pulsniho rezimu bude volume analyzer zobrazovat jinou barvu - ANO.
+
+(ok) - DelefeFile() prazdneho souboru pri stornovanem exportu nebo neuspesnem save.
+(ok) - ASM rutina, dokumentace k ASM rutine a priklad pouziti
+1.11:
+(ok)- znak $ pred hexa delkou u Export RMT stripped file dialogu
+(ok)- zobrazovat VOLUME ONLY nastavovani v envelope taky bledemodrou barvou ?!
+(ok)- hlidani verze RMW
+(ok)- v ramci volume analyzeru ukazovat i AUDF (ci snad i a AUDC) ?!   00 00   00 00   00 00   00 00
+(ok)- chyba speed bez noty
+(ok)- control+E ... exchange block data and clipboard data
+(ok)- config rmt.ini
+(ok)- TXT file format
+(ok)- pri New unmute vsech kanalu
+(ok)- oprava TrackKey END (u sloupcu kde neni track)
+(ok)- oprava Tempo-related bug (info od Memblers from Indiana)
+(ok)- podpora pro 3,4tps v mono, max 3tps ve stereo + podpora pro 60Hz (NTSC)
+(ok)- efektova funkce a dalsi... (pres Control+F)
+(ok)- ikonove tlacitko na block toolbar pro efekty
+(ok)- zapsat hotkey Control+F do manualu
+(ok)- Pridat song "No promises" mezi songy
+(ok)- Track: Control+P  ..prepare, Control+O ..duplicate
+(ok)- Song: Control+U,+I,+O,+P (viz Track)
+(ok)- EndOfLine v import dialogu !!! Nefunguje tam "\n"
+(nebude)- Pri exitu jeste nez vypise dialog dat Stop(); <--nepodarilo se
+(ok)- Pricitani/odecitani k celemu radku v instrument envelope
+	  pres Shift+Control+ UP ARROW / DOWN ARROW ???????
+(ok)- Kdyz da spusteni songu F3 nebo F4 na radku s Goto, tak by mel zjistit kam to goto
+      ukazuje a tam teprve zacit (jen jednou, respektive pozor na zacyklene goto).
+      A co dela F2 kdyz je GOTO na 0.tem radku songu???
+(ok)- BALIK RMT songu od Sack/Cosine !!!
+(ok)- Support for importing of classic ProTracker MOD format with 31 samples, 
+  4 or 8 channels (also modules with 5, 6, 7 channels), as well as old 
+  ProTracker 15 samples 4 channels MOD modules.
+  After import there is need of manual adjustment (tones tuning and distortions) 
+  of all instruments at first!!! Volume envelopes and loops are prepared 
+  in accordance with real samples in MOD module.
+(ok)- Support for importing of Atari XE/XL TMC Theta Music Composer modules.
+  TMC instruments are imitated automatically by RMT instruments if it is possible.
+  There can be need of manually corrections!!! 
+  (Disclaimer: Some TMC effects may be totally wrong, sorry.)
+(ok)-Pri exportu RMT strip file uschovavat adresu a priste ji pouzit jako defaultni hodnotu.
+(ok)-4 tps speed i u 8 kanalovych songu.
+(??)- U editace nazvu nastroje se da posunovat doprava i za aktualni konec textu -
+    zmizi kurzor. (to se mi pak uz nedelo)
+(ok)-Pri spusteni z prikazove radky s parametrem rmt (txt, rmw) souboru ho nacist.
+(ok)-Bezici Time kdyz je pustena skladba (00.0 -sekundy.desetiny, kdyz je to pres 59.9,
+    tak 0:00 -minuty:sekundy)  ...View: Playing time (default checked)
+(ok)-Oprava v rmtplayr.a65 pro spousteni od N-teho songline.
+(ok)-1.15 beta 1	<--- nebude to beta 1
+(ok)- Instrument: Clear all the unused instruments.
+(ok)-Posunout SAP4 a SAP8 tesne za konec rutiny (a zapsat/sepsat uspory ve velikosti rutiny a v rychlosti).
+(ok)-Zmeny v rmtplayr.a65 (STEREOMODE). Prepsat ve zdrojacich a v prikladech zmenit odpovidajicim 
+zpusobem STEREO8T. Pridat nastavovani AUDF i na opacnych generatorech (bez AUDC), aby
+fungovalo filtrovani a 16bit generatory u 2+2 modulu.   <---pripsat do changes 1.15 !!!
+(Support of 4 modes: for 4 track 
+STEREOMODE=1 ... bla bla
+STEREOMODE=2 ... bla bla
+....
+(ok)-prepinani mono/stereo (uz davno!)
+(ok)-Pro export zapamatovavat exportovany typ a priste predchystat tento prislusny typ
+v export dialogu. (stejne jako se to dela u save as).
+(ok)-XEX s vymenovacim 4/5 radkem a colorem rasterline meteru
+(ok)-Import TMC (*.tmc,*.tm8)
+(ok)-klonovani - Chyba - klonuje stejny track vicekrat
+00 00 01 01
+naklonuje na
+02 03 04 05
+....a to neeeni dobry!
+Mel by to naklonovat na
+01 01 02 02
+Predelat to pres funkci k = FindNearTrackBySongLineAndColumn(sourceline,i,tracks);
+(ok)-Block effect - modify notes/instruments/volumes (+..., +..., +...)   
+(12 pro posun o oktávu co chtìl Tatqoo)
+(ok)-U exportu do SAPu analyzovat song a pokud se najde vice samostatnych casti,
+nabidnout podsongy. (Vynechavat prazdne casti -- -- -- -- a goto dokola)
+(ok)- kdyz nema fokus, nemel by pres MIDI zapisovat noty do tracku
+(ok)-Problem:
+Zustava "viset" Control key kdyz se po Control+O nebo Control+N zobrazi nejaky
+dialog - ten asi totiz pri pusteni Controlu sebere tu udalost KEY UP od klavesy Control,
+takze se to nedostane do hlavniho RmtView.
+(ok)-Load/Save track.
+(ok)-Keyboard layout.
+(ok)-Hledání a vyøazení stejných trackù - pøidat i do all size optimalizations.
+(ok)-Vylepsen interni princip v importu TMCcka, ktery lepe vyhledava
+jestli importovany track je shodny s nejakym jiz existujicim
+(drive to delal podle cisla tracku a posunu ladeni, nyni ho vzdy vygeneruje
+a pak porovna jestli neni shodny s jinym - pokud ano tak smaze ten nove
+vygenerovany a pouzije ten predchozi).
+(ok)-Nový RMT player RMTPL104.XEX.
+(ok)-Chyba - Num0 se pri repeat chova jako Ins, Num1 jako End atd..
+(ok)-Pridat song timett.rmt (prekontrolovat nazev songu a nastroju)
+(ok)-* Moznost volny viceradkoveho posunu (0-8) (Projevuje se pri vkladani not a mezere).
+Hotkeys: Numlock (+1) a Shift+Numlock (-1)
+* Vylepseni Song columns' order change na Song columns' order change/copy/clear
+Umoznuje nejen prehazovat sloupce v songu, ale nove i kopirovat sloupce na vice
+cilovych pozic nebo sloupce mazat.
+Pridany i tri nove predvolby pro "Copy left-->right", "Copy left<--right"
+a "Clear all". Pridano jeste rozmezi From songline $: __   To songline $: __
+(ok)-Songy od Tatqoo
+(ok)-Dopsat Hotkeye do manualu
+(ok)-v rocniku upravit na ....-2005
+(ok)-Vylepsit zaznam not z klavesnice a z MIDI.
+Pokud jde o real-time zaznam, pak se sleduje, jestli udalost prisla
+behem prvni poloviny taktu, v tom pripade se vlozi normalne jako doposud.
+Pokud prisla v druhe polovine taktu, tak se ulozi do real_time_bufferu
+(nota,velocity).
+Obsah real_time_bufferu se sleduje pri prechodu na dalsi takt - pokud
+v bufferu neco je, tak to vybere a pouzije.
+- Export As  ASM simple notation source (*.asm)
+(ok)-Pridat do ASM notation dialogu inputtextbox "Generate labels with prefix" "MUSIC_" (?)
+(empty prefix => no labels)
+a podle toho do vystupu generovat (nebo ne) labely.
+(ok)-Proverit Export simple ASM notation, kdyz jsou tam smycky,
+pro vsechny ruzne dialog volby ASM exportu.
+(ok)- dodelat Mouse cursor i pro SongName a pro Speed parametry
+(ok)- mrknout se jak je to s HW & SW initem zvuku, eventualne
+  rozsirit konfig - volbu "jen SW" (nebo "nepouzivat HW sound buffer")
+(ok)- pres mys dialogy pro OCTAVE 1-2 (1-2,2-3,3-4,... cudliky)
+  a pro volbu INSTRUMENTu
+  a pro hlasitost
+(ok)-Ctrl+M ... put track duplicate
+(ok)-Optimization 
+     FEAT_INSTRSPEED		0	1 2 3 4
+(ok)-Dodelat sfx.rmt !!!
+(ok)-zakompilovat .sys soubory primo do exe.
+(pomoci C:\MY\datatoc\Release\datatoc.exe)
+(ok)-Novy screenshot Export RMT , FEAT !
+(ok)-FEAT optimalizace rmt rutiny pro effdelay, effvibrato a effshift
+(muze to udelat hodne uspory jak velikosti tak rychlosti)
+(ok)-Alternativni cislovani - misto 00-3F  11,12,13,..21,22,23..., 31,32, ...
+(podle track highlighting step)
+(ok)-Enter/Control+Enter moznost vymeny (v konfiguraci)
+(ok)-Pridat song "Three hundred thirteen".
+a song "Lisf7" (od Lisu Foreverackej).
+a uvodni song z Flopu "Satelite" (ale az po vyjiti FLOPu, pac tam vyjde jako prvni?)
+(ok)- FEAT optimalizace pro delay effect / vibrato / frq shift ?!
+(ok)-Pridat song GLU.RMT mezi songy.
+(ok)-Odkaz na weba na novy RMTPlayer1.06 a samostatny download a screenshot
+(ok)-Obsluha mouse kolecka pro rolovani v tracku
+(ok)-Play from bookmark. (+set bookmark (songline&trackline)) (pri zmenach v songu se musi
+posouvat bookmarkova songline)
+---v1.25---
+(ok)-Pri nacitani u songu pouzivat goto pointery
+vzhledem k pocatecnimu pointeru songu, misto goto cisel.
+line = (goto_pointer-begin_song)/pocet_tracku.
+(pointer je smerodatnejsi - pouziva se pri realnem
+prehravani).
+(ok)- Cursor inverzne, aby byl lepe videt.
+(ok)- opraveno pozadi ikony s vikricnikem u MOD a TMC import finished dialogu
+(ok)- Instrument - Change All the instr.occurs:
+   - Only in current pattern (cislo)
+   - All instruments
+(ok) -Vylepsit zmenu all occurences
+- aby menil i samostatnou volume prinalezici k note
+a instrumentu.
+---v1.26---
+(ok) -Pri spusteni s parametrem .rmt souboru at predchysta do songlastpath
+cestu k tomuto souboru. (aby kdyz pak da "save as", aby to bylo v tom
+stejnem adresari)
+(ok) -Po editaci hlasitosti v tracku udelat posun stejny jako po editaci noty
+(upozornil Elan).
+a taky po editaci oktavy.
+(ok) -C:\My\umt_tracker\ohlasy\mikers_rmt_musics
+Mikerovy songy
+(ok) -Opravit podivnost s block effektem Expand/Shrink lines
+pro zaporne hodnoty - je to tam nejaky divoky.
+priklad: 3 noty, blok 10 radku, paste do prazdneho a hned Expand 1 -2
+a zmizi vsechno.
+(ok) -- Stripped RMT - RMT_FEAT
+kdyz je COMMAND 5 ale neni nikde pouzito portamento,
+tak nezkompiluje podporu pro portamento.
+Wrathchild.
+(ok) -PGho songy z MindBlastu !
+(ok) -LiSU song z Foreveru8.
+(ok) -Last Minute song z Glucholaz !
+(ok) -Elan song z Foreveru8.
+(ok) -Instrument edit
+- Insert - ponecha v aktualnim sloupci stav
+- Space - vymaze cely sloupec a posune se doprava
+(ok) -Kdyz se insertem prida (nebo deletem zkrati)
+table of notes/frq v instrumentu, musi se stopnout
+instrument (pazvuky)!
+(ok)-Miker:
+(ok)- Control+PgUp/PgDw - prev.subsong / next subsong (na zacatek casti pred goto, za prvni goto)
+(ok)- Pri stopu stopnout vsechny instrumenty natvrdo jako pri klavese Break.
+(ok)- Moznost uvolneni kurzoru nahoru dolu? (nastaveni kolik radku +-stred) (0-8)
+(ok)- Sal Esquivel [kjmann12@yahoo.com]  (Kjmann)
+Suggestion for the next release:
+I was thinking that it would be helpful to be able to change all instrument occurrences and choose which channels to do it in. be able to choose just channel one or channel one and three and so on.
+Sal
+(ok)- thanks to Wrathchild:
+Command 5 & nikde nepouzite portamento - v RMT feat je COMMAND5 jo
+ale USE_PORTAMENTO ne => zmatek ve vygenerovanem optimalizovanem playeru
+(podporuje command 5, ale neumi portamento)
+... resi se to primo az v generovanem optimalizovanem RMT playeru
+(pokud je tam jen command 5 a neni portamento, zakompiluje misto
+commandu 5 akci jako pro normalni ton bez commandu 5)
+(ok)- Ostry Instrument z I'm Sure mezi instrumenty. Sharpch1.rti
+(ok)- undo/redo
+(ok)- Dely - podpora pro celkovou hlasitost v playeru
+   (volitelne pres RMTfeat)
+(ok)- moznost zrusit startovaci songline (volitelne pres RMTfeat)
+(ok)-LiSU - test prehravani pri upravach Effect v bloku
+    - nebude zastavovat pripadne prehravani
+	[Try] - udela zmenu a pokud to pri zapoceti efektovani nehralo,
+           spusti prehravani jen toho tracku
+ [Ok] [Cancel]
+(ok)-- RMTSFXVOLUME pridat do zdrojaku a do examplu sfx efektu
+  (idea by Tebe)
+(ok)-- Undo pipani klavesnice kdyz neni dalsi krok Undo.
+(ok)-- Upravit XEX playovaci rutinu exportu z RMT pro PAL i NTSC
+  (viz upraveny player)
+(ok) - upravit Enter, Shift+Enter a Ctrl+Enter pro nulovou hlasitost
+(hrat ji, ale neprebirat do aktualni volume)
+(ok) - na zaklade volani UndoChange() zavest g_changed a to nastavovat
+pri jakekoliv zmene. Pri ulozeni nekterou save technikou vynulovat
+a zmenit dotaz pri opousteni "Changed", save? y/n/cancel
+(u zmen co se neundovavaji (tempo,hlavni jmeno?) volat g_changed=1)
+(ok) -- paste envelope volume L to R
+ - paste envelope volume R to L
+ - insert envelope to current cursor position
+  (bacha na undo!)
+(ok)- Do konfigu ukladat i nastaveni VIEW_ _POKEYREG _VOLUMEANALYZER ....
+(ok)- Opravit poradi v SAPu
+AUTHOR ... NAME ...
+(ok) - Novy Atari RmtPlayer 1.07 s podporou rucne zadavaneho nazvu
+  a podporou pro NTSC system.
+  - dat i samostatne na weba pro prime odkazani

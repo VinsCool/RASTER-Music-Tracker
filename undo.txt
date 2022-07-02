@@ -1,0 +1,15 @@
+
+
+
+
+if ( zmenila se pozice kurzoru oproti pozici zalohy )
+{
+	//ano zmenila:
+    	if (zmenil se obsah na stare pozici kurzoru)  //(porovnej aktualni obsah na stare pozici s obsahem v zaloze
+	{
+    		//ano zmenilo:
+    		uloz zazalohovane stare souradnice i se zalohovanym starym obsahem do undo
+	}
+	uloz nove souradnice a obsah na novych souradnicich do zalohy	
+}
+
