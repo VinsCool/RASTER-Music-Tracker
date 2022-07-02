@@ -1,0 +1,31 @@
+// PoP Stuff...
+
+[instrument$00]
+EnvelopeDistortion= $00,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $01,$01,$01,$01,$01,$01,$01,
+
+[instrument$01]
+EnvelopeDistortion= $00,$18,$18,$18,$18,$18,$18,
+//EnvelopeAUDCTL=     $01,$01,$01,$01,$01,$01,$01,
+
+[instrument$02]
+EnvelopeDistortion= $10,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $01,$01,$01,$01,$01,$01,$01,
+
+[instrument$03]
+EnvelopeDistortion= $18,$18,$18,$18,$18,$18,$18,
+//EnvelopeAUDCTL=     $01,$01,$01,$01,$01,$01,$01,
+
+[instrument$04]
+EnvelopeDistortion= $00,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $01,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,
+
+[instrument$05]
+EnvelopeDistortion= $00,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $01,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,
+
+[instrument$06]
+EnvelopeDistortion= $00,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $01,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,
+
+

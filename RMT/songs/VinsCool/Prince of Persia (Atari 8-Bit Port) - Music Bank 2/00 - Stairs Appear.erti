@@ -1,0 +1,13 @@
+// PoP Stuff...
+
+[instrument$00]
+EnvelopeDistortion= $00,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $01,$01,$01,$01,$01,$01,$01,
+
+[instrument$07]
+EnvelopeDistortion= $00,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $01,$01,$01,$01,$01,$01,$01,
+
+
+
+

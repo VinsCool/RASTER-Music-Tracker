@@ -1,1 +1,0 @@
-xasm.exe sfx.a65 /o:sfx.xex

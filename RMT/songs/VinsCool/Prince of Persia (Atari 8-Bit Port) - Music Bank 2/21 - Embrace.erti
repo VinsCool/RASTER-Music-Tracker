@@ -1,0 +1,31 @@
+// PoP Stuff...
+
+[instrument$00] // clarinet hi
+EnvelopeDistortion= $26,$26,$26,$26,$26,$26,$26,
+//EnvelopeAUDCTL=     $10,$10,$10,$10,$10,$10,$10,
+
+[instrument$01] // clarinet lo
+EnvelopeDistortion= $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,
+//EnvelopeAUDCTL=     $40,$40,$40,$40,$40,$40,$40,$40,$40,$40,
+
+[instrument$09] // lead3 pwm 2+4 15khz
+EnvelopeDistortion= $10,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $10,$10,$10,$10,$10,$10,$10,
+
+[instrument$0A] // lead1 15khz
+EnvelopeDistortion= $10,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $10,$10,$10,$10,$10,$10,$10,
+
+[instrument$0B] // lead3 pwm 1+3 15khz
+EnvelopeDistortion= $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+//EnvelopeAUDCTL=     $10,$10,$10,$10,$10,$10,$10,
+
+[instrument$10] // clarinet hi 2
+EnvelopeDistortion= $26,$26,$26,$26,$26,$26,$26,
+//EnvelopeAUDCTL=     $10,$10,$10,$10,$10,$10,$10,
+
+[instrument$11] // clarinet lo 2
+EnvelopeDistortion= $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,
+//EnvelopeAUDCTL=     $40,$40,$40,$40,$40,$40,$40,$40,$40,$40,
+
+

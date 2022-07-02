@@ -1,1 +1,0 @@
-xasm.exe simplepl.a65 /o:simplepl.xex

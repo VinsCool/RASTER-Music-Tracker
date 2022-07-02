@@ -1,0 +1,28 @@
+Prince of Persia A8 Edition
+
+Music list:
+
+00 - Stairs Appear.rmt ; Stairs. Based on Miker's tune.
+01 - Prologue A.rmt    ; Subtune 1 is used in the Broderbund screen, Subtune 2 is used in the Title screen, and as the Level End tune. Could replace a section of another tune in Credits screen, almost identical.
+02 - Prologue B.rmt    ; Used in the Jaffar introduction screen.
+03 - Princess.rmt      ; Used in the Princess room, for the introduction screen.
+04 - Jaffar.rmt        ; Subtune 1 is used just after the Door Slam sfx, when Jaffar enters the room. Subtune 2 is used when Jaffar is standing closer to the Princess, before he makes the hourglass appear, with its matching sfx.
+05 - Heartbeat.rmt     ; Subtune 1 is used when Jaffar walks away from the Princess. Subtune 2 is used in the next screen (1 hour left text), before the second part of that tune plays during the credits. The credits part of that tune could be replaced by the Subtune 2 of Prologue A to save space.
+06 - Danger.rmt        ; Used at the start of the Level 1. I am not sure this is used anywhere else?
+07 - Potion 1.rmt      ; Used for Small Potion.
+08 - Potion 2.rmt      ; Used for Big Potion.
+09 - Victory 1.rmt     ; Used for finding the sword, and killing enemies.
+10 - Victory 2.rmt     ; Used for the moment Jaffar is killed. Could be replaced with Victory 1 to save space.
+11 - Prince.rmt        ; Stand alone version of Prologue A subtune 2. Basically a duplicate serving no purpose since it's identical.
+12 - Heartbeat 2.rmt   ; Used for the cutscene after level 1, 3, 5, and 11. Very similar to 05 - Heartbeat Subtune 2, so there may be a possible optimisation in order to be able to use the same tune in both situation.
+13 - Accident.rmt      ; Used for Accidental deaths (spikes, enemies, etc).
+14 - Heroic Death.rmt  ; Used for dying in fights.
+15 - The Shadow.rmt    ; Used for the end of Level 4 and killed by Shadow.
+16 - Jaffar 3.rmt      ; Not much time left.
+17 - Float.rmt         ; Floating (I'm not even sure where it was used, so I suppose it's not absolutely necessary to keep).
+18 - Timer.rmt         ; Used for the cutscene after level 7 and 8.
+19 - Tragic End.rmt    ; Used when there is no more time left (Game Over?).
+20 - Jaffar 2.rmt      ; Used when Jaffar is encountered before the end of the game.
+21 - Embrace.rmt       ; Used at the end of the game when the Princess is saved.
+22 - Epilogue.rmt      ; End of Game
+

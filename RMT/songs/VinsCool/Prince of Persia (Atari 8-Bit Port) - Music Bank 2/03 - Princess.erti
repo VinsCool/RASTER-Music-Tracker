@@ -1,0 +1,12 @@
+// PoP Stuff...
+
+[instrument$00]
+EnvelopeDistortion= $26,$26,$26,$26,$26,$26,$26,
+//EnvelopeAUDCTL=     $10,$10,$10,$10,$10,$10,$10,
+
+[instrument$01]
+EnvelopeDistortion= $24,$24,$24,$24,$24,$24,$24,$24,$24,$24,
+//EnvelopeAUDCTL=     $40,$40,$40,$40,$40,$40,$40,$40,$40,$40,
+
+
+
