@@ -1,8 +1,36 @@
 ﻿************************************************************************
 RASTER MUSIC TRACKER - RMT
 by Radek Sterba, Raster/C.P.U., 2002-2009
+currently maintained by Vin Samuel, VinsCool, 2021-2022
 http://raster.atari.org
 ************************************************************************
+
+Changes in RMT 1.34.00 
+-------------------
+- RASTER MUSIC TRACKER is now Open Source! Thanks to everyone who made this possible!
+- Rewrote all of the RMT Export code, for proper SAP-R and LZSS export formats support
+- Fixed a lot of bugs missed in the previous release
+- Cleaned up all the code in a really aggressive way, making things much easier to follow without commented-out blocks everywhere.
+- Finished translating ALL of the RMT code, so now all comments/reference are available in English.
+- Re-structured the entire codebase as a side effect of the sources becoming available to the public.
+- Removed most of the unused code unless it may have use in the future.
+- VinsCool is now clinically insane (just kidding!).
+- This release was a LOT of work, you have no idea how many nights I spent sleep deprived for making it as good as it could be!
+
+
+Changes in RMT 1.33.00 BETA
+-------------------
+- THIS VERSION IS A MESS, AND AS SUCH, DOES NOT REFLECT THE GOALS THAT WERE SET FOR RELEASE!
+- Add full Tuning computation code, borrowed from POKEY Frequencies Calculator by VinsCool (https://github.com/VinsCool/POKEY-Frequencies-Calculator).
+- Early SAP-R Dump and LZSS export capabilities, hardcoded and junk implementation, good as a proof of concept ONLY.
+- Several changes in the sa_pokey procedure code, intended for Altirra POKEY emulation plugin support improvements.
+- Various bugfixes and experimental changes not reflected in the changelog, but generally made RMT more stable.
+
+
+Changes in RMT 1.32.07
+-------------------
+- Cleanups, and lots of under the hood work for the future releases
+
 
 Changes in RMT 1.32.06
 -------------------
