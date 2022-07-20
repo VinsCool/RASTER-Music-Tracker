@@ -1,0 +1,6 @@
+Debug/
+Release/
+.vs
+*.ncb
+*.aps
+*.suo
