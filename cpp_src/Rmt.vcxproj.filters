@@ -13,78 +13,97 @@
       <UniqueIdentifier>{9f40edfd-959f-43b9-98e8-183315831f97}</UniqueIdentifier>
       <Extensions>ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe</Extensions>
     </Filter>
+    <Filter Include="Copy to Build Folder">
+      <UniqueIdentifier>{58195311-11eb-48ee-aea7-c95cae22689d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Copy to Build Folder\RMT Binaries">
+      <UniqueIdentifier>{a2f10bad-f640-4755-9632-a9eee2b9728d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Dialogs">
+      <UniqueIdentifier>{0d6bbee4-a8b9-457f-90d9-73664e410b59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Helpers">
+      <UniqueIdentifier>{4139ef6f-85a8-4e4f-aa78-fb5152aa902a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\SAP-R Compressor">
+      <UniqueIdentifier>{b1ac240f-8bfa-4b7f-9f1a-67e475c4a76e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Tuning">
+      <UniqueIdentifier>{4c4d791e-b9e3-49ec-ba38-fb7c8e30b9b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Sound Generator">
+      <UniqueIdentifier>{973e7050-b72b-497e-bb78-59b87397d694}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\RMT Interface">
+      <UniqueIdentifier>{c90897da-fb9a-4282-a4d0-c209c89b0507}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Atari6502.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ConfigDlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="EffectsDlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ExportDlgs.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FileNewDlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FilePathDlg.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MainFrm.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Rmt.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RmtDoc.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RmtMidi.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RmtView.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="StdAfx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="XPokey.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="importdlgs.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="r_music.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Tuning.cpp">
+    <ClCompile Include="Global.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="TuningDlg.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="ConfigDlg.cpp">
+      <Filter>Source Files\Dialogs</Filter>
     </ClCompile>
-    <ClCompile Include="lzss_sap.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="EffectsDlg.cpp">
+      <Filter>Source Files\Dialogs</Filter>
     </ClCompile>
-    <ClCompile Include="getopt.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="ExportDlgs.cpp">
+      <Filter>Source Files\Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="FileNewDlg.cpp">
+      <Filter>Source Files\Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="FilePathDlg.cpp">
+      <Filter>Source Files\Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="ImportDlgs.cpp">
+      <Filter>Source Files\Dialogs</Filter>
     </ClCompile>
     <ClCompile Include="libfmemopen.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="getopt.cpp">
+      <Filter>Source Files\Helpers</Filter>
+    </ClCompile>
+    <ClCompile Include="lzss_sap.cpp">
+      <Filter>Source Files\SAP-R Compressor</Filter>
+    </ClCompile>
+    <ClCompile Include="RmtMidi.cpp">
+      <Filter>Source Files\Dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="Tuning.cpp">
+      <Filter>Source Files\Tuning</Filter>
+    </ClCompile>
+    <ClCompile Include="TuningDlg.cpp">
+      <Filter>Source Files\Tuning</Filter>
+    </ClCompile>
+    <ClCompile Include="XPokey.cpp">
+      <Filter>Source Files\Sound Generator</Filter>
+    </ClCompile>
+    <ClCompile Include="Rmt.cpp">
+      <Filter>Source Files\RMT Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="RmtDoc.cpp">
+      <Filter>Source Files\RMT Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="RmtView.cpp">
+      <Filter>Source Files\RMT Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="Atari6502.cpp">
+      <Filter>Source Files\Sound Generator</Filter>
+    </ClCompile>
+    <ClCompile Include="MainFrm.cpp">
+      <Filter>Source Files\RMT Interface</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Rmt.rc">
-      <Filter>Source Files</Filter>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Atari6502.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="ConfigDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -98,9 +117,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FilePathDlg.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="MainFrm.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
@@ -121,9 +137,6 @@
     <ClInclude Include="StdAfx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="XPokey.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="global.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -131,12 +144,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="r_music.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Tuning.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TuningDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="getopt.h">
@@ -147,6 +154,21 @@
     </ClInclude>
     <ClInclude Include="libfmemopen.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Tuning.h">
+      <Filter>Source Files\Tuning</Filter>
+    </ClInclude>
+    <ClInclude Include="TuningDlg.h">
+      <Filter>Source Files\Tuning</Filter>
+    </ClInclude>
+    <ClInclude Include="XPokey.h">
+      <Filter>Source Files\Sound Generator</Filter>
+    </ClInclude>
+    <ClInclude Include="Atari6502.h">
+      <Filter>Source Files\Sound Generator</Filter>
+    </ClInclude>
+    <ClInclude Include="MainFrm.h">
+      <Filter>Source Files\RMT Interface</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -207,5 +229,24 @@
     <Text Include="todo eng.txt" />
     <Text Include="trackerdesign_x_uzsi.txt" />
     <Text Include="RMT CHANGES WIP.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="..\RMT\RMT Binaries\tracker.obx">
+      <Filter>Copy to Build Folder\RMT Binaries</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="..\RMT\RMT Binaries\VUPlayer (LZSS Export).obx">
+      <Filter>Copy to Build Folder\RMT Binaries</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="..\RMT\sa_c6502.dll">
+      <Filter>Copy to Build Folder</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="..\RMT\sa_pokey.dll">
+      <Filter>Copy to Build Folder</Filter>
+    </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Rmt.rc">
+      <Filter>Source Files\RMT Interface</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
