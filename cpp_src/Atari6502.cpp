@@ -108,7 +108,7 @@ void Atari_PlayRMT()
 	WORD adr=RMT_P3; //(without SetPokey) one run of RMT routine but from rmt_p3 (wrap processing)
 	BYTE a=0, x=0, y=0;
 	int cycles = (g_ntsc) ? MAXSCREENCYCLES_NTSC : MAXSCREENCYCLES_PAL;
-	if (g_prove != 3) //MIDI input hack, this is only good for tests, this trigger prevents the RMT driver running at all, leaving only SetPokey available
+	if (g_prove < 3) //this is only good for tests, this trigger prevents the RMT driver running at all, leaving only SetPokey available
 		C6502_JSR(&adr,&a,&x,&y,&cycles);			//adr,A,X,Y
 	adr=RMT_SETPOKEY;
 	a=x=y=0;

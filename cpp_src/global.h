@@ -658,16 +658,24 @@ CString g_expasmlabelprefix;	//label prefix for export ASM simple notation
 
 int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 int g_active_ti;			//1 tracks, 2 instrs
+int last_active_ti;			//if equal to g_active_ti, no screen clear necessary
+int last_activepart;		//if equal to g_activepart, no block clear necessary
+uint64_t last_ms = 0;
+uint64_t last_sec = 0;
+int real_fps = 0;
+double last_fps = 0;
+double avg_fps[120] = { 0 };
 
 BOOL is_editing_instr;		//0 no, 1 instrument name is edited
 BOOL is_editing_infos;		//0 no, 1 song name is edited
 
-int g_tracklinehighlight=8;	//line highlighted every x lines
-BOOL g_tracklinealtnumbering=0; //alternative way of line numbering in tracks
+int g_tracklinehighlight = 8;	//line highlighted every x lines
+BOOL g_tracklinealtnumbering = 0; //alternative way of line numbering in tracks
 int g_linesafter;			//number of lines to scroll after inserting a note (initializes in CSong :: Clear)
-BOOL g_ntsc=0;				//NTSC (60Hz)
-BOOL g_nohwsoundbuffer=0;	//Don't use hardware soundbuffer
-int g_cursoractview=0;		//default position, line 0
+BOOL g_ntsc = 0;				//NTSC (60Hz)
+BOOL g_nohwsoundbuffer = 0;	//Don't use hardware soundbuffer
+int g_cursoractview = 0;		//default position, line 0
+int g_line_y = 0;			//active line coordinate, used to reference g_cursoractview to the correct position
 
 BOOL g_displayflatnotes = 0;	//flats instead of sharps
 BOOL g_usegermannotation = 0;	//H notes instead of B
@@ -685,7 +693,10 @@ BOOL g_viewinstractivehelp=1;	//1 yes, 0 no
 
 long g_playtime=1;	//1 yes, 0 no
 
-UINT g_mousebutt=0;			//mouse button
+UINT g_mousebutt = 0;		//mouse button
+int g_mouselastbutt = 0;
+int g_mouse_px = 0;
+int g_mouse_py = 0;
 
 CTrackClipboard g_trackcl;
 

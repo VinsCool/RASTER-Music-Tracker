@@ -11,12 +11,15 @@
 
 #include "r_music.h"
 #include "RmtMidi.h"
+#include <chrono>
 
 extern CDC* g_mem_dc;
 
 extern int g_width;
 extern int g_height;
 extern int g_tracklines;
+extern int g_cursoractview;
+extern int g_line_y;
 extern int g_scaling_percentage;
 
 extern double g_basetuning;
@@ -84,6 +87,14 @@ extern int volatile g_screenwait;
 
 extern int g_activepart;
 extern int g_active_ti;	
+extern int last_active_ti;	
+extern int last_activepart;	
+
+extern uint64_t last_ms;
+extern uint64_t last_sec;
+extern int real_fps;
+extern double last_fps;
+extern double avg_fps[120];
 
 extern BOOL is_editing_instr;	//will always return 1 in the Instrument Name area
 extern BOOL is_editing_infos;	//will always return 1 in the Song Name area
@@ -104,6 +115,9 @@ extern long g_playtime;
 extern BOOL volatile g_is6502;
 
 extern UINT g_mousebutt;
+extern int g_mouselastbutt;
+extern int g_mouse_px;
+extern int g_mouse_py;
 
 extern int g_tracklinehighlight;
 extern BOOL g_tracklinealtnumbering;
@@ -171,7 +185,8 @@ public:
 	BOOL DrawAll();
 	void DrawAnalyzer();
 	void DrawPlaytimecounter();
-
+	void GetFPS();
+	void GetMouseXY(int px, int py, int mousebutt);	//debug function, to get the pointer coordinates
 	int MouseAction(CPoint point,UINT mousebutt,short wheelzDelta);
 	void ChangeViewElements(BOOL writeconfig=1);
 
