@@ -232,8 +232,8 @@ END_MESSAGE_MAP()
 
 CRmtView::CRmtView()
 {
-	g_screena=0;
-	g_screenwait=2;		//2 fifties
+	g_screena = 0;
+	g_screenwait = 0;
 	m_width = 0;
 	m_height = 0;
 
@@ -274,6 +274,40 @@ void CRmtView::OnTimer(UINT nIDEvent)
 		CView::OnTimer(nIDEvent);
 }
 
+//debug function, poor attempt at a FPS counter
+void CRmtView::GetFPS()
+{
+	using namespace std::chrono;
+	uint64_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+	uint64_t sec = duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
+
+	real_fps++;
+	int delta = (int)ms - (int)last_ms;
+	avg_fps[real_fps % 120] = 1000.0 / delta;
+	last_ms = ms;
+
+	if (real_fps)
+	{
+		last_fps = 0;
+		for (int i = 0; i < real_fps % 120; i++) { last_fps += avg_fps[i]; }
+		last_fps /= real_fps % 120;
+	}
+
+	if (last_sec != sec)
+	{
+		real_fps = -1;
+		last_sec = sec;
+	}
+}
+
+//debug function, to get the pointer coordinates
+void CRmtView::GetMouseXY(int px, int py, int mousebutt)
+{
+	g_mouse_px = px;
+	g_mouse_py = py;
+	g_mouselastbutt = mousebutt;
+}
+
 BOOL CRmtView::PreCreateWindow(CREATESTRUCT& cs)
 {
 	return CView::PreCreateWindow(cs);
@@ -308,16 +342,23 @@ void CRmtView::OnDraw(CDC* pDC)
 BOOL CRmtView::DrawAll()
 {
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBACKGROUND);	
+
+	GetFPS();	//it's crappy but it does an ok job
+
 	m_song.DrawInfo();
 	m_song.DrawSong();
-	
-	if (g_active_ti==PARTTRACKS)	//which one is the active screen?
-		m_song.DrawTracks();		
-	else 
-		m_song.DrawInstrument();
-
 	m_song.DrawAnalyzer(NULL);
 	m_song.DrawPlaytimecounter(NULL);
+
+	if (g_active_ti == PARTTRACKS)	//which one is the active screen?
+	{
+		m_song.DrawTracks();
+	}
+	else
+	{
+		m_song.DrawInstrument();
+	}
+
 	return 1;
 }
 
@@ -330,16 +371,16 @@ void CRmtView::DrawAnalyzer()
 	{
 		/*
 		//debug instrument number display
-		g_mem_dc->FillSolidRect(0, 0, 500, 16, 0);
-		for(int i=0; i<SONGTRACKS; i++)
+		g_mem_dc->FillSolidRect(0, 0, 512, 16, RGBBACKGROUND);
+		for (int i = 0; i < SONGTRACKS; i++)
 		{
 			char s[10];
-			sprintf(s,"%02X",(BYTE)g_rmtinstr[i]);
-			TextXY(s,i*8*8,0);
+			sprintf(s, "%02X", (BYTE)g_rmtinstr[i]);
+			TextXY(s, i * 8 * 8, 0);
 		}
-		pDC->BitBlt(0,0,800,32,g_mem_dc,0,0,SRCCOPY);
+		pDC->BitBlt(0, 0, 512, 16, g_mem_dc, 0, 0, SRCCOPY);
 		*/
-		m_song.DrawAnalyzer(pDC);
+		//m_song.DrawAnalyzer(pDC);
 		ReleaseDC(pDC);
 	}
 }
@@ -349,7 +390,7 @@ void CRmtView::DrawPlaytimecounter()
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
-		m_song.DrawPlaytimecounter(pDC);
+		//m_song.DrawPlaytimecounter(pDC);
 		ReleaseDC(pDC);
 	}
 }
@@ -815,6 +856,8 @@ bool CRmtView::Resize(int width, int height)
 		m_mem_dc.SelectObject(&m_mem_bitmap);
 		g_mem_dc = &m_mem_dc;
 		g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16;	//number of track lines that can be displayed based on the window height
+
+    g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
 		if (m_pen1) delete m_pen1;
 		m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
 		m_penorig = g_mem_dc->SelectObject(m_pen1);
@@ -924,7 +967,7 @@ void CRmtView::OnInitialUpdate()
 	m_timeranalyzer=0;
 	m_timeranalyzer = SetTimer(1,20,NULL);
 
-	Sleep(100);	//this will ensure there will be no false positive with the sound initialisation, else it would attempt to check too early and assume the plugins were not initialised
+	Sleep(200);	//this will ensure there will be no false positive with the sound initialisation, else it would attempt to check too early and assume the plugins were not initialised
 
 	//Displays the ABOUT dialog if there is no Pokey or 6502 initialized...
 	if (!m_song.GetPokey()->GetRenderSound() || !g_is6502)
@@ -966,6 +1009,9 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	point.x = (point.x * 100) / sp;
 	point.y = (point.y * 100) / sp;
 
+	//debug
+	GetMouseXY(point.x, point.y, mousebutt);
+
 	//TODO: make those parameters global so they won't have to be re-initialised in multiple functions separately
 	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == 1) ? 1420 : 960;
 	int MINIMAL_WIDTH_INSTRUMENTS = (g_tracks4_8 > 4 && g_active_ti == 2) ? 1220 : 1220;
@@ -976,6 +1022,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 
 	int linescount = (WINDOW_OFFSET) ? 5 : 9;	//songlines displayed depend on the window offset, if it's displaced to the left side, only 5 lines will be visible, else, 9 will be displayed
 
+	//SONG PARTS
 	CRect rec(SONG_OFFSET + 6 * 8, SONG_Y + 16, SONG_OFFSET + 6 * 8 + g_tracks4_8 * 3 * 8 - 8, SONG_Y + 16 + linescount * 16); 
 	if (rec.PtInRect(point))
 	{
@@ -1022,33 +1069,34 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 1;
 	}
 
-	rec.SetRect(INFO_X,INFO_Y,INFO_X+SONGNAMEMAXLEN*8,INFO_Y+16);
+	//INFO PARTS
+	rec.SetRect(64, 32, 64 + SONGNAMEMAXLEN * 8, 32 + 16);
 	if (rec.PtInRect(point))
 	{
 		//Song name
 		SetCursor(m_cursorgoto);
 		if (mousebutt & MK_LBUTTON)
 		{
-			BOOL r=m_song.InfoCursorGotoSongname(point.x-INFO_X);
+			BOOL r = m_song.InfoCursorGotoSongname(point.x - 64);
 			if (r) SCREENUPDATE;
 		}
 		return 6;
 	}
 
-	rec.SetRect(INFO_X+13*8,INFO_Y+16,INFO_X+13*8+7*8,INFO_Y+16*2);
+	rec.SetRect(120, 48, 120 + 7 * 8, 48 + 16);
 	if (rec.PtInRect(point))
 	{
 		//Song speed
 		SetCursor(m_cursorgoto);
 		if (mousebutt & MK_LBUTTON)
 		{
-			BOOL r=m_song.InfoCursorGotoSpeed(point.x-(INFO_X+13*8));
+			BOOL r = m_song.InfoCursorGotoSpeed(point.x - 120);
 			if (r) SCREENUPDATE;
 		}
 		return 6;
 	}
 
-	rec.SetRect(INFO_X+38*8,INFO_Y+16,INFO_X+40*8,INFO_Y+16*2);
+	rec.SetRect(336, 48, 336 + 2 * 8, 48 + 16);
 	if (rec.PtInRect(point))
 	{
 		//MAXTRACKLENGTH
@@ -1061,10 +1109,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 6;
 	}
 
-	if (g_tracks4_8==8)
-		rec.SetRect(INFO_X+42*8,INFO_Y+16,INFO_X+57*8,INFO_Y+16*2);
-	else
-		rec.SetRect(INFO_X+42*8,INFO_Y+16,INFO_X+55*8,INFO_Y+16*2);
+	rec.SetRect(384, 48, 384 + 8 * ((g_tracks4_8 == 8) ? 15 : 13), 48 + 16);
 	if (rec.PtInRect(point))
 	{
 		//MONO-4-TRACKS or STEREO-8-TRACKS
@@ -1077,20 +1122,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 6;
 	}
 
-	if (g_tracks4_8==8)
-	{
-		if (g_ntsc)
-			rec.SetRect(INFO_X+59*8,INFO_Y+16,INFO_X+63*8,INFO_Y+16*2);
-		else
-			rec.SetRect(INFO_X+59*8,INFO_Y+16,INFO_X+62*8,INFO_Y+16*2);
-	}
-	else 
-	{
-		if (g_ntsc)
-			rec.SetRect(INFO_X+57*8,INFO_Y+16,INFO_X+61*8,INFO_Y+16*2);
-		else 
-			rec.SetRect(INFO_X+57*8,INFO_Y+16,INFO_X+60*8,INFO_Y+16*2);
-	}
+	rec.SetRect(280, 16, 280 + 8 * ((g_ntsc) ? 4 : 3), 16 + 16);
 	if (rec.PtInRect(point))
 	{
 		//PAL or NTSC
@@ -1108,65 +1140,90 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 6;
 	}
 
-	rec.SetRect(INFO_X+47*8,INFO_Y+3*16,INFO_X+47*8+10*8,INFO_Y+3*16+16);
+	rec.SetRect(440, 16, 440 + 8 * 2, 16 + 16);
+	if (rec.PtInRect(point))
+	{
+		//Songline highlight
+		SetCursor(m_cursorgoto);
+		if (mousebutt & MK_LBUTTON)
+		{
+			//TODO
+		}
+		if (wheelzDelta != 0)
+		{
+			BOOL r = 0;
+			int ma = (m_song.GetTracks()->m_maxtracklen) / 2;
+			if (wheelzDelta < 0)
+			{
+				r = g_tracklinehighlight++;
+				if (g_tracklinehighlight > ma) g_tracklinehighlight = ma;
+			}
+			else if (wheelzDelta > 0)
+			{
+				r = g_tracklinehighlight--;
+				if (g_tracklinehighlight < 1) g_tracklinehighlight = 1;
+			}
+			if (r) SCREENUPDATE;
+		}
+		return 6;
+	}
+
+	rec.SetRect(456, 64, 456 + 8 * 10, 64 + 16);
 	if (rec.PtInRect(point))
 	{
 		//Octave Select Dialog
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
-			BOOL r=m_song.InfoCursorGotoOctaveSelect(point.x,point.y);
+			BOOL r = m_song.InfoCursorGotoOctaveSelect(point.x, point.y);
 			if (r) SCREENUPDATE;
 		}
-		if (wheelzDelta!=0)
+		if (wheelzDelta != 0)
 		{
-			BOOL r=0;
-			if (wheelzDelta>0) r=m_song.OctaveUp();
-			else
-			if (wheelzDelta<0) r=m_song.OctaveDown();
+			BOOL r = 0;
+			if (wheelzDelta < 0) r = m_song.OctaveUp();
+			else if (wheelzDelta > 0) r = m_song.OctaveDown();
 			if (r) SCREENUPDATE;
 		}
 		return 6;
 	}
 
-	rec.SetRect(INFO_X+49*8,INFO_Y+4*16,INFO_X+49*8+9*8,INFO_Y+4*16+16);
+	rec.SetRect(472, 80, 472 + 8 * 8, 80 + 16);
 	if (rec.PtInRect(point))
 	{
 		//Volume Select Dialog
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
-			BOOL r=m_song.InfoCursorGotoVolumeSelect(point.x,point.y);
+			BOOL r = m_song.InfoCursorGotoVolumeSelect(point.x, point.y);
 			if (r) SCREENUPDATE;
 		}
-		if (wheelzDelta!=0)
+		if (wheelzDelta != 0)
 		{
-			BOOL r=0;
-			if (wheelzDelta>0) r=m_song.VolumeUp();
-			else
-			if (wheelzDelta<0) r=m_song.VolumeDown();
+			BOOL r = 0;
+			if (wheelzDelta < 0) r = m_song.VolumeUp();
+			else if (wheelzDelta > 0) r = m_song.VolumeDown();
 			if (r) SCREENUPDATE;
 		}
 		return 6;
 	}
 
-	rec.SetRect(INFO_X,INFO_Y+3*16,INFO_X+4*8+INSTRNAMEMAXLEN*8,INFO_Y+3*16+16);
+	rec.SetRect(136, 80, 136 + INSTRNAMEMAXLEN * 8, 80 + 16);
 	if (rec.PtInRect(point))
 	{
 		//Instrument Select Dialog
-Instrument_Select_Dialog:
+	Instrument_Select_Dialog:
 
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
-			BOOL r=m_song.InfoCursorGotoInstrumentSelect(point.x,point.y);
+			BOOL r = m_song.InfoCursorGotoInstrumentSelect(point.x, point.y);
 			if (r) SCREENUPDATE;
 		}
-		if (wheelzDelta!=0)
+		if (wheelzDelta != 0)
 		{
-			if (wheelzDelta>0) m_song.ActiveInstrPrev();
-			else
-			if (wheelzDelta<0) m_song.ActiveInstrNext();
+			if (wheelzDelta > 0) m_song.ActiveInstrPrev();
+			else if (wheelzDelta < 0) m_song.ActiveInstrNext();
 			SCREENUPDATE;
 		}
 		return 6;
@@ -1206,7 +1263,7 @@ Instrument_Select_Dialog:
 			SetCursor(m_cursorgoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				BOOL r=m_song.TrackCursorGoto(CPoint(point.x-(TRACKS_X+6*8),point.y-(TRACKS_Y+48)));
+				BOOL r = m_song.TrackCursorGoto(CPoint(point.x - (TRACKS_X + 6 * 8), point.y - (TRACKS_Y + 48)));
 				if (r) SCREENUPDATE;
 			}
 			if (wheelzDelta!=0)
@@ -1577,6 +1634,11 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 
 	case VK_F5:
+		if (g_controlkey && g_shiftkey)
+		{
+			g_prove = 4;	//POKEY EXPLORER MODE -- KEYBOARD INPUT AND FORMULAE DISPLAY
+			break;
+		}
 		m_song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
 		m_song.Play(MPLAY_SONG,m_song.m_followplay);	//play song from start
 		break;
@@ -2280,14 +2342,14 @@ void CRmtView::OnUpdateEmSong(CCmdUI* pCmdUI)
 
 void CRmtView::OnProvemode() 
 {
-	if (g_prove==0) g_prove=1;
-	else if (g_prove == 3) g_prove = 0;		//disable the special MIDI test mode immediately
+	if (g_prove == 0) g_prove = 1;
+	else if (g_prove >= 3) g_prove = 0;		//disable the special test modes immediately
 	else
 	{
-		if (g_prove==1 && g_tracks4_8>4)	//PROVE 2 only works for 8 tracks
-			g_prove=2;
+		if (g_prove == 1 && g_tracks4_8 > 4)	//PROVE 2 only works for 8 tracks
+			g_prove = 2;
 		else
-			g_prove=0;
+			g_prove = 0;
 	}
 	SCREENUPDATE;
 }

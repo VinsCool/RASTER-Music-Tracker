@@ -16,6 +16,10 @@ using namespace std;
 
 extern BOOL g_changes;
 
+#define RGBBACKGROUND	RGB(34,50,80)	//dark blue
+#define RGBLINES		RGB(149,194,240)	//blue gray
+#define RGBBLACK		RGB(0,0,0)	//black
+
 //TODO: add more keys definition to simplify things
 #define VK_PAGE_UP		33
 #define VK_PAGE_DOWN	34
@@ -215,7 +219,8 @@ public:
 	BOOL InitTracks();
 	BOOL ClearTrack(int t);
 	BOOL IsEmptyTrack(int track);
-	BOOL DrawTrack(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu = 0);
+	BOOL DrawTrack(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu);
+	BOOL DrawTrackNew(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu, int oob);
 	BOOL DelNoteInstrVolSpeed(int noteinstrvolspeed,int track,int line);
 	BOOL SetNoteInstrVol(int note,int instr,int vol,int track,int line);
 	BOOL SetInstr(int instr,int track,int line);
@@ -563,6 +568,7 @@ public:
 	void TracksOrderChange();
 	void Songswitch4_8(int tracks4_8);
 	int GetEffectiveMaxtracklen();
+	int GetSmallestMaxtracklen(int songline);
 	void ChangeMaxtracklen(int maxtracklen);
 	void TracksAllBuildLoops(int& tracksmodified,int& beatsreduced);
 	void TracksAllExpandLoops(int& tracksmodified,int& loopsexpanded);
@@ -627,11 +633,22 @@ private:
 	int m_midi_distortion = 0;
 	BOOL m_ch_offset = 0;
 
+	//POKEY EXPLORER variables, used for tests involving pitch calculations and sound debugging displayed on screen
+	int e_ch_idx = 0;
+	int e_modoffset = 1;
+	int e_coarse_divisor = 1;
+	int e_modulo = 0;
+	BOOL e_valid = 1;
+	double e_divisor = 1;
+	double e_pitch = 0;
+
 	int m_infoact;
 	char m_songname[SONGNAMEMAXLEN+1];
 	int m_songnamecur;
 
 	TBookmark m_bookmark;
+
+	double m_avgspeed[8] = { 0 };		//use for calculating average BPM
 
 	int volatile m_mainspeed;
 	int volatile m_speed;

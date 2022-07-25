@@ -137,11 +137,21 @@ extern BOOL g_rmtstripped_nos;			//nos NoStartingSongline for feat
 extern CString g_rmtmsxtext;
 extern CString g_expasmlabelprefix;	//label prefix for export ASM simple notation
 
+int last_active_ti;			//if equal to g_active_ti, no screen clear necessary
+int last_activepart;		//if equal to g_activepart, no block clear necessary
+uint64_t last_ms = 0;
+uint64_t last_sec = 0;
+int real_fps = 0;
+double last_fps = 0;
+double avg_fps[120] = { 0 };
+
 extern int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 extern int g_active_ti;			//1 tracks, 2 instrs
 
 extern BOOL is_editing_instr;		//0 no, 1 instrument name is edited
 extern BOOL is_editing_infos;		//0 no, 1 song name is edited
+
+int g_line_y = 0;			//active line coordinate, used to reference g_cursoractview to the correct position
 
 extern int g_tracklinehighlight;	//line highlighted every x lines
 extern BOOL g_tracklinealtnumbering; //alternative way of line numbering in tracks
@@ -166,7 +176,12 @@ extern BOOL g_viewinstractivehelp;	//1 yes, 0 no
 
 extern long g_playtime;				//1 yes, 0 no
 
+UINT g_mousebutt = 0;		//mouse button
+
 extern UINT g_mousebutt;			//mouse button
+int g_mouselastbutt = 0;
+int g_mouse_px = 0;
+int g_mouse_py = 0;
 
 extern CTrackClipboard g_trackcl;
 

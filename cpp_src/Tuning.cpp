@@ -154,7 +154,7 @@ const double WERCK3[13] =
 	2
 };
 
-//Tempérament Égal à Quintes Justes 
+//TempÃ©rament Ã‰gal Ã  Quintes Justes 
 const double QUINTE[13] =
 {
 	1,
@@ -172,7 +172,7 @@ const double QUINTE[13] =
 	2.003875
 };
 
-//d'Alembert and Rousseau tempérament ordinaire (1752/1767)
+//d'Alembert and Rousseau tempÃ©rament ordinaire (1752/1767)
 const double TEMPORD[13] =
 {
 	1,
@@ -579,6 +579,9 @@ const double NINTENDO[20] =
 	1.928352,
 	2
 };
+bool IS_SMOOTH_DIST_4 = 0;
+bool IS_UNSTABLE_DIST_4_1 = 0;
+bool IS_UNSTABLE_DIST_4_2 = 0;
 
 //Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
 void real_freq()
@@ -630,13 +633,13 @@ void real_freq()
 				octave = WERCK3[12];
 				break;
 
-			case 5:		//Tempérament Égal à Quintes Justes 
+			case 5:		//TempÃ©rament Ã‰gal Ã  Quintes Justes 
 				if (i > 12) break;
 				ratio[i] = QUINTE[i];
 				octave = QUINTE[12];
 				break;
 
-			case 6:		//d'Alembert and Rousseau tempérament ordinaire (1752/1767)
+			case 6:		//d'Alembert and Rousseau tempÃ©rament ordinaire (1752/1767)
 				if (i > 12) break;
 				ratio[i] = TEMPORD[i];
 				octave = TEMPORD[12];
@@ -849,6 +852,8 @@ double generate_freq(int i_audc, int i_audf, int i_audctl, int i_ch_index)
 	double divisor = 0;
 	int coarse_divisor = 0;
 
+	IS_UNSTABLE_DIST_4_2 = 0;
+
 	IS_BUZZY_DIST_C = 0;
 	IS_GRITTY_DIST_C = 0;
 	IS_UNSTABLE_DIST_C = 0;
@@ -900,15 +905,15 @@ double generate_freq(int i_audc, int i_audf, int i_audctl, int i_ch_index)
 		break;
 
 	case 0x40:
-		/*
-		VinsCool — Today at 01:07
-		after a bit of screwing around I found one of the Distortion 4 common divisor
-		77.5 appears to be the number used for the Smooth Timbres table
-		VinsCool — Today at 01:46
-		ok I have spent enough time already for the week end but I think I found the common divisor for the other table
-		that would be 232.5
-		*/
-		IS_VALID = 1;	//output is the same as Distortion A
+		divisor = 232.5;		//Buzzy
+		v_modulo = (CLOCK_15) ? 5 : 15;
+		IS_UNSTABLE_DIST_4_1 = ((audf + modoffset) % 5 == 0) ? 1 : 0;
+		IS_SMOOTH_DIST_4 = ((audf + modoffset) % 3 == 0 || CLOCK_15) ? 1 : 0;
+		IS_UNSTABLE_DIST_4_2 = ((audf + modoffset) % 31 == 0) ? 1 : 0;
+		if (IS_UNSTABLE_DIST_4_1) divisor = 46.5;	//Unstable #1
+		if (IS_SMOOTH_DIST_4) divisor = 77.5;	//Smooth
+		if (IS_UNSTABLE_DIST_4_2) divisor = (IS_SMOOTH_DIST_4 || IS_UNSTABLE_DIST_4_1) ? 2.5 : 7.5;	//Unstable #2 and #3		
+		IS_VALID = ((audf + modoffset) % v_modulo == 0) ? 0 : 1;
 		break;
 
 	case 0x00:
