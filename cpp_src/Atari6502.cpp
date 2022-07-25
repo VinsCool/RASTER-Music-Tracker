@@ -11,6 +11,8 @@
 #include <fstream>	/* needed for Load/SaveBinaryFile */
 using namespace std;
 #include "Atari6502.h"
+#include "r_music.h"
+#include "global.h"
 
 typedef void (* C6502_Initialise_PROC)(BYTE*);
 typedef int  (* C6502_JSR_PROC)(WORD* , BYTE* , BYTE* , BYTE* , int* );

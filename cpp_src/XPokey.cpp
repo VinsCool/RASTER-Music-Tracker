@@ -4,6 +4,7 @@
 // TODO: fix apokeysnd support, and backport sapokey changes to alternative plugins
 
 #include "stdafx.h"
+#include "Rmt.h"
 #include "XPokey.h"
 #include "RmtView.h"
 #include "Atari6502.h"
@@ -58,10 +59,14 @@ int tracks = g_tracks4_8;
 static LPDIRECTSOUND          g_lpds;
 static LPDIRECTSOUNDBUFFER    g_lpdsbPrimary;
 
+int loops = 0;
+
 CXPokey::CXPokey()
 {
-	m_rendersound=0;
-	m_SoundBuffer=NULL;
+	m_rendersound = 0;
+	m_pokey_dll = NULL;
+	m_SoundBuffer = NULL;
+
 }
 
 CXPokey::~CXPokey()

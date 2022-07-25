@@ -348,7 +348,7 @@ public:
 private:
 	BOOL DrawName(int it);
 	BOOL DrawPar(int p,int it);
-	BOOL DrawEnv(int e,int it);
+	void DrawEnv(int e,int it);
 	BOOL DrawTab(int p,int it);
 
 	BYTE m_iflag[INSTRSNUM];

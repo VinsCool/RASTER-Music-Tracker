@@ -13,6 +13,7 @@
 #include "FileNewDlg.h"
 #include "r_music.h"
 #include "TuningDlg.h"
+#include "Atari6502.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -235,6 +236,8 @@ CRmtView::CRmtView()
 	g_screenwait = 0;
 	m_width = 0;
 	m_height = 0;
+
+	m_pen1 = NULL;
 }
 
 CRmtView::~CRmtView()
@@ -853,7 +856,9 @@ bool CRmtView::Resize(int width, int height)
 		m_mem_dc.SelectObject(&m_mem_bitmap);
 		g_mem_dc = &m_mem_dc;
 		g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16;	//number of track lines that can be displayed based on the window height
-		g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
+
+    g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
+		if (m_pen1) delete m_pen1;
 		m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
 		m_penorig = g_mem_dc->SelectObject(m_pen1);
 		m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBLACK); //initial black background
@@ -903,6 +908,7 @@ void CRmtView::OnInitialUpdate()
 	g_gfx_dc = &m_gfx_dc;
 	g_hwnd = AfxGetApp()->GetMainWnd()->m_hWnd;
 	g_viewhwnd = this->m_hWnd;
+	if (m_pen1) delete m_pen1;
 	m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
 	m_penorig = g_mem_dc->SelectObject(m_pen1);
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBLACK); //initial black background

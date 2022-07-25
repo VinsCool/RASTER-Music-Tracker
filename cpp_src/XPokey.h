@@ -16,22 +16,8 @@
 /////////////////////////////////////////////////////////////////////////////
 // CMy2PokeysDlg dialog
 
-extern HWND g_hwnd;
-extern int g_tracks4_8;
-extern BOOL g_nohwsoundbuffer;
-extern BOOL g_ntsc;
-
 //hacked up, this should be restructured into a proper class and done in a cleaner way
-extern unsigned char SAPRSTREAM[0xFFFFFF];
-extern int SAPRDUMP;
-extern int framecount;
-int loops = 0;
-
-extern BOOL volatile g_rmtroutine;
-extern void Atari_PlayRMT();
-
-extern unsigned char g_atarimem[65536];
-extern void TextXY(char *txt,int x,int y,int c);
+extern int loops;
 
 #define CHANNELS		2
 #define BITRESOLUTION	8
@@ -50,10 +36,6 @@ extern void TextXY(char *txt,int x,int y,int c);
 
 #define CYCLESPERSCREEN ((float)CYCLESPERSECOND/FRAMERATE)
 #define CYCLESPERSAMPLE	((float)CYCLESPERSECOND/44100)
-
-extern CString g_aboutpokey;
-
-extern int GetChannelOnOff(int ch);
 
 class CXPokey
 {

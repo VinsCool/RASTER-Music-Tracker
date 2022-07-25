@@ -11,6 +11,7 @@
 
 #include "r_music.h"
 #include "RmtMidi.h"
+#include "RmtDoc.h"
 #include <chrono>
 
 extern CDC* g_mem_dc;
@@ -139,20 +140,9 @@ extern int g_midi_volumeoffset;
 extern BOOL g_midi_noteoff;
 
 extern void SetStatusBarText(const char* text);
-extern void TextXY(char *txt,int x,int y,int c=0);
-
-extern void Memory_Clear();
-extern int Atari_LoadRMTRoutines();
-extern int Atari_InitRMTRoutine();
-extern void Get_Driver_Version();	
-
-extern char CharH4(unsigned char b);
-extern char CharL4(unsigned char b);
 
 extern char NoteKey(int vk);
 extern char Numblock09Key(int vk);
-
-extern unsigned char g_atarimem[65536];
 
 extern CString g_prgpath;
 extern CString g_lastloadpath_songs;
@@ -160,9 +150,6 @@ extern CString g_lastloadpath_instruments;
 extern CString g_lastloadpath_tracks;
 
 extern CTrackClipboard g_trackcl;
-
-extern int Atari6502_Init();
-extern void Atari6502_DeInit();
 
 extern void SetChannelOnOff(int ch,int onoff);
 extern void SetChannelSolo(int ch);

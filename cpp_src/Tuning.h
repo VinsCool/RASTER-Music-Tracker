@@ -24,38 +24,6 @@ extern double g_basetuning;
 extern int g_basenote;
 extern int g_temperament;
 
-//preset temperament/ratios
-extern const double YOUNG1[13];
-extern const double YOUNG2[13];
-extern const double YOUNG3[13];
-extern const double WERCK3[13];
-extern const double QUINTE[13];
-extern const double TEMPORD[13];
-extern const double ARONIED[13];
-extern const double ATOMSCH[13];
-extern const double APPRX12[13];
-extern const double BAILEY1[13];
-extern const double BARNES1[13];
-extern const double BETHISY[13];
-extern const double BIGGULP[13];
-extern const double BOHLEN12[13];
-extern const double WEDDING[13];
-extern const double DIVORCE[13];
-extern const double PYTHAG1[13];
-extern const double LOGSCALE[13];
-extern const double ZARLINO1[13];
-extern const double FOKKER7[13];
-extern const double BACH400[13];
-extern const double VALYOUNG[13];
-extern const double VALYOWER[13];
-
-///!!!\\\ Testing some non-12 octaves scales here
-extern const double PENTAOPT[6];
-extern const double AEOLIC[8];
-extern const double XYLO1[11];
-extern const double XYLO2[11];
-extern const double NINTENDO[20];
-
 //ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!!
 extern double g_UNISON;
 extern double g_MIN_2ND;
