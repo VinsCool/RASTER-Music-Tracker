@@ -2614,22 +2614,20 @@ BOOL CTracks::AtaToTrack(unsigned char* sour,int len,int track)
 	return 1;
 }
 
-BOOL CTracks::DrawTrack(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu)
+BOOL CTracks::DrawTrackHeader(int col, int x, int y, int tr)	// , int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu)	//not needed: line_cnt, aline, cactview, pline, isactive, acu
 {
-	//cactview = cursor active view line
-	char s[16];
 	char t[16];
-	int i, line, xline, n, c, len, last, go;
-	int sp = g_scaling_percentage;
-	len = last = 0;
+	//int c, len, last, go;
+	//len = last = 0;
+	int c, len, go;
+	len = 0;
 	TTrack* tt = NULL;
 
-	//offset Y to be 1 line above, which will then be masked
+	//offset Y to be 1 line above
 	y -= 16;
 	
-	//will be drawn above the masked lines, so it is set up beforehand
 	strcpy(t, "  --  -----  ");
-	if (tr >= 0)
+	if (tr >= 0 && tr <= 253)
 	{
 		tt = &m_track[tr];
 
@@ -2637,12 +2635,13 @@ BOOL CTracks::DrawTrack(int col, int x, int y, int tr, int line_cnt, int aline, 
 		t[3] = CharL4(tr);
 		t[4] = ':';
 
-		len = last = tt->len;	//len a last
+		//len = last = tt->len;	//len a last
+		len = tt->len;
 		go = tt->go;	//go
 
 		if (IsEmptyTrack(tr))
 		{
-			strncpy(t + 6, "EMPTY", 5);;
+			strncpy(t + 6, "EMPTY", 5);
 		}
 		else
 		{	//non-empty track
@@ -2653,154 +2652,30 @@ BOOL CTracks::DrawTrack(int col, int x, int y, int tr, int line_cnt, int aline, 
 			}
 			if (go >= 0)
 			{
-				t[9] = CharH4(len);
-				t[10] = CharL4(len);
-				last = m_maxtracklen;
+				t[9] = CharH4(go);
+				t[10] = CharL4(go);
+				//last = m_maxtracklen;
 			}
 		}
 	}
-/*
-	for (i = 0; i < line_cnt + 1; i++, y += 16)
-	{
-		line = cactview + i - 9;	//8 lines from above + masked line offset
-		BOOL oob = 0;
 
-		if (line < 0 || line >= m_maxtracklen) continue;	//if line is below 0 or above maximal length, ignore it
-
-		if (line >= last)
-		{
-			if (line == aline && isactive)
-				color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
-			else if (line == pline)
-				color = TEXT_COLOR_YELLOW;
-			else
-				color = TEXT_COLOR_GRAY;
-			
-			if (line == last && len > 0)
-			{
-				if (color != TEXT_COLOR_BLUE && color != TEXT_COLOR_RED) color = TEXT_COLOR_WHITE;	//The end is white unless the active colour is used
-				TextXY("\x12\x12\x12\x12\x12\x13\x14\x15\x12\x12\x12\x12\x12", x + 1 * 8, y, color);
-			}
-			else
-				//empty track line
-				TextXY(" \x8\x8\x8 \x8\x8 \x8\x8 \x8\x8\x8", x, y, color);
-			continue;
-		}
-
-		strcpy(s, " --- -- -- ---");
-		if (tt)
-		{
-			if (line < len || go < 0)
-				xline = line;
-			else
-				xline = ((line - len) % (len - go)) + go;
-
-			if ((n = tt->note[xline]) >= 0)
-			{
-				//notes
-				//TODO: optimise this to not have redundant data
-				if (g_displayflatnotes && g_usegermannotation)
-				{
-					s[1] = notesgermanflat[n][0];		// B
-					s[2] = notesgermanflat[n][1];		// -
-					s[3] = notesgermanflat[n][2];		// 1
-				}
-				else
-				if (g_displayflatnotes && !g_usegermannotation)
-				{
-					s[1] = notesflat[n][0];		// D
-					s[2] = notesflat[n][1];		// b
-					s[3] = notesflat[n][2];		// 1
-				}
-				else
-				if (!g_displayflatnotes && g_usegermannotation)
-				{
-					s[1] = notesgerman[n][0];		// H
-					s[2] = notesgerman[n][1];		// -
-					s[3] = notesgerman[n][2];		// 1
-				}
-				else
-				{
-					s[1] = notes[n][0];		// C
-					s[2] = notes[n][1];		// #
-					s[3] = notes[n][2];		// 1
-				}	
-			}
-			if ( (n=tt->instr[xline])>=0 )
-			{
-				//instrument
-				s[5] = CharH4(n);
-				s[6] = CharL4(n);
-			}
-			if ( (n=tt->volume[xline])>=0 )
-			{
-				//volume
-				s[8] = 'v';
-				s[9] = CharL4(n);
-			}
-			if ( (n=tt->speed[xline])>=0 )
-			{
-				//speed
-				s[11] = 'F';			//Fxx is the Famitracker speed command, because one day, RMT *will* have speed commands support
-				s[12] = CharH4(n);
-				s[13] = CharL4(n);
-			}
-		}
-
-		if (line == go)
-		{
-			if (line == len - 1)
-				s[0] = '\x11';			//left-up-right arrow
-			else
-				s[0] = '\x0f';			//up-right arrow
-		}
-		else
-			if (line == len - 1 && go >= 0) s[0] = '\x10'; //left-up arrow
-
-		//colours
-		if (line == aline && isactive)
-			color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
-		else if (line == pline)
-			color = TEXT_COLOR_YELLOW;
-		else if (line >= len)
-			color = TEXT_COLOR_GRAY;
-		else if ((line % g_tracklinehighlight) == 0)
-			color = TEXT_COLOR_CYAN;
-		else
-			color = TEXT_COLOR_WHITE;
-
-		if (g_activepart == PARTTRACKS && line < len && (line == aline && isactive))
-		{
-			if (g_prove) TextXYCol(s, x, y, colacprove[acu]);
-			else TextXYCol(s, x, y, colac[acu]);
-		}
-		else
-			TextXY(s, x, y, color);
-	}
-
-	//hide the extra lines first
-	g_mem_dc->FillSolidRect(((x - 8)* sp) / 100, ((TRACKS_Y + 16)* sp) / 100, ((16 * 8)* sp) / 100, ((2 * 16)* sp) / 100, RGBBACKGROUND);	//top
-	g_mem_dc->FillSolidRect(((x - 8)* sp) / 100, ((TRACKS_Y + 16 + (16 * (g_tracklines + 2)))* sp) / 100, ((16 * 8)* sp) / 100, ((3 * 16)* sp) / 100, RGBBACKGROUND);	//bottom
-*/
-	//and now draw the remaining text on top of the masked lines, above tracks
+	//and now draw the infos above tracks
 	c = (GetChannelOnOff(col)) ? 0 : 1;
 	TextXY(t, x + 8, TRACKS_Y + 16, c);
 	return 1;
 }
 
-BOOL CTracks::DrawTrackNew(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu, int oob)
+BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu, int oob)
 {
 	char s[16];
-	char t[16];
-	int i, line, xline, n, c, len, last, go;
-	int sp = g_scaling_percentage;
+	int line, xline, n, c, len, last, go;
 
 	len = last = 0;
 	TTrack* tt = NULL;
 
 	line = line_cnt;
 
-	if (tr >= 0 && tr <= 255)
+	if (tr >= 0 && tr <= 253)
 	{
 		tt = &m_track[tr];
 		len = last = tt->len;	//len a last
@@ -7038,18 +6913,18 @@ BOOL CSong::DrawSong()
 		strcpy(s, "XX:");
 		s[0] = CharH4(line);
 		s[1] = CharL4(line);
-		c = (line == m_songplayline) ? 2 : 0;
-		if (oob) c = 12;	//lighter gray, out of bounds
-		TextXY(s, SONG_OFFSET + 16, y, c);
+		color = (line == m_songplayline) ? 2 : 0;
+		if (oob) color = 12;	//lighter gray, out of bounds
+		TextXY(s, SONG_OFFSET + 16, y, color);
 
 		if ((j = m_songgo[line]) >= 0)	//there is a GO to line
 		{
 			s[0] = CharH4(j);
 			s[1] = CharL4(j);
 			s[2] = 0;
-			c = (oob) ? 12 : 14;	//turquoise text, blank tiles to mask text if needed, else gray if out of bounds
-			TextXY("Go\x1fto\x1fline", SONG_OFFSET + 16, y, c);	
-			c = (oob) ? 12 : 0;	//white, for the number used, or gray if out of bounds
+			color = (oob) ? 12 : 14;	//turquoise text, blank tiles to mask text if needed, else gray if out of bounds
+			TextXY("Go\x1fto\x1fline", SONG_OFFSET + 16, y, color);
+			color = (oob) ? 12 : 0;	//white, for the number used, or gray if out of bounds
 			if (line == m_songactiveline)
 			{
 				if (g_prove) color = (g_activepart == PARTSONG) ? COLOR_SELECTED_PROVE : TEXT_COLOR_BLUE;
@@ -7073,9 +6948,9 @@ BOOL CSong::DrawSong()
 					if (g_prove) color = (g_activepart == PARTSONG) ? COLOR_SELECTED_PROVE : TEXT_COLOR_BLUE;
 					else color = (g_activepart == PARTSONG) ? COLOR_SELECTED : TEXT_COLOR_RED;
 				}
-				else c = (line == m_songplayline) ? 2 : 0;
-				if (oob) c = 12;	//lighter gray, out of bounds
-				TextXY(s, SONG_OFFSET + 16 + k, y, c);
+				else color = (line == m_songplayline) ? 2 : 0;
+				if (oob) color = 12;	//lighter gray, out of bounds
+				TextXY(s, SONG_OFFSET + 16 + k, y, color);
 			}
 		}
 	}
@@ -7113,11 +6988,11 @@ BOOL CSong::DrawSong()
 		s[1] = i + 49;	//character 1-4
 		if (GetChannelOnOff(i))
 		{
-			if (m_trackactivecol == i) c = (g_prove) ? 13 : 6;	//active channel highlight
-			else c = 0; //normal channel
+			if (m_trackactivecol == i) color = (g_prove) ? 13 : 6;	//active channel highlight
+			else color = 0; //normal channel
 		}
-		else c = 1; //switched off channels are in gray
-		TextXY(s, k, SONG_Y, c);
+		else color = 1; //switched off channels are in gray
+		TextXY(s, k, SONG_Y, color);
 	}
 	s[0] = 'R';
 	for (i = 4; i < g_tracks4_8; i++, k += 24)
@@ -7125,11 +7000,11 @@ BOOL CSong::DrawSong()
 		s[1] = i + 49 - 4;	//character 1-4
 		if (GetChannelOnOff(i))
 		{
-			if (m_trackactivecol == i) c = (g_prove) ? 13 : 6;	//active channel highlight
-			else c = 0; //normal channel
+			if (m_trackactivecol == i) color = (g_prove) ? 13 : 6;	//active channel highlight
+			else color = 0; //normal channel
 		}
-		else c = 1; //switched off channels are in gray
-		TextXY(s, k, SONG_Y, c);
+		else color = 1; //switched off channels are in gray
+		TextXY(s, k, SONG_Y, color);
 	}
 
 	return 1;
@@ -7185,7 +7060,8 @@ BOOL CSong::DrawTracks()
 	y = (TRACKS_Y + (3 - active_smooth) * 16) + smooth_y;
 	x = TRACKS_X + 5 * 8;
 
-	strcpy(s,"--");
+	strcpy(s, "--\x2");	//2 digits and the "|" tile on the right side
+
 	BOOL is_goto = 0;
 
 	for (i = 0; i < g_tracklines + active_smooth * 2; i++, y += 16)
@@ -7196,6 +7072,10 @@ BOOL CSong::DrawTracks()
 		int ln = GetSmallestMaxtracklen(m_songactiveline);
 		//if (!ln) ln = 1;	//m_tracks.m_maxtracklen;
 		
+		//int ln = GetEffectiveMaxtracklen();
+		//if (!ln)	//fallback to whatever is in memory instead if the value returned is invalid
+		//	ln = GetTracks()->m_maxtracklen;	
+
 		if (line < 0)
 		{
 			minusline:
@@ -7224,32 +7104,32 @@ BOOL CSong::DrawTracks()
 
 		if (g_tracklinealtnumbering)
 		{
-			GetTracklineText(stmp,line);
-			s[0]=(stmp[1]=='1')?stmp[0]:' ';
-			s[1]=stmp[1];
+			GetTracklineText(stmp, line);
+			s[0] = (stmp[1] == '1') ? stmp[0] : ' ';
+			s[1] = stmp[1];
 		}
 		else
 		{
-			s[0]=CharH4(line);
-			s[1]=CharL4(line);
+			s[0] = CharH4(line);
+			s[1] = CharL4(line);
 		}
 
 		if (is_goto)
 		{
 			//mask out the first line
-			g_mem_dc->FillSolidRect((TRACKS_X * sp) / 100, (y * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBLACK);
-			TextXY("GO TO LINE: ", TRACKS_X + 6 * 8, y, 14);
-			sprintf(s, "%02d", m_songgo[(m_songactiveline + oob) % 256]);
-			TextXY(s, TRACKS_X + 19 * 8, y, 0);
+			g_mem_dc->FillSolidRect((TRACKS_X * sp) / 100, (y * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
+			TextXY("GO TO LINE ", TRACKS_X + 6 * 8, y, 14);
+			sprintf(s, "%02X", m_songgo[(m_songactiveline + oob) % 256]);
+			TextXY(s, TRACKS_X + 17 * 8, y, 0);
 			break;
 		}
 
-		if (line == m_trackactiveline) c = (g_prove) ? 13 : 6;	//red or blue
-		else if (line == m_trackplayline) c = 2;	//yellow
-		else if ((line % g_tracklinehighlight) == 0) c = 5;	//blue
-		else c = 0;	//white
-		if (oob) c = 12;	//lighter gray, out of bounds
-		TextXY(s, TRACKS_X, y, c);
+		if (line == m_trackactiveline) color = (g_prove) ? 13 : 6;	//red or blue
+		else if (line == m_trackplayline) color = 2;	//yellow
+		else if ((line % g_tracklinehighlight) == 0) color = 5;	//blue
+		else color = 0;	//white
+		if (oob) color = 12;	//lighter gray, out of bounds
+		TextXY(s, TRACKS_X, y, color);
 
 		for (int j = 0; j < g_tracks4_8; j++, x += 16 * 8)
 		{
@@ -7258,7 +7138,7 @@ BOOL CSong::DrawTracks()
 
 			//is it playing?
 			if (m_songplayline == m_songactiveline) t = m_trackplayline; else t = -1;
-			m_tracks.DrawTrackNew(j, x, y, tr, line, m_trackactiveline, g_cursoractview, t, (m_trackactivecol == j), m_trackactivecur, oob);
+			m_tracks.DrawTrackLine(j, x, y, tr, line, m_trackactiveline, g_cursoractview, t, (m_trackactivecol == j), m_trackactivecur, oob);
 		}
 		x = TRACKS_X + 5 * 8;
 	}
@@ -7284,8 +7164,8 @@ BOOL CSong::DrawTracks()
 		tr = m_song[m_songactiveline][i];
 		
 		//is it playing?
-		if (m_songplayline == m_songactiveline) t = m_trackplayline; else t = -1;
-		m_tracks.DrawTrack(i, x, y, tr, g_tracklines + active_smooth * 2, m_trackactiveline, g_cursoractview, t, (m_trackactivecol == i), m_trackactivecur);
+		//if (m_songplayline == m_songactiveline) t = m_trackplayline; else t = -1;
+		m_tracks.DrawTrackHeader(i, x, y, tr);	//, g_tracklines + active_smooth * 2, m_trackactiveline, g_cursoractview, t, (m_trackactivecol == i), m_trackactivecur);
 	}
 
 	//lines delimiting the current line

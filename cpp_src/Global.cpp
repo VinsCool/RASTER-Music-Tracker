@@ -8,8 +8,6 @@
 // Helper defines to make the code a bit more readable
 #define SCALE(x) ((x) * sp) / 100
 
-
-
 unsigned char g_atarimem[65536];
 char g_debugmem[65536];	//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
 
@@ -101,9 +99,6 @@ int g_OCTAVE_R = 1;
 //each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
 int g_temperament = 0;
 
-
-
-
 HWND g_hwnd = NULL;
 HWND g_viewhwnd = NULL;
 
@@ -139,11 +134,21 @@ BOOL g_rmtstripped_nos;			//nos NoStartingSongline for feat
 CString g_rmtmsxtext;
 CString g_expasmlabelprefix;	//label prefix for export ASM simple notation
 
+int last_active_ti;			//if equal to g_active_ti, no screen clear necessary
+int last_activepart;		//if equal to g_activepart, no block clear necessary
+uint64_t last_ms = 0;
+uint64_t last_sec = 0;
+int real_fps = 0;
+double last_fps = 0;
+double avg_fps[120] = { 0 };
+
 int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 int g_active_ti;			//1 tracks, 2 instrs
 
 BOOL is_editing_instr;		//0 no, 1 instrument name is edited
 BOOL is_editing_infos;		//0 no, 1 song name is edited
+
+int g_line_y = 0;			//active line coordinate, used to reference g_cursoractview to the correct position
 
 int g_tracklinehighlight = 8;	//line highlighted every x lines
 BOOL g_tracklinealtnumbering = 0; //alternative way of line numbering in tracks
@@ -169,6 +174,9 @@ BOOL g_viewinstractivehelp = 1;	//1 yes, 0 no
 long g_playtime = 1;	//1 yes, 0 no
 
 UINT g_mousebutt = 0;			//mouse button
+int g_mouselastbutt = 0;
+int g_mouse_px = 0;
+int g_mouse_py = 0;
 
 CTrackClipboard g_trackcl;
 
