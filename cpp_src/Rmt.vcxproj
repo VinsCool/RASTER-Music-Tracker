@@ -158,6 +158,8 @@
       </PrecompiledHeader>
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
     </ClCompile>
+    <ClCompile Include="ChannelControl.cpp" />
+    <ClCompile Include="Clipboard.cpp" />
     <ClCompile Include="ConfigDlg.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
@@ -198,6 +200,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Global.cpp" />
+    <ClCompile Include="GuiHelpers.cpp" />
+    <ClCompile Include="GUI_Instruments.cpp" />
+    <ClCompile Include="GUI_Song.cpp" />
+    <ClCompile Include="GUI_Tracks.cpp" />
     <ClCompile Include="ImportDlgs.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
@@ -205,6 +211,13 @@
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
     </ClCompile>
+    <ClCompile Include="Instruments.cpp" />
+    <ClCompile Include="IOHelpers.cpp" />
+    <ClCompile Include="IO_Importer.cpp" />
+    <ClCompile Include="IO_Instruments.cpp" />
+    <ClCompile Include="IO_Song.cpp" />
+    <ClCompile Include="IO_Tracks.cpp" />
+    <ClCompile Include="Keyboard2NoteMapping.cpp" />
     <ClCompile Include="lzss_sap.cpp">
       <LanguageStandard_C Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdc17</LanguageStandard_C>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
@@ -251,11 +264,15 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</BrowseInformation>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NDEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="libfmemopen.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Song.cpp" />
+    <ClCompile Include="Tracks.cpp" />
     <ClCompile Include="Tuning.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -269,6 +286,7 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
     </ClCompile>
     <ClCompile Include="TuningDlg.cpp" />
+    <ClCompile Include="Undo.cpp" />
     <ClCompile Include="XPokey.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
@@ -285,15 +303,25 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Atari6502.h" />
+    <ClInclude Include="Clipboard.h" />
     <ClInclude Include="ConfigDlg.h" />
     <ClInclude Include="EffectsDlg.h" />
     <ClInclude Include="ExportDlgs.h" />
     <ClInclude Include="FileNewDlg.h" />
     <ClInclude Include="FilePathDlg.h" />
+    <ClInclude Include="General.h" />
     <ClInclude Include="getopt.h" />
     <ClInclude Include="global.h" />
+    <ClInclude Include="GuiHelpers.h" />
+    <ClInclude Include="GUI_Instruments.h" />
+    <ClInclude Include="ChannelControl.h" />
+    <ClInclude Include="Instruments.h" />
+    <ClInclude Include="IOHelpers.h" />
+    <ClInclude Include="Keyboard2NoteMapping.h" />
     <ClInclude Include="libfmemopen.h" />
     <ClInclude Include="lzss_sap.h" />
+    <ClInclude Include="Song.h" />
+    <ClInclude Include="Tracks.h" />
     <ClInclude Include="Tuning.h" />
     <ClInclude Include="importdlgs.h" />
     <ClInclude Include="MainFrm.h" />
@@ -302,9 +330,9 @@
     <ClInclude Include="RmtDoc.h" />
     <ClInclude Include="RmtMidi.h" />
     <ClInclude Include="RmtView.h" />
-    <ClInclude Include="r_music.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="TuningDlg.h" />
+    <ClInclude Include="Undo.h" />
     <ClInclude Include="XPokey.h" />
   </ItemGroup>
   <ItemGroup>

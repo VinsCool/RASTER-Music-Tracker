@@ -14,11 +14,6 @@
 
 #include "resource.h"       // main symbols
 
-extern CString g_aboutpokey;
-extern CString g_about6502;
-
-extern CString g_driverversion;	//used to display the RMT Driver "tracker.obx" version number
-
 /////////////////////////////////////////////////////////////////////////////
 // CRmtApp:
 // See Rmt.cpp for the implementation of this class

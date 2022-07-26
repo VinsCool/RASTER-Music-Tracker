@@ -4,7 +4,11 @@
 #include "stdafx.h"
 #include "Rmt.h"
 #include "ExportDlgs.h"
-#include "r_music.h"
+#include "General.h"
+
+#include "Song.h"
+
+extern CSong			g_Song;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
