@@ -110,7 +110,7 @@ BOOL ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, 
 CTracks::CTracks()
 {
 	m_maxtracklen = 64;			//default value
-	g_cursoractview = m_maxtracklen / 2;
+	// g_cursoractview = m_maxtracklen / 2;
 	InitTracks();
 }
 

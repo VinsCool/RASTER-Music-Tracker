@@ -1101,7 +1101,7 @@ void CSong::FileNew()
 	if (dlg.DoModal() == IDOK)
 	{
 		g_Tracks.m_maxtracklen = dlg.m_maxtracklen;
-		g_cursoractview = g_Tracks.m_maxtracklen / 2;
+		//g_cursoractview = g_Tracks.m_maxtracklen / 2;
 
 		int i = dlg.m_combotype;
 		g_tracks4_8 = (i == 0) ? 4 : 8;
@@ -1751,7 +1751,7 @@ int CSong::Load(ifstream& in, int iotype)
 									int v = Hexstr(value, 2);
 									if (v == 0) v = 256;
 									g_Tracks.m_maxtracklen = v;
-									g_cursoractview = g_Tracks.m_maxtracklen / 2;
+									//g_cursoractview = g_Tracks.m_maxtracklen / 2;
 									g_Tracks.InitTracks();	//reinitialise
 								}
 								else

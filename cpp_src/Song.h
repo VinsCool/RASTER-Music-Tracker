@@ -223,6 +223,7 @@ public:
 	void TracksOrderChange();
 	void Songswitch4_8(int tracks4_8);
 	int GetEffectiveMaxtracklen();
+	int GetSmallestMaxtracklen(int songline);
 	void ChangeMaxtracklen(int maxtracklen);
 	void TracksAllBuildLoops(int& tracksmodified, int& beatsreduced);
 	void TracksAllExpandLoops(int& tracksmodified, int& loopsexpanded);
@@ -278,11 +279,22 @@ private:
 	int m_midi_distortion = 0;
 	BOOL m_ch_offset = 0;
 
+	//POKEY EXPLORER variables, used for tests involving pitch calculations and sound debugging displayed on screen
+	int e_ch_idx = 0;
+	int e_modoffset = 1;
+	int e_coarse_divisor = 1;
+	int e_modulo = 0;
+	BOOL e_valid = 1;
+	double e_divisor = 1;
+	double e_pitch = 0;
+
 	int m_infoact;
 	char m_songname[SONGNAMEMAXLEN + 1];
 	int m_songnamecur;
 
 	TBookmark m_bookmark;
+
+	double m_avgspeed[8] = { 0 };		//use for calculating average BPM
 
 	int volatile m_mainspeed;
 	int volatile m_speed;

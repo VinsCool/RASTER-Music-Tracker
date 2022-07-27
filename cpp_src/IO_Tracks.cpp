@@ -244,7 +244,7 @@ int CTracks::LoadAll(ifstream& in, int iotype)
 	InitTracks();
 
 	in.read((char*)&m_maxtracklen, sizeof(m_maxtracklen));
-	g_cursoractview = m_maxtracklen / 2;
+	// g_cursoractview = m_maxtracklen / 2;
 
 	for (int i = 0; i < TRACKSNUM; i++)
 	{

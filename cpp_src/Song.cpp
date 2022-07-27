@@ -617,7 +617,7 @@ int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instr
 	g_tracks4_8 = b & 0x0f;
 	b = mem[adr + 4];
 	g_Tracks.m_maxtracklen = (b > 0) ? b : 256;	//0 => 256
-	g_cursoractview = g_Tracks.m_maxtracklen / 2;
+	//g_cursoractview = g_Tracks.m_maxtracklen / 2;
 	b = mem[adr + 5];
 	m_mainspeed = b;
 	if (b < 1) return 0;		//there can be no zero speed
@@ -2134,6 +2134,33 @@ int CSong::GetEffectiveMaxtracklen()
 	}
 	return max;
 }
+
+int CSong::GetSmallestMaxtracklen(int songline)
+{
+	//calculate the smallest track length used in this songline
+	int so = songline;
+	int max = 256;
+	int min = g_Tracks.m_maxtracklen;
+	int p = 0;
+
+	if (m_songgo[so] >= 0) return 0; //go to line is ignored
+
+	for (int i = 0; i < g_tracks4_8; i++)
+	{
+		int t = m_song[so][i];
+		int m = g_Tracks.GetLength(t);
+		if (m < 0) continue;
+		if (m < max) max = m;
+		p++;
+	}
+	if (!p) return min;	//return 0;	//cannot be from empty tracks
+
+	//min = the shortest track length on this songline
+	if (p > 0 && min < max) max = min;
+
+	return max;
+}
+
 
 void CSong::ChangeMaxtracklen(int maxtracklen)
 {

@@ -36,7 +36,8 @@ public:
 	BOOL InitTracks();
 	BOOL ClearTrack(int t);
 	BOOL IsEmptyTrack(int track);
-	BOOL DrawTrack(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu = 0);
+	BOOL DrawTrackHeader(int col, int x, int y, int tr);	//, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu);
+	BOOL DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu, int oob);
 	BOOL DelNoteInstrVolSpeed(int noteinstrvolspeed, int track, int line);
 	BOOL SetNoteInstrVol(int note, int instr, int vol, int track, int line);
 	BOOL SetInstr(int instr, int track, int line);

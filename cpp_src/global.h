@@ -114,11 +114,21 @@ extern BOOL g_rmtstripped_nos;			//nos NoStartingSongline for feat
 extern CString g_rmtmsxtext;
 extern CString g_expasmlabelprefix;	//label prefix for export ASM simple notation
 
+extern int last_active_ti;			//if equal to g_active_ti, no screen clear necessary
+extern int last_activepart;		//if equal to g_activepart, no block clear necessary
+extern uint64_t last_ms;
+extern uint64_t last_sec;
+extern int real_fps;
+extern double last_fps;
+extern double avg_fps[120];
+
 extern int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 extern int g_active_ti;			//1 tracks, 2 instrs
 
 extern BOOL is_editing_instr;		//0 no, 1 instrument name is edited
 extern BOOL is_editing_infos;		//0 no, 1 song name is edited
+
+extern int g_line_y;			//active line coordinate, used to reference g_cursoractview to the correct position
 
 extern int g_tracklinehighlight;	//line highlighted every x lines
 extern BOOL g_tracklinealtnumbering; //alternative way of line numbering in tracks
@@ -144,6 +154,9 @@ extern BOOL g_viewinstractivehelp;	//1 yes, 0 no
 extern long g_playtime;				//1 yes, 0 no
 
 extern UINT g_mousebutt;			//mouse button
+extern int g_mouselastbutt;
+extern int g_mouse_px;
+extern int g_mouse_py;
 
 extern CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
 extern CString g_lastloadpath_songs;		//the path of the last song loaded

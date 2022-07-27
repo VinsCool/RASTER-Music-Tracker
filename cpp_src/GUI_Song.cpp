@@ -152,6 +152,7 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 
 	BOOL DEBUG_POKEY = 1;	//registers debug display
 	BOOL DEBUG_MEMORY = 0;	//memory debug display
+	BOOL DEBUG_SOUND = (g_prove == 4) ? 1 : 0;	//POKEY EXPLORER MODE
 
 	if (g_width < MINIMAL_WIDTH_TRACKS && g_active_ti == 1) DEBUG_POKEY = DEBUG_MEMORY = 0;
 	if (g_width < MINIMAL_WIDTH_INSTRUMENTS && g_active_ti == 2) DEBUG_POKEY = DEBUG_MEMORY = 0;
@@ -524,6 +525,70 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 				snprintf(t, 2, "%d", tracks);
 				TextMiniXY(t, ANALYZER3_X + 8 * 56, ANALYZER3_Y + 8 * 10, TEXT_MINI_COLOR_WHITE);
 
+				if (DEBUG_SOUND && i == e_ch_idx)	//Debug sound, must only be run once per loops, so this prevents it being overwritten
+				{
+					TextMiniXY("COARSE_DIVISOR:    , DIVISOR:       , MODOFFSET:  , AUDF: $    , AUDC: $  ", ANALYZER3_X, ANALYZER3_Y + 8 * 12, 0);
+					TextMiniXY("CH_IDX:  , MODULO:    , IS_VALID:  ", ANALYZER3_X, ANALYZER3_Y + 8 * 13, 0);
+					TextMiniXY("         HZ = ((FREQ17 / (COARSE_DIVISOR * DIVISOR)) / (AUDF + MODOFFSET)) / 2", ANALYZER3_X, ANALYZER3_Y + 8 * 15, 0);
+
+					//e_ch_idx = 0;				//defined manually elsewhere
+
+					int i_audf = (JOIN_16BIT || JOIN_64KHZ || JOIN_15KHZ) ? audf16 : audf;
+					int e_audf = audf;
+					int e_audf2 = audf2;
+					int e_audc = audc;
+
+					e_valid = 1;				//always valid for now
+					e_modulo = 0;				//does not matter right now, used in tandem with e_valid
+					e_pitch = 0;				//always initialised to 0
+
+					//always initialised to 1 to avoid a division by 0 error
+					e_modoffset = 1;
+					e_coarse_divisor = 1;
+
+					//set the divisor and modoffset variables based on the AUDCTL bits currently set
+					if (JOIN_16BIT) e_modoffset = 7;
+					else if (CLOCK_179) e_modoffset = 4;
+					else e_coarse_divisor = (CLOCK_15) ? 114 : 28;
+
+					//identify the first Modulo value that results to 0 when used
+					for (int i = 3; i < 256; i++)
+					{
+						e_modulo = i;
+						if ((e_audf + e_modoffset) % i == 0)
+							break;
+					}
+
+					e_pitch = get_pitch(i_audf, e_coarse_divisor, e_divisor, e_modoffset);
+					snprintf(p, 10, "%9.2f", e_pitch);
+					TextMiniXY(p, ANALYZER3_X, ANALYZER3_Y + 8 * 15, 2);
+
+					snprintf(t, 4, "%d", e_coarse_divisor);
+					TextMiniXY(t, ANALYZER3_X + 8 * 16, ANALYZER3_Y + 8 * 12, 2);
+
+					snprintf(p, 10, "%6.1f", e_divisor);
+					TextMiniXY(p, ANALYZER3_X + 8 * 30, ANALYZER3_Y + 8 * 12, 2);
+
+					snprintf(t, 4, "%d", e_modoffset);
+					TextMiniXY(t, ANALYZER3_X + 8 * 49, ANALYZER3_Y + 8 * 12, 2);
+
+					NumberMiniXY(e_audf, ANALYZER3_X + 8 * 59, ANALYZER3_Y + 8 * 12, 2);
+					if (JOIN_16BIT || JOIN_64KHZ || JOIN_15KHZ)
+						NumberMiniXY(e_audf2, ANALYZER3_X + 8 * 61, ANALYZER3_Y + 8 * 12, 2);
+
+					NumberMiniXY(e_audc, ANALYZER3_X + 8 * 72, ANALYZER3_Y + 8 * 12, 2);
+
+					snprintf(t, 4, "%d", e_ch_idx);
+					TextMiniXY(t, ANALYZER3_X + 8 * 8, ANALYZER3_Y + 8 * 13, 2);
+
+					snprintf(t, 4, "%d", e_modulo);
+					TextMiniXY(t, ANALYZER3_X + 8 * 19, ANALYZER3_Y + 8 * 13, 2);
+
+					snprintf(t, 4, "%d", e_valid);
+					TextMiniXY(t, ANALYZER3_X + 8 * 34, ANALYZER3_Y + 8 * 13, 2);
+
+				}
+
 				if (PITCH)	//if null is read, there is nothing to show. Volume Only mode or invalid parameters may return this
 				{
 					if (JOIN_WRONG)	//16-bit, but wrong channels, and the volume is 0
@@ -598,6 +663,7 @@ BOOL CSong::DrawSong()
 	int line, i, j, k, y, t;
 	char s[32], color;
 	int sp = g_scaling_percentage;
+	BOOL smooth_scroll = 1;	//TODO: make smooth scrolling an option that can be saved to .ini file
 
 	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == 1) ? 1420 : 960;
 	int MINIMAL_WIDTH_INSTRUMENTS = (g_tracks4_8 > 4 && g_active_ti == 2) ? 1220 : 1220;
@@ -606,49 +672,48 @@ BOOL CSong::DrawSong()
 	if (g_tracks4_8 == 4 && g_active_ti == 2 && g_width > MINIMAL_WIDTH_INSTRUMENTS - 220) INSTRUMENT_OFFSET = 260;
 	int SONG_OFFSET = SONG_X + WINDOW_OFFSET + INSTRUMENT_OFFSET + ((g_tracks4_8 == 4) ? -200 : 310);	//displace the SONG block depending on certain parameters
 
-	TextXY("SONG", SONG_OFFSET + 8, SONG_Y, TEXT_COLOR_WHITE);
+	//y = SONG_Y + 16;
+	BOOL active_smooth = (smooth_scroll && m_play && m_followplay) ? 1 : 0;	//could also be used as an offset
+	int pattern_len = 0;
+	int pattern_row = 0;
+	int smooth_y = 0;
 
-	//print L1 .. L4 R1 .. R4 with highlighted current track
-	k = SONG_OFFSET + 6 * 8;
-	s[0] = 'L';
-	s[2] = 0;
-	for (i = 0; i < 4; i++, k += 24)
+	if (active_smooth)
 	{
-		s[1] = i + 49;	//character 1-4
-		if (GetChannelOnOff(i))
-		{
-			if (m_trackactivecol == i) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//active channel highlight
-			else color = TEXT_COLOR_WHITE; //normal channel
-		}
-		else color = TEXT_COLOR_GRAY; //switched off channels are in gray
-		TextXY(s, k, SONG_Y, color);
+		pattern_len = GetSmallestMaxtracklen(m_songplayline);
+		if (!pattern_len) pattern_len = g_Tracks.m_maxtracklen;	//fallback to whatever is in memory instead if the value returned is invalid
+		pattern_row = m_trackplayline;
+		smooth_y = (active_smooth) ? (pattern_row * 16 / pattern_len) - 8 : 0;
+		//if (smooth_y > 8 || smooth_y < -8) active_smooth = smooth_y = 0;	//prevents going out of bounds
 	}
-	s[0] = 'R';
-	for (i = 4; i < g_tracks4_8; i++, k += 24)
-	{
-		s[1] = i + 49 - 4;	//character 1-4
-		if (GetChannelOnOff(i))
-		{
-			if (m_trackactivecol == i) color = (g_prove) ? 13 : 6;	//active channel highlight
-			else color = 0; //normal channel
-		}
-		else color = 1; //switched off channels are in gray
-		TextXY(s, k, SONG_Y, color);
-	}
+	y = SONG_Y + (1 - active_smooth) * 16 - smooth_y;
 
-	y = SONG_Y + 16;
 	int linescount = (WINDOW_OFFSET) ? 5 : 9;
 
-	for (i = 0; i < linescount; i++, y += 16)
+	for (i = 0; i < linescount + active_smooth * 2; i++, y += 16)
 	{
 		int linesoffset = (WINDOW_OFFSET) ? -2 : -4;
-		line = m_songactiveline + i + linesoffset;
+		line = m_songactiveline + i + linesoffset - active_smooth;
+		BOOL oob = 0;
 
-		if (line < 0 || line>255) continue;
+		//if (line < 0 || line>255) continue;
+
+		if (line < 0)
+		{
+			line += 256;
+			oob = 1;
+		}
+		if (line > 255)
+		{
+			line -= 256;
+			oob = 1;
+		}
+
 		strcpy(s, "XX:");
 		s[0] = CharH4(line);
 		s[1] = CharL4(line);
 		color = (line == m_songplayline) ? 2 : 0;
+		if (oob) color = 12;	//lighter gray, out of bounds
 		TextXY(s, SONG_OFFSET + 16, y, color);
 
 		if ((j = m_songgo[line]) >= 0)	//there is a GO to line
@@ -656,8 +721,9 @@ BOOL CSong::DrawSong()
 			s[0] = CharH4(j);
 			s[1] = CharL4(j);
 			s[2] = 0;
-			TextXY("Go\x1fto\x1fline", SONG_OFFSET + 16, y, TEXT_COLOR_LIGHT_GRAY);	//turquoise text, blank tiles to mask text if needed
-			color = TEXT_COLOR_WHITE;	//white, for the number used
+			color = (oob) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_LIGHT_GRAY;	//turquoise text, blank tiles to mask text if needed, else gray if out of bounds
+			TextXY("Go\x1fto\x1fline", SONG_OFFSET + 16, y, color);
+			color = (oob) ? 12 : 0;	//white, for the number used, or gray if out of bounds
 			if (line == m_songactiveline)
 			{
 				if (g_prove) color = (g_activepart == PARTSONG) ? COLOR_SELECTED_PROVE : TEXT_COLOR_BLUE;
@@ -682,6 +748,7 @@ BOOL CSong::DrawSong()
 					else color = (g_activepart == PARTSONG) ? COLOR_SELECTED : TEXT_COLOR_RED;
 				}
 				else color = (line == m_songplayline) ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
+				if (oob) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
 				TextXY(s, SONG_OFFSET + 16 + k, y, color);
 			}
 		}
@@ -697,15 +764,59 @@ BOOL CSong::DrawSong()
 		int SEPARATION = SONG_Y + 80 + 5 * 8 + 3;
 		int INITIAL_LINE = (WINDOW_OFFSET) ? 64 : 96;
 		int TOTAL_LINES = (WINDOW_OFFSET) ? 253 : 251;
-		fl = INITIAL_LINE - m_songactiveline * 16;
+		fl = INITIAL_LINE - m_songactiveline * 16 - smooth_y;
 		if (fl < 32) fl = 32;
 		tl = 32 + linescount * 16;
-		if (LINE > TOTAL_LINES) tl = 32 + linescount * 16 - (LINE - TOTAL_LINES) * 16;
+		if (LINE > TOTAL_LINES - active_smooth) tl = 32 + linescount * 16 - (LINE - TOTAL_LINES) * 16 - smooth_y;
 		g_mem_dc->MoveTo(((SONG_OFFSET + SEPARATION) * sp) / 100, (fl * sp) / 100);
 		g_mem_dc->LineTo(((SONG_OFFSET + SEPARATION) * sp) / 100, (tl * sp) / 100);
 	}
+
+	//draw mask rectangles over the extra pixels
+	g_mem_dc->FillSolidRect((SONG_OFFSET * sp) / 100, (0 * sp) / 100, ((8 * ((g_tracks4_8 == 8) ? 30 : 18)) * sp) / 100, (32 * sp) / 100, RGBBACKGROUND);	//top
+	g_mem_dc->FillSolidRect((SONG_OFFSET * sp) / 100, ((linescount * 16 + 32) * sp) / 100, ((8 * ((g_tracks4_8 == 8) ? 30 : 18)) * sp) / 100, (32 * sp) / 100, RGBBACKGROUND);	//bottom
+
+	TextXY("SONG", SONG_OFFSET + 8, SONG_Y, TEXT_COLOR_WHITE);
+
+	//print L1 .. L4 R1 .. R4 with highlighted current track
+	k = SONG_OFFSET + 6 * 8;
+	s[0] = 'L';
+	s[2] = 0;
+	for (i = 0; i < 4; i++, k += 24)
+	{
+		s[1] = i + 49;	//character 1-4
+		if (GetChannelOnOff(i))
+		{
+			if (m_trackactivecol == i) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//active channel highlight
+			else color = TEXT_COLOR_WHITE; //normal channel
+		}
+		else color = TEXT_COLOR_GRAY; //switched off channels are in gray
+		TextXY(s, k, SONG_Y, color);
+	}
+	s[0] = 'R';
+	for (i = 4; i < g_tracks4_8; i++, k += 24)
+	{
+		s[1] = i + 49 - 4;	//character 1-4
+		if (GetChannelOnOff(i))
+		{
+			if (m_trackactivecol == i) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//active channel highlight
+			else color = TEXT_COLOR_WHITE; //normal channel
+		}
+		else color = TEXT_COLOR_GRAY; //switched off channels are in gray
+		TextXY(s, k, SONG_Y, color);
+	}
+
 	return 1;
 }
+
+int last_active_trackline;
+int last_play_line;
+int last_activecol;
+int last_activecur;
+int last_speed;
+int last_x;
+int last_y;
+int last_linesnum;
 
 BOOL CSong::DrawTracks()
 {
@@ -714,6 +825,10 @@ BOOL CSong::DrawTracks()
 	int i, x, y, tr, line, color;
 	int t;
 	int sp = g_scaling_percentage;
+	BOOL smooth_scroll = 1;	//TODO: make smooth scrolling an option that can be saved to .ini file
+
+	//coordinates for only the TRACKS width block rendering
+	int mask_x = (g_tracks4_8 == 4) ? TRACKS_X + (93 - 4 * 11) * 11 - 4 : TRACKS_X + (93 + 3) * 11 - 8;
 
 	if (SongGetGo() >= 0)		//it's a GOTO line, it won't draw tracks
 	{
@@ -726,20 +841,66 @@ BOOL CSong::DrawTracks()
 		return 1;
 	}
 
-	y = TRACKS_Y + 3 * 16;
-
 	//the cursor position is alway centered regardless of the window size with this simple formula
 	g_cursoractview = ((m_trackactiveline + 8) - (g_tracklines / 2));
 
-	strcpy(s, "--‚");
-
-	for (i = 0; i < g_tracklines; i++, y += 16)
+	//attempts to stabilise the line position by forcing the last known valid parameters
+	y = TRACKS_Y + 3 * 16 - 2 + (m_trackactiveline - g_cursoractview + 8) * 16;
+	if (y != last_y && g_tracklines == last_linesnum && m_play && m_followplay)
 	{
-		line = g_cursoractview + i - 8;		//8 lines from above
-		if (line < 0 || line >= g_Tracks.m_maxtracklen)
+		m_trackactiveline = last_active_trackline;
+		m_trackplayline = last_play_line;
+		g_cursoractview = last_activecur;
+	}
+
+	BOOL active_smooth = (smooth_scroll && m_play && m_followplay) ? 1 : 0;	//could also be used as an offset
+	int smooth_y = (active_smooth) ? ((m_speeda * 16) / m_speed) - 8 : 0;
+	if (smooth_y > 8 || smooth_y < -8) active_smooth = smooth_y = 0;	//prevents going out of bounds
+	y = (TRACKS_Y + (3 - active_smooth) * 16) + smooth_y;
+	x = TRACKS_X + 5 * 8;
+
+	strcpy(s, "--\x2");	//2 digits and the "|" tile on the right side
+
+	BOOL is_goto = 0;
+
+	for (i = 0; i < g_tracklines + active_smooth * 2; i++, y += 16)
+	{
+		line = g_cursoractview + i - 8 - active_smooth;		//8 lines from above
+		int oob = 0;
+
+		int ln = GetSmallestMaxtracklen(m_songactiveline);
+		//if (!ln) ln = 1;	//g_Tracks.m_maxtracklen;
+
+		//int ln = GetEffectiveMaxtracklen();
+		//if (!ln)	//fallback to whatever is in memory instead if the value returned is invalid
+		//	ln = g_Tracks.m_maxtracklen;	
+
+		if (line < 0)
 		{
-			continue;
+		minusline:
+			oob--;
+			ln = GetSmallestMaxtracklen((m_songactiveline + oob) % 256);
+			//if (!ln) ln = g_Tracks.m_maxtracklen;
+
+			line += ln;
+			if (line < 0) goto minusline;
 		}
+		if (line >= ln)
+		{
+		plusline:
+			oob++;
+			line -= ln;
+			ln = GetSmallestMaxtracklen((m_songactiveline + oob) % 256);
+
+			if (!ln)
+			{
+				is_goto = 1;
+				ln = g_Tracks.m_maxtracklen;
+			}
+
+			if (line >= ln) goto plusline;
+		}
+
 		if (g_tracklinealtnumbering)
 		{
 			GetTracklineText(stmp, line);
@@ -751,16 +912,45 @@ BOOL CSong::DrawTracks()
 			s[0] = CharH4(line);
 			s[1] = CharL4(line);
 		}
+
+		if (is_goto)
+		{
+			//mask out the first line
+			g_mem_dc->FillSolidRect((TRACKS_X * sp) / 100, (y * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
+			TextXY("GO TO LINE ", TRACKS_X + 6 * 8, y, TEXT_COLOR_LIGHT_GRAY);
+			sprintf(s, "%02X", m_songgo[(m_songactiveline + oob) % 256]);
+			TextXY(s, TRACKS_X + 17 * 8, y, TEXT_COLOR_WHITE);
+			break;
+		}
+
 		if (line == m_trackactiveline) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//red or blue
-		else if (line == m_trackplayline) color = TEXT_COLOR_YELLOW;
-		else if ((line % g_tracklinehighlight) == 0) color = TEXT_COLOR_CYAN;
-		else color = TEXT_COLOR_WHITE;
+		else if (line == m_trackplayline) color = TEXT_COLOR_YELLOW;	//yellow
+		else if ((line % g_tracklinehighlight) == 0) color = TEXT_COLOR_CYAN;	//blue
+		else color = TEXT_COLOR_WHITE;	//white
+		if (oob) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
 		TextXY(s, TRACKS_X, y, color);
+
+		for (int j = 0; j < g_tracks4_8; j++, x += 16 * 8)
+		{
+			//track in the current line of the song
+			tr = m_song[(m_songactiveline + oob) % 256][j];
+
+			//is it playing?
+			if (m_songplayline == m_songactiveline) t = m_trackplayline; else t = -1;
+			g_Tracks.DrawTrackLine(j, x, y, tr, line, m_trackactiveline, g_cursoractview, t, (m_trackactivecol == j), m_trackactivecur, oob);
+		}
+		x = TRACKS_X + 5 * 8;
 	}
+
+	//mask rectangles for hidin extra rendered lines
+	g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 1 * 16) * sp) / 100, (mask_x * sp) / 100, (32 * sp) / 100, RGBBACKGROUND);
+	g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16 + ((g_tracklines + 1) * 16) + 1) * sp) / 100, (mask_x * sp) / 100, (48 * sp) / 100, RGBBACKGROUND);
 
 	//tracks
 	strcpy(s, "  TRACK XX   ");
 	x = TRACKS_X + 5 * 8;
+	y = (TRACKS_Y + 3 * 16) + smooth_y;
+
 	for (i = 0; i < g_tracks4_8; i++, x += 16 * 8)
 	{
 		s[8] = tnames[i * 2];
@@ -768,66 +958,19 @@ BOOL CSong::DrawTracks()
 
 		color = (GetChannelOnOff(i)) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;	//channels off are in gray
 		TextXY(s, x + 12, TRACKS_Y, color);
+
 		//track in the current line of the song
 		tr = m_song[m_songactiveline][i];
 
 		//is it playing?
-		if (m_songplayline == m_songactiveline) t = m_trackplayline; else t = -1;
-		g_Tracks.DrawTrack(i, x, TRACKS_Y + 16, tr, g_tracklines, m_trackactiveline, g_cursoractview, t, (m_trackactivecol == i), m_trackactivecur);
-	}
-
-	//selected block
-	if (g_TrackClipboard.IsBlockSelected())
-	{
-		x = TRACKS_X + 6 * 8 + g_TrackClipboard.m_selcol * 16 * 8 - 8;
-		int xt = x + 14 * 8 + 8;
-
-		y = TRACKS_Y + 16 * 3;
-		int bfro, bto;
-		g_TrackClipboard.GetFromTo(bfro, bto);
-
-		int yf = bfro - g_cursoractview + 8;
-		int yt = bto - g_cursoractview + 8 + 1;
-		int p1 = 1, p2 = 1;
-		if (yf < 0) { yf = 0; p1 = 0; }
-
-		if (yt > g_tracklines) { yt = g_tracklines; p2 = 0; }
-		if (yf < g_tracklines && yt>0
-
-			&& g_TrackClipboard.m_seltrack == SongGetActiveTrackInColumn(g_TrackClipboard.m_selcol)
-			&& g_TrackClipboard.m_selsongline == SongGetActiveLine())
-		{
-			//a rectangle delimiting the selected block
-			CPen redpen(PS_SOLID, 1, RGB(255, 255, 255));
-			CPen* origpen = g_mem_dc->SelectObject(&redpen);
-
-			g_mem_dc->MoveTo((x * sp) / 100, ((y + yf * 16) * sp) / 100);
-			g_mem_dc->LineTo((x * sp) / 100, ((y + yt * 16) * sp) / 100);
-			g_mem_dc->MoveTo((xt * sp) / 100, ((y + yf * 16) * sp) / 100);
-			g_mem_dc->LineTo((xt * sp) / 100, ((y + yt * 16) * sp) / 100);
-
-			if (p1) { g_mem_dc->MoveTo((x * sp) / 100, ((y + yf * 16) * sp) / 100); g_mem_dc->LineTo((xt * sp) / 100, ((y + yf * 16) * sp) / 100); }
-			if (p2) { g_mem_dc->MoveTo((x * sp) / 100, ((y + yt * 16) * sp) / 100); g_mem_dc->LineTo(((xt + 1) * sp) / 100, ((y + yt * 16) * sp) / 100); }
-
-			g_mem_dc->SelectObject(origpen);
-		}
-		char tx[96];
-		char s1[4], s2[4];
-		GetTracklineText(s1, bfro);
-		GetTracklineText(s2, bto);
-		sprintf(tx, "%i line(s) [%s-%s] selected in the pattern track %02X", bto - bfro + 1, s1, s2, g_TrackClipboard.m_seltrack);
-		TextXY(tx, TRACKS_X + 4 * 8, TRACKS_Y + (4 + g_tracklines) * 16, TEXT_COLOR_WHITE);
-		x = TRACKS_X + 4 * 8 + strlen(tx) * 8 + 8;
-		if (g_TrackClipboard.m_all)
-			strcpy(tx, "[edit ALL data]");
-		else
-			sprintf(tx, "[edit data ONLY for instrument %02X]", m_activeinstr);
-		TextXY(tx, x, TRACKS_Y + (4 + g_tracklines) * 16, TEXT_COLOR_RED);
+		//if (m_songplayline == m_songactiveline) t = m_trackplayline; else t = -1;
+		g_Tracks.DrawTrackHeader(i, x, y, tr);	//, g_tracklines + active_smooth * 2, m_trackactiveline, g_cursoractview, t, (m_trackactivecol == i), m_trackactivecur);
 	}
 
 	//lines delimiting the current line
 	x = (g_tracks4_8 == 4) ? TRACKS_X + (93 - 4 * 11) * 11 - 4 : TRACKS_X + (93 + 3) * 11 - 8;
-	y = TRACKS_Y + 3 * 16 - 2 + (m_trackactiveline - g_cursoractview + 8) * 16;
+	y = TRACKS_Y + 3 * 16 - 2 + g_line_y * 16;
+	last_y = y;
 
 	g_mem_dc->MoveTo((TRACKS_X * sp) / 100, (y * sp) / 100);
 	g_mem_dc->LineTo((x * sp) / 100, (y * sp) / 100);
@@ -837,14 +980,111 @@ BOOL CSong::DrawTracks()
 	//a line delimiting the boundary between left/right
 	if (g_tracks4_8 > 4)
 	{
-		int fl, tl;
-		fl = 8 - g_cursoractview; if (fl < 0) fl = 0;
+		int fl = 8 - g_cursoractview;
+		int fls = 0;
+		int tl = 8 - g_cursoractview + g_Tracks.m_maxtracklen;
+		int tls = 0;
 
-		tl = 8 - g_cursoractview + g_Tracks.m_maxtracklen; if (tl > g_tracklines) tl = g_tracklines;
+		y = (TRACKS_Y + 3 * 16) + smooth_y;
 
-		g_mem_dc->MoveTo(((TRACKS_X + 50 * 11 - 3) * sp) / 100, ((TRACKS_Y + 3 * 16 - 2 + fl * 16) * sp) / 100);
-		g_mem_dc->LineTo(((TRACKS_X + 50 * 11 - 3) * sp) / 100, ((TRACKS_Y + 3 * 16 + 2 + tl * 16) * sp) / 100);
+		if (fl < 0) { fl = 0; fls = active_smooth * 5; }
+		if (tl > g_tracklines) { tl = g_tracklines; tls = active_smooth * 7; }
+
+		g_mem_dc->MoveTo(((TRACKS_X + 50 * 11 - 3) * sp) / 100, ((y - 2 - fls + fl * 16) * sp) / 100);
+		g_mem_dc->LineTo(((TRACKS_X + 50 * 11 - 3) * sp) / 100, ((y + 2 + tls + tl * 16) * sp) / 100);
 	}
+
+	//mask out any extra pixels after rendering each elements
+	g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16) * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
+	g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16 + (g_tracklines + 1) * 16) * sp) / 100, (mask_x * sp) / 100, (32 * sp) / 100, RGBBACKGROUND);
+
+	//selected block
+	if (g_TrackClipboard.IsBlockSelected())
+	{
+		x = TRACKS_X + 6 * 8 + g_TrackClipboard.m_selcol * 16 * 8 - 8;
+		int xt = x + 14 * 8 + 8;
+
+		y = (TRACKS_Y + 3 * 16) + smooth_y;
+		int bfro, bto;
+		g_TrackClipboard.GetFromTo(bfro, bto);
+
+		int yf = bfro - g_cursoractview + 8;
+		int fls = 0;
+		int yt = bto - g_cursoractview + 8 + 1;
+		int tls = 0;
+		int p1 = 1, p2 = 1;
+
+		if (yf < 0) { yf = 0; p1 = 0; fls = active_smooth * 5; }
+		if (yt > g_tracklines) { yt = g_tracklines; p2 = 0;  tls = active_smooth * 7; }
+		if (yf < g_tracklines && yt > 0 && g_TrackClipboard.m_seltrack == SongGetActiveTrackInColumn(g_TrackClipboard.m_selcol) && g_TrackClipboard.m_selsongline == SongGetActiveLine())
+		{
+			//a rectangle delimiting the selected block
+			CPen redpen(PS_SOLID, 1, RGB(255, 255, 255));
+			CPen* origpen = g_mem_dc->SelectObject(&redpen);
+
+			g_mem_dc->MoveTo((x * sp) / 100, ((y - 2 - fls + yf * 16) * sp) / 100);
+			g_mem_dc->LineTo((x * sp) / 100, ((y + 2 + tls + yt * 16) * sp) / 100);
+			g_mem_dc->MoveTo((xt * sp) / 100, ((y - 2 - fls + yf * 16) * sp) / 100);
+			g_mem_dc->LineTo((xt * sp) / 100, ((y + 2 + tls + yt * 16) * sp) / 100);
+
+			if (p1) { g_mem_dc->MoveTo((x * sp) / 100, ((y - 2 + yf * 16) * sp) / 100); g_mem_dc->LineTo((xt * sp) / 100, ((y - 2 + yf * 16) * sp) / 100); }
+			if (p2) { g_mem_dc->MoveTo((x * sp) / 100, ((y + 2 + yt * 16) * sp) / 100); g_mem_dc->LineTo(((xt + 1) * sp) / 100, ((y + 2 + yt * 16) * sp) / 100); }
+
+			g_mem_dc->SelectObject(origpen);
+		}
+
+		char tx[96];
+		char s1[4], s2[4];
+		GetTracklineText(s1, bfro);
+		GetTracklineText(s2, bto);
+
+		//mask out any extra pixels after rendering the selection box before drawing the infos below
+		if (active_smooth)
+		{
+			g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16) * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
+			g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16 + (g_tracklines + 1) * 16) * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
+		}
+
+		sprintf(tx, "%i line(s) [%s-%s] selected in the pattern track %02X", bto - bfro + 1, s1, s2, g_TrackClipboard.m_seltrack);
+		TextXY(tx, TRACKS_X + 4 * 8, TRACKS_Y + (4 + g_tracklines) * 16, TEXT_COLOR_WHITE);
+		x = TRACKS_X + 4 * 8 + strlen(tx) * 8 + 8;
+
+		if (g_TrackClipboard.m_all)
+			strcpy(tx, "[edit ALL data]");
+		else
+			sprintf(tx, "[edit data ONLY for instrument %02X]", m_activeinstr);
+		TextXY(tx, x, TRACKS_Y + (4 + g_tracklines) * 16, TEXT_COLOR_RED);
+	}
+
+	last_active_trackline = m_trackactiveline;
+	last_play_line = m_trackplayline;
+	last_activecol = m_trackactivecol;
+	last_activecur = m_trackactivecur;
+	last_speed = m_speed;
+	last_linesnum = g_tracklines;
+
+	//debugging the "jumpy line" 
+	sprintf(s, "Y = %02d", last_y);
+	TextXY(s, TRACKS_X, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+
+	//debugging the sudden breakdown of mouse clicks on tracklines directly related to the changes done for the smooth scrolling
+	sprintf(s, "PX = %02d", g_mouse_px);
+	TextXY(s, TRACKS_X + 16 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(s, "PY = %02d", g_mouse_py);
+	TextXY(s, TRACKS_X + 32 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(s, "MB = %02d", g_mouselastbutt);
+	TextXY(s, TRACKS_X + 48 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(s, "CA = %02d", g_cursoractview);
+	TextXY(s, TRACKS_X + 64 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(s, "TA = %02d", m_trackactiveline);
+	TextXY(s, TRACKS_X + 80 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(s, "DY = %02d", g_mouse_py / 16);
+	TextXY(s, TRACKS_X + 96 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(s, "GTL = %02d", g_tracklines);
+	TextXY(s, TRACKS_X + 112 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(s, "OL = %02d", g_tracklines / 2);
+	TextXY(s, TRACKS_X + 128 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+
 	return 1;
 }
 
@@ -860,12 +1100,24 @@ BOOL CSong::DrawInfo()
 	int i, color;
 	is_editing_infos = 0;
 
-	if (g_prove == 3)	//test mode exclusive from MIDI CH15 inputs, this cannot be set by accident unless I did something stupid
-		TextXY("EXPLORER MODE (MIDI CH15)", INFO_X, INFO_Y + 2 * 16, TEXT_COLOR_LIGHT_GRAY);
+	//poor attempt at an FPS counter
+	snprintf(s, 16, "%1.2f FPS", last_fps);
+
+	//TextXY(s, INFO_X + 40 * 8, INFO_Y, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, 560 - 9 * 8, INFO_Y, TEXT_COLOR_LIGHT_GRAY);
+
+	TextXY("HIGHLIGHT: ", 344, INFO_Y, TEXT_COLOR_WHITE);
+	snprintf(s, 4, "%02d", g_tracklinehighlight);
+	TextXY(s, 344 + 12 * 8, INFO_Y, TEXT_COLOR_LIGHT_GRAY);
+
+	if (g_prove == 4)	//test mode exclusive to keyboard input for sound debugging, this cannot be set by accident unless I did something stupid
+		TextXY("EXPLORER MODE (PITCH CALCULATIONS)", INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_LIGHT_GRAY);
+	else if (g_prove == 3)	//test mode exclusive from MIDI CH15 inputs, this cannot be set by accident unless I did something stupid
+		TextXY("EXPLORER MODE (MIDI CH15)", INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_LIGHT_GRAY);
 	else if (g_prove > 0)
-		TextXY((g_prove == 1) ? "JAM MODE (MONO)" : "JAM MODE (STEREO)", INFO_X, INFO_Y + 2 * 16, TEXT_COLOR_BLUE);
+		TextXY((g_prove == 1) ? "JAM MODE (MONO)" : "JAM MODE (STEREO)", INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_BLUE);
 	else
-		TextXY("EDIT MODE", INFO_X, INFO_Y + 2 * 16, TEXT_COLOR_RED);
+		TextXY("EDIT MODE", INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_RED);
 
 	if (g_activepart == PARTINFO && m_infoact == 0) //info? && edit name?
 	{
@@ -879,69 +1131,56 @@ BOOL CSong::DrawInfo()
 		i = -1;
 		color = TEXT_COLOR_LIGHT_GRAY;
 	}
-	TextXYSelN(m_songname, i, INFO_X, INFO_Y, color);
+	TextXY("NAME:", INFO_X, INFO_Y + 1 * 16, TEXT_COLOR_WHITE);
+	TextXYSelN(m_songname, i, INFO_X + 6 * 8, INFO_Y + 1 * 16, color);
 
-	sprintf(s, "MUSIC SPEED: %02X/%02X/%X  MAXTRACKLENGTH: %02X  %s  %s",
-		m_speed, m_mainspeed, m_instrspeed,
-		g_Tracks.m_maxtracklen,
-		(g_tracks4_8 == 4) ? "MONO-4-TRACKS" : "STEREO-8-TRACKS",
-		(g_ntsc) ? "NTSC" : "PAL"
-	);
+	TextXY((g_ntsc) ? "NTSC" : "PAL", INFO_X + 33 * 8, INFO_Y, TEXT_COLOR_LIGHT_GRAY);
 
-	TextXY(s, INFO_X, INFO_Y + 1 * 16, TEXT_COLOR_WHITE);
+	TextXY("MUSIC SPEED: --/--/-    MAXTRACKLENGTH: --", INFO_X, INFO_Y + 2 * 16, TEXT_COLOR_WHITE);
+	TextXY((g_tracks4_8 == 4) ? "MONO-4-TRACKS" : "STEREO-8-TRACKS", INFO_X + 46 * 8, INFO_Y + 2 * 16, TEXT_COLOR_LIGHT_GRAY);
 
-	s[15] = 0; //current speed
-	TextXY(s + 13, INFO_X + 13 * 8, INFO_Y + 1 * 16, TEXT_COLOR_LIGHT_GRAY);
-	s[18] = 0; //main speed
-	TextXY(s + 16, INFO_X + 16 * 8, INFO_Y + 1 * 16, TEXT_COLOR_LIGHT_GRAY);
-	s[20] = 0; //instrspeed
-	TextXY(s + 19, INFO_X + 19 * 8, INFO_Y + 1 * 16, TEXT_COLOR_LIGHT_GRAY);
-	s[64] = 0; //MAXTRACKLENGTH value and everything after
-	TextXY(s + 38, INFO_X + 38 * 8, INFO_Y + 1 * 16, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(s, "%02X", g_Tracks.m_maxtracklen);
+	TextXY(s, INFO_X + 40 * 8, INFO_Y + 2 * 16, TEXT_COLOR_LIGHT_GRAY);
 
-	if (g_activepart == PARTINFO)
-	{
-		if (g_prove) color = COLOR_SELECTED_PROVE;
-		else color = COLOR_SELECTED;
-		switch (m_infoact)
-		{
-			case 1:	//speed
-				s[15] = 0;
-				TextXY(s + 13, INFO_X + 13 * 8, INFO_Y + 1 * 16, color);	//selected
-				break;
-			case 2: //mainspeed
-				s[18] = 0;
-				TextXY(s + 16, INFO_X + 16 * 8, INFO_Y + 1 * 16, color);	//selected
-				break;
-			case 3: //instrspeed
-				s[20] = 0;
-				TextXY(s + 19, INFO_X + 19 * 8, INFO_Y + 1 * 16, color);	//selected
-				break;
-		}
-	}
+	if (g_prove) color = COLOR_SELECTED_PROVE;
+	else color = COLOR_SELECTED;
+	BOOL selected = 0;
 
+	sprintf(s, "%02X", m_speed);
+	selected = (g_activepart == PARTINFO && m_infoact == 1) ? 1 : 0;
+	TextXY(s, INFO_X + 13 * 8, INFO_Y + 2 * 16, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+
+	sprintf(s, "%02X", m_mainspeed);
+	selected = (g_activepart == PARTINFO && m_infoact == 2) ? 1 : 0;
+	TextXY(s, INFO_X + 16 * 8, INFO_Y + 2 * 16, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+
+	sprintf(s, "%X", m_instrspeed);
+	selected = (g_activepart == PARTINFO && m_infoact == 3) ? 1 : 0;
+	TextXY(s, INFO_X + 19 * 8, INFO_Y + 2 * 16, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+
+	TextXY("INSTRUMENT ", INFO_X, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);
 	sprintf(s, "%02X: %s", m_activeinstr, g_Instruments.GetName(m_activeinstr));
-	TextXY(s, INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_WHITE);
+	TextXY(s, INFO_X + 11 * 8, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);
 	s[40] = 0;
-	TextXY(s + 4, INFO_X + 4 * 8, INFO_Y + 3 * 16, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s + 4, INFO_X + 15 * 8, INFO_Y + 4 * 16, TEXT_COLOR_LIGHT_GRAY);
 
 	sprintf(s, "OCTAVE %i-%i", m_octave + 1, m_octave + 2);
-	TextXY(s, INFO_X + 47 * 8, INFO_Y + 3 * 16, TEXT_COLOR_WHITE);
+	TextXY(s, INFO_X + 55 * 8, INFO_Y + 3 * 16, TEXT_COLOR_WHITE);
 	s[40] = 0;
-	TextXY(s + 7, INFO_X + 54 * 8, INFO_Y + 3 * 16, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s + 7, INFO_X + 62 * 8, INFO_Y + 3 * 16, TEXT_COLOR_LIGHT_GRAY);
 
 	sprintf(s, "VOLUME %X", m_volume);
-	TextXY(s, INFO_X + 49 * 8, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);
+	TextXY(s, INFO_X + 57 * 8, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);
 	s[40] = 0;
-	TextXY(s + 7, INFO_X + 56 * 8, INFO_Y + 4 * 16, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s + 7, INFO_X + 64 * 8, INFO_Y + 4 * 16, TEXT_COLOR_LIGHT_GRAY);
 
-	if (g_respectvolume) TextXY("\x17", INFO_X + 57 * 8, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);	//respect volume mode
+	if (g_respectvolume) TextXY("\x17", INFO_X + 56 * 8, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);	//respect volume mode
 
 	//over instrument line with flags
 	BYTE flag = g_Instruments.GetFlag(m_activeinstr);
 
 	int x = INFO_X;	//+4*8;
-	const int y = INFO_Y + 4 * 16;
+	const int y = INFO_Y + 5 * 16;
 	int g = (m_trackactivecol % 4) + 1;		//channel 1 to 4
 
 	if (flag & IF_FILTER)
@@ -1009,58 +1248,34 @@ BOOL CSong::DrawPlaytimecounter(CDC* pDC = NULL)
 {
 	if (!g_viewplaytimecounter) return 0;	//the timer won't be displayed without the setting enabled first
 
+#define PLAYTC_X	16		//(SONG_OFFSET+7)
+#define PLAYTC_Y	16		//(SONG_Y-8) 
+#define PLAYTC_S	(32*8)	//(4*8)  
+#define PLAYTC_H	16		//8 
+
 	int sp = g_scaling_percentage;
-
-	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == 1) ? 1420 : 960;
-	int MINIMAL_WIDTH_INSTRUMENTS = (g_tracks4_8 > 4 && g_active_ti == 2) ? 1220 : 1220;
-	int WINDOW_OFFSET = (g_width < 1320 && g_tracks4_8 > 4 && g_active_ti == 1) ? -250 : 0;	//test displacement with the window size
-	int INSTRUMENT_OFFSET = (g_active_ti == 2 && g_tracks4_8 > 4) ? -250 : 0;
-	if (g_tracks4_8 == 4 && g_active_ti == 2 && g_width > MINIMAL_WIDTH_INSTRUMENTS - 220) INSTRUMENT_OFFSET = 260;
-	int SONG_OFFSET = SONG_X + WINDOW_OFFSET + INSTRUMENT_OFFSET + ((g_tracks4_8 == 4) ? -200 : 310);	//displace the SONG block depending on certain parameters
-
-#define PLAYTC_X	(SONG_OFFSET+7)
-#define PLAYTC_Y	(SONG_Y-8) 
-#define PLAYTC_S	(4*8)  
-#define PLAYTC_H	8  
-
 	int fps = (g_ntsc) ? 60 : 50;
-	int time10 = (g_playtime % fps) * 10 / fps;
-	int time100 = ((g_playtime % fps) * 100 / fps) % 10;
-	int ts = g_playtime / fps;	//total time in seconds
-	int timesec = ts % 60;		//seconds 0 to 59
-	int timemin = ts / 60;		//minutes 0 to ...
-	char timstr[6];
+	int ts = g_playtime / fps;							//total time in seconds
+	int timesec = ts % 60;								//seconds 0 to 59
+	int timemin = ts / 60;								//minutes 0 to ...
+	int timemilisec = (g_playtime % fps) * 100 / fps;	//miliseconds 0 to 99
+	double speed = 0.0;
+	double bpm = 0.0;
+	char timstr[16] = { 0 };
+	char bpmstr[8] = { 0 };
 
-	if (!timemin)	//less than a minute
-	{
-		//time from 00.0 to 59.9
-		timstr[0] = (timesec / 10) | '0';
-		timstr[1] = (timesec % 10) | '0';
-		timstr[2] = (timesec % 2 == 0) ? '.' : ' ';
-		timstr[3] = (time10) | '0';
-		timstr[4] = (time100) | '0';
-	}
-	else if (!(timemin / 10))	//less than 10 minutes
-	{
-		//time from 1:00 to 9:99
-		timstr[0] = (timemin % 10) | '0';
-		timstr[1] = (timesec % 2 == 0) ? ':' : ' ';
-		timstr[2] = (timesec / 10) | '0';
-		timstr[3] = (timesec % 10) | '0';
-		timstr[4] = 0;	//null
-	}
-	else
-	{
-		//time from 00:00 to 99:99
-		timstr[0] = (timemin / 10) | '0';
-		timstr[1] = (timemin % 10) | '0';
-		timstr[2] = (timesec % 2 == 0) ? ':' : ' ';
-		timstr[3] = (timesec / 10) | '0';
-		timstr[4] = (timesec % 10) | '0';
-	}
+	m_avgspeed[m_trackplayline % 8] = m_speed;				//refreshed every 8 rows
+	for (int i = 0; i < 8; i++) speed += m_avgspeed[i];
+	speed /= 8.0;											//average speed
+	bpm = ((60.0 * fps) / g_tracklinehighlight) / speed;	//average BPM 
 
-	timstr[5] = 0; //null
-	TextMiniXY(timstr, PLAYTC_X, PLAYTC_Y, (m_play) ? TEXT_MINI_COLOR_WHITE : TEXT_MINI_COLOR_GRAY);
+	snprintf(timstr, 16, !(timesec & 1) ? "%2d:%02d.%02d" : "%2d %02d.%02d", timemin, timesec, timemilisec);
+	snprintf(bpmstr, 8, (m_play) ? "%1.2f" : "---.--", bpm);
+
+	TextXY("TIME:             BPM:       ", PLAYTC_X, PLAYTC_Y, TEXT_COLOR_WHITE);
+	TextXY(timstr, PLAYTC_X + 8 * 6, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
+	TextXY(bpmstr, PLAYTC_X + 8 * 23, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
+
 	if (pDC) pDC->BitBlt((PLAYTC_X * sp) / 100, (PLAYTC_Y * sp) / 100, (PLAYTC_S * sp) / 100, (PLAYTC_H * sp) / 100, g_mem_dc, (PLAYTC_X * sp) / 100, (PLAYTC_Y * sp) / 100, SRCCOPY);
 	return 1;
 }
@@ -1886,6 +2101,182 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 {
 	int note, i;
 	note = NoteKey(vk);
+
+	if (g_prove == 4)	//POKEY EXPLORER MODE: FULL CONTROL OVER THE POKEY (IGNORE RMT ROUTINES EXCEPT SETPOKEY)
+	{
+		//trackn_audf => g_atarimem[0x3178]
+		//trackn_audc => g_atarimem[0x3180]
+		//v_audctl => g_atarimem[0x3C69]
+		//v_skctl => g_atarimem[0x3CD3]
+
+		int audf = 0x3178;
+		int audc = 0x3180;
+		int audctl = 0x3C69;
+		int skctl = 0x3CD3;
+
+		int ch = 0;	//channel separation used in registers write
+		int step = (g_shiftkey) ? 0x10 : 0x01;	//when the SHIFT key is held, increments/decrements are in steps are $10
+
+		switch (vk)
+		{
+			//General variables manipulation
+
+			case 13:	//VK_ENTER
+				e_ch_idx++;
+				if (e_ch_idx > 3)
+					e_ch_idx = 0;
+				break;
+
+			case 8:		//VK_BACKSPACE
+				e_ch_idx--;
+				if (e_ch_idx < 0)
+					e_ch_idx = 3;
+				break;
+
+			case VK_OEM_PLUS:
+				e_divisor += (g_shiftkey) ? 1 : 0.1;
+				if (e_divisor > 10000)
+					e_divisor = 10000;
+				break;
+
+			case VK_OEM_MINUS:
+				e_divisor -= (g_shiftkey) ? 1 : 0.1;
+				if (e_divisor < 1)
+					e_divisor = 1;
+				break;
+
+				//AUDF channels
+
+			case 0x31:	//VK_1
+				ch = 0;
+				g_atarimem[audf + ch] += step;
+				break;
+
+			case 0x51:	//VK_Q
+				ch = 0;
+				g_atarimem[audf + ch] -= step;
+				break;
+
+			case 0x33:	//VK_3
+				ch = 1;
+				g_atarimem[audf + ch] += step;
+				break;
+
+			case 0x45:	//VK_E
+				ch = 1;
+				g_atarimem[audf + ch] -= step;
+				break;
+
+			case 0x35:	//VK_5
+				ch = 2;
+				g_atarimem[audf + ch] += step;
+				break;
+
+			case 0x54:	//VK_T
+				ch = 2;
+				g_atarimem[audf + ch] -= step;
+				break;
+
+			case 0x37:	//VK_7
+				ch = 3;
+				g_atarimem[audf + ch] += step;
+				break;
+
+			case 0x55:	//VK_U
+				ch = 3;
+				g_atarimem[audf + ch] -= step;
+				break;
+
+				//AUDC channels
+
+			case 0x32:	//VK_2
+				ch = 0;
+				g_atarimem[audc + ch] += step;
+				break;
+
+			case 0x57:	//VK_W
+				ch = 0;
+				g_atarimem[audc + ch] -= step;
+				break;
+
+			case 0x34:	//VK_4
+				ch = 1;
+				g_atarimem[audc + ch] += step;
+				break;
+
+			case 0x52:	//VK_R
+				ch = 1;
+				g_atarimem[audc + ch] -= step;
+				break;
+
+			case 0x36:	//VK_6
+				ch = 2;
+				g_atarimem[audc + ch] += step;
+				break;
+
+			case 0x59:	//VK_Y
+				ch = 2;
+				g_atarimem[audc + ch] -= step;
+				break;
+
+			case 0x38:	//VK_8
+				ch = 3;
+				g_atarimem[audc + ch] += step;
+				break;
+
+			case 0x49:	//VK_I
+				ch = 3;
+				g_atarimem[audc + ch] -= step;
+				break;
+
+				//AUDCTL bits
+
+			case 0x50:	//VK_P
+				g_atarimem[audctl] ^= 0x80;
+				break;
+
+			case 0x41:	//VK_A
+				g_atarimem[audctl] ^= 0x40;
+				break;
+
+			case 0x44:	//VK_D
+				g_atarimem[audctl] ^= 0x20;
+				break;
+
+			case 0x4A:	//VK_J
+				g_atarimem[audctl] ^= 0x10;
+				break;
+
+			case 0x4B:	//VK_K
+				g_atarimem[audctl] ^= 0x08;
+				break;
+
+			case 0x46:	//VK_F
+				g_atarimem[audctl] ^= 0x04;
+				break;
+
+			case 0x47:	//VK_G
+				g_atarimem[audctl] ^= 0x02;
+				break;
+
+			case 0x43:	//VK_C
+				g_atarimem[audctl] ^= 0x01;
+				break;
+
+				//SKCTL Two-Tone toggle
+
+			case 0x4D:	//VK_M
+				g_atarimem[skctl] ^= 0x88;
+				break;
+
+			default:
+				return 0;
+
+		}
+		return 1;
+
+	}
+
 	if (note >= 0)
 	{
 		i = note + m_octave * 12;
@@ -2876,6 +3267,7 @@ BOOL CSong::TrackCursorGoto(CPoint point)
 	int xch, x, y;
 	xch = (point.x / (16 * 8));
 	x = (point.x - (xch * 16 * 8)) / 8;
+
 	y = (point.y + 0) / 16 - 8 + g_cursoractview;	//m_trackactiveline;
 
 	if (y >= 0 && y < g_Tracks.m_maxtracklen)
