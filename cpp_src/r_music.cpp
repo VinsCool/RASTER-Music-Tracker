@@ -18,6 +18,7 @@
 // 
 // December 2021 -> new additions, and code cleanup.
 // 2022... -> a lot of experimental changes, no promise anything didn't get broken in the process!
+<<<<<<< HEAD
 
 #include "stdafx.h"
 #include <fstream>
@@ -13049,3 +13050,5 @@ char CUndo::PerformEvent(int i)
 	}
 	return sep; //returns separator
 }
+=======
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821

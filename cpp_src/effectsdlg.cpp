@@ -3,8 +3,9 @@
 
 #include "stdafx.h"
 #include "Rmt.h"
-#include "r_music.h"
 #include "EffectsDlg.h"
+
+#include "Song.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -16,6 +17,8 @@ int Hexstr(char* txt,int len);
 BOOL ModifyTrack(TTrack *track,int from,int to,int instrnumonly,int tuning,int instradd,int volumep);
 
 extern BOOL volatile g_screenupdate;
+
+extern CInstruments	g_Instruments;
 
 /////////////////////////////////////////////////////////////////////////////
 // CEffectsDlg dialog
@@ -779,7 +782,7 @@ void CInstrumentChangeDlg::OnDefault()
 	int noftracks = iinfo.usedintracks;
 	CString s;
 	if (instrfrom==instrto)
-		s.Format("Instrument: %02X\tName: %s",instrfrom,m_song->GetInstruments()->GetName(instrfrom));
+		s.Format("Instrument: %02X\tName: %s",instrfrom, g_Instruments.GetName(instrfrom));
 	else
 		s.Format("Instruments %02X-%02X (%u)",instrfrom,instrto,instrto-instrfrom+1);
 	m_ctitle.SetWindowText(s);
@@ -1388,7 +1391,7 @@ BOOL CInstrumentSelectDlg::OnInitDialog()
 
 	for(i=0; i<INSTRSNUM; i++)
 	{
-		s.Format("%02X: %s",i,m_instrs->GetName(i));
+		s.Format("%02X: %s", i, g_Instruments.GetName(i));
 		m_list1.AddString(s);
 	}
 

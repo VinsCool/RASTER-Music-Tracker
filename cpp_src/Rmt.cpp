@@ -15,6 +15,11 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
+// Some information for the about box is supplied by components outside this file
+extern CString g_aboutpokey;
+extern CString g_about6502;
+extern CString g_driverversion;	//used to display the RMT Driver "tracker.obx" version number
+
 /////////////////////////////////////////////////////////////////////////////
 // CRmtApp
 
@@ -64,7 +69,7 @@ BOOL CRmtApp::InitInstance()
 	// Change the registry key under which our settings are stored.
 	// TODO: You should modify this string to be something appropriate
 	// such as the name of your company or organization.
-	SetRegistryKey(_T("Local AppWizard-Generated Applications"));
+	SetRegistryKey(_T("RASTER Music Tracker"));
 
 	LoadStdProfileSettings();  // Load standard INI file options (including MRU)
 

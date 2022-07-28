@@ -8,6 +8,7 @@
 #include "MainFrm.h"
 #include "RmtDoc.h"
 #include "RmtView.h"
+#include "global.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -27,11 +28,11 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWnd)
 	ON_WM_CREATE()
 	ON_WM_CLOSE()
 	ON_WM_GETMINMAXINFO()
-	ON_CBN_SELCHANGE(IDC_COMBO_LINESAFTER, OnSelchangeComboLinesAfter)
-	ON_CBN_KILLFOCUS(IDC_COMBO_LINESAFTER,OnSelendok)
-	ON_COMMAND(1,OnSelendok)	//when you press Enter in the ComboBox
-	ON_COMMAND(2,OnSelendok)	//when you press ESCape in ComboBox
-	ON_CBN_CLOSEUP(IDC_COMBO_LINESAFTER,OnSelendok)	//at the ComboBox closeup
+	ON_CBN_SELCHANGE(IDC_COMBO_LINESAFTER, OnSelChangedComboSkipLinesAfterNoteInsert)
+	ON_CBN_KILLFOCUS(IDC_COMBO_LINESAFTER, OnRestoreFocusToMainWindow)
+	ON_COMMAND(1, OnRestoreFocusToMainWindow)	//when you press Enter in the ComboBox
+	ON_COMMAND(2, OnRestoreFocusToMainWindow)	//when you press ESCape in ComboBox
+	ON_CBN_CLOSEUP(IDC_COMBO_LINESAFTER, OnRestoreFocusToMainWindow)	//at the ComboBox closeup
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -64,14 +65,14 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		return -1;      // fail to create
 	}
 
+	// Put the skip # lines after note insert combo box into the tool bar
+	// Allow for 0 -> 8 skips
 	CRect rect;
-
-	int index=m_wndToolBar.CommandToIndex(ID_BUTTONCOMBO1);
-	const int combow = 40;
-	m_wndToolBar.SetButtonInfo(index, ID_BUTTONCOMBO1, TBBS_SEPARATOR, combow);
-    m_wndToolBar.GetItemRect(index, &rect);
-	rect.bottom+=300;	//the size of the clicked combobox
-	if (!m_c_linesafter.Create(WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWNLIST,rect, &m_wndToolBar, IDC_COMBO_LINESAFTER))
+	int index = m_wndToolBar.CommandToIndex(ID_BUTTONCOMBO1);
+	m_wndToolBar.SetButtonInfo(index, ID_BUTTONCOMBO1, TBBS_SEPARATOR, 40);
+	m_wndToolBar.GetItemRect(index, &rect);
+	rect.bottom += 300;	// the height of the clicked combobox
+	if (!m_comboSkipLinesAfterNoteInsert.Create(WS_CHILD | WS_VISIBLE | WS_VSCROLL | CBS_DROPDOWNLIST, rect, &m_wndToolBar, IDC_COMBO_LINESAFTER))
 		return -1;
 
 	char ss[2];
@@ -79,20 +80,20 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	for(char i='0'; i<='8'; i++)	//0..8
 	{
 		ss[0]=i;
-		m_c_linesafter.AddString(ss);
+		m_comboSkipLinesAfterNoteInsert.AddString(ss);
 	}
 
-	m_c_linesafter.SetCurSel(1);
+	m_comboSkipLinesAfterNoteInsert.SetCurSel(1);
 
+	// Create a toolbar with items for block editing mode
 	if (!m_ToolBarBlock.CreateEx(this) || !m_ToolBarBlock.LoadToolBar(IDR_TOOLBARBLOCK))
 	{
 		TRACE0("Failed to create toolbar block\n");
 		return -1;      // fail to create
 	}
 
-	if (!m_wndStatusBar.Create(this) 
-		|| !m_wndStatusBar.SetIndicators(indicators,
-		  sizeof(indicators)/sizeof(UINT)) )
+	if (!m_wndStatusBar.Create(this)
+		|| !m_wndStatusBar.SetIndicators(indicators, sizeof(indicators) / sizeof(UINT)))
 	{
 		TRACE0("Failed to create status bar\n");
 		return -1;      // fail to create
@@ -106,14 +107,12 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		return -1;      // fail to create
 	}
 
-	m_wndToolBar.SetBarStyle(m_wndToolBar.GetBarStyle() |
-		CBRS_TOOLTIPS | CBRS_FLYBY);
+	m_wndToolBar.SetBarStyle(m_wndToolBar.GetBarStyle() | CBRS_TOOLTIPS | CBRS_FLYBY);
 
-	m_ToolBarBlock.SetBarStyle(m_ToolBarBlock.GetBarStyle() |
-		CBRS_TOOLTIPS | CBRS_FLYBY);
+	m_ToolBarBlock.SetBarStyle(m_ToolBarBlock.GetBarStyle() | CBRS_TOOLTIPS | CBRS_FLYBY);
 
 	g_viewblocktoolbar	= 1;
-	ShowControlBar((CControlBar*)&m_ToolBarBlock,g_viewblocktoolbar,0); //will not be displayed
+	ShowControlBar((CControlBar*)&m_ToolBarBlock,g_viewblocktoolbar,0); //Show the block edit toolbar
 
 	return 0;
 }
@@ -147,10 +146,8 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 		t += workArea.top;
 
 		// make sure the window is not completely out of sight
-		int max_x = GetSystemMetrics(SM_CXSCREEN) -
-			GetSystemMetrics(SM_CXICON);
-		int max_y = GetSystemMetrics(SM_CYSCREEN) -
-			GetSystemMetrics(SM_CYICON);
+		int max_x = GetSystemMetrics(SM_CXSCREEN) -	GetSystemMetrics(SM_CXICON);
+		int max_y = GetSystemMetrics(SM_CYSCREEN) -	GetSystemMetrics(SM_CYICON);
 		cs.x = min(l, max_x);
 		cs.y = min(t, max_y);
 	}
@@ -162,9 +159,9 @@ BOOL CMainFrame::PreCreateWindow(CREATESTRUCT& cs)
 	return TRUE;
 }
 
-void CMainFrame::OnSelchangeComboLinesAfter()
+void CMainFrame::OnSelChangedComboSkipLinesAfterNoteInsert()
 {
-	g_linesafter = m_c_linesafter.GetCurSel();
+	g_linesafter = m_comboSkipLinesAfterNoteInsert.GetCurSel();
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -210,7 +207,7 @@ void CMainFrame::OnClose()
 	}
 }
 
-void CMainFrame::OnSelendok()
+void CMainFrame::OnRestoreFocusToMainWindow()
 {
 	//removes focus from the ComboBox and puts it in the main window
 	CRmtView* fw = (CRmtView*)(AfxGetApp()->GetMainWnd());

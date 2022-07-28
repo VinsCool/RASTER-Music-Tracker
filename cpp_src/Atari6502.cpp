@@ -10,8 +10,9 @@
 #include <stdlib.h>
 #include <fstream>	/* needed for Load/SaveBinaryFile */
 using namespace std;
+
 #include "Atari6502.h"
-#include "r_music.h"
+#include "General.h"
 #include "global.h"
 
 typedef void (* C6502_Initialise_PROC)(BYTE*);

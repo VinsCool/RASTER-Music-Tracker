@@ -12,7 +12,7 @@
 class CRmtDoc : public CDocument
 {
 protected: // create from serialization only
-	CRmtDoc();
+	CRmtDoc() {}
 	DECLARE_DYNCREATE(CRmtDoc)
 
 // Attributes
@@ -26,16 +26,12 @@ public:
 	//{{AFX_VIRTUAL(CRmtDoc)
 	public:
 	virtual BOOL OnNewDocument();
-	virtual void Serialize(CArchive& ar);
+	virtual void Serialize(CArchive& ar) {};
 	//}}AFX_VIRTUAL
 
 // Implementation
 public:
-	virtual ~CRmtDoc();
-#ifdef _DEBUG
-	virtual void AssertValid() const;
-	virtual void Dump(CDumpContext& dc) const;
-#endif
+	virtual ~CRmtDoc() {}
 
 protected:
 

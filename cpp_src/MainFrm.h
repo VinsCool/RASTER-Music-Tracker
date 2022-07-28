@@ -40,8 +40,8 @@ public:
 	virtual void Dump(CDumpContext& dc) const;
 #endif
 
-	void OnSelchangeComboLinesAfter();
-	void OnSelendok();
+	void OnSelChangedComboSkipLinesAfterNoteInsert();
+	void OnRestoreFocusToMainWindow();
 
 	CToolBar    m_wndToolBar;
 
@@ -51,7 +51,7 @@ public:
 	CToolBar	m_ToolBarBlock;
 	CReBar		m_wndReBar;
 
-	CComboBox	m_c_linesafter;
+	CComboBox	m_comboSkipLinesAfterNoteInsert;
 
 protected:  // control bar embedded members
 

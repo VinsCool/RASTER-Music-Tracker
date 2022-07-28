@@ -363,7 +363,7 @@ public:
 
 	CPoint m_pos;
 	int m_selected;
-	class CInstruments* m_instrs;
+	//class CInstruments* m_instrs;
 
 // Overrides
 	// ClassWizard generated virtual function overrides

@@ -9,11 +9,19 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "r_music.h"
+#include "General.h"
+
+#include "Undo.h"
+#include "Instruments.h"
+#include "Tracks.h"
+#include "Song.h"
+#include "Clipboard.h"
+
 #include "RmtMidi.h"
 #include "RmtDoc.h"
 #include <chrono>
 
+<<<<<<< HEAD
 extern CDC* g_mem_dc;
 
 extern int g_width;
@@ -156,6 +164,8 @@ extern void SetChannelSolo(int ch);
 
 extern void Atari_InstrumentTurnOff(int instr);
 
+=======
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 class CRmtView : public CView
 {
 protected: // create from serialization only
@@ -196,9 +206,6 @@ public:
 	HCURSOR m_cursorgoto;
 	HCURSOR m_cursordlg;
 	HCURSOR m_cursorsetpos;
-
-	CSong	m_song;
-	CRmtMidi	m_midi;
 
 	UINT m_timeranalyzer;
 

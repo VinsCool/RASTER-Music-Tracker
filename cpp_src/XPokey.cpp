@@ -9,6 +9,7 @@
 #include "RmtView.h"
 #include "Atari6502.h"
 #include "global.h"
+#include "ChannelControl.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

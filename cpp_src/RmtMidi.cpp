@@ -9,6 +9,9 @@
 #include "MainFrm.h"			//!
 #include <mmsystem.h>
 #include "RmtMidi.h"
+#include "global.h"
+
+extern CSong	g_Song;
 
 ////////////// MIDIINPROC //////////////////
 void CALLBACK MidiInProc(
@@ -19,14 +22,9 @@ void CALLBACK MidiInProc(
     DWORD dwParam2	
    )
 {
-	if (wMsg!=MIM_DATA && wMsg!=MIM_ERROR) return;
-	//((CMikeplDlg*)dwInstance)->MidiKeybTouch(dwParam1);
-	CMainFrame* mf = (CMainFrame*)AfxGetApp()->GetMainWnd();
-	if (mf)
-	{
-		CRmtView* rv = (CRmtView*)mf->GetActiveView();
-		if (rv) rv->m_song.MidiEvent(dwParam1);
-	}
+	// Forward MIDI data and error messages to the global song object
+	if (wMsg != MIM_DATA && wMsg != MIM_ERROR) return;
+	g_Song.MidiEvent(dwParam1);
 }
 
 CRmtMidi::CRmtMidi()
