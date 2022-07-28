@@ -696,18 +696,8 @@ BOOL CSong::DrawSong()
 		line = m_songactiveline + i + linesoffset - active_smooth;
 		BOOL oob = 0;
 
-		//if (line < 0 || line>255) continue;
-
-		if (line < 0)
-		{
-			line += 256;
-			oob = 1;
-		}
-		if (line > 255)
-		{
-			line -= 256;
-			oob = 1;
-		}
+		//roll over the songline if it is out of bounds
+		if (line < 0 || line>255) { line += 256; line %= 256; oob = 1; }
 
 		strcpy(s, "XX:");
 		s[0] = CharH4(line);
@@ -868,19 +858,18 @@ BOOL CSong::DrawTracks()
 		line = g_cursoractview + i - 8 - active_smooth;		//8 lines from above
 		int oob = 0;
 
-		int ln = GetSmallestMaxtracklen(m_songactiveline);
-		//if (!ln) ln = 1;	//g_Tracks.m_maxtracklen;
+		int sl = m_songactiveline;	//offset by the oob songline counter when needed
+		int ln = GetSmallestMaxtracklen(sl);
 
-		//int ln = GetEffectiveMaxtracklen();
-		//if (!ln)	//fallback to whatever is in memory instead if the value returned is invalid
-		//	ln = g_Tracks.m_maxtracklen;	
+		//int ln = GetEffectiveMaxtracklen();	//not fully working, neither does GetSmallestMaxtracklen() but it looks a bit nicer :D	
 
 		if (line < 0)
 		{
 		minusline:
 			oob--;
-			ln = GetSmallestMaxtracklen((m_songactiveline + oob) % 256);
-			//if (!ln) ln = g_Tracks.m_maxtracklen;
+			sl = m_songactiveline + oob;
+			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
+			ln = GetSmallestMaxtracklen(sl);
 
 			line += ln;
 			if (line < 0) goto minusline;
@@ -890,7 +879,9 @@ BOOL CSong::DrawTracks()
 		plusline:
 			oob++;
 			line -= ln;
-			ln = GetSmallestMaxtracklen((m_songactiveline + oob) % 256);
+			sl = m_songactiveline + oob;
+			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
+			ln = GetSmallestMaxtracklen(sl);
 
 			if (!ln)
 			{
@@ -917,9 +908,15 @@ BOOL CSong::DrawTracks()
 		{
 			//mask out the first line
 			g_mem_dc->FillSolidRect((TRACKS_X * sp) / 100, (y * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
-			TextXY("GO TO LINE ", TRACKS_X + 6 * 8, y, TEXT_COLOR_LIGHT_GRAY);
-			sprintf(s, "%02X", m_songgo[(m_songactiveline + oob) % 256]);
-			TextXY(s, TRACKS_X + 17 * 8, y, TEXT_COLOR_WHITE);
+			
+			//get the songline that has the goto set
+			sl = m_songactiveline + oob;
+			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
+
+			//if the line is 2 patterns or more away, it must also be gray
+			TextXY("GO TO LINE ", TRACKS_X + 6 * 8, y, (oob - 1) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_LIGHT_GRAY);
+			sprintf(s, "%02X", m_songgo[sl]);
+			TextXY(s, TRACKS_X + 17 * 8, y, (oob - 1) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
 			break;
 		}
 
@@ -933,7 +930,10 @@ BOOL CSong::DrawTracks()
 		for (int j = 0; j < g_tracks4_8; j++, x += 16 * 8)
 		{
 			//track in the current line of the song
-			tr = m_song[(m_songactiveline + oob) % 256][j];
+			sl = m_songactiveline + oob;
+			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
+			
+			tr = m_song[sl][j];
 
 			//is it playing?
 			if (m_songplayline == m_songactiveline) t = m_trackplayline; else t = -1;
