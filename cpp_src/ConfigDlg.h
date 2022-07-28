@@ -29,16 +29,16 @@ public:
 	enum { IDD = IDD_CONFIG };
 	CComboBox	m_keyboard_c_layout;
 	CComboBox	m_midi_c_device;
-	BOOL	m_midi_tr;
+	BOOL	m_midi_TouchResponse;
 	BOOL	m_keyboard_playautofollow;
-	int		m_midi_volumeoffset;
+	int		m_midi_VolumeOffset;
 	int		m_tracklinehighlight;
 	int     m_scaling_percentage;
 	double	m_tuning;
 	BOOL	m_ntsc;
 	BOOL	m_displayflatnotes;
 	BOOL	m_usegermannotation;
-	BOOL	m_midi_noteoff;
+	BOOL	m_midi_NoteOff;
 	BOOL	m_keyboard_updowncontinue;
 	BOOL	m_nohwsoundbuffer;
 	BOOL	m_tracklinealtnumbering;
@@ -65,7 +65,7 @@ protected:
 	//{{AFX_MSG(CConfigDlg)
 	virtual BOOL OnInitDialog();
 	virtual void OnOK();
-	afx_msg void OnMidiTr();
+	afx_msg void OnMidiTouchResponseClicked();
 	afx_msg void OnSelchangeKeyboardLayout();
 	afx_msg void OnPaths();
 	//}}AFX_MSG

@@ -8,6 +8,7 @@
 #include "MainFrm.h"
 #include "RmtDoc.h"
 #include "RmtView.h"
+#include "GuiHelpers.h"
 #include "global.h"
 
 #ifdef _DEBUG
@@ -216,10 +217,10 @@ void CMainFrame::OnRestoreFocusToMainWindow()
 
 void CMainFrame::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
 {
-	int sp = g_scaling_percentage;
 	//not perfect... manual resizing is required if the window is smaller than minimal
 	int minx = (g_tracks4_8 == 8) ? 1120 : 800;
 	int miny = 600;
-	lpMMI->ptMinTrackSize.x = (minx*sp)/100;
-	lpMMI->ptMinTrackSize.y = (miny*sp)/100;
+
+	lpMMI->ptMinTrackSize.x = SCALE(minx);
+	lpMMI->ptMinTrackSize.y = SCALE(miny);
 }

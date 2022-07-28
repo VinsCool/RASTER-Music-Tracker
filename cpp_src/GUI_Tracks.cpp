@@ -196,7 +196,7 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 	else color = TEXT_COLOR_WHITE;	//white
 	if (oob) color = TEXT_COLOR_TURQUOISE;
 
-	if (g_activepart == PARTTRACKS && line < len && (line == aline && isactive) && !oob)
+	if (g_activepart == PART_TRACKS && line < len && (line == aline && isactive) && !oob)
 	{
 		if (g_prove) TextXYCol(s, x, y, colacprove[acu]);
 		else TextXYCol(s, x, y, colac[acu]);

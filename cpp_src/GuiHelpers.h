@@ -4,6 +4,7 @@
 
 // Helper defines to make the code a bit more readabl
 #define SCALE(x) ((x) * g_scaling_percentage) / 100
+#define INVERSE_SCALE(x) ((x) * 100) / g_scaling_percentage
 
 #define SCREENUPDATE	g_screenupdate=1
 

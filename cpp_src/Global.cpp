@@ -94,7 +94,7 @@ CString g_driverversion;
 
 BOOL g_changes = 0;	//have there been any changes in the module?
 
-int g_focus;
+int g_RmtHasFocus;			// Track if RMT has focus, when it does not have focus and is not in prove mode, the MIDI input will be ignored (to avoid overwriting patterns accidentally)
 int g_shiftkey;
 int g_controlkey;
 int g_altkey;	//unfinished implementation, doesn't work yet for some reason
@@ -107,7 +107,7 @@ int volatile g_screenwait;
 BOOL volatile g_rmtroutine;
 BOOL volatile g_timerroutineprocessed;
 
-int volatile g_prove;			//test notes without editing (0 = off, 1 = mono, 2 = stereo)
+int volatile g_prove;			// Test notes without editing (0 = off, 1 = mono jam, 2 = stereo jam)
 int volatile g_respectvolume;	//does not change the volume if it is already there
 
 WORD g_rmtstripped_adr_module;	//address for export RMT stripped file
@@ -178,15 +178,6 @@ BOOL g_keyboard_updowncontinue = 1;	//1 yes, 0 no
 BOOL g_keyboard_rememberoctavesandvolumes = 1;	//1 yes, 0 no
 BOOL g_keyboard_escresetatarisound = 1;	//1 yes, 0 no
 BOOL g_keyboard_askwhencontrol_s = 1;	//1 yes, 0 no
-
-int g_midi_notech[16];			//last recorded notes on each MIDI channel
-int g_midi_voluch[16];			//note volume on individual MIDI channels
-int g_midi_instch[16];			//last set instrument numbers on individual MIDI channels
-
-BOOL g_midi_tr = 0;
-int g_midi_volumeoffset = 1;	//starts from volume 1 by default
-BOOL g_midi_noteoff = 0;		//by default, noteoff is turned off
-
 
 // ----------------------------------------------------------------------------
 // Here are the main global objects that make up 99% of RMT.

@@ -364,7 +364,7 @@ BOOL CRmtView::DrawAll()
 	g_Song.DrawAnalyzer(NULL);
 	g_Song.DrawPlaytimecounter(NULL);
 	
-	if (g_active_ti == PARTTRACKS)	//which one is the active screen?
+	if (g_active_ti == PART_TRACKS)	//which one is the active screen?
 	{
 		g_Song.DrawTracks();
 	}
@@ -513,11 +513,11 @@ void CRmtView::ReadConfig()
 		//midi
 		if (NAME("MIDI_IN")) g_Midi.SetDevice(value);
 		else
-		if (NAME("MIDI_TR")) g_midi_tr = atoi(value);
+		if (NAME("MIDI_TR")) g_Midi.m_TouchResponse = atoi(value);
 		else
-		if (NAME("MIDI_VOLUMEOFFSET")) g_midi_volumeoffset = atoi(value);
+		if (NAME("MIDI_VOLUMEOFFSET")) g_Midi.m_VolumeOffset = atoi(value);
 		else
-		if (NAME("MIDI_NOTEOFF")) g_midi_noteoff = atoi(value);
+		if (NAME("MIDI_NOTEOFF")) g_Midi.m_NoteOff = atoi(value);
 		else
 		//paths
 		if (NAME("PATH_SONGS")) g_path_songs = value;
@@ -613,9 +613,9 @@ void CRmtView::WriteConfig()
 	ou << "KEYBOARD_ASKWHENCONTROL_S=" << g_keyboard_askwhencontrol_s << endl;
 	//midi
 	ou << "MIDI_IN=" << g_Midi.GetMidiDevName() << endl;
-	ou << "MIDI_TR=" << g_midi_tr << endl;
-	ou << "MIDI_VOLUMEOFFSET=" << g_midi_volumeoffset << endl;
-	ou << "MIDI_NOTEOFF=" << g_midi_noteoff << endl;
+	ou << "MIDI_TR=" << g_Midi.m_TouchResponse << endl;
+	ou << "MIDI_VOLUMEOFFSET=" << g_Midi.m_VolumeOffset << endl;
+	ou << "MIDI_NOTEOFF=" << g_Midi.m_NoteOff << endl;
 	//paths
 	ou << "PATH_SONGS=" << g_path_songs << endl;
 	ou << "PATH_INSTRUMENTS=" << g_path_instruments << endl;
@@ -670,23 +670,25 @@ void CRmtView::OnViewConfiguration()
 	dlg.m_keyboard_updowncontinue = g_keyboard_updowncontinue;
 	dlg.m_keyboard_rememberoctavesandvolumes = g_keyboard_rememberoctavesandvolumes;
 	dlg.m_keyboard_askwhencontrol_s = g_keyboard_askwhencontrol_s;
-	//midi
+
+	// MIDI settings
 	dlg.m_midi_device = g_Midi.GetMidiDevId();
-	dlg.m_midi_tr = g_midi_tr;
-	dlg.m_midi_volumeoffset = g_midi_volumeoffset;
-	dlg.m_midi_noteoff = g_midi_noteoff;
+	dlg.m_midi_TouchResponse = g_Midi.m_TouchResponse;
+	dlg.m_midi_VolumeOffset = g_Midi.m_VolumeOffset;
+	dlg.m_midi_NoteOff = g_Midi.m_NoteOff;
 	//
 	if (dlg.DoModal()==IDOK)
 	{
 		//general
 		if (g_scaling_percentage != dlg.m_scaling_percentage)	//necessary to scale all the elements immetiately, without resizing the window first
 		{
-			g_width = (m_width * 100) / dlg.m_scaling_percentage;
-			g_height = (m_height * 100) / dlg.m_scaling_percentage;
+			g_scaling_percentage = dlg.m_scaling_percentage;
+
+			g_width = INVERSE_SCALE(m_width);
+			g_height = INVERSE_SCALE(m_height);
 			g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16; 
 			SCREENUPDATE;
 		}
-		g_scaling_percentage = dlg.m_scaling_percentage;
 
 		if (g_nohwsoundbuffer != dlg.m_nohwsoundbuffer)
 		{
@@ -729,9 +731,9 @@ void CRmtView::OnViewConfiguration()
 		}
 		else
 			g_Midi.SetDevice("");
-		g_midi_tr = dlg.m_midi_tr;
-		g_midi_volumeoffset = dlg.m_midi_volumeoffset;
-		g_midi_noteoff = dlg.m_midi_noteoff;
+		g_Midi.m_TouchResponse = dlg.m_midi_TouchResponse;
+		g_Midi.m_VolumeOffset = dlg.m_midi_VolumeOffset;
+		g_Midi.m_NoteOff = dlg.m_midi_NoteOff;
 		g_Midi.MidiInit();
 		//
 		WriteConfig();
@@ -839,7 +841,6 @@ void GetCommandLineItem(CString& commandline,int& fromidx,int& toidx)
 //originally added in RMT 1.30, and reworked in 1.31+ 
 bool CRmtView::Resize(int width, int height)
 {
-	int sp = g_scaling_percentage;
 	if (width == m_width && height == m_height) return false;
 	if (m_width != 0) {
 		m_mem_dc.SelectObject((CBitmap*)0);
@@ -848,9 +849,10 @@ bool CRmtView::Resize(int width, int height)
 	}
 	m_width = width;
 	m_height = height;
-	if (m_width != 0) {
-		g_width = (m_width * 100) / sp;
-		g_height = (m_height * 100) / sp;
+	if (m_width != 0) 
+	{
+		g_width = INVERSE_SCALE(m_width);
+		g_height = INVERSE_SCALE(m_height);
 		CDC* dc = GetDC();
 		m_mem_bitmap.CreateCompatibleBitmap(dc, m_width, m_height);
 		m_mem_dc.CreateCompatibleDC(dc);
@@ -927,8 +929,8 @@ void CRmtView::OnInitialUpdate()
 	g_shiftkey=g_controlkey=0;	//TODO: add support for ALT key as well
 
 	//current parts
-	g_activepart = PARTTRACKS;	//tracks
-	g_active_ti = PARTTRACKS;	//below the active tracks
+	g_activepart = PART_TRACKS;	//tracks
+	g_active_ti = PART_TRACKS;	//below the active tracks
 
 	//turn on all channels
 	SetChannelOnOff(-1,1);
@@ -1004,21 +1006,19 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	int i;
 	int px,py;
 
-	int sp = g_scaling_percentage;
-
 	//scale the mouse XY coordinates to the actual display scaling, so the hitboxes will match everything visually rendered
-	point.x = (point.x * 100) / sp;
-	point.y = (point.y * 100) / sp;
+	point.x = INVERSE_SCALE(point.x);
+	point.y = INVERSE_SCALE(point.y);
 
 	//debug
 	GetMouseXY(point.x, point.y, mousebutt);
 
 	//TODO: make those parameters global so they won't have to be re-initialised in multiple functions separately
-	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == 1) ? 1420 : 960;
-	int MINIMAL_WIDTH_INSTRUMENTS = (g_tracks4_8 > 4 && g_active_ti == 2) ? 1220 : 1220;
-	int WINDOW_OFFSET = (g_width < 1320 && g_tracks4_8 > 4 && g_active_ti == 1) ? -250 : 0;	//test displacement with the window size
-	int INSTRUMENT_OFFSET = (g_active_ti == 2 && g_tracks4_8 > 4) ? -250 : 0;
-	if (g_tracks4_8 == 4 && g_active_ti == 2 && g_width > MINIMAL_WIDTH_INSTRUMENTS - 220) INSTRUMENT_OFFSET = 260;
+	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == PART_TRACKS) ? 1420 : 960;
+	int MINIMAL_WIDTH_INSTRUMENTS = (g_tracks4_8 > 4 && g_active_ti == PART_INSTRUMENTS) ? 1220 : 1220;
+	int WINDOW_OFFSET = (g_width < 1320 && g_tracks4_8 > 4 && g_active_ti == PART_TRACKS) ? -250 : 0;	//test displacement with the window size
+	int INSTRUMENT_OFFSET = (g_active_ti == PART_INSTRUMENTS && g_tracks4_8 > 4) ? -250 : 0;
+	if (g_tracks4_8 == 4 && g_active_ti == PART_INSTRUMENTS && g_width > MINIMAL_WIDTH_INSTRUMENTS - 220) INSTRUMENT_OFFSET = 260;
 	int SONG_OFFSET = SONG_X + WINDOW_OFFSET + INSTRUMENT_OFFSET + ((g_tracks4_8 == 4) ? -200 : 310);	//displace the SONG block depending on certain parameters
 
 	int linescount = (WINDOW_OFFSET) ? 5 : 9;	//songlines displayed depend on the window offset, if it's displaced to the left side, only 5 lines will be visible, else, 9 will be displayed
@@ -1231,7 +1231,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	}
 
 	//LOWER PARTS
-	if (g_active_ti==PARTTRACKS)
+	if (g_active_ti==PART_TRACKS)
 	{
 		rec.SetRect(TRACKS_X + 3 * 16, TRACKS_Y - 12, TRACKS_X + 3 * 8 + g_tracks4_8 * 8 * 16, TRACKS_Y + 32);
 
@@ -1279,7 +1279,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		}
 	}
 	else
-	if (g_active_ti==PARTINSTRS)
+	if (g_active_ti==PART_INSTRUMENTS)
 	{
 		//InstrEdit
 		int ainstr = g_Song.GetActiveInstr();
@@ -1637,7 +1637,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_F5:
 		if (g_controlkey && g_shiftkey)
 		{
-			g_prove = 4;	//POKEY EXPLORER MODE -- KEYBOARD INPUT AND FORMULAE DISPLAY
+			g_prove = PROVE_POKEY_EXPLORER_MODE;	//POKEY EXPLORER MODE -- KEYBOARD INPUT AND FORMULAE DISPLAY
 			break;
 		}
 		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
@@ -1814,7 +1814,7 @@ end_save_control_s:
 			BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
 			switch (g_activepart)
 			{
-			case PARTINFO:
+			case PART_INFO:
 				if (g_shiftkey && !is_editing_infos && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
 					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Song Name field, it will be ignored
 				else if (g_shiftkey && !is_editing_infos && (NoteKey(vk) < 0))
@@ -1844,7 +1844,7 @@ do_infokey_anyway:
 				}
 				break;
 
-			case PARTTRACKS:
+			case PART_TRACKS:
 				if (g_prove)
 					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
 				else if (g_shiftkey && (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE))
@@ -1853,7 +1853,7 @@ do_infokey_anyway:
 					r = g_Song.TrackKey(vk,g_shiftkey,g_controlkey);
 				break;
 
-			case PARTINSTRS:
+			case PART_INSTRUMENTS:
 				if (g_shiftkey && !is_editing_instr && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
 					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Instrument Name field, it will be ignored
 				else if (g_shiftkey && !is_editing_instr && (NoteKey(vk) < 0))
@@ -1883,7 +1883,7 @@ do_instrkey_anyway:
 				}
 				break;
 
-			case PARTSONG:
+			case PART_SONG:
 				if (g_prove)
 					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
 				else if (g_shiftkey && (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE))
@@ -2057,7 +2057,7 @@ void CRmtView::OnUpdateInstrumentPastespecialInsertvolenvsandenvparstocurpos(CCm
 	//to cur pos
 	int i = g_Song.GetActiveInstr();
 	TInstrument* ai = &g_Instruments.m_instr[i];
-	pCmdUI->Enable(g_activepart==PARTINSTRS && (ai->act==2)); //when the envelope is being edited
+	pCmdUI->Enable(g_activepart==PART_INSTRUMENTS && (ai->act==2)); //when the envelope is being edited
 }
 
 void CRmtView::OnUpdateInstrumentPastespecialVolumelenvelopeonly(CCmdUI* pCmdUI) 
@@ -2108,22 +2108,22 @@ void CRmtView::OnTrackDelete()
 
 void CRmtView::OnUpdateTrackCopy(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (g_Song.SongGetActiveTrack()>=0));
+	pCmdUI->Enable((g_activepart!=PART_INSTRUMENTS) && (g_Song.SongGetActiveTrack()>=0));
 }
 
 void CRmtView::OnUpdateTrackPaste(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (g_Song.SongGetActiveTrack()>=0));
+	pCmdUI->Enable((g_activepart!=PART_INSTRUMENTS) && (g_Song.SongGetActiveTrack()>=0));
 }
 
 void CRmtView::OnUpdateTrackCut(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (g_Song.SongGetActiveTrack()>=0));
+	pCmdUI->Enable((g_activepart!=PART_INSTRUMENTS) && (g_Song.SongGetActiveTrack()>=0));
 }
 
 void CRmtView::OnUpdateTrackDelete(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (g_Song.SongGetActiveTrack()>=0));
+	pCmdUI->Enable((g_activepart!=PART_INSTRUMENTS) && (g_Song.SongGetActiveTrack()>=0));
 }
 
 /*
@@ -2260,27 +2260,27 @@ void CRmtView::OnPlayfollow()
 
 void CRmtView::OnEmTracks() 
 {
-	g_activepart=g_active_ti=PARTTRACKS;	//tracks
+	g_activepart=g_active_ti=PART_TRACKS;	//tracks
 	SCREENUPDATE;
 }
 
 void CRmtView::OnEmInstruments() 
 {
-	g_activepart=g_active_ti=PARTINSTRS;	//instrs
+	g_activepart=g_active_ti=PART_INSTRUMENTS;	//instrs
 	g_TrackClipboard.BlockDeselect();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnEmInfo() 
 {
-	g_activepart=PARTINFO;		//info
+	g_activepart=PART_INFO;		//info
 	g_TrackClipboard.BlockDeselect();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnEmSong() 
 {
-	g_activepart=PARTSONG;		//song
+	g_activepart=PART_SONG;		//song
 	g_TrackClipboard.BlockDeselect();
 	SCREENUPDATE;
 }
@@ -2319,45 +2319,51 @@ void CRmtView::OnUpdatePlayfollow(CCmdUI* pCmdUI)
 
 void CRmtView::OnUpdateEmTracks(CCmdUI* pCmdUI) 
 {
-	int ch= (g_activepart==PARTTRACKS && g_active_ti==PARTTRACKS)? 1 : 0;
+	int ch= (g_activepart==PART_TRACKS && g_active_ti==PART_TRACKS)? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
 void CRmtView::OnUpdateEmInstruments(CCmdUI* pCmdUI) 
 {
-	int ch= (g_activepart==PARTINSTRS && g_active_ti==PARTINSTRS)? 1 : 0;
+	int ch= (g_activepart==PART_INSTRUMENTS && g_active_ti==PART_INSTRUMENTS)? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
 void CRmtView::OnUpdateEmInfo(CCmdUI* pCmdUI) 
 {
-	int ch= (g_activepart==PARTINFO)? 1 : 0;
+	int ch= (g_activepart==PART_INFO)? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
 void CRmtView::OnUpdateEmSong(CCmdUI* pCmdUI) 
 {
-	int ch= (g_activepart==PARTSONG)? 1 : 0;
+	int ch= (g_activepart==PART_SONG)? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
+/// <summary>
+/// Switch the edit mode
+/// 0 = edit
+/// 1 = Mono jam
+/// 2 = Stereo jam
+/// </summary>
 void CRmtView::OnProvemode() 
 {
-	if (g_prove == 0) g_prove = 1;
-	else if (g_prove >= 3) g_prove = 0;		//disable the special test modes immediately
+	if (g_prove == PROVE_EDIT_MODE) g_prove = PROVE_JAM_MONO_MODE;
+	else if (g_prove >= PROVE_EDIT_AND_JAM_MODES) g_prove = PROVE_EDIT_MODE;		//disable the special test modes immediately
 	else
 	{
-		if (g_prove == 1 && g_tracks4_8 > 4)	//PROVE 2 only works for 8 tracks
-			g_prove = 2;
+		if (g_prove == PROVE_JAM_MONO_MODE && g_tracks4_8 > 4)	//PROVE 2 only works for 8 tracks
+			g_prove = PROVE_JAM_STEREO_MODE;
 		else
-			g_prove = 0;
+			g_prove = PROVE_EDIT_MODE;
 	}
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateProvemode(CCmdUI* pCmdUI) 
 {
-	int ch= (g_prove>0)? 1 : 0;
+	int ch = (g_prove > PROVE_EDIT_MODE) ? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
@@ -3039,14 +3045,14 @@ void CRmtView::OnSetFocus(CWnd* pOldWnd)
 {
 	CView::OnSetFocus(pOldWnd);
 	g_shiftkey = g_controlkey = 0;
-	g_focus=1;	//main window focus
+	g_RmtHasFocus = 1;	// RMT main window has focus
 }
 
 void CRmtView::OnKillFocus(CWnd* pNewWnd) 
 {
 
 	CView::OnKillFocus(pNewWnd);
-	g_focus=0;	//the main window has no focus
+	g_RmtHasFocus = 0;	// RMT main window does not have focus
 }
 
 BOOL CRmtView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt) 
@@ -3130,5 +3136,5 @@ void CRmtView::OnTrackCursorgotothespeedcolumn()
 
 void CRmtView::OnUpdateTrackCursorgotothespeedcolumn(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(	g_activepart==PARTTRACKS && g_Song.SongGetActiveTrack()>=0 );
+	pCmdUI->Enable(	g_activepart==PART_TRACKS && g_Song.SongGetActiveTrack()>=0 );
 }

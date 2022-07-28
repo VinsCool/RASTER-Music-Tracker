@@ -34,17 +34,17 @@
     <Filter Include="Source Files\GUI">
       <UniqueIdentifier>{6d13bb44-b2a8-454f-9ab1-c071f6626923}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Load/Save">
-      <UniqueIdentifier>{dc8cf6d4-3fac-46f9-9a26-9661e293011b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Load/Save\SAP-R Compressor">
-      <UniqueIdentifier>{b1ac240f-8bfa-4b7f-9f1a-67e475c4a76e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Dialogs">
       <UniqueIdentifier>{0d6bbee4-a8b9-457f-90d9-73664e410b59}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\Data">
       <UniqueIdentifier>{390dff11-f66b-4d0f-9095-d4444b6a2da8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\IO - Load/Save/Export/Import/Midi">
+      <UniqueIdentifier>{dc8cf6d4-3fac-46f9-9a26-9661e293011b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\IO - Load/Save/Export/Import/Midi\SAP-R Compressor">
+      <UniqueIdentifier>{b1ac240f-8bfa-4b7f-9f1a-67e475c4a76e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -82,10 +82,7 @@
       <Filter>Source Files\Helpers</Filter>
     </ClCompile>
     <ClCompile Include="lzss_sap.cpp">
-      <Filter>Source Files\Load/Save\SAP-R Compressor</Filter>
-    </ClCompile>
-    <ClCompile Include="RmtMidi.cpp">
-      <Filter>Source Files\Dialogs</Filter>
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi\SAP-R Compressor</Filter>
     </ClCompile>
     <ClCompile Include="Tuning.cpp">
       <Filter>Source Files\Tuning</Filter>
@@ -139,10 +136,10 @@
       <Filter>Source Files\GUI</Filter>
     </ClCompile>
     <ClCompile Include="IO_Instruments.cpp">
-      <Filter>Source Files\Load/Save</Filter>
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
     </ClCompile>
     <ClCompile Include="IO_Tracks.cpp">
-      <Filter>Source Files\Load/Save</Filter>
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
     </ClCompile>
     <ClCompile Include="GUI_Tracks.cpp">
       <Filter>Source Files\GUI</Filter>
@@ -151,13 +148,19 @@
       <Filter>Source Files\GUI</Filter>
     </ClCompile>
     <ClCompile Include="IO_Song.cpp">
-      <Filter>Source Files\Load/Save</Filter>
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
     </ClCompile>
     <ClCompile Include="IO_Importer.cpp">
-      <Filter>Source Files\Load/Save</Filter>
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
     </ClCompile>
     <ClCompile Include="IOHelpers.cpp">
-      <Filter>Source Files\Load/Save</Filter>
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
+    </ClCompile>
+    <ClCompile Include="RmtMidi.cpp">
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
+    </ClCompile>
+    <ClCompile Include="Midi_Song.cpp">
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -177,9 +180,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RmtMidi.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="StdAfx.h">
@@ -224,9 +224,6 @@
     <ClInclude Include="Undo.h">
       <Filter>Source Files\Data</Filter>
     </ClInclude>
-    <ClInclude Include="General.h">
-      <Filter>Source Files\Data</Filter>
-    </ClInclude>
     <ClInclude Include="Instruments.h">
       <Filter>Source Files\Data</Filter>
     </ClInclude>
@@ -255,7 +252,13 @@
       <Filter>Source Files\Data</Filter>
     </ClInclude>
     <ClInclude Include="IOHelpers.h">
-      <Filter>Source Files\Load/Save</Filter>
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
+    </ClInclude>
+    <ClInclude Include="RmtMidi.h">
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
+    </ClInclude>
+    <ClInclude Include="General.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

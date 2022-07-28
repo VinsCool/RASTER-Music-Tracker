@@ -229,7 +229,7 @@ BOOL CInstruments::DrawName(int it)
 	char* s = GetName(it);
 	int n = -1, color = TEXT_COLOR_WHITE;
 
-	if (g_activepart == PARTINSTRS && m_instr[it].act == 0)  //is an active change of instrument name
+	if (g_activepart == PART_INSTRUMENTS && m_instr[it].act == 0)  //is an active change of instrument name
 	{
 		n = m_instr[it].activenam;
 		if (g_prove) color = TEXT_COLOR_BLUE;
@@ -262,7 +262,7 @@ BOOL CInstruments::DrawPar(int p, int it)
 	}
 
 	//if the cursor is on the main parameters
-	if (g_activepart == PARTINSTRS && m_instr[it].act == 1 && m_instr[it].activepar == p)
+	if (g_activepart == PART_INSTRUMENTS && m_instr[it].act == 1 && m_instr[it].activepar == p)
 	{
 		color = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
 	}
@@ -297,7 +297,7 @@ BOOL CInstruments::CursorGoto(int instr, CPoint point, int pzone)
 	{
 		case 0:
 			//envelope large table
-			g_activepart = PARTINSTRS;
+			g_activepart = PART_INSTRUMENTS;
 			tt.act = 2;	//the envelope is active
 			x = point.x / 8;
 			if (x >= 0 && x <= tt.par[PAR_ENVLEN]) tt.activeenvx = x;
@@ -306,7 +306,7 @@ BOOL CInstruments::CursorGoto(int instr, CPoint point, int pzone)
 			return 1;
 		case 1:
 			//envelope line volume number of the right channel
-			g_activepart = PARTINSTRS;
+			g_activepart = PART_INSTRUMENTS;
 			tt.act = 2;	//the envelope is active
 			x = point.x / 8;
 			if (x >= 0 && x <= tt.par[PAR_ENVLEN]) tt.activeenvx = x;
@@ -314,14 +314,14 @@ BOOL CInstruments::CursorGoto(int instr, CPoint point, int pzone)
 			return 1;
 		case 2:
 			//TABLE
-			g_activepart = PARTINSTRS;
+			g_activepart = PART_INSTRUMENTS;
 			tt.act = 3;	//the table is active
 			x = (point.x + 4) / (3 * 8);
 			if (x >= 0 && x <= tt.par[PAR_TABLEN]) tt.activetab = x;
 			return 1;
 		case 3:
 			//INSTRUMENT NAME
-			g_activepart = PARTINSTRS;
+			g_activepart = PART_INSTRUMENTS;
 			tt.act = 0;	//the name is active 
 			is_editing_instr = 1;	//instrument name is being edited
 			x = point.x / 8 - 6;
@@ -345,7 +345,7 @@ BOOL CInstruments::CursorGoto(int instr, CPoint point, int pzone)
 			if (p >= 0 && p < NUMBEROFPARS)
 			{
 				tt.activepar = p;
-				g_activepart = PARTINSTRS;
+				g_activepart = PART_INSTRUMENTS;
 				tt.act = 1;	//parameters are active
 				return 1;
 			}
@@ -486,7 +486,7 @@ void CInstruments::DrawEnv(int e, int it)
 		else
 			s[0] = CharL4(m_instr[it].env[e][j]);
 
-		if (j == ay && g_activepart == PARTINSTRS)
+		if (j == ay && g_activepart == PART_INSTRUMENTS)
 		{
 			color = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
 		}
@@ -517,7 +517,7 @@ BOOL CInstruments::DrawTab(int p, int it)
 
 	int color = TEXT_COLOR_WHITE;
 
-	if (in.act == 3 && in.activetab == p && g_activepart == PARTINSTRS)
+	if (in.act == 3 && in.activetab == p && g_activepart == PART_INSTRUMENTS)
 	{
 		color = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
 	}

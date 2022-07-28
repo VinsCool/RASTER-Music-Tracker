@@ -98,7 +98,7 @@ BOOL CSong::ClearSong(int numoftracks)
 	m_mainspeed = m_speed = m_speeda = 16;
 	m_instrspeed = 1;
 
-	g_activepart = g_active_ti = PARTTRACKS;	//tracks
+	g_activepart = g_active_ti = PART_TRACKS;	//tracks
 
 	m_songplayline = m_songactiveline = 0;
 	m_trackactiveline = m_trackplayline = 0;
@@ -860,7 +860,7 @@ int* CSong::GetUECursor(int part)
 	int* cursor;
 	switch (part)
 	{
-		case PARTTRACKS:
+		case PART_TRACKS:
 			cursor = new int[4];
 			cursor[0] = m_songactiveline;
 			cursor[1] = m_trackactiveline;
@@ -868,13 +868,13 @@ int* CSong::GetUECursor(int part)
 			cursor[3] = m_trackactivecur;
 			break;
 
-		case PARTSONG:
+		case PART_SONG:
 			cursor = new int[2];
 			cursor[0] = m_songactiveline;
 			cursor[1] = m_trackactivecol;
 			break;
 
-		case PARTINSTRS:
+		case PART_INSTRUMENTS:
 		{
 			cursor = new int[6];
 			cursor[0] = m_activeinstr;
@@ -888,7 +888,7 @@ int* CSong::GetUECursor(int part)
 		}
 		break;
 
-		case PARTINFO:
+		case PART_INFO:
 		{
 			cursor = new int[1];
 			cursor[0] = m_infoact;
@@ -905,29 +905,29 @@ void CSong::SetUECursor(int part, int* cursor)
 {
 	switch (part)
 	{
-		case PARTTRACKS:
+		case PART_TRACKS:
 			m_songactiveline = cursor[0];
 			m_trackactiveline = cursor[1];
 			m_trackactivecol = cursor[2];
 			m_trackactivecur = cursor[3];
-			g_activepart = g_active_ti = PARTTRACKS;
+			g_activepart = g_active_ti = PART_TRACKS;
 			break;
 
-		case PARTSONG:
+		case PART_SONG:
 			m_songactiveline = cursor[0];
 			m_trackactivecol = cursor[1];
-			g_activepart = PARTSONG;
+			g_activepart = PART_SONG;
 			break;
 
-		case PARTINSTRS:
+		case PART_INSTRUMENTS:
 			m_activeinstr = cursor[0];
 			//the other parameters 1-5 are within the instrument (TInstrument structure), so it is not necessary to set
-			g_activepart = g_active_ti = PARTINSTRS;
+			g_activepart = g_active_ti = PART_INSTRUMENTS;
 			break;
 
-		case PARTINFO:
+		case PART_INFO:
 			m_infoact = cursor[0];
-			g_activepart = PARTINFO;
+			g_activepart = PART_INFO;
 			break;
 
 		default:
@@ -941,13 +941,13 @@ BOOL CSong::UECursorIsEqual(int* cursor1, int* cursor2, int part)
 	int len;
 	switch (part)
 	{
-		case PARTTRACKS:	len = 4;
+		case PART_TRACKS:	len = 4;
 			break;
-		case PARTSONG:		len = 2;
+		case PART_SONG:		len = 2;
 			break;
-		case PARTINSTRS:	len = 6;
+		case PART_INSTRUMENTS:	len = 6;
 			break;
-		case PARTINFO:		len = 1;
+		case PART_INFO:		len = 1;
 			break;
 		default:
 			return 0;

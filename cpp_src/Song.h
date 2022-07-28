@@ -42,7 +42,7 @@ public:
 
 	void MidiEvent(DWORD dwParam);
 
-	BOOL DrawSong();
+	void DrawSong();				// Draw the song line info on the right
 	BOOL DrawTracks();
 	BOOL DrawInstrument();
 	BOOL DrawInfo();			//top left corner
@@ -258,10 +258,10 @@ private:
 	int m_songgo[SONGLEN];					//if> = 0, then GO applies
 
 	int m_songactiveline;
-	int volatile m_songplayline;
+	int volatile m_songplayline;				// Which line of the song is currently being played
 
 	int m_trackactiveline;
-	int volatile m_trackplayline;
+	int volatile m_trackplayline;				// Which line of a track is currenyly being played
 	int m_trackactivecol;						//0-7
 	int m_trackactivecur;						//0-2
 

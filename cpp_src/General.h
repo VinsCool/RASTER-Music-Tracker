@@ -29,9 +29,19 @@
 #define TEXT_MINI_COLOR_YELLOW 3
 
 // ----------------------------------------------------------------------------
+// GUI edit modes
+#define PROVE_EDIT_MODE				0		// Hit the Jam mode button to switch between
+#define PROVE_JAM_MONO_MODE			1		// the first three modes
+#define PROVE_JAM_STEREO_MODE		2		// Can only get here in stereo mode
+#define PROVE_EDIT_AND_JAM_MODES	3		// < this is edit and jam
+#define PROVE_MIDI_CH15_MODE		3		// Hit RECORD key in Midi channel 15 to cycle to this mode
+#define PROVE_POKEY_EXPLORER_MODE	4		// Ctrl + Shift + F5
 
 
-//TODO: add more keys definition to simplify things
+// ----------------------------------------------------------------------------
+// TODO: add more keys definition to simplify things
+#define VK_BACKSPACE	8
+#define VK_ENTER		13
 #define VK_PAGE_UP		33
 #define VK_PAGE_DOWN	34
 
@@ -47,6 +57,15 @@
 #define INFO_X	2*8
 #define INFO_Y	1*16
 
+// Which part of the data is currently active/visible/primary
+#define PART_INFO			0
+#define PART_TRACKS			1
+#define PART_INSTRUMENTS	2
+#define PART_SONG			3
+
+// ----------------------------------------------------------------------------
+// RMT file format
+//
 #define RMTFORMATVERSION	1	//the version number that is saved into modules, highest means more recent
 #define TRACKLEN	256			//drive 128
 #define TRACKSNUM	254			//0-253
@@ -68,10 +87,7 @@
 #define MAXATATRACKLEN	256		//atari track has maximum 256 bytes (track index is 0-255)
 #define MAXATASONGLEN	SONGTRACKS*SONGLEN	//maximum data size atari song part
 
-#define PARTINFO	0
-#define PARTTRACKS	1
-#define PARTINSTRS	2
-#define PARTSONG	3
+
 
 #define MPLAY_STOP	0
 #define MPLAY_SONG	1

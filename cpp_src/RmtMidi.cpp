@@ -29,10 +29,14 @@ void CALLBACK MidiInProc(
 
 CRmtMidi::CRmtMidi()
 {
-	m_ison=0;
-	m_hmidiin=NULL;
-	m_midiinid=-1;
-	m_midiindevname[0]=0;
+	m_MidiIsOn = 0;
+	m_MidiInHandle = NULL;
+	m_MidiInDeviceId = -1;
+	m_MidiInDeviceName[0] = 0;
+
+	m_TouchResponse = 0;
+	m_VolumeOffset = 1;
+	m_NoteOff = 0;
 }
 
 CRmtMidi::~CRmtMidi()
@@ -42,54 +46,60 @@ CRmtMidi::~CRmtMidi()
 
 int CRmtMidi::MidiInit()
 {
-	int lastonoff = IsOn();
+	int wasOnOff = IsOn();
 
 	MidiOff();
 
-	if (m_midiindevname[0]==0)
+	// If there us no device name set then turn MIDI off
+	if (m_MidiInDeviceName[0] == 0)
 	{
-		m_midiinid = -1;
+		m_MidiInDeviceId = -1;
 		return 1;	//does not want a MIDI device
 	}
 
 	MIDIINCAPS micaps;
-	int mind = midiInGetNumDevs();
+	int numMidiDevices = midiInGetNumDevs();				// Query how many MIDI devices there are
 
-	for(int i=0; i<mind; i++)
+	for (int i = 0; i < numMidiDevices; i++)
 	{
-		midiInGetDevCaps(i,&micaps, sizeof(MIDIINCAPS));
-		if (strcmp(m_midiindevname,micaps.szPname)==0)
+		// Query each MIDI device.
+		midiInGetDevCaps(i, &micaps, sizeof(MIDIINCAPS));
+
+		// Check if this is the MIDI device we are looking for
+		if (strcmp(m_MidiInDeviceName, micaps.szPname) == 0)
 		{
-			m_midiinid = i;   //found midi in by configfile
-			//strcpy(m_midiindevname,micaps.szPname);
-			if (lastonoff) MidiOn();
+			m_MidiInDeviceId = i;   //found midi in by configfile
+			if (wasOnOff) MidiOn();
 			return 1;
 		}
 	}
-	//was not found
-	m_midiinid = -1;
+	// Device was not found.
+	// Turn
+	m_MidiInDeviceId = -1;
 
-	MessageBox(g_hwnd,CString("Can't init the MIDI IN device\n")+m_midiindevname,"MIDI IN error",MB_ICONEXCLAMATION);
+	MessageBox(g_hwnd, CString("Can't init the MIDI IN device\n") + m_MidiInDeviceName, "MIDI IN error", MB_ICONEXCLAMATION);
 
-	strcpy(m_midiindevname,"");
+	m_MidiInDeviceName[0] = 0;
+
 	return 0;
 }
 
 int CRmtMidi::MidiOn()
 {
+	// Init the MIDI channel buffers
 
-	for(int i=0; i<16; i++)
+	for (int i = 0; i < 16; i++)
 	{
-		g_midi_notech[i]=-1;	//last pressed keys on each channel
-		g_midi_voluch[i]=0;		//volume
-		g_midi_instch[i]=0;		//instrument numbers
+		m_LastNoteOnChannel[i] = -1;	// Last pressed keys on each channel
+		m_NoteVolumeOnChannel[i] = 0;	// Volume
+		m_InstrumentOnChannel[i] = 0;	// Instrument numbers
 	}
 
-	if (m_midiinid>=0)
+	if (m_MidiInDeviceId>=0)
 	{
 		if (IsOn()) MidiOff();
-		int status = midiInOpen( &m_hmidiin,
-					m_midiinid,
+		int status = midiInOpen( &m_MidiInHandle,
+					m_MidiInDeviceId,
 					(unsigned long) MidiInProc, 
 					(unsigned long) this,
 					CALLBACK_FUNCTION ); 
@@ -100,8 +110,8 @@ int CRmtMidi::MidiOn()
 		}
 		else
 		{
-			midiInStart(m_hmidiin);
-			m_ison=1;
+			midiInStart(m_MidiInHandle);
+			m_MidiIsOn=1;
 			return 1;
 		}
 	}
@@ -110,13 +120,13 @@ int CRmtMidi::MidiOn()
 
 void CRmtMidi::MidiOff()
 {
-	if (m_midiinid>=0) //0 is PC keyboard only
+	if (m_MidiInDeviceId>=0) //0 is PC keyboard only
 	{
-		midiInStop(m_hmidiin);
-		midiInReset(m_hmidiin);
-		midiInClose(m_hmidiin);
+		midiInStop(m_MidiInHandle);
+		midiInReset(m_MidiInHandle);
+		midiInClose(m_MidiInHandle);
 	}
-	m_ison=0;
+	m_MidiIsOn=0;
 }
 
 int CRmtMidi::MidiRestart()

@@ -17,7 +17,7 @@ int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
 {
 	//returns 1 if TAB or ENTER was pressed
 	max--;
-	if (vk == 8) //VK_BACKSPACE
+	if (vk == VK_BACKSPACE)
 	{
 		if (cur > 0)
 		{
@@ -26,7 +26,7 @@ int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
 			txt[max] = ' ';
 		}
 	}
-	else if (vk == VK_TAB || vk == 13)		//VK_ENTER
+	else if (vk == VK_TAB || vk == VK_ENTER)
 	{
 		return 1;
 	}
@@ -44,8 +44,8 @@ int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
 	{
 		if (control) return 0;
 		char a = 0;
-		if (vk >= 65 && vk <= 90) { a = (shift) ? vk : vk + 32; }		//letters - uppercase with SHIFT
-		else if (vk >= 48 && vk <= 57) { a = (shift) ? *(")!@#$%^&*(" + vk - 48) : vk; }			//numbers - special characters with SHIFT
+		if (vk >= 'A' && vk <= 'Z')			{ a = (shift) ? vk : vk + 32; }						//letters - uppercase with SHIFT
+		else if (vk >= '0' && vk <= '9')	{ a = (shift) ? *(")!@#$%^&*(" + vk - 48) : vk; }	//numbers - special characters with SHIFT
 		else if (vk == ' ')			a = ' ';	//space
 		else if (vk == 189)	a = (shift) ? '_' : '-';
 		else if (vk == 187)	a = (shift) ? '+' : '=';
@@ -86,8 +86,6 @@ int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
 
 void TextXY(char* txt, int x, int y, int color)
 {
-	int sp = g_scaling_percentage;
-
 	char charToDraw;
 	color = color << 4;
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
@@ -100,7 +98,6 @@ void TextXY(char* txt, int x, int y, int color)
 void TextXYSelN(char* txt, int n, int x, int y, int color)
 {
 	//the index character n will have a "select" color, the rest c
-	int sp = g_scaling_percentage;
 	char charToDraw;
 	color = color << 4;
 
@@ -118,7 +115,6 @@ void TextXYSelN(char* txt, int n, int x, int y, int color)
 // Draw 8x16 chars with given color array per char position
 void TextXYCol(char* txt, int x, int y, char* col)
 {
-	int sp = g_scaling_percentage;
 	char charToDraw;
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
 	{
@@ -129,7 +125,6 @@ void TextXYCol(char* txt, int x, int y, char* col)
 // Draw 8x16 chars vertically (one below the other)
 void TextDownXY(char* txt, int x, int y, int color)
 {
-	int sp = g_scaling_percentage;
 	char charToDraw;
 	color = color << 4;	// 16 pixels height
 	for (int i = 0; charToDraw = (txt[i]); i++, y += 16)
@@ -140,7 +135,6 @@ void TextDownXY(char* txt, int x, int y, int color)
 
 void NumberMiniXY(BYTE num, int x, int y, int color)
 {
-	int sp = g_scaling_percentage;
 	color = 112 + (color << 3);
 	g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (num & 0xf0) >> 1, color, 8, 8, SRCCOPY);
 	g_mem_dc->StretchBlt(SCALE(x + 8), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (num & 0x0f) << 3, color, 8, 8, SRCCOPY);
@@ -148,7 +142,6 @@ void NumberMiniXY(BYTE num, int x, int y, int color)
 
 void TextMiniXY(char* txt, int x, int y, int color)
 {
-	int sp = g_scaling_percentage;
 	char charToDraw;
 	color = 112 + (color << 3);
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
@@ -160,7 +153,6 @@ void TextMiniXY(char* txt, int x, int y, int color)
 
 void IconMiniXY(int icon, int x, int y)
 {
-	int sp = g_scaling_percentage;
 	static int c = 128 - 6;
 	if (icon >= 1 && icon <= 4) g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(32), SCALE(6), g_gfx_dc, (icon - 1) * 32, c, 32, 6, SRCCOPY);
 }

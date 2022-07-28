@@ -19,16 +19,16 @@ CConfigDlg::CConfigDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CConfigDlg::IDD, pParent)
 {
 	//{{AFX_DATA_INIT(CConfigDlg)
-	m_midi_tr = FALSE;
+	m_midi_TouchResponse = FALSE;
 	m_keyboard_playautofollow = FALSE;
-	m_midi_volumeoffset = 0;
+	m_midi_VolumeOffset = 0;
 	m_tracklinehighlight = 0;
 	m_scaling_percentage = 100;
 	m_tuning = 0;
 	m_ntsc = FALSE;
 	m_displayflatnotes = FALSE;
 	m_usegermannotation = FALSE;
-	m_midi_noteoff = FALSE;
+	m_midi_NoteOff = FALSE;
 	m_keyboard_updowncontinue = FALSE;
 	m_nohwsoundbuffer = FALSE;
 	m_tracklinealtnumbering = FALSE;
@@ -46,10 +46,10 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	//DDX_Control(pDX, IDC_TRACKCURSORVERTICALRANGE, m_c_trackcursorverticalrange);
 	DDX_Control(pDX, IDC_KEYBOARD_LAYOUT, m_keyboard_c_layout);
 	DDX_Control(pDX, IDC_MIDI_DEVICE, m_midi_c_device);
-	DDX_Check(pDX, IDC_MIDI_TR, m_midi_tr);
+	DDX_Check(pDX, IDC_MIDI_TR, m_midi_TouchResponse);
 	DDX_Check(pDX, IDC_KEYBOARD_PLAYAUTOFOLLOW, m_keyboard_playautofollow);
-	DDX_Text(pDX, IDC_MIDI_VOLUMEOFFSET, m_midi_volumeoffset);
-	DDV_MinMaxInt(pDX, m_midi_volumeoffset, 0, 15);
+	DDX_Text(pDX, IDC_MIDI_VOLUMEOFFSET, m_midi_VolumeOffset);
+	DDV_MinMaxInt(pDX, m_midi_VolumeOffset, 0, 15);
 	DDX_Text(pDX, IDC_TRACKLINEHIGHLIGHT, m_tracklinehighlight);
 	DDV_MinMaxInt(pDX, m_tracklinehighlight, 2, 256);
 	DDX_Text(pDX, IDC_SCALINGPERCENTAGE, m_scaling_percentage);
@@ -59,7 +59,7 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_DISPLAYFLATNOTES, m_displayflatnotes);
 	DDX_Check(pDX, IDC_USEGERMANNOTATION, m_usegermannotation);
 	DDX_Check(pDX, IDC_NTSC, m_ntsc);
-	DDX_Check(pDX, IDC_MIDI_NOTEOFF, m_midi_noteoff);
+	DDX_Check(pDX, IDC_MIDI_NOTEOFF, m_midi_NoteOff);
 	DDX_Check(pDX, IDC_KEYBOARD_UPDOWNCONTINUE, m_keyboard_updowncontinue);
 	DDX_Check(pDX, IDC_NOHWSOUNDBUFFER, m_nohwsoundbuffer);
 	DDX_Check(pDX, IDC_TRACKLINEALTNUMBERING, m_tracklinealtnumbering);
@@ -72,7 +72,7 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CConfigDlg, CDialog)
 	//{{AFX_MSG_MAP(CConfigDlg)
-	ON_BN_CLICKED(IDC_MIDI_TR, OnMidiTr)
+	ON_BN_CLICKED(IDC_MIDI_TR, OnMidiTouchResponseClicked)
 	ON_CBN_SELCHANGE(IDC_KEYBOARD_LAYOUT, OnSelchangeKeyboardLayout)
 	ON_BN_CLICKED(IDC_PATHS, OnPaths)
 	//}}AFX_MSG_MAP
@@ -85,28 +85,33 @@ BOOL CConfigDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 	
+	// Populate the list with MIDI devices
 	m_midi_c_device.AddString("--- none ---");	//id=0
 
 	MIDIINCAPS micaps;
-	int mind = midiInGetNumDevs();
-	for(int i=0; i<mind; i++)
+	int numMidiDevices = midiInGetNumDevs();
+	for (int i = 0; i < numMidiDevices; i++)
 	{
-		midiInGetDevCaps(i,&micaps, sizeof(MIDIINCAPS));
+		midiInGetDevCaps(i, &micaps, sizeof(MIDIINCAPS));
 		m_midi_c_device.AddString(micaps.szPname);
 	}
 
-	m_midi_c_device.SetCurSel(m_midi_device+1);
+	m_midi_c_device.SetCurSel(m_midi_device+1);	// +1 because -1 == --- none ---
 	
-	OnMidiTr();
+	OnMidiTouchResponseClicked();
 
 	m_keyboard_c_layout.AddString("RMT original layout");
 	m_keyboard_c_layout.AddString("Layout 2");
 	m_keyboard_c_layout.SetCurSel(m_keyboard_layout);
 
-	return TRUE;  // return TRUE unless you set the focus to a control
-	              // EXCEPTION: OCX Property Pages should return FALSE
+	return TRUE;
 }
 
+/// <summary>
+/// Apply the configuration changes not handled by the DoDataExchange function
+/// MIDI device combo
+/// Keybord layout combo
+/// </summary>
 void CConfigDlg::OnOK() 
 {
 	m_midi_device = m_midi_c_device.GetCurSel()-1;
@@ -114,7 +119,10 @@ void CConfigDlg::OnOK()
 	CDialog::OnOK();
 }
 
-void CConfigDlg::OnMidiTr() 
+/// <summary>
+/// If MIDI touch response if turned on then enable the MIDI volume offset edit box
+/// </summary>
+void CConfigDlg::OnMidiTouchResponseClicked() 
 {
 	CButton *tr = (CButton*)GetDlgItem(IDC_MIDI_TR);
 	CEdit *vof = (CEdit*)GetDlgItem(IDC_MIDI_VOLUMEOFFSET);

@@ -90,7 +90,7 @@ extern CString g_driverversion;
 
 extern BOOL g_changes;	//have there been any changes in the module?
 
-extern int g_focus;
+extern int g_RmtHasFocus;
 extern int g_shiftkey;
 extern int g_controlkey;
 extern int g_altkey;	//unfinished implementation, doesn't work yet for some reason
@@ -174,13 +174,5 @@ extern BOOL g_keyboard_updowncontinue;	//1 yes, 0 no
 extern BOOL g_keyboard_rememberoctavesandvolumes;	//1 yes, 0 no
 extern BOOL g_keyboard_escresetatarisound;	//1 yes, 0 no
 extern BOOL g_keyboard_askwhencontrol_s;	//1 yes, 0 no
-
-extern int g_midi_notech[16];			//last recorded notes on each MIDI channel
-extern int g_midi_voluch[16];			//note volume on individual MIDI channels
-extern int g_midi_instch[16];			//last set instrument numbers on individual MIDI channels
-
-extern BOOL g_midi_tr;
-extern int g_midi_volumeoffset;	//starts from volume 1 by default
-extern BOOL g_midi_noteoff;		//by default, noteoff is turned off
 
 #endif
