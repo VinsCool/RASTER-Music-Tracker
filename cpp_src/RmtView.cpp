@@ -355,24 +355,6 @@ void CRmtView::OnDraw(CDC* pDC)
 
 BOOL CRmtView::DrawAll()
 {
-<<<<<<< HEAD
-	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBACKGROUND);	
-
-	GetFPS();	//it's crappy but it does an ok job
-
-	m_song.DrawInfo();
-	m_song.DrawSong();
-	m_song.DrawAnalyzer(NULL);
-	m_song.DrawPlaytimecounter(NULL);
-
-	if (g_active_ti == PARTTRACKS)	//which one is the active screen?
-	{
-		m_song.DrawTracks();
-	}
-	else
-	{
-		m_song.DrawInstrument();
-=======
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBACKGROUND);		// Clear the screen
 
 	GetFPS();	//it's crappy but it does an ok job
@@ -389,7 +371,6 @@ BOOL CRmtView::DrawAll()
 	else
 	{
 		g_Song.DrawInstrument();
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 	}
 
 	return 1;
@@ -400,22 +381,7 @@ void CRmtView::DrawAnalyzer()
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
-<<<<<<< HEAD
-		/*
-		//debug instrument number display
-		g_mem_dc->FillSolidRect(0, 0, 512, 16, RGBBACKGROUND);
-		for (int i = 0; i < SONGTRACKS; i++)
-		{
-			char s[10];
-			sprintf(s, "%02X", (BYTE)g_rmtinstr[i]);
-			TextXY(s, i * 8 * 8, 0);
-		}
-		pDC->BitBlt(0, 0, 512, 16, g_mem_dc, 0, 0, SRCCOPY);
-		*/
-		//m_song.DrawAnalyzer(pDC);
-=======
 		// g_Song.DrawAnalyzer(pDC);
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 		ReleaseDC(pDC);
 	}
 }
@@ -425,11 +391,7 @@ void CRmtView::DrawPlaytimecounter()
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
-<<<<<<< HEAD
-		//m_song.DrawPlaytimecounter(pDC);
-=======
 		// g_Song.DrawPlaytimecounter(pDC);
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 		ReleaseDC(pDC);
 	}
 }
@@ -896,11 +858,7 @@ bool CRmtView::Resize(int width, int height)
 		g_mem_dc = &m_mem_dc;
 		g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16;	//number of track lines that can be displayed based on the window height
 
-<<<<<<< HEAD
-    g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
-=======
 		g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 		if (m_pen1) delete m_pen1;
 		m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
 		m_penorig = g_mem_dc->SelectObject(m_pen1);
@@ -1120,11 +1078,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursorgoto);
 		if (mousebutt & MK_LBUTTON)
 		{
-<<<<<<< HEAD
-			BOOL r = m_song.InfoCursorGotoSongname(point.x - 64);
-=======
 			BOOL r = g_Song.InfoCursorGotoSongname(point.x - 64);
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		return 6;
@@ -1137,11 +1091,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursorgoto);
 		if (mousebutt & MK_LBUTTON)
 		{
-<<<<<<< HEAD
-			BOOL r = m_song.InfoCursorGotoSpeed(point.x - 120);
-=======
 			BOOL r = g_Song.InfoCursorGotoSpeed(point.x - 120);
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		return 6;
@@ -1203,11 +1153,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		if (wheelzDelta != 0)
 		{
 			BOOL r = 0;
-<<<<<<< HEAD
-			int ma = (m_song.GetTracks()->m_maxtracklen) / 2;
-=======
 			int ma = (g_Tracks.m_maxtracklen) / 2;
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (wheelzDelta < 0)
 			{
 				r = g_tracklinehighlight++;
@@ -1230,23 +1176,14 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
-<<<<<<< HEAD
-			BOOL r = m_song.InfoCursorGotoOctaveSelect(point.x, point.y);
-=======
 			BOOL r = g_Song.InfoCursorGotoOctaveSelect(point.x, point.y);
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta != 0)
 		{
 			BOOL r = 0;
-<<<<<<< HEAD
-			if (wheelzDelta < 0) r = m_song.OctaveUp();
-			else if (wheelzDelta > 0) r = m_song.OctaveDown();
-=======
 			if (wheelzDelta < 0) r = g_Song.OctaveUp();
 			else if (wheelzDelta > 0) r = g_Song.OctaveDown();
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		return 6;
@@ -1259,23 +1196,14 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
-<<<<<<< HEAD
-			BOOL r = m_song.InfoCursorGotoVolumeSelect(point.x, point.y);
-=======
 			BOOL r = g_Song.InfoCursorGotoVolumeSelect(point.x, point.y);
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta != 0)
 		{
 			BOOL r = 0;
-<<<<<<< HEAD
-			if (wheelzDelta < 0) r = m_song.VolumeUp();
-			else if (wheelzDelta > 0) r = m_song.VolumeDown();
-=======
 			if (wheelzDelta < 0) r = g_Song.VolumeUp();
 			else if (wheelzDelta > 0) r = g_Song.VolumeDown();
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		return 6;
@@ -1290,22 +1218,13 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
-<<<<<<< HEAD
-			BOOL r = m_song.InfoCursorGotoInstrumentSelect(point.x, point.y);
-=======
 			BOOL r = g_Song.InfoCursorGotoInstrumentSelect(point.x, point.y);
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta != 0)
 		{
-<<<<<<< HEAD
-			if (wheelzDelta > 0) m_song.ActiveInstrPrev();
-			else if (wheelzDelta < 0) m_song.ActiveInstrNext();
-=======
 			if (wheelzDelta > 0) g_Song.ActiveInstrPrev();
 			else if (wheelzDelta < 0) g_Song.ActiveInstrNext();
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			SCREENUPDATE;
 		}
 		return 6;
@@ -1345,11 +1264,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			SetCursor(m_cursorgoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-<<<<<<< HEAD
-				BOOL r = m_song.TrackCursorGoto(CPoint(point.x - (TRACKS_X + 6 * 8), point.y - (TRACKS_Y + 48)));
-=======
 				BOOL r = g_Song.TrackCursorGoto(CPoint(point.x - (TRACKS_X + 6 * 8), point.y - (TRACKS_Y + 48)));
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 				if (r) SCREENUPDATE;
 			}
 			if (wheelzDelta!=0)
@@ -1725,13 +1640,8 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			g_prove = 4;	//POKEY EXPLORER MODE -- KEYBOARD INPUT AND FORMULAE DISPLAY
 			break;
 		}
-<<<<<<< HEAD
-		m_song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		m_song.Play(MPLAY_SONG,m_song.m_followplay);	//play song from start
-=======
 		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
 		g_Song.Play(MPLAY_SONG,g_Song.m_followplay);	//play song from start
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 		break;
 
 	case VK_F6:

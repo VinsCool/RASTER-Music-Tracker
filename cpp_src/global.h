@@ -157,11 +157,6 @@ extern UINT g_mousebutt;			//mouse button
 extern int g_mouselastbutt;
 extern int g_mouse_px;
 extern int g_mouse_py;
-<<<<<<< HEAD
-
-extern CTrackClipboard g_trackcl;
-=======
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 
 extern CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
 extern CString g_lastloadpath_songs;		//the path of the last song loaded

@@ -8,6 +8,8 @@
 // Helper defines to make the code a bit more readable
 
 
+
+
 unsigned char g_atarimem[65536];
 char g_debugmem[65536];	//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
 
@@ -77,6 +79,9 @@ int g_OCTAVE_R = 1;
 
 //each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
 int g_temperament = 0;
+
+
+
 
 HWND g_hwnd = NULL;
 HWND g_viewhwnd = NULL;
@@ -156,11 +161,6 @@ UINT g_mousebutt = 0;			//mouse button
 int g_mouselastbutt = 0;
 int g_mouse_px = 0;
 int g_mouse_py = 0;
-<<<<<<< HEAD
-
-CTrackClipboard g_trackcl;
-=======
->>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 
 CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
 CString g_lastloadpath_songs;		//the path of the last song loaded

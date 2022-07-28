@@ -154,7 +154,7 @@ const double WERCK3[13] =
 	2
 };
 
-//TempÃ©rament Ã‰gal Ã  Quintes Justes 
+//Tempérament Égal à Quintes Justes 
 const double QUINTE[13] =
 {
 	1,
@@ -172,7 +172,7 @@ const double QUINTE[13] =
 	2.003875
 };
 
-//d'Alembert and Rousseau tempÃ©rament ordinaire (1752/1767)
+//d'Alembert and Rousseau tempérament ordinaire (1752/1767)
 const double TEMPORD[13] =
 {
 	1,
@@ -633,13 +633,13 @@ void real_freq()
 				octave = WERCK3[12];
 				break;
 
-			case 5:		//TempÃ©rament Ã‰gal Ã  Quintes Justes 
+			case 5:		//Tempérament Égal à Quintes Justes 
 				if (i > 12) break;
 				ratio[i] = QUINTE[i];
 				octave = QUINTE[12];
 				break;
 
-			case 6:		//d'Alembert and Rousseau tempÃ©rament ordinaire (1752/1767)
+			case 6:		//d'Alembert and Rousseau tempérament ordinaire (1752/1767)
 				if (i > 12) break;
 				ratio[i] = TEMPORD[i];
 				octave = TEMPORD[12];
