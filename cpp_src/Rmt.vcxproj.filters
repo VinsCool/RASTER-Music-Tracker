@@ -19,14 +19,8 @@
     <Filter Include="Copy to Build Folder\RMT Binaries">
       <UniqueIdentifier>{a2f10bad-f640-4755-9632-a9eee2b9728d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Dialogs">
-      <UniqueIdentifier>{0d6bbee4-a8b9-457f-90d9-73664e410b59}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Helpers">
       <UniqueIdentifier>{4139ef6f-85a8-4e4f-aa78-fb5152aa902a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\SAP-R Compressor">
-      <UniqueIdentifier>{b1ac240f-8bfa-4b7f-9f1a-67e475c4a76e}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\Tuning">
       <UniqueIdentifier>{4c4d791e-b9e3-49ec-ba38-fb7c8e30b9b4}</UniqueIdentifier>
@@ -36,6 +30,21 @@
     </Filter>
     <Filter Include="Source Files\RMT Interface">
       <UniqueIdentifier>{c90897da-fb9a-4282-a4d0-c209c89b0507}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\GUI">
+      <UniqueIdentifier>{6d13bb44-b2a8-454f-9ab1-c071f6626923}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Load/Save">
+      <UniqueIdentifier>{dc8cf6d4-3fac-46f9-9a26-9661e293011b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Load/Save\SAP-R Compressor">
+      <UniqueIdentifier>{b1ac240f-8bfa-4b7f-9f1a-67e475c4a76e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Dialogs">
+      <UniqueIdentifier>{0d6bbee4-a8b9-457f-90d9-73664e410b59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Data">
+      <UniqueIdentifier>{390dff11-f66b-4d0f-9095-d4444b6a2da8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -73,7 +82,7 @@
       <Filter>Source Files\Helpers</Filter>
     </ClCompile>
     <ClCompile Include="lzss_sap.cpp">
-      <Filter>Source Files\SAP-R Compressor</Filter>
+      <Filter>Source Files\Load/Save\SAP-R Compressor</Filter>
     </ClCompile>
     <ClCompile Include="RmtMidi.cpp">
       <Filter>Source Files\Dialogs</Filter>
@@ -102,6 +111,54 @@
     <ClCompile Include="MainFrm.cpp">
       <Filter>Source Files\RMT Interface</Filter>
     </ClCompile>
+    <ClCompile Include="Clipboard.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Undo.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Instruments.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Tracks.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Song.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="GuiHelpers.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="Keyboard2NoteMapping.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="ChannelControl.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI_Instruments.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="IO_Instruments.cpp">
+      <Filter>Source Files\Load/Save</Filter>
+    </ClCompile>
+    <ClCompile Include="IO_Tracks.cpp">
+      <Filter>Source Files\Load/Save</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI_Tracks.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="GUI_Song.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="IO_Song.cpp">
+      <Filter>Source Files\Load/Save</Filter>
+    </ClCompile>
+    <ClCompile Include="IO_Importer.cpp">
+      <Filter>Source Files\Load/Save</Filter>
+    </ClCompile>
+    <ClCompile Include="IOHelpers.cpp">
+      <Filter>Source Files\Load/Save</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConfigDlg.h">
@@ -122,28 +179,13 @@
     <ClInclude Include="Resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Rmt.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RmtDoc.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="RmtMidi.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RmtView.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="StdAfx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="global.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="importdlgs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="r_music.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="getopt.h">
@@ -169,6 +211,51 @@
     </ClInclude>
     <ClInclude Include="MainFrm.h">
       <Filter>Source Files\RMT Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Rmt.h">
+      <Filter>Source Files\RMT Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="RmtDoc.h">
+      <Filter>Source Files\RMT Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="RmtView.h">
+      <Filter>Source Files\RMT Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Undo.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="General.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Instruments.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Tracks.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Song.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Clipboard.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="global.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GUI_Instruments.h">
+      <Filter>Source Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="GuiHelpers.h">
+      <Filter>Source Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="Keyboard2NoteMapping.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="ChannelControl.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="IOHelpers.h">
+      <Filter>Source Files\Load/Save</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

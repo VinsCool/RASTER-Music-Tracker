@@ -6,7 +6,7 @@
 #include "global.h"
 
 // Helper defines to make the code a bit more readable
-#define SCALE(x) ((x) * sp) / 100
+
 
 unsigned char g_atarimem[65536];
 char g_debugmem[65536];	//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
@@ -16,27 +16,6 @@ unsigned char SAPRSTREAM[0xFFFFFF];	//SAP-R Dumper memory, TODO: assign memory d
 int SAPRDUMP = 0;		//0, the SAPR dumper is disabled; 1, output is currently recorded to memory; 2, recording is finished and will be written to sap file; 3, flag engage the SAPR dumper
 int framecount = 0;		//SAPR dumper frame counter used for calculations and memory allignment with bytes 
 
-int Hexstr(char* txt, int len)
-{
-	int r = 0;
-	char a;
-	int i;
-	for (i = 0; (a = txt[i]) && i < len; i++)
-	{
-		if (a >= '0' && a <= '9')
-			r = (r << 4) + (a - '0');
-		else
-			if (a >= 'A' && a <= 'F')
-				r = (r << 4) + (a - 'A' + 10);
-			else
-			{
-				if (i == 0) r = -1; //nothing
-				return r;
-			}
-	}
-	if (i == 0) r = -1; //nothing
-	return r;
-}
 
 BOOL g_closeapplication = 0;
 CDC* g_mem_dc = NULL;
@@ -177,8 +156,11 @@ UINT g_mousebutt = 0;			//mouse button
 int g_mouselastbutt = 0;
 int g_mouse_px = 0;
 int g_mouse_py = 0;
+<<<<<<< HEAD
 
 CTrackClipboard g_trackcl;
+=======
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 
 CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
 CString g_lastloadpath_songs;		//the path of the last song loaded
@@ -205,377 +187,23 @@ BOOL g_midi_tr = 0;
 int g_midi_volumeoffset = 1;	//starts from volume 1 by default
 BOOL g_midi_noteoff = 0;		//by default, noteoff is turned off
 
-//----
 
-void TextXY(char* txt, int x, int y, int color)
-{
-	int sp = g_scaling_percentage;
+// ----------------------------------------------------------------------------
+// Here are the main global objects that make up 99% of RMT.
+//
+CSong			g_Song;				// There is one active song
+CRmtMidi		g_Midi;				// There is one midi interface
+CUndo			g_Undo;				// Undo buffer tracker
+CXPokey			g_Pokey;			// The simulated Pokey chip
+CInstruments	g_Instruments;
+CTracks			g_Tracks;
+CTrackClipboard g_TrackClipboard;
 
-	char charToDraw;
-	color = color << 4;
-	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
-	{
-		if (charToDraw == 32) continue;	// Don't draw the space
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, color, 8, 16, SRCCOPY);
-	}
-}
-
-void TextXYSelN(char* txt, int n, int x, int y, int color)
-{
-	//the index character n will have a "select" color, the rest c
-	int sp = g_scaling_percentage;
-	char charToDraw;
-	color = color << 4;
-
-	int col = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
-
-	int i;
-	for (i = 0; charToDraw = (txt[i]); i++, x += 8)
-	{
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, (i == n) ? col * 16 : color, 8, 16, SRCCOPY);
-	}
-	if (i == n) //the first character after the end of the string
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, 32 << 3, col * 16, 8, 16, SRCCOPY);
-}
-
-// Draw 8x16 chars with given color array per char position
-void TextXYCol(char* txt, int x, int y, char* col)
-{
-	int sp = g_scaling_percentage;
-	char charToDraw;
-	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
-	{
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, col[i] << 4, 8, 16, SRCCOPY);
-	}
-}
-
-// Draw 8x16 chars vertically (one below the other)
-void TextDownXY(char* txt, int x, int y, int color)
-{
-	int sp = g_scaling_percentage;
-	char charToDraw;
-	color = color << 4;	// 16 pixels height
-	for (int i = 0; charToDraw = (txt[i]); i++, y += 16)
-	{
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, color, 8, 16, SRCCOPY);
-	}
-}
-
-void NumberMiniXY(BYTE num, int x, int y, int color)
-{
-	int sp = g_scaling_percentage;
-	color = 112 + (color << 3);
-	g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (num & 0xf0) >> 1, color, 8, 8, SRCCOPY);
-	g_mem_dc->StretchBlt(SCALE(x+8), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (num & 0x0f) << 3, color, 8, 8, SRCCOPY);
-}
-
-void TextMiniXY(char* txt, int x, int y, int color)
-{
-	int sp = g_scaling_percentage;
-	char charToDraw;
-	color = 112 + (color << 3);
-	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
-	{
-		if (charToDraw == 32) continue;
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (charToDraw & 0x7f) << 3, color, 8, 8, SRCCOPY);
-	}
-}
-
-void IconMiniXY(int icon, int x, int y)
-{
-	int sp = g_scaling_percentage;
-	static int c = 128 - 6;
-	if (icon >= 1 && icon <= 4) g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(32), SCALE(6), g_gfx_dc, (icon - 1) * 32, c, 32, 6, SRCCOPY);
-}
-
-void GetTracklineText(char* dest, int line)
-{
-	if (line < 0 || line>0xff) { dest[0] = 0; return; }
-	if (g_tracklinealtnumbering)
-	{
-		int a = line / g_tracklinehighlight;
-		if (a >= 35) a = (a - 35) % 26 + 'a' - '9' + 1;
-		int b = line % g_tracklinehighlight;
-		if (b >= 35) b = (b - 35) % 26 + 'a' - '9' + 1;
-		if (a <= 8)
-			a = '1' + a;
-		else
-			a = 'A' - 9 + a;
-		if (b <= 8)
-			b = '1' + b;
-		else
-			b = 'A' - 9 + b;
-		dest[0] = a;
-		dest[1] = b;
-		dest[2] = 0;
-	}
-	else
-		sprintf(dest, "%02X", line);
-}
-
+/*
 void UpdateShiftControlKeys()
 {
 	g_shiftkey = (GetAsyncKeyState(VK_SHIFT) != NULL);
 	g_controlkey = (GetAsyncKeyState(VK_CONTROL) != NULL);
 	g_altkey = (GetAsyncKeyState(VK_MENU) != NULL);
 }
-
-BOOL IsnotMovementVKey(int vk)
-{
-	//returns 1 if it is not a scroll key
-	return (vk != VK_RIGHT && vk != VK_LEFT && vk != VK_UP && vk != VK_DOWN && vk != VK_TAB && vk != 13 && vk != VK_HOME && vk != VK_END && vk != VK_PAGE_UP && vk != VK_PAGE_DOWN && vk != VK_CAPITAL);
-}
-
-int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
-{
-	//returns 1 if TAB or ENTER was pressed
-	max--;
-	if (vk == 8) //VK_BACKSPACE
-	{
-		if (cur > 0)
-		{
-			cur--;
-			for (int j = cur; j <= max - 1; j++) txt[j] = txt[j + 1];
-			txt[max] = ' ';
-		}
-	}
-	else if (vk == VK_TAB || vk == 13)		//VK_ENTER
-	{
-		return 1;
-	}
-	else if (vk == VK_INSERT)
-	{
-		for (int j = max - 1; j >= cur; j--) txt[j + 1] = txt[j];
-		txt[cur] = ' ';
-	}
-	else if (vk == VK_DELETE)
-	{
-		for (int j = cur; j <= max - 1; j++) txt[j] = txt[j + 1];
-		txt[max] = ' ';
-	}
-	else
-	{
-		if (control) return 0;
-		char a = 0;
-		if (vk >= 65 && vk <= 90) { a = (shift) ? vk : vk + 32; }		//letters - uppercase with SHIFT
-		else if (vk >= 48 && vk <= 57) { a = (shift) ? *(")!@#$%^&*(" + vk - 48) : vk; }			//numbers - special characters with SHIFT
-		else if (vk == ' ')			a = ' ';	//space
-		else if (vk == 189)	a = (shift) ? '_' : '-';
-		else if (vk == 187)	a = (shift) ? '+' : '=';
-		else if (vk == 219)	a = (shift) ? '{' : '[';
-		else if (vk == 221)	a = (shift) ? '}' : ']';
-		else if (vk == 186)	a = (shift) ? ':' : ';';
-		else if (vk == 222)	a = (shift) ? '"' : '\'';
-		else if (vk == 188)	a = (shift) ? '<' : ',';
-		else if (vk == 190)	a = (shift) ? '>' : '.';
-		else if (vk == 191)	a = (shift) ? '?' : '/';
-		else if (vk == 220)	a = (shift) ? '|' : '\\';
-		else if (vk == VK_RIGHT)
-		{
-			if (cur < max) cur++;
-		}
-		else if (vk == VK_LEFT)
-		{
-			if (cur > 0) cur--;
-		}
-		else if (vk == VK_HOME) cur = 0;
-		else if (vk == VK_END)
-		{
-			int j;
-			for (j = max; j >= 0 && (txt[j] == ' '); j--);
-			cur = (j < max) ? j + 1 : max;
-		}
-
-		if (a > 0)
-		{
-			for (int j = max - 1; j >= cur; j--) txt[j + 1] = txt[j];
-			txt[cur] = a;
-			if (cur < max) cur++;
-		}
-	}
-	return 0;
-}
-
-void WaitForTimerRoutineProcessed()
-{
-	g_timerroutineprocessed = 0;
-	while (!g_timerroutineprocessed) Sleep(1);		//waiting
-}
-
-void StrToAtariVideo(char* txt, int count)
-{
-	char a;
-	for (int i = 0; i < count; i++)
-	{
-		a = txt[i] & 0x7f;
-		if (a < 32) a = 0;
-		else
-			if (a < 96) a -= 32;
-		txt[i] = a;
-	}
-}
-
-//----
-
-void SetChannelOnOff(int ch, int onoff)
-{
-	if (ch < 0)
-	{	//all channels
-		if (onoff >= 0)
-			for (int i = 0; i < SONGTRACKS; i++) g_channelon[i] = onoff;	//Settings
-		else
-			for (int i = 0; i < SONGTRACKS; i++) g_channelon[i] ^= 1;	//invert
-	}
-	else
-		if (ch < SONGTRACKS)
-		{	//just that one
-			if (onoff >= 0)
-				g_channelon[ch] = onoff;	//Settings
-			else
-				g_channelon[ch] ^= 1;	//invert
-		}
-}
-
-int GetChannelOnOff(int ch)
-{
-	return g_channelon[ch];
-}
-
-void SetChannelSolo(int ch)
-{
-	int on = GetChannelOnOff(ch);
-	if (!on)
-	{
-	Channel_SOLO:
-		SetChannelOnOff(-1, 0);	//all off
-		SetChannelOnOff(ch, 1);	//and solo only active
-	}
-	else
-	{
-		for (int i = 0; i < g_tracks4_8; i++)
-		{
-			if (i != ch && GetChannelOnOff(i)) goto Channel_SOLO;
-		}
-		SetChannelOnOff(-1, 1);	//turn them all on
-	}
-}
-
-//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
-void GetAtariMemHexStr(int adr, int len)
-{
-	unsigned int a = 0;
-	char c[8] = { 0 };
-	memset(g_debugmem, 0, 65536);
-	for (int i = 0; i < len; i++)
-	{
-		a = g_atarimem[adr + i];
-		sprintf(c, "$%x, ", a);
-		g_debugmem[i * 4] = c[0];	//$
-		//force uppercase on characters "a" to "f"
-		if (c[1] >= 0x61 && c[1] < 0x67) c[1] -= 0x20;
-		if (c[2] >= 0x61 && c[2] < 0x67) c[2] -= 0x20;
-		if (a > 0xF)	//0x10 and above
-		{
-			g_debugmem[(i * 4) + 1] = c[1];	//nybble 1
-			g_debugmem[(i * 4) + 2] = c[2];	//nybble 2
-		}
-		else	//single digit hex character, add padding 0
-		{
-			g_debugmem[(i * 4) + 1] = '0';	//nybble 1
-			g_debugmem[(i * 4) + 2] = c[1];	//nybble 2
-		}
-		if (i != len - 1) g_debugmem[(i * 4) + 3] = ',';
-		else g_debugmem[(i * 4) + 3] = ' ';	//, or space if last character
-	}
-}
-
-//----
-
-const char keynotes[256] =
-{
-	//0
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, 27, -1,
-	//50
-	13, 15, -1, 18, 20, 22, -1, 25, -1, -1,
-	-1, -1, -1, -1, -1, -1,  7,  4,  3, 16,
-	-1,  6,  8, 24, 10, -1, 13, 11,  9, 26,
-	28, 12, 17,  1, 19, 23,  5, 14,  2, 21,
-	0, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//100
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//150
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, 15, 30, 12, -1,
-	14, 16, -1, -1, -1, -1, -1, -1, -1, -1,
-	//200
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, 29,
-	-1, 31, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//250
-	-1, -1, -1, -1, -1, -1
-};
-
-const char keynumbs[256] =
-{
-	//0
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-	//64
-	-1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//128
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//192
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-};
-
-const char keynumblock09[256] =
-{
-	//0
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//64
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//128
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//192
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-};
-
-char NoteKey(int vk) { return keynotes[vk]; };
-char NumbKey(int vk) { return keynumbs[vk]; };
-char Numblock09Key(int vk) { return keynumblock09[vk]; };
-
+*/

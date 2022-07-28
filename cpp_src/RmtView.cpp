@@ -7,13 +7,23 @@
 #include "stdafx.h"
 #include "Rmt.h"
 #include "RmtDoc.h"
+#include <chrono>
+
 #include "RmtView.h"
 #include "MainFrm.h"
 #include "ConfigDlg.h"
 #include "FileNewDlg.h"
-#include "r_music.h"
 #include "TuningDlg.h"
 #include "Atari6502.h"
+#include "XPokey.h"
+
+#include "EffectsDlg.h"
+
+#include "global.h"
+
+#include "GuiHelpers.h"
+#include "Keyboard2NoteMapping.h"
+#include "ChannelControl.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -22,11 +32,15 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 extern BOOL g_closeapplication;
-#define SCREENUPDATE	g_screenupdate=1
-#define RGBBACKGROUND	RGB(34,50,80)	//dark blue
-#define RGBLINES		RGB(149,194,240)	//blue gray
-#define RGBBLACK		RGB(0,0,0)	//black
-void UpdateShiftControlKeys();
+//#define SCREENUPDATE	g_screenupdate=1
+
+
+extern CSong	g_Song;
+extern CRmtMidi	g_Midi;
+extern CUndo	g_Undo;
+extern CXPokey	g_Pokey;
+extern CInstruments	g_Instruments;
+extern CTrackClipboard g_TrackClipboard;
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView
@@ -249,7 +263,7 @@ CRmtView::~CRmtView()
 void CRmtView::OnDestroy() 
 {
 	//cancels Pokey DLL
-	m_song.DeInitPokey();
+	g_Song.DeInitPokey();
 
 	//cancels 6502 DLL
 	Atari6502_DeInit();
@@ -341,6 +355,7 @@ void CRmtView::OnDraw(CDC* pDC)
 
 BOOL CRmtView::DrawAll()
 {
+<<<<<<< HEAD
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBACKGROUND);	
 
 	GetFPS();	//it's crappy but it does an ok job
@@ -357,18 +372,35 @@ BOOL CRmtView::DrawAll()
 	else
 	{
 		m_song.DrawInstrument();
+=======
+	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBACKGROUND);		// Clear the screen
+
+	GetFPS();	//it's crappy but it does an ok job
+
+	g_Song.DrawInfo();
+	g_Song.DrawSong();
+	g_Song.DrawAnalyzer(NULL);
+	g_Song.DrawPlaytimecounter(NULL);
+	
+	if (g_active_ti == PARTTRACKS)	//which one is the active screen?
+	{
+		g_Song.DrawTracks();
+	}
+	else
+	{
+		g_Song.DrawInstrument();
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 	}
 
 	return 1;
 }
-
-extern int g_rmtinstr[SONGTRACKS];
 
 void CRmtView::DrawAnalyzer()
 {
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
+<<<<<<< HEAD
 		/*
 		//debug instrument number display
 		g_mem_dc->FillSolidRect(0, 0, 512, 16, RGBBACKGROUND);
@@ -381,6 +413,9 @@ void CRmtView::DrawAnalyzer()
 		pDC->BitBlt(0, 0, 512, 16, g_mem_dc, 0, 0, SRCCOPY);
 		*/
 		//m_song.DrawAnalyzer(pDC);
+=======
+		// g_Song.DrawAnalyzer(pDC);
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 		ReleaseDC(pDC);
 	}
 }
@@ -390,7 +425,11 @@ void CRmtView::DrawPlaytimecounter()
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
+<<<<<<< HEAD
 		//m_song.DrawPlaytimecounter(pDC);
+=======
+		// g_Song.DrawPlaytimecounter(pDC);
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 		ReleaseDC(pDC);
 	}
 }
@@ -510,7 +549,7 @@ void CRmtView::ReadConfig()
 		if (NAME("KEYBOARD_ASKWHENCONTROL_S")) g_keyboard_askwhencontrol_s = atoi(value);
 		else
 		//midi
-		if (NAME("MIDI_IN")) m_midi.SetDevice(value);
+		if (NAME("MIDI_IN")) g_Midi.SetDevice(value);
 		else
 		if (NAME("MIDI_TR")) g_midi_tr = atoi(value);
 		else
@@ -611,7 +650,7 @@ void CRmtView::WriteConfig()
 	ou << "KEYBOARD_ESCRESETATARISOUND=" << g_keyboard_escresetatarisound << endl;
 	ou << "KEYBOARD_ASKWHENCONTROL_S=" << g_keyboard_askwhencontrol_s << endl;
 	//midi
-	ou << "MIDI_IN=" << m_midi.GetMidiDevName() << endl;
+	ou << "MIDI_IN=" << g_Midi.GetMidiDevName() << endl;
 	ou << "MIDI_TR=" << g_midi_tr << endl;
 	ou << "MIDI_VOLUMEOFFSET=" << g_midi_volumeoffset << endl;
 	ou << "MIDI_NOTEOFF=" << g_midi_noteoff << endl;
@@ -670,7 +709,7 @@ void CRmtView::OnViewConfiguration()
 	dlg.m_keyboard_rememberoctavesandvolumes = g_keyboard_rememberoctavesandvolumes;
 	dlg.m_keyboard_askwhencontrol_s = g_keyboard_askwhencontrol_s;
 	//midi
-	dlg.m_midi_device = m_midi.GetMidiDevId();
+	dlg.m_midi_device = g_Midi.GetMidiDevId();
 	dlg.m_midi_tr = g_midi_tr;
 	dlg.m_midi_volumeoffset = g_midi_volumeoffset;
 	dlg.m_midi_noteoff = g_midi_noteoff;
@@ -689,7 +728,7 @@ void CRmtView::OnViewConfiguration()
 
 		if (g_nohwsoundbuffer != dlg.m_nohwsoundbuffer)
 		{
-			m_song.GetPokey()->ReInitSound();	//the sound needs to be reinitialized
+			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
 			Atari_InitRMTRoutine(); //reset RMT routines
 		}
 		g_nohwsoundbuffer = dlg.m_nohwsoundbuffer;
@@ -699,8 +738,8 @@ void CRmtView::OnViewConfiguration()
 			//Pal or NTSC
 			g_ntsc = dlg.m_ntsc;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
-			m_song.ChangeTimer((g_ntsc) ? 17 : 20);
-			m_song.GetPokey()->ReInitSound();	//the sound needs to be reinitialized
+			g_Song.ChangeTimer((g_ntsc) ? 17 : 20);
+			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
 			Atari_InitRMTRoutine(); //reset RMT routines
 			SCREENUPDATE;
 		}
@@ -724,14 +763,14 @@ void CRmtView::OnViewConfiguration()
 		{
 			MIDIINCAPS micaps;
 			midiInGetDevCaps(dlg.m_midi_device,&micaps, sizeof(MIDIINCAPS));
-			m_midi.SetDevice(micaps.szPname);
+			g_Midi.SetDevice(micaps.szPname);
 		}
 		else
-			m_midi.SetDevice("");
+			g_Midi.SetDevice("");
 		g_midi_tr = dlg.m_midi_tr;
 		g_midi_volumeoffset = dlg.m_midi_volumeoffset;
 		g_midi_noteoff = dlg.m_midi_noteoff;
-		m_midi.MidiInit();
+		g_Midi.MidiInit();
 		//
 		WriteConfig();
 		g_screenupdate=1;
@@ -857,7 +896,11 @@ bool CRmtView::Resize(int width, int height)
 		g_mem_dc = &m_mem_dc;
 		g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16;	//number of track lines that can be displayed based on the window height
 
+<<<<<<< HEAD
     g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
+=======
+		g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 		if (m_pen1) delete m_pen1;
 		m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
 		m_penorig = g_mem_dc->SelectObject(m_pen1);
@@ -899,7 +942,7 @@ void CRmtView::OnInitialUpdate()
 		}
 	}
 	CDC *dc=GetDC();
-	m_song.SetRMTTitle();
+	g_Song.SetRMTTitle();
 	Resize(800, 600); //default window dimensions if RMT was never used on a system, else, it will load the last known values
 	m_gfx_bitmap.LoadBitmap(MAKEINTRESOURCE(IDB_GFX));
 	m_gfx_dc.CreateCompatibleDC(dc);
@@ -939,9 +982,9 @@ void CRmtView::OnInitialUpdate()
 	ChangeViewElements(0); //without write!
 
 	//INITIAL POKEY INITIALISATION (DLL)
-	if (!m_song.InitPokey())
+	if (!g_Song.InitPokey())
 	{
-		m_song.DeInitPokey();
+		g_Song.DeInitPokey();
 		exit(1);
 	}
 
@@ -970,17 +1013,17 @@ void CRmtView::OnInitialUpdate()
 	Sleep(200);	//this will ensure there will be no false positive with the sound initialisation, else it would attempt to check too early and assume the plugins were not initialised
 
 	//Displays the ABOUT dialog if there is no Pokey or 6502 initialized...
-	if (!m_song.GetPokey()->GetRenderSound() || !g_is6502)
+	if (!g_Pokey.GetRenderSound() || !g_is6502)
 	{
 		AfxGetApp()->GetMainWnd()->PostMessage(WM_COMMAND,ID_APP_ABOUT,0);
 	}
 
 	//Initialise MIDI
-	m_midi.MidiInit();
-	m_midi.MidiOn();
+	g_Midi.MidiInit();
+	g_Midi.MidiOn();
 
 	//Pal or NTSC
-	m_song.ChangeTimer((g_ntsc)? 17 : 20);
+	g_Song.ChangeTimer((g_ntsc)? 17 : 20);
 
 	//If the tracker was started with an argument, it attempts to load the file, and will return an error if the extention isn't .rmt. 
 	//When not argument is passed, the initialisation continues like normal.
@@ -988,7 +1031,7 @@ void CRmtView::OnInitialUpdate()
 	{
 		if (commandlinefilename.Right(4) == ".rmt")
 		{
-			m_song.FileOpen((LPCTSTR)commandlinefilename);
+			g_Song.FileOpen((LPCTSTR)commandlinefilename);
 		}
 		else
 		{
@@ -1032,15 +1075,15 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		if (mousebutt & MK_LBUTTON)
 		{
 			int lineoffset = (WINDOW_OFFSET) ? SONG_Y + 16 : SONG_Y + 48;
-			BOOL r = m_song.SongCursorGoto(CPoint(point.x - (SONG_OFFSET + 6 * 8), point.y - lineoffset));
+			BOOL r = g_Song.SongCursorGoto(CPoint(point.x - (SONG_OFFSET + 6 * 8), point.y - lineoffset));
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta!=0)
 		{
 			BOOL r=0;
-			if (wheelzDelta>0) r=m_song.SongKey(VK_UP,0,0);
+			if (wheelzDelta > 0) r = g_Song.SongKey(VK_UP,0,0);
 			else
-			if (wheelzDelta<0) r=m_song.SongKey(VK_DOWN,0,0);
+			if (wheelzDelta < 0) r = g_Song.SongKey(VK_DOWN,0,0);
 			if (r) SCREENUPDATE;
 		}
 		return 5;
@@ -1077,7 +1120,11 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursorgoto);
 		if (mousebutt & MK_LBUTTON)
 		{
+<<<<<<< HEAD
 			BOOL r = m_song.InfoCursorGotoSongname(point.x - 64);
+=======
+			BOOL r = g_Song.InfoCursorGotoSongname(point.x - 64);
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		return 6;
@@ -1090,7 +1137,11 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursorgoto);
 		if (mousebutt & MK_LBUTTON)
 		{
+<<<<<<< HEAD
 			BOOL r = m_song.InfoCursorGotoSpeed(point.x - 120);
+=======
+			BOOL r = g_Song.InfoCursorGotoSpeed(point.x - 120);
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		return 6;
@@ -1131,8 +1182,8 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		{
 			g_ntsc ^=1;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
-			m_song.ChangeTimer((g_ntsc)? 17 : 20);
-			m_song.GetPokey()->ReInitSound();	//the sound needs to be reinitialized
+			g_Song.ChangeTimer((g_ntsc)? 17 : 20);
+			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
 			WriteConfig();
 			Atari_InitRMTRoutine(); //reset RMT routines
 			SCREENUPDATE;
@@ -1152,7 +1203,11 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		if (wheelzDelta != 0)
 		{
 			BOOL r = 0;
+<<<<<<< HEAD
 			int ma = (m_song.GetTracks()->m_maxtracklen) / 2;
+=======
+			int ma = (g_Tracks.m_maxtracklen) / 2;
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (wheelzDelta < 0)
 			{
 				r = g_tracklinehighlight++;
@@ -1175,14 +1230,23 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
+<<<<<<< HEAD
 			BOOL r = m_song.InfoCursorGotoOctaveSelect(point.x, point.y);
+=======
+			BOOL r = g_Song.InfoCursorGotoOctaveSelect(point.x, point.y);
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta != 0)
 		{
 			BOOL r = 0;
+<<<<<<< HEAD
 			if (wheelzDelta < 0) r = m_song.OctaveUp();
 			else if (wheelzDelta > 0) r = m_song.OctaveDown();
+=======
+			if (wheelzDelta < 0) r = g_Song.OctaveUp();
+			else if (wheelzDelta > 0) r = g_Song.OctaveDown();
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		return 6;
@@ -1195,14 +1259,23 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
+<<<<<<< HEAD
 			BOOL r = m_song.InfoCursorGotoVolumeSelect(point.x, point.y);
+=======
+			BOOL r = g_Song.InfoCursorGotoVolumeSelect(point.x, point.y);
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta != 0)
 		{
 			BOOL r = 0;
+<<<<<<< HEAD
 			if (wheelzDelta < 0) r = m_song.VolumeUp();
 			else if (wheelzDelta > 0) r = m_song.VolumeDown();
+=======
+			if (wheelzDelta < 0) r = g_Song.VolumeUp();
+			else if (wheelzDelta > 0) r = g_Song.VolumeDown();
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		return 6;
@@ -1217,13 +1290,22 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		SetCursor(m_cursordlg);
 		if (mousebutt & MK_LBUTTON)
 		{
+<<<<<<< HEAD
 			BOOL r = m_song.InfoCursorGotoInstrumentSelect(point.x, point.y);
+=======
+			BOOL r = g_Song.InfoCursorGotoInstrumentSelect(point.x, point.y);
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta != 0)
 		{
+<<<<<<< HEAD
 			if (wheelzDelta > 0) m_song.ActiveInstrPrev();
 			else if (wheelzDelta < 0) m_song.ActiveInstrNext();
+=======
+			if (wheelzDelta > 0) g_Song.ActiveInstrPrev();
+			else if (wheelzDelta < 0) g_Song.ActiveInstrNext();
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 			SCREENUPDATE;
 		}
 		return 6;
@@ -1263,15 +1345,19 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			SetCursor(m_cursorgoto);
 			if (mousebutt & MK_LBUTTON)
 			{
+<<<<<<< HEAD
 				BOOL r = m_song.TrackCursorGoto(CPoint(point.x - (TRACKS_X + 6 * 8), point.y - (TRACKS_Y + 48)));
+=======
+				BOOL r = g_Song.TrackCursorGoto(CPoint(point.x - (TRACKS_X + 6 * 8), point.y - (TRACKS_Y + 48)));
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 				if (r) SCREENUPDATE;
 			}
 			if (wheelzDelta!=0)
 			{
 				BOOL r=0;
-				if (wheelzDelta>0) r=m_song.TrackKey(VK_UP,0,0);
+				if (wheelzDelta>0) r=g_Song.TrackKey(VK_UP,0,0);
 				else
-				if (wheelzDelta<0) r=m_song.TrackKey(VK_DOWN,0,0);
+				if (wheelzDelta<0) r=g_Song.TrackKey(VK_DOWN,0,0);
 				if (r) SCREENUPDATE;
 			}
 			return 4;
@@ -1281,9 +1367,9 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (g_active_ti==PARTINSTRS)
 	{
 		//InstrEdit
-		int ainstr = m_song.GetActiveInstr();
+		int ainstr = g_Song.GetActiveInstr();
 		//VOLUME LEFT (bottom)
-		int r= m_song.GetInstruments()->GetInstrArea(ainstr,0,rec);
+		int r= g_Instruments.GetInstrArea(ainstr,0,rec);
 		if (r && rec.PtInRect(point))
 		{
 			px = (point.x - rec.left) /8;
@@ -1291,21 +1377,21 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			SetCursor(m_cursorenvvolume);
 			if (g_mousebutt & MK_LBUTTON) //compares g_mousebutt to make it work while moving
 			{
-				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				m_song.GetInstruments()->SetEnvVolume(ainstr,0,px,py);
+				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
+				g_Instruments.SetEnvVolume(ainstr,0,px,py);
 				SCREENUPDATE;
 			}
 			if (g_mousebutt & MK_RBUTTON) //compares g_mousebutt to make it work while moving
 			{
-				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				m_song.GetInstruments()->SetEnvVolume(ainstr,0,px,0);
+				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
+				g_Instruments.SetEnvVolume(ainstr,0,px,0);
 				SCREENUPDATE;
 			}
 			return 2;
 		}
 
 		//VOLUME RIGHT (upper)
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,1,rec);
+		r= g_Instruments.GetInstrArea(ainstr,1,rec);
 		if (r && rec.PtInRect(point))
 		{
 			px = (point.x - rec.left) /8;
@@ -1313,86 +1399,86 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			SetCursor(m_cursorenvvolume);
 			if (g_mousebutt & MK_LBUTTON) //compares g_mousebutt to make it work while moving
 			{
-				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				m_song.GetInstruments()->SetEnvVolume(ainstr,1,px,py);
+				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
+				g_Instruments.SetEnvVolume(ainstr,1,px,py);
 				SCREENUPDATE;
 			}
 			if (g_mousebutt & MK_RBUTTON) //compares g_mousebutt to make it work while moving
 			{
-				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				m_song.GetInstruments()->SetEnvVolume(ainstr,1,px,0);
+				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
+				g_Instruments.SetEnvVolume(ainstr,1,px,0);
 				SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//ENVELOPE PARAMETERS large table
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,2,rec);
+		r= g_Instruments.GetInstrArea(ainstr,2,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),0);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),0);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//ENVELOPE PARAMETERS series of numbers for the right channel volume
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,3,rec);
+		r= g_Instruments.GetInstrArea(ainstr,3,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),1);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),1);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//INSTRUMENT TABLE
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,4,rec);
+		r= g_Instruments.GetInstrArea(ainstr,4,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),2);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),2);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//INSTRUMENT NAME
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,5,rec);
+		r= g_Instruments.GetInstrArea(ainstr,5,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),3);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),3);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//INSTRUMENT PARAMETERS
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,6,rec);
+		r= g_Instruments.GetInstrArea(ainstr,6,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorgoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),4);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),4);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//INSTRUMENT SELECT DIALOG
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,7,rec);
+		r= g_Instruments.GetInstrArea(ainstr,7,rec);
 		if (r && rec.PtInRect(point))
 		{
 			point.y-=(4*16+8);
@@ -1401,40 +1487,40 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		}
 
 		//ENVELOPE LEN a GO PARAMETER - length and loop to help the mouse
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,8,rec);
+		r= g_Instruments.GetInstrArea(ainstr,8,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorsetpos);
 			r=0;
 			if (mousebutt & MK_LBUTTON)
 			{
-				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),5);
+				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),5);
 			}
 			if (mousebutt & MK_RBUTTON)
 			{
-				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),6);
+				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),6);
 			}
 			if (r) SCREENUPDATE;
 			return 7;
 		}
 
 		//TABLE LEN a GO PARAMETER - length and loop to help the mouse
-		r= m_song.GetInstruments()->GetInstrArea(ainstr,9,rec);
+		r= g_Instruments.GetInstrArea(ainstr,9,rec);
 		if (r && rec.PtInRect(point))
 		{
 			SetCursor(m_cursorsetpos);
 			r=0;
 			if (mousebutt & MK_LBUTTON)
 			{
-				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),7);
+				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),7);
 			}
 			if (mousebutt & MK_RBUTTON)
 			{
-				m_song.GetUndo()->ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				r=m_song.GetInstruments()->CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),8);
+				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
+				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),8);
 			}
 			if (r) SCREENUPDATE;
 			return 7;
@@ -1447,7 +1533,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 
 void CRmtView::OnLButtonDown(UINT nFlags, CPoint point) 
 {
-	m_song.GetUndo()->Separator();
+	g_Undo.Separator();
 	g_mousebutt|=MK_LBUTTON;
 	MouseAction(point,MK_LBUTTON);
 	CView::OnLButtonDown(nFlags, point);
@@ -1455,21 +1541,21 @@ void CRmtView::OnLButtonDown(UINT nFlags, CPoint point)
 
 void CRmtView::OnLButtonUp(UINT nFlags, CPoint point) 
 {
-	m_song.GetUndo()->Separator();
+	g_Undo.Separator();
 	g_mousebutt&=~MK_LBUTTON;
 	CView::OnLButtonUp(nFlags, point);
 }
 
 void CRmtView::OnLButtonDblClk(UINT nFlags, CPoint point) 
 {
-	m_song.GetUndo()->Separator();
+	g_Undo.Separator();
 	OnLButtonDown(nFlags, point);
 	OnLButtonUp(nFlags, point);
 }
 
 void CRmtView::OnRButtonDown(UINT nFlags, CPoint point) 
 {
-	m_song.GetUndo()->Separator();
+	g_Undo.Separator();
 	g_mousebutt|=MK_RBUTTON;
 	MouseAction(point,MK_RBUTTON);
 	CView::OnRButtonDown(nFlags, point);
@@ -1477,14 +1563,14 @@ void CRmtView::OnRButtonDown(UINT nFlags, CPoint point)
 
 void CRmtView::OnRButtonUp(UINT nFlags, CPoint point) 
 {
-	m_song.GetUndo()->Separator();
+	g_Undo.Separator();
 	g_mousebutt&=~MK_RBUTTON;
 	CView::OnRButtonUp(nFlags, point);
 }
 
 void CRmtView::OnRButtonDblClk(UINT nFlags, CPoint point) 
 {
-	m_song.GetUndo()->Separator();
+	g_Undo.Separator();
 	OnRButtonDown(nFlags, point);
 	OnRButtonUp(nFlags, point);
 }
@@ -1528,7 +1614,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 0x5A: //Z
 		if (g_controlkey && !g_shiftkey) //or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			if (m_song.Undo()) //CTRL+Z
+			if (g_Song.Undo()) //CTRL+Z
 			{
 				SCREENUPDATE;
 				return;
@@ -1540,7 +1626,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 0x59: //Y
 		if (g_controlkey && !g_shiftkey) //or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			if (m_song.Redo()) //CTRL+Y
+			if (g_Song.Redo()) //CTRL+Y
 			{
 				SCREENUPDATE;
 				return;
@@ -1552,24 +1638,24 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_SPACE: //SPACEBAR
 		if (g_controlkey)
 		{
-		m_song.GetUndo()->Separator(); //CTRL+SPACEBAR
+		g_Undo.Separator(); //CTRL+SPACEBAR
 		OnProvemode();
 		}
 		goto AllModesDefaultKey;
 		break;
 
 	case VK_ESCAPE:	
-		m_song.Stop();	//stops everything
+		g_Song.Stop();	//stops everything
 		if (g_keyboard_escresetatarisound)
 		{
 			Atari_InitRMTRoutine(); //reset RMT routines automatically
 		}
 		if (g_shiftkey) 
 		{
-			m_song.GetPokey()->ReInitSound(); 
+			g_Pokey.ReInitSound(); 
 			Atari_InitRMTRoutine(); //reset RMT routines
 		}
-		if (m_song.GetPlayMode()==0) //only if the module is stopped
+		if (g_Song.GetPlayMode()==0) //only if the module is stopped
 		{
 			g_playtime=0;
 			DrawPlaytimecounter();
@@ -1583,7 +1669,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			g_linesafter--;
 			if (g_linesafter < 0) g_linesafter = 8;
 			CMainFrame* mf = ((CMainFrame*)AfxGetMainWnd());
-			if (mf) mf->m_c_linesafter.SetCurSel(g_linesafter);
+			if (mf) mf->m_comboSkipLinesAfterNoteInsert.SetCurSel(g_linesafter);
 		}
 		else
 			goto AllModesDefaultKey;
@@ -1595,7 +1681,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			g_linesafter++;
 			if (g_linesafter > 8) g_linesafter = 0;
 			CMainFrame* mf = ((CMainFrame*)AfxGetMainWnd());
-			if (mf) mf->m_c_linesafter.SetCurSel(g_linesafter);
+			if (mf) mf->m_comboSkipLinesAfterNoteInsert.SetCurSel(g_linesafter);
 		}
 		else
 			goto AllModesDefaultKey;
@@ -1611,25 +1697,25 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 	case VK_F1:
 		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
-		m_song.GetUndo()->Separator();
+		g_Undo.Separator();
 		OnEmTracks();		
 		break;
 
 	case VK_F2:
 		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
-		m_song.GetUndo()->Separator();
+		g_Undo.Separator();
 		OnEmInstruments();
 		break;
 
 	case VK_F3:
 		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
-		m_song.GetUndo()->Separator();
+		g_Undo.Separator();
 		OnEmInfo();
 		break;
 
 	case VK_F4:
 		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
-		m_song.GetUndo()->Separator();
+		g_Undo.Separator();
 		OnEmSong();
 		break;
 
@@ -1639,25 +1725,30 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			g_prove = 4;	//POKEY EXPLORER MODE -- KEYBOARD INPUT AND FORMULAE DISPLAY
 			break;
 		}
+<<<<<<< HEAD
 		m_song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
 		m_song.Play(MPLAY_SONG,m_song.m_followplay);	//play song from start
+=======
+		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
+		g_Song.Play(MPLAY_SONG,g_Song.m_followplay);	//play song from start
+>>>>>>> c4563c01671c62163b25815f7dd0aa04a09d5821
 		break;
 
 	case VK_F6:
-		m_song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		if (g_shiftkey) m_song.Play(MPLAY_BLOCK,m_song.m_followplay);	//play block and follow
-		else m_song.Play(MPLAY_TRACK,m_song.m_followplay);				//play pattern and follow	
+		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
+		if (g_shiftkey) g_Song.Play(MPLAY_BLOCK,g_Song.m_followplay);	//play block and follow
+		else g_Song.Play(MPLAY_TRACK,g_Song.m_followplay);				//play pattern and follow	
 		break;
 
 	case VK_F7:
-		m_song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		if (m_song.IsBookmark() && g_shiftkey) m_song.Play(MPLAY_BOOKMARK,m_song.m_followplay);	//play song from bookmark
-		else m_song.Play(MPLAY_FROM,m_song.m_followplay);							//play song from current position
+		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
+		if (g_Song.IsBookmark() && g_shiftkey) g_Song.Play(MPLAY_BOOKMARK,g_Song.m_followplay);	//play song from bookmark
+		else g_Song.Play(MPLAY_FROM,g_Song.m_followplay);							//play song from current position
 		break;
 
 	case VK_F8:
-		if (g_controlkey) m_song.ClearBookmark();	//clear bookmark
-		else m_song.SetBookmark();					//set song bookmark
+		if (g_controlkey) g_Song.ClearBookmark();	//clear bookmark
+		else g_Song.SetBookmark();					//set song bookmark
 		break;
 
 	case VK_F9:
@@ -1667,12 +1758,12 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}		
 		else if (g_controlkey)
 		{
-			int ch = m_song.GetActiveColumn(); //solo current channel
+			int ch = g_Song.GetActiveColumn(); //solo current channel
 			SetChannelSolo(ch);
 		}
 		else
 		{
-			int ch = m_song.GetActiveColumn(); //mute current channel
+			int ch = g_Song.GetActiveColumn(); //mute current channel
 			SetChannelOnOff(ch,-1);	
 		}
 		SCREENUPDATE;
@@ -1681,7 +1772,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	//F10 can't be used for some reason... it seems to be binded to native Windows functions and so it would take priority instead of any shortcut I would like to use for it.
 
 	case VK_F11:						
-		m_song.GetUndo()->Separator();	//respect volume
+		g_Undo.Separator();	//respect volume
 		g_respectvolume ^=1;
 		SCREENUPDATE;
 		break;
@@ -1691,8 +1782,8 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			g_ntsc ^= 1;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
-			m_song.ChangeTimer((g_ntsc) ? 17 : 20);
-			m_song.GetPokey()->ReInitSound();	//the sound needs to be reinitialized
+			g_Song.ChangeTimer((g_ntsc) ? 17 : 20);
+			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
 			WriteConfig();
 			Atari_InitRMTRoutine(); //reset RMT routines
 			SCREENUPDATE;
@@ -1701,17 +1792,17 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 
 	case VK_MEDIA_PLAY_PAUSE:
-		if (m_song.GetPlayMode()==0)
-		m_song.Play(MPLAY_SONG,m_song.m_followplay);	//play song from start
-		else m_song.Stop();								//if playing, stop
+		if (g_Song.GetPlayMode()==0)
+		g_Song.Play(MPLAY_SONG,g_Song.m_followplay);	//play song from start
+		else g_Song.Stop();								//if playing, stop
 		break;
 
 	case VK_MEDIA_NEXT_TRACK:
-		m_song.Play(MPLAY_SEEK_NEXT,m_song.m_followplay); //seek next and play from track
+		g_Song.Play(MPLAY_SEEK_NEXT,g_Song.m_followplay); //seek next and play from track
 		break;
 
 	case VK_MEDIA_PREV_TRACK:
-		m_song.Play(MPLAY_SEEK_PREV,m_song.m_followplay); //seek prev and play from track
+		g_Song.Play(MPLAY_SEEK_PREV,g_Song.m_followplay); //seek prev and play from track
 		break;
 
 	case VK_SHIFT:
@@ -1761,9 +1852,9 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 87: //VK_W
 		if (g_controlkey && !g_shiftkey) //CTRL+W, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			m_song.Stop();
+			g_Song.Stop();
 			int r = MessageBox("Would you like to create a new song?", "Create new song", MB_YESNOCANCEL | MB_ICONQUESTION);
-			if (r == IDYES) m_song.FileNew();
+			if (r == IDYES) g_Song.FileNew();
 		}
 		else
 			goto AllModesDefaultKey;
@@ -1772,11 +1863,11 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 83:	//VK_S
 		if (g_controlkey && !g_shiftkey) //CTRL+S, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			m_song.Stop();
+			g_Song.Stop();
 			SetStatusBarText("Save...");
-			CString filename=m_song.GetFilename();
+			CString filename=g_Song.GetFilename();
 			if (g_keyboard_askwhencontrol_s
-				&& (filename!="" || m_song.GetFiletype()!=0))
+				&& (filename!="" || g_Song.GetFiletype()!=0))
 			{
 				//if a question is asked and if a file already exists
 				//(=> there will be a "Save as ..." dialog)
@@ -1800,8 +1891,8 @@ end_save_control_s:
 	case 82:	//VK_R
 		if (g_controlkey && !g_shiftkey) //CTRL+R, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			m_song.Stop();
-			m_song.FileReload();	//turns out this function handles the rest already, so jump right to it instead
+			g_Song.Stop();
+			g_Song.FileReload();	//turns out this function handles the rest already, so jump right to it instead
 		}
 		else
 			goto AllModesDefaultKey;
@@ -1815,21 +1906,21 @@ end_save_control_s:
 			{
 			case PARTINFO:
 				if (g_shiftkey && !is_editing_infos && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
-					r = m_song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Song Name field, it will be ignored
+					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Song Name field, it will be ignored
 				else if (g_shiftkey && !is_editing_infos && (NoteKey(vk) < 0))
 					if (vk == VK_TAB || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_infokey_anyway;
 					else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
 				else if (is_editing_infos && CAPSLOCK && !g_shiftkey)
 				{
 					g_shiftkey = 1;
-					r = m_song.InfoKey(vk, g_shiftkey, g_controlkey);
+					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
 					g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
 					break;
 				}
 				else if (is_editing_infos && CAPSLOCK && g_shiftkey)
 				{
 					g_shiftkey = 0;
-					r = m_song.InfoKey(vk, g_shiftkey, g_controlkey);
+					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
 					g_shiftkey = 1;	//workaround: so it will *stay* locked when CAPSLOCK isn't active
 					break;
 				}
@@ -1837,38 +1928,38 @@ end_save_control_s:
 				{
 do_infokey_anyway:
 					if (vk == VK_PAGE_UP || vk == VK_PAGE_DOWN)
-						r = m_song.ProveKey(vk, g_shiftkey, g_controlkey);
+						r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
 					else
-					r = m_song.InfoKey(vk, g_shiftkey, g_controlkey);
+					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
 				}
 				break;
 
 			case PARTTRACKS:
 				if (g_prove)
-					r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
 				else if (g_shiftkey && (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE))
-					r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
 				else 
-					r = m_song.TrackKey(vk,g_shiftkey,g_controlkey);
+					r = g_Song.TrackKey(vk,g_shiftkey,g_controlkey);
 				break;
 
 			case PARTINSTRS:
 				if (g_shiftkey && !is_editing_instr && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
-					r = m_song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Instrument Name field, it will be ignored
+					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Instrument Name field, it will be ignored
 				else if (g_shiftkey && !is_editing_instr && (NoteKey(vk) < 0))
 					if (vk == VK_TAB || vk == VK_INSERT || vk == VK_DELETE || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN || vk == VK_DIVIDE || vk == VK_MULTIPLY || vk == VK_SUBTRACT || vk == VK_ADD || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_instrkey_anyway;
 					else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
 				else if (is_editing_instr && CAPSLOCK && !g_shiftkey)
 				{
 					g_shiftkey = 1;
-					r = m_song.InstrKey(vk, g_shiftkey, g_controlkey);
+					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
 					g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
 					break;
 				}
 				else if (is_editing_instr && CAPSLOCK && g_shiftkey)
 				{
 					g_shiftkey = 0;
-					r = m_song.InstrKey(vk, g_shiftkey, g_controlkey);
+					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
 					g_shiftkey = 1;	//workaround: so it will *stay* locked when CAPSLOCK isn't active
 					break;
 				}
@@ -1876,19 +1967,19 @@ do_infokey_anyway:
 				{
 do_instrkey_anyway:
 					if (vk == VK_PAGE_UP || vk == VK_PAGE_DOWN)
-						r = m_song.ProveKey(vk, g_shiftkey, g_controlkey);
+						r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
 					else
-					r = m_song.InstrKey(vk, g_shiftkey, g_controlkey);
+					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
 				}
 				break;
 
 			case PARTSONG:
 				if (g_prove)
-					r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
 				else if (g_shiftkey && (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE))
-					r = m_song.ProveKey(vk,g_shiftkey,g_controlkey);
+					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
 				else 
-					r = m_song.SongKey(vk,g_shiftkey,g_controlkey);
+					r = g_Song.SongKey(vk,g_shiftkey,g_controlkey);
 				break;
 			}
 		if (r) SCREENUPDATE;
@@ -1920,133 +2011,133 @@ void CRmtView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 void CRmtView::OnFileOpen() 
 {
-	m_song.FileOpen();
+	g_Song.FileOpen();
 }
 
 void CRmtView::OnFileReload() 
 {
-	m_song.FileReload();	
+	g_Song.FileReload();	
 }
 
 void CRmtView::OnUpdateFileReload(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(m_song.FileCanBeReloaded());
+	pCmdUI->Enable(g_Song.FileCanBeReloaded());
 }
 
 void CRmtView::OnFileSave()
 {
-	m_song.FileSave();
+	g_Song.FileSave();
 }
 
 void CRmtView::OnFileSaveAs() 
 {
-	m_song.FileSaveAs();
+	g_Song.FileSaveAs();
 }
 
 void CRmtView::OnFileNew() 
 {
-	m_song.FileNew();
+	g_Song.FileNew();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnFileImport() 
 {
-	m_song.FileImport();
+	g_Song.FileImport();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnFileExportAs() 
 {
-	m_song.FileExportAs();
+	g_Song.FileExportAs();
 }
 
 void CRmtView::OnInstrLoad() 
 {
-	m_song.FileInstrumentLoad();
+	g_Song.FileInstrumentLoad();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrSave() 
 {
-	m_song.FileInstrumentSave();	
+	g_Song.FileInstrumentSave();	
 }
 
 void CRmtView::OnInstrCopy() 
 {
-	m_song.InstrCopy();	
+	g_Song.InstrCopy();	
 }
 
 void CRmtView::OnInstrPaste() 
 {
-	m_song.InstrPaste();
+	g_Song.InstrPaste();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrCut() 
 {
-	m_song.GetUndo()->ChangeInstrument(m_song.GetActiveInstr(),0,UETYPE_INSTRDATA,1);
-	m_song.InstrCut();
+	g_Undo.ChangeInstrument(g_Song.GetActiveInstr(),0,UETYPE_INSTRDATA,1);
+	g_Song.InstrCut();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrDelete() 
 {
-	m_song.GetUndo()->ChangeInstrument(m_song.GetActiveInstr(),0,UETYPE_INSTRDATA,1);
-	m_song.InstrDelete();
+	g_Undo.ChangeInstrument(g_Song.GetActiveInstr(),0,UETYPE_INSTRDATA,1);
+	g_Song.InstrDelete();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialVolumeLRenvelopesonly() 
 {
-	m_song.InstrPaste(1); //L/R
+	g_Song.InstrPaste(1); //L/R
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialVolumeRenvelopeonly() 
 {
-	m_song.InstrPaste(2); //R
+	g_Song.InstrPaste(2); //R
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialVolumeLenvelopeonly() 
 {
-	m_song.InstrPaste(3); //L
+	g_Song.InstrPaste(3); //L
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialEnvelopeparametersonly() 
 {
-	m_song.InstrPaste(4); //ENVELOPE PARS
+	g_Song.InstrPaste(4); //ENVELOPE PARS
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialTableonly() 
 {
-	m_song.InstrPaste(5); //TABLE
+	g_Song.InstrPaste(5); //TABLE
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialVolumeenvandenvelopeparsonly() 
 {
-	m_song.InstrPaste(6); //VOL+ENV
+	g_Song.InstrPaste(6); //VOL+ENV
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialInsertvolenvsandenvparstocurpos() 
 {
-	m_song.InstrPaste(7); //VOL+ENV TO CURPOS
+	g_Song.InstrPaste(7); //VOL+ENV TO CURPOS
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialVolumeltorenvelopeonly() 
 {
-	m_song.InstrPaste(8); //volume L to R
+	g_Song.InstrPaste(8); //volume L to R
 	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentPastespecialVolumertolenvelopeonly() 
 {
-	m_song.InstrPaste(9); //volume R to L
+	g_Song.InstrPaste(9); //volume R to L
 	SCREENUPDATE;
 }
 
@@ -2054,8 +2145,8 @@ void CRmtView::OnInstrumentPastespecialVolumertolenvelopeonly()
 void CRmtView::OnUpdateInstrumentPastespecialInsertvolenvsandenvparstocurpos(CCmdUI* pCmdUI) 
 {
 	//to cur pos
-	int i = m_song.GetActiveInstr();
-	TInstrument* ai = &m_song.GetInstruments()->m_instr[i];
+	int i = g_Song.GetActiveInstr();
+	TInstrument* ai = &g_Instruments.m_instr[i];
 	pCmdUI->Enable(g_activepart==PARTINSTRS && (ai->act==2)); //when the envelope is being edited
 }
 
@@ -2081,54 +2172,54 @@ void CRmtView::OnUpdateInstrumentPastespecialVolumeltorenvelopeonly(CCmdUI* pCmd
 
 void CRmtView::OnTrackCopy() 
 {
-	m_song.TrackCopy();
+	g_Song.TrackCopy();
 }
 
 void CRmtView::OnTrackPaste() 
 {
-	m_song.GetUndo()->ChangeTrack(m_song.SongGetActiveTrack(),m_song.GetActiveLine(),UETYPE_TRACKDATA);
-	m_song.TrackPaste();
+	g_Undo.ChangeTrack(g_Song.SongGetActiveTrack(),g_Song.GetActiveLine(),UETYPE_TRACKDATA);
+	g_Song.TrackPaste();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnTrackCut() 
 {
-	m_song.GetUndo()->ChangeTrack(m_song.SongGetActiveTrack(),m_song.GetActiveLine(),UETYPE_TRACKDATA);
-	m_song.TrackCut();
+	g_Undo.ChangeTrack(g_Song.SongGetActiveTrack(),g_Song.GetActiveLine(),UETYPE_TRACKDATA);
+	g_Song.TrackCut();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnTrackDelete() 
 {
-	m_song.GetUndo()->ChangeTrack(m_song.SongGetActiveTrack(),m_song.GetActiveLine(),UETYPE_TRACKDATA);
-	m_song.TrackDelete();
+	g_Undo.ChangeTrack(g_Song.SongGetActiveTrack(),g_Song.GetActiveLine(),UETYPE_TRACKDATA);
+	g_Song.TrackDelete();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateTrackCopy(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (m_song.SongGetActiveTrack()>=0));
+	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (g_Song.SongGetActiveTrack()>=0));
 }
 
 void CRmtView::OnUpdateTrackPaste(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (m_song.SongGetActiveTrack()>=0));
+	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (g_Song.SongGetActiveTrack()>=0));
 }
 
 void CRmtView::OnUpdateTrackCut(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (m_song.SongGetActiveTrack()>=0));
+	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (g_Song.SongGetActiveTrack()>=0));
 }
 
 void CRmtView::OnUpdateTrackDelete(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (m_song.SongGetActiveTrack()>=0));
+	pCmdUI->Enable((g_activepart!=PARTINSTRS) && (g_Song.SongGetActiveTrack()>=0));
 }
 
 /*
 void CRmtView::OnInstrumentRandominstrument() 
 {
-	m_song.GetInstruments()->RandomInstrument(m_song.GetActiveInstr()); //Random
+	g_Instruments.RandomInstrument(g_Song.GetActiveInstr()); //Random
 	SCREENUPDATE;
 }
 
@@ -2140,112 +2231,112 @@ void CRmtView::OnUpdateInstrumentRandominstrument(CCmdUI* pCmdUI)
 
 void CRmtView::OnTrackLoad() 
 {
-	m_song.FileTrackLoad();
+	g_Song.FileTrackLoad();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnTrackSave() 
 {
-	m_song.FileTrackSave();
+	g_Song.FileTrackSave();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateTrackLoad(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(m_song.SongGetActiveTrack()>=0);
+	pCmdUI->Enable(g_Song.SongGetActiveTrack()>=0);
 }
 
 void CRmtView::OnUpdateTrackSave(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(m_song.SongGetActiveTrack()>=0);
+	pCmdUI->Enable(g_Song.SongGetActiveTrack()>=0);
 }
 
 void CRmtView::OnSongCopyline() 
 {
-	m_song.SongCopyLine();	
+	g_Song.SongCopyLine();	
 }
 
 void CRmtView::OnSongPasteline() 
 {
-	m_song.SongPasteLine();
+	g_Song.SongPasteLine();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnSongClearline() 
 {
-	m_song.SongClearLine();
+	g_Song.SongClearLine();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnSongDeleteactualline() 
 {
-	m_song.SongDeleteLine(m_song.SongGetActiveLine());
+	g_Song.SongDeleteLine(g_Song.SongGetActiveLine());
 	SCREENUPDATE;
 }
 
 void CRmtView::OnSongInsertnewemptyline() 
 {
-	m_song.SongInsertLine(m_song.SongGetActiveLine());
+	g_Song.SongInsertLine(g_Song.SongGetActiveLine());
 	SCREENUPDATE;
 }
 
 void CRmtView::OnSongInsertnewlinewithunusedtracks() 
 {
-	int line = m_song.SongGetActiveLine();
-	m_song.SongPrepareNewLine(line);
-	m_song.SongSetActiveLine(line);
+	int line = g_Song.SongGetActiveLine();
+	g_Song.SongPrepareNewLine(line);
+	g_Song.SongSetActiveLine(line);
 	SCREENUPDATE;
 }
 
 void CRmtView::OnSongInsertcopyorcloneofsonglines() 
 {
-	int line = m_song.SongGetActiveLine();
-	m_song.SongInsertCopyOrCloneOfSongLines(line);
-	m_song.SongSetActiveLine(line);
+	int line = g_Song.SongGetActiveLine();
+	g_Song.SongInsertCopyOrCloneOfSongLines(line);
+	g_Song.SongSetActiveLine(line);
 	SCREENUPDATE;
 }
 
 void CRmtView::OnSongPutnewemptyunusedtrack() 
 {
-	m_song.SongPutnewemptyunusedtrack();
+	g_Song.SongPutnewemptyunusedtrack();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnSongMaketracksduplicate() 
 {
-	m_song.SongMaketracksduplicate();
+	g_Song.SongMaketracksduplicate();
 	SCREENUPDATE;	
 }
 
 void CRmtView::OnUpdateSongMaketracksduplicate(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(m_song.SongGetActiveTrack()>=0);
+	pCmdUI->Enable(g_Song.SongGetActiveTrack()>=0);
 }
 
 void CRmtView::OnPlay0() 
 {
-	m_song.Play(MPLAY_BOOKMARK,m_song.m_followplay);	//from the bookmark - with respect to followplay
+	g_Song.Play(MPLAY_BOOKMARK,g_Song.m_followplay);	//from the bookmark - with respect to followplay
 }
 
 void CRmtView::OnPlay1() 
 {
-	m_song.Play(MPLAY_SONG,m_song.m_followplay);		//whole song from start - with respect to followplay
+	g_Song.Play(MPLAY_SONG,g_Song.m_followplay);		//whole song from start - with respect to followplay
 }
 
 void CRmtView::OnPlay2() 
 {
-	m_song.Play(MPLAY_FROM,m_song.m_followplay);		//from the current position - with respect to followplay
+	g_Song.Play(MPLAY_FROM,g_Song.m_followplay);		//from the current position - with respect to followplay
 }
 
 void CRmtView::OnPlay3() 
 {
-	m_song.Play(MPLAY_TRACK,m_song.m_followplay);		//current pattern and loop - with respect to followplay
+	g_Song.Play(MPLAY_TRACK,g_Song.m_followplay);		//current pattern and loop - with respect to followplay
 }
 
 void CRmtView::OnPlaystop() 
 {
-	m_song.Stop();	//stops everything
-	if (m_song.GetPlayMode()==0) //only if the module is stopped
+	g_Song.Stop();	//stops everything
+	if (g_Song.GetPlayMode()==0) //only if the module is stopped
 	{
 		g_playtime=0;
 		DrawPlaytimecounter();
@@ -2254,7 +2345,7 @@ void CRmtView::OnPlaystop()
 
 void CRmtView::OnPlayfollow() 
 {
-	m_song.m_followplay ^= 1;
+	g_Song.m_followplay ^= 1;
 }
 
 void CRmtView::OnEmTracks() 
@@ -2266,53 +2357,53 @@ void CRmtView::OnEmTracks()
 void CRmtView::OnEmInstruments() 
 {
 	g_activepart=g_active_ti=PARTINSTRS;	//instrs
-	g_trackcl.BlockDeselect();
+	g_TrackClipboard.BlockDeselect();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnEmInfo() 
 {
 	g_activepart=PARTINFO;		//info
-	g_trackcl.BlockDeselect();
+	g_TrackClipboard.BlockDeselect();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnEmSong() 
 {
 	g_activepart=PARTSONG;		//song
-	g_trackcl.BlockDeselect();
+	g_TrackClipboard.BlockDeselect();
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdatePlay0(CCmdUI* pCmdUI) 
 {
-	int ch= m_song.IsBookmark();
+	int ch= g_Song.IsBookmark();
 	pCmdUI->Enable(ch);
-	ch= (m_song.GetPlayMode()==MPLAY_BOOKMARK);
+	ch= (g_Song.GetPlayMode()==MPLAY_BOOKMARK);
 	pCmdUI->SetCheck(ch);
 }
 
 void CRmtView::OnUpdatePlay1(CCmdUI* pCmdUI) 
 {
-	int ch= (m_song.GetPlayMode()==1)? 1 : 0;
+	int ch= (g_Song.GetPlayMode()==1)? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
 void CRmtView::OnUpdatePlay2(CCmdUI* pCmdUI) 
 {
-	int ch= (m_song.GetPlayMode()==2)? 1 : 0;
+	int ch= (g_Song.GetPlayMode()==2)? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
 void CRmtView::OnUpdatePlay3(CCmdUI* pCmdUI) 
 {
-	int ch= (m_song.GetPlayMode()==3)? 1 : 0;
+	int ch= (g_Song.GetPlayMode()==3)? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
 void CRmtView::OnUpdatePlayfollow(CCmdUI* pCmdUI) 
 {
-	int ch= (m_song.m_followplay)? 1 : 0;
+	int ch= (g_Song.m_followplay)? 1 : 0;
 	pCmdUI->SetCheck(ch);
 }
 
@@ -2453,105 +2544,105 @@ void CRmtView::OnUpdateViewInstrumentactivehelp(CCmdUI* pCmdUI)
 
 void CRmtView::OnBlockNoteup() 
 {
-	g_trackcl.BlockNoteTransposition(m_song.GetActiveInstr(),1);
+	g_TrackClipboard.BlockNoteTransposition(g_Song.GetActiveInstr(),1);
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockNoteup(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 void CRmtView::OnBlockNotedown() 
 {
-	g_trackcl.BlockNoteTransposition(m_song.GetActiveInstr(),-1);
+	g_TrackClipboard.BlockNoteTransposition(g_Song.GetActiveInstr(),-1);
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockNotedown(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 void CRmtView::OnBlockVolumeup() 
 {
-	g_trackcl.BlockVolumeChange(m_song.GetActiveInstr(),1);	
+	g_TrackClipboard.BlockVolumeChange(g_Song.GetActiveInstr(),1);	
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockVolumeup(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 void CRmtView::OnBlockVolumedown() 
 {
-	g_trackcl.BlockVolumeChange(m_song.GetActiveInstr(),-1);	
+	g_TrackClipboard.BlockVolumeChange(g_Song.GetActiveInstr(),-1);	
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockVolumedown(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 
 void CRmtView::OnBlockInstrleft() 
 {
-	g_trackcl.BlockInstrumentChange(m_song.GetActiveInstr(),-1);	
+	g_TrackClipboard.BlockInstrumentChange(g_Song.GetActiveInstr(),-1);	
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockInstrleft(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 void CRmtView::OnBlockInstrright() 
 {
-	g_trackcl.BlockInstrumentChange(m_song.GetActiveInstr(),1);	
+	g_TrackClipboard.BlockInstrumentChange(g_Song.GetActiveInstr(),1);	
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockInstrright(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 void CRmtView::OnBlockInstrall() 
 {
-	g_trackcl.BlockAllOnOff();	
+	g_TrackClipboard.BlockAllOnOff();	
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockInstrall(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(g_trackcl.m_all);
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->SetCheck(g_TrackClipboard.m_all);
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 void CRmtView::OnBlockBackup() 
 {
-	m_song.GetUndo()->ChangeTrack(m_song.SongGetActiveTrack(),m_song.GetActiveLine(),UETYPE_TRACKDATA,1);
-	g_trackcl.BlockRestoreFromBackup();	
+	g_Undo.ChangeTrack(g_Song.SongGetActiveTrack(),g_Song.GetActiveLine(),UETYPE_TRACKDATA,1);
+	g_TrackClipboard.BlockRestoreFromBackup();	
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockBackup(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 void CRmtView::OnBlockPlay() 
 {
-	m_song.Play(MPLAY_BLOCK,m_song.m_followplay);	//selected block and loop - with respect to followplay
+	g_Song.Play(MPLAY_BLOCK,g_Song.m_followplay);	//selected block and loop - with respect to followplay
 }
 
 void CRmtView::OnUpdateBlockPlay(CCmdUI* pCmdUI) 
 {
-	int ch= (m_song.GetPlayMode()==4)? 1 : 0;
+	int ch= (g_Song.GetPlayMode()==4)? 1 : 0;
 	pCmdUI->SetCheck(ch);
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 //----------------------------------------------------------------------------
@@ -2639,108 +2730,108 @@ void CRmtView::OnUpdateChan8(CCmdUI* pCmdUI)
 
 void CRmtView::OnMidionoff() 
 {
-	if (m_midi.IsOn()) 
-		m_midi.MidiOff();
+	if (g_Midi.IsOn()) 
+		g_Midi.MidiOff();
 	else
-		m_midi.MidiOn();
+		g_Midi.MidiOn();
 }
 
 void CRmtView::OnUpdateMidionoff(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(m_midi.IsOn());	
+	pCmdUI->SetCheck(g_Midi.IsOn());	
 }
 
 void CRmtView::OnBlockCopy() 
 {
-	m_song.TrackKey(67,0,1);	//Ctrl+C
+	g_Song.TrackKey(67,0,1);	//Ctrl+C
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockCut() 
 {
-	m_song.TrackKey(88,0,1);	//Ctrl+X
+	g_Song.TrackKey(88,0,1);	//Ctrl+X
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockDelete() 
 {
-	m_song.TrackKey(VK_DELETE,0,1);	//Del
+	g_Song.TrackKey(VK_DELETE,0,1);	//Del
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockPaste() 
 {
-	m_song.BlockPaste();	//paste normal
+	g_Song.BlockPaste();	//paste normal
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockPastespecialMergewithcurrentcontent() 
 {
-	m_song.BlockPaste(1);	//paste special - merge
+	g_Song.BlockPaste(1);	//paste special - merge
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockPastespecialVolumevaluesonly() 
 {
-	m_song.BlockPaste(2);	//paste special - volumes only
+	g_Song.BlockPaste(2);	//paste special - volumes only
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockPastespecialSpeedvaluesonly() 
 {
-	m_song.BlockPaste(3);	//paste special - speeds only
+	g_Song.BlockPaste(3);	//paste special - speeds only
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockExchange() 
 {
-	m_song.TrackKey(69,0,1);	//Ctrl+E
+	g_Song.TrackKey(69,0,1);	//Ctrl+E
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockEffect() 
 {
-	m_song.TrackKey(70,0,1);	//Ctrl+F
+	g_Song.TrackKey(70,0,1);	//Ctrl+F
 	SCREENUPDATE;
 }
 
 void CRmtView::OnBlockSelectall() 
 {
-	m_song.TrackKey(65,0,1);	//Ctrl+A
+	g_Song.TrackKey(65,0,1);	//Ctrl+A
 	SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateBlockCut(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
 void CRmtView::OnUpdateBlockDelete(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());	
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());	
 }
 
 void CRmtView::OnUpdateBlockEffect(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());	
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());	
 }
 
 void CRmtView::OnUpdateBlockExchange(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(g_trackcl.IsBlockSelected());	
+	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());	
 }
 
 void CRmtView::OnTrackClearallduplicatedtracks() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 	int r=MessageBox("Are you sure you want to clear all duplicated tracks and adjust song?","Clear all duplicated tracks",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
-	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
-	m_song.GetUndo()->ChangeSong(0,0,UETYPE_SONGDATA,1);
+	g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
+	g_Undo.ChangeSong(0,0,UETYPE_SONGDATA,1);
 
 	int clearedtracks;
-	clearedtracks = m_song.SongClearDuplicatedTracks();
+	clearedtracks = g_Song.SongClearDuplicatedTracks();
 
 	CString s;
 	s.Format("Deleted %i duplicated tracks.",clearedtracks);
@@ -2750,14 +2841,14 @@ void CRmtView::OnTrackClearallduplicatedtracks()
 
 void CRmtView::OnTrackClearalltracksunusedinsong() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 	int r=MessageBox("Are you sure you want to delete all tracks unused in song?","Clear all unused tracks",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
-	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
+	g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL);
 
 	int clearedtracks;
-	clearedtracks = m_song.SongClearUnusedTracks();
+	clearedtracks = g_Song.SongClearUnusedTracks();
 
 	CString s;
 	s.Format("Deleted %i tracks unused in song.",clearedtracks);
@@ -2768,86 +2859,86 @@ void CRmtView::OnTrackClearalltracksunusedinsong()
 void CRmtView::OnTrackAlltrackscleanup() 
 {
 	//Delete all tracks
-	m_song.Stop();
+	g_Song.Stop();
 
 	int r=MessageBox("WARNING:\nReally cleanup all tracks?","All tracks cleanup",MB_YESNO | MB_ICONWARNING);
 	if (r==IDYES)
 	{
-		m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
-		m_song.GetTracks()->InitTracks();
+		g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL);
+		g_Tracks.InitTracks();
 		SCREENUPDATE;
 	}
 }
 
 void CRmtView::OnUpdateTrackSearchandbuildloop(CCmdUI* pCmdUI) 
 {
-	int track=m_song.SongGetActiveTrack();
-	pCmdUI->Enable( (track>=0) && (m_song.GetTracks()->GetGoLine(track)<0) );
+	int track=g_Song.SongGetActiveTrack();
+	pCmdUI->Enable( (track>=0) && (g_Tracks.GetGoLine(track)<0) );
 }
 
 void CRmtView::OnTrackSearchandbuildloop() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 
-	int track=m_song.SongGetActiveTrack();
+	int track=g_Song.SongGetActiveTrack();
 	if (track>=0)
 	{
-		m_song.GetUndo()->ChangeTrack(track,m_song.GetActiveLine(),UETYPE_TRACKDATA);
-		int res=m_song.GetTracks()->TrackBuildLoop(track);
+		g_Undo.ChangeTrack(track,g_Song.GetActiveLine(),UETYPE_TRACKDATA);
+		int res=g_Tracks.TrackBuildLoop(track);
 		if (res) SCREENUPDATE;
 	}
 }
 
 void CRmtView::OnUpdateTrackExpandloop(CCmdUI* pCmdUI) 
 {
-	int track=m_song.SongGetActiveTrack();
-	pCmdUI->Enable( (track>=0) && (m_song.GetTracks()->GetGoLine(track)>=0) );
+	int track=g_Song.SongGetActiveTrack();
+	pCmdUI->Enable( (track>=0) && (g_Tracks.GetGoLine(track)>=0) );
 }
 
 void CRmtView::OnTrackExpandloop() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 
-	int track=m_song.SongGetActiveTrack();
+	int track=g_Song.SongGetActiveTrack();
 	if (track>=0)
 	{
-		m_song.GetUndo()->ChangeTrack(track,m_song.GetActiveLine(),UETYPE_TRACKDATA);
-		int res=m_song.GetTracks()->TrackExpandLoop(track);
+		g_Undo.ChangeTrack(track,g_Song.GetActiveLine(),UETYPE_TRACKDATA);
+		int res=g_Tracks.TrackExpandLoop(track);
 		if (res) SCREENUPDATE;
 	}
 }
 
 void CRmtView::OnUpdateTrackInfoaboutusingofactualtrack(CCmdUI* pCmdUI) 
 {
-	int track=m_song.SongGetActiveTrack();
+	int track=g_Song.SongGetActiveTrack();
 	pCmdUI->Enable( (track>=0) );
 }
 
 void CRmtView::OnTrackInfoaboutusingofactualtrack() 
 {
-	m_song.TrackInfo(m_song.SongGetActiveTrack());
+	g_Song.TrackInfo(g_Song.SongGetActiveTrack());
 }
 
 void CRmtView::OnInstrumentInfo() 
 {
-	m_song.InstrInfo(m_song.GetActiveInstr());
+	g_Song.InstrInfo(g_Song.GetActiveInstr());
 }
 
 void CRmtView::OnInstrumentChange() 
 {
-	int r=m_song.InstrChange(m_song.GetActiveInstr());
+	int r=g_Song.InstrChange(g_Song.GetActiveInstr());
 	if (r) SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentClearallunusedinstruments() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 	int r=MessageBox("Are you sure you want to delete all unused instruments in any tracks?","Clear unused instruments",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
-	m_song.GetUndo()->ChangeInstrument(0,0,UETYPE_INSTRSALL);
+	g_Undo.ChangeInstrument(0,0,UETYPE_INSTRSALL);
 
-	int clearedinstrs = m_song.ClearAllInstrumentsUnusedInAnyTrack();
+	int clearedinstrs = g_Song.ClearAllInstrumentsUnusedInAnyTrack();
 	CString s;
 	s.Format("Deleted %i unused instruments.",clearedinstrs);
 	MessageBox((LPCTSTR)s,"Clear unused instruments",MB_OK);
@@ -2857,23 +2948,23 @@ void CRmtView::OnInstrumentClearallunusedinstruments()
 void CRmtView::OnInstrAllinstrumentscleanup() 
 {
 	//Delete all instruments
-	m_song.Stop();
+	g_Song.Stop();
 
 	int r=MessageBox("WARNING:\nAre you sure you want to cleanup all the instruments?","All instruments cleanup",MB_YESNO | MB_ICONWARNING);
 	if (r==IDYES)
 	{
-		m_song.GetUndo()->ChangeInstrument(0,0,UETYPE_INSTRSALL);
+		g_Undo.ChangeInstrument(0,0,UETYPE_INSTRSALL);
 
-		m_song.GetInstruments()->InitInstruments();
+		g_Instruments.InitInstruments();
 		SCREENUPDATE;
 	}
 }
 
 void CRmtView::OnSongTracksorderchange() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 
-	m_song.TracksOrderChange();
+	g_Song.TracksOrderChange();
 	SCREENUPDATE;
 }
 
@@ -2884,45 +2975,45 @@ void CRmtView::OnUpdateSongSongswitch4_8(CCmdUI* pCmdUI)
 
 void CRmtView::OnSongSongswitch4_8() 
 {
-	m_song.Stop();
-	m_song.Songswitch4_8((g_tracks4_8<=4)? 8 : 4);
+	g_Song.Stop();
+	g_Song.Songswitch4_8((g_tracks4_8<=4)? 8 : 4);
 	SCREENUPDATE;
 }
 
 void CRmtView::OnSongSongchangemaximallengthoftracks() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 
-	int ma=m_song.GetEffectiveMaxtracklen();
+	int ma=g_Song.GetEffectiveMaxtracklen();
 
 	CChangeMaxtracklenDlg dlg;
-	dlg.m_info.Format("Current value: %i\nComputed effective value for current song: %i",m_song.GetTracks()->m_maxtracklen,ma);
+	dlg.m_info.Format("Current value: %i\nComputed effective value for current song: %i",g_Tracks.m_maxtracklen,ma);
 	dlg.m_maxtracklen=ma;
 	if (dlg.DoModal()==IDOK)
 	{
 		//Undo
-		m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
+		g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL);
 		ma=dlg.m_maxtracklen;
-		m_song.ChangeMaxtracklen(ma);
+		g_Song.ChangeMaxtracklen(ma);
 		SCREENUPDATE;
 	}
 }
 
 void CRmtView::OnSongSearchandrebuildloopsinalltracks() 
 {
-	m_song.Stop();	//stop music
+	g_Song.Stop();	//stop music
 
 	int r=MessageBox("Are you sure you want to search and rebuild wise loops in all tracks?","Search and rebuild loops",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
-	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
+	g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL);
 
 	//first unpack all existing loops
 	int tracksmodified=0,loopsexpanded=0;
-	m_song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
+	g_Song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
 	//and now search all and create loops again
 	int optitracks=0,optibeats=0;
-	m_song.TracksAllBuildLoops(optitracks,optibeats);
+	g_Song.TracksAllBuildLoops(optitracks,optibeats);
 	CString s;
 	s.Format("Found and rebuilt loops in %i tracks (%i beats/lines).",optitracks,optibeats);
 	MessageBox((LPCTSTR)s,"Search and rebuild loops",MB_OK);
@@ -2931,15 +3022,15 @@ void CRmtView::OnSongSearchandrebuildloopsinalltracks()
 
 void CRmtView::OnSongExpandloopsinalltracks() 
 {
-	m_song.Stop();	//stop music
+	g_Song.Stop();	//stop music
 
 	int r=MessageBox("Are you sure you want to expand loops in all tracks?","Expand loops",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
-	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL);
+	g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL);
 
 	int tracksmodified=0,loopsexpanded=0;
-	m_song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
+	g_Song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
 	CString s;
 	s.Format("Found and expanded loops in %i tracks (%i beats/lines).",tracksmodified,loopsexpanded);
 	MessageBox((LPCTSTR)s,"Expand loops",MB_OK);
@@ -2949,48 +3040,48 @@ void CRmtView::OnSongExpandloopsinalltracks()
 void CRmtView::OnSongSizeoptimization() 
 {
 	//ALL size optimalizations
-	m_song.Stop();	//stop music
+	g_Song.Stop();	//stop music
 
 	int r=MessageBox("Are you sure you want to delete all tracks and instruments unused in song,\ntruncate unused tracks and rebuild wise tracks loops,\ndelete all duplicated tracks, renumber all tracks and instruments\nand change maximal tracks length to effective computed value?","All size optimizations",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
 	if (r!=IDYES) return;
 
-	m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
-	m_song.GetUndo()->ChangeInstrument(0,0,UETYPE_INSTRSALL,-1);
-	m_song.GetUndo()->ChangeSong(0,0,UETYPE_SONGDATA,1);
+	g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
+	g_Undo.ChangeInstrument(0,0,UETYPE_INSTRSALL,-1);
+	g_Undo.ChangeSong(0,0,UETYPE_SONGDATA,1);
 
 	int chmaxtl=0;
 	//first unpack all existing loops
 	int tracksmodified=0,loopsexpanded=0;
-	m_song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
+	g_Song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
 	//find the effective length of maxtracklen and shorten it if necessary
-	int maxtracklen = m_song.GetTracks()->m_maxtracklen;
-	int effemaxtracklen = m_song.GetEffectiveMaxtracklen();
+	int maxtracklen = g_Tracks.m_maxtracklen;
+	int effemaxtracklen = g_Song.GetEffectiveMaxtracklen();
 	if (effemaxtracklen<maxtracklen)
 	{
-		m_song.ChangeMaxtracklen(effemaxtracklen);
+		g_Song.ChangeMaxtracklen(effemaxtracklen);
 		chmaxtl=1;
 	}
 	//now it will back up
 	int optitracks=0,optibeats=0;
-	m_song.TracksAllBuildLoops(optitracks,optibeats);
+	g_Song.TracksAllBuildLoops(optitracks,optibeats);
 	//and until the end, don't use the tracks and their parts
 	int clearedtracks=0,truncatedtracks=0,truncatedbeats=0;
-	m_song.SongClearUnusedTracksAndParts(clearedtracks,truncatedtracks,truncatedbeats);
+	g_Song.SongClearUnusedTracksAndParts(clearedtracks,truncatedtracks,truncatedbeats);
 
 	//and only now (after clearing unused tracks) it will remove unused instruments
 	int clearedinstruments;
-	clearedinstruments = m_song.ClearAllInstrumentsUnusedInAnyTrack();
+	clearedinstruments = g_Song.ClearAllInstrumentsUnusedInAnyTrack();
 
 	//and now it eliminates double tracks and corrects their occurrences in the song
 	//(may have been created by previous edits)
 	int duplicatedtracks;
-	duplicatedtracks = m_song.SongClearDuplicatedTracks();
+	duplicatedtracks = g_Song.SongClearDuplicatedTracks();
 
 	//now refines the tracks (to remove any gaps)
-	m_song.RenumberAllTracks(1);
+	g_Song.RenumberAllTracks(1);
 
 	//and now refines the instruments (to remove any gaps)
-	m_song.RenumberAllInstruments(1);
+	g_Song.RenumberAllInstruments(1);
 
 	CString s;
 	s.Format("Deleted %i unused tracks, %i unused instruments,\ntruncated %i tracks (%i beats/lines),\nfound and rebuilt loops in %i tracks (%i beats/lines),\ndeleted %i duplicated tracks.",clearedtracks,clearedinstruments,truncatedtracks,truncatedbeats,optitracks,optibeats,duplicatedtracks);
@@ -3006,30 +3097,30 @@ void CRmtView::OnSongSizeoptimization()
 
 void CRmtView::OnTrackRenumberalltracks() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 
 	CRenumberTracksDlg dlg;
 	if (dlg.DoModal()==IDOK)
 	{
 		//hide the tracks and song
-		m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
-		m_song.GetUndo()->ChangeSong(0,0,UETYPE_SONGDATA,1);
-		m_song.RenumberAllTracks( dlg.m_radio );	//type=1...order by songcolumns, type=2...order by songlines
+		g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
+		g_Undo.ChangeSong(0,0,UETYPE_SONGDATA,1);
+		g_Song.RenumberAllTracks( dlg.m_radio );	//type=1...order by songcolumns, type=2...order by songlines
 		SCREENUPDATE;
 	}
 }
 
 void CRmtView::OnInstrumentRenumberallinstruments() 
 {
-	m_song.Stop();
+	g_Song.Stop();
 
 	CRenumberInstrumentsDlg dlg;
 	if (dlg.DoModal()==IDOK)
 	{
 		//hide instruments and tracks
-		m_song.GetUndo()->ChangeInstrument(0,0,UETYPE_INSTRSALL,-1);
-		m_song.GetUndo()->ChangeTrack(0,0,UETYPE_TRACKSALL,1);
-		m_song.RenumberAllInstruments( dlg.m_radio );	//type=1...remove gaps, 2=order by using in tracks, type=3...order by instrument names
+		g_Undo.ChangeInstrument(0,0,UETYPE_INSTRSALL,-1);
+		g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL,1);
+		g_Song.RenumberAllInstruments( dlg.m_radio );	//type=1...remove gaps, 2=order by using in tracks, type=3...order by instrument names
 		SCREENUPDATE;
 	}
 }
@@ -3059,12 +3150,12 @@ BOOL CRmtView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 
 void CRmtView::OnUndoUndo() 
 {
-	if (m_song.Undo()) SCREENUPDATE;
+	if (g_Song.Undo()) SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateUndoUndo(CCmdUI* pCmdUI) 
 {
-	int u = m_song.UndoGetUndoSteps();
+	int u = g_Song.UndoGetUndoSteps();
 	if (u>0)
 	{
 		pCmdUI->Enable(1);
@@ -3081,12 +3172,12 @@ void CRmtView::OnUpdateUndoUndo(CCmdUI* pCmdUI)
 
 void CRmtView::OnUndoRedo() 
 {
-	if (m_song.Redo()) SCREENUPDATE;
+	if (g_Song.Redo()) SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateUndoRedo(CCmdUI* pCmdUI) 
 {
-	int u = m_song.UndoGetRedoSteps();
+	int u = g_Song.UndoGetRedoSteps();
 	if (u>0)
 	{
 		pCmdUI->Enable(1);
@@ -3103,31 +3194,31 @@ void CRmtView::OnUpdateUndoRedo(CCmdUI* pCmdUI)
 
 void CRmtView::OnUndoClearundoredo() 
 {
-	m_song.GetUndo()->Clear();
+	g_Undo.Clear();
 }
 
 void CRmtView::OnUpdateUndoClearundoredo(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(m_song.UndoGetUndoSteps() || m_song.UndoGetRedoSteps());
+	pCmdUI->Enable(g_Song.UndoGetUndoSteps() || g_Song.UndoGetRedoSteps());
 }
 
 void CRmtView::OnWantExit() //called from the menu File/Exit ID_WANTEXIT instead of the original ID_APP_EXIT
 {
-	if ( m_song.WarnUnsavedChanges() )
+	if ( g_Song.WarnUnsavedChanges() )
 	{
 		return; //there is no exit
 	}
-	m_song.Stop();
+	g_Song.Stop();
 	g_closeapplication=1;
 	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE,0,0);
 }
 
 void CRmtView::OnTrackCursorgotothespeedcolumn() 
 {
-	if (m_song.CursorToSpeedColumn()) SCREENUPDATE;
+	if (g_Song.CursorToSpeedColumn()) SCREENUPDATE;
 }
 
 void CRmtView::OnUpdateTrackCursorgotothespeedcolumn(CCmdUI* pCmdUI) 
 {
-	pCmdUI->Enable(	g_activepart==PARTTRACKS && m_song.SongGetActiveTrack()>=0 );
+	pCmdUI->Enable(	g_activepart==PARTTRACKS && g_Song.SongGetActiveTrack()>=0 );
 }

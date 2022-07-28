@@ -7,7 +7,7 @@
 // FileNewDlg.h : header file
 //
 #include "resource.h"
-#include "r_music.h"
+#include "General.h"
 
 /////////////////////////////////////////////////////////////////////////////
 // CFileNewDlg dialog
