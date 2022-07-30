@@ -26,6 +26,7 @@ CConfigDlg::CConfigDlg(CWnd* pParent /*=NULL*/)
 	m_scaling_percentage = 100;
 	m_tuning = 0;
 	m_ntsc = FALSE;
+	m_doSmoothScrolling = TRUE;
 	m_displayflatnotes = FALSE;
 	m_usegermannotation = FALSE;
 	m_midi_NoteOff = FALSE;
@@ -59,6 +60,7 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_DISPLAYFLATNOTES, m_displayflatnotes);
 	DDX_Check(pDX, IDC_USEGERMANNOTATION, m_usegermannotation);
 	DDX_Check(pDX, IDC_NTSC, m_ntsc);
+	DDX_Check(pDX, IDC_SMOOTH_SCROLL, m_doSmoothScrolling);
 	DDX_Check(pDX, IDC_MIDI_NOTEOFF, m_midi_NoteOff);
 	DDX_Check(pDX, IDC_KEYBOARD_UPDOWNCONTINUE, m_keyboard_updowncontinue);
 	DDX_Check(pDX, IDC_NOHWSOUNDBUFFER, m_nohwsoundbuffer);

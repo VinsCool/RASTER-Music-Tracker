@@ -18,7 +18,6 @@ BOOL CInstruments::DrawInstrument(int it)
 {
 	int i;
 	char s[128];
-	int sp = g_scaling_percentage;
 
 	TInstrument& t = m_instr[it];
 
@@ -51,8 +50,8 @@ BOOL CInstruments::DrawInstrument(int it)
 	{
 		TextXY(shenv[0].name, shenv[0].xpos, shenv[0].ypos, TEXT_COLOR_WHITE); //"VOLUME R:"
 		TextDownXY("\x0e\x0e\x0e\x0e", INSTRS_EX + 11 * 8 - 1, INSTRS_EY - 2 * 16, TEXT_COLOR_GRAY);
-		g_mem_dc->MoveTo(((INSTRS_EX + 12 * 8 - 1) * sp) / 100, ((INSTRS_EY + 2 * 16 - 1) * sp) / 100);
-		g_mem_dc->LineTo(((INSTRS_EX + 12 * 8 + ENVCOLS * 8) * sp) / 100, ((INSTRS_EY + 2 * 16 - 1) * sp) / 100);
+		g_mem_dc->MoveTo(SCALE(INSTRS_EX + 12 * 8 - 1), SCALE(INSTRS_EY + 2 * 16 - 1));
+		g_mem_dc->LineTo(SCALE(INSTRS_EX + 12 * 8 + ENVCOLS * 8), SCALE(INSTRS_EY + 2 * 16 - 1));
 	}
 
 	for (i = 0; i < NUMBEROFPARS; i++) DrawPar(i, it);
@@ -106,8 +105,8 @@ BOOL CInstruments::DrawInstrument(int it)
 	}
 
 	//delimitation of space for Envelope VOLUME
-	g_mem_dc->MoveTo(((INSTRS_EX + 12 * 8 - 1) * sp) / 100, ((INSTRS_EY + 7 * 16 - 1) * sp) / 100);
-	g_mem_dc->LineTo(((INSTRS_EX + 12 * 8 + ENVCOLS * 8) * sp) / 100, ((INSTRS_EY + 7 * 16 - 1) * sp) / 100);
+	g_mem_dc->MoveTo(SCALE(INSTRS_EX + 12 * 8 - 1), SCALE(INSTRS_EY + 7 * 16 - 1));
+	g_mem_dc->LineTo(SCALE(INSTRS_EX + 12 * 8 + ENVCOLS * 8), SCALE(INSTRS_EY + 7 * 16 - 1));
 
 	//boundaries of all parts of the instrument
 	/*
@@ -118,7 +117,7 @@ BOOL CInstruments::DrawInstrument(int it)
 	g_mem_dc->FrameRect(CRect(INSTRS_TX-2,INSTRS_TY-2,INSTRS_TX+54*8+4,INSTRS_TY+2*16+8),&br);
 	*/
 
-	if (!g_viewinstractivehelp) return 1; //does not want help => end
+	if (!g_viewInstrumentEditHelp) return 1; //does not want help => end
 	//want help => continue
 
 //separating line
@@ -245,7 +244,6 @@ BOOL CInstruments::DrawName(int it)
 
 BOOL CInstruments::DrawPar(int p, int it)
 {
-	int sp = g_scaling_percentage;
 	char s[2];
 	s[1] = 0;
 	char* txt = shpar[p].name;
@@ -258,7 +256,7 @@ BOOL CInstruments::DrawPar(int p, int it)
 	for (int i = 0; a = (txt[i]); i++, x += 8)
 	{
 		//necessary! this is a custom textxy function for displaying instruments...
-		g_mem_dc->StretchBlt((x * sp) / 100, (y * sp) / 100, (8 * sp) / 100, (16 * sp) / 100, g_gfx_dc, (a & 0x7f) << 3, color, 8, 16, SRCCOPY);
+		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (a & 0x7f) << 3, color, 8, 16, SRCCOPY);
 	}
 
 	//if the cursor is on the main parameters
@@ -455,7 +453,6 @@ BOOL CInstruments::GetInstrArea(int instr, int zone, CRect& rect)
 
 void CInstruments::DrawEnv(int e, int it)
 {
-	int sp = g_scaling_percentage;
 	TInstrument& in = m_instr[it];
 	int volR = in.env[e][ENV_VOLUMER] & 0x0f; //volume right
 	int volL = in.env[e][ENV_VOLUMEL] & 0x0f; //volume left/mono
@@ -470,9 +467,9 @@ void CInstruments::DrawEnv(int e, int it)
 		RGB(128, 255, 255) : RGB(255, 255, 255);
 
 	//volume column
-	if (volL) g_mem_dc->FillSolidRect((x * sp) / 100, ((INSTRS_EY + 3 * 16 + 4 + 4 * (15 - volL)) * sp) / 100, (8 * sp) / 100, ((volL * 4) * sp) / 100, fillColor);
+	if (volL) g_mem_dc->FillSolidRect(SCALE(x), SCALE(INSTRS_EY + 3 * 16 + 4 + 4 * (15 - volL)), SCALE(8), SCALE(volL * 4), fillColor);
 
-	if (g_tracks4_8 > 4 && volR) g_mem_dc->FillSolidRect((x * sp) / 100, ((INSTRS_EY - 2 * 16 + 4 + 4 * (15 - volR)) * sp) / 100, (8 * sp) / 100, ((volR * 4) * sp) / 100, fillColor);
+	if (g_tracks4_8 > 4 && volR) g_mem_dc->FillSolidRect(SCALE(x), SCALE(INSTRS_EY - 2 * 16 + 4 + 4 * (15 - volR)), SCALE(8), SCALE(volR * 4), fillColor);
 
 	for (int j = 0; j < 8; j++)
 	{

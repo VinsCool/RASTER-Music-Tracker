@@ -45,9 +45,9 @@ public:
 	void DrawSong();				// Draw the song line info on the right
 	BOOL DrawTracks();
 	BOOL DrawInstrument();
-	BOOL DrawInfo();			//top left corner
-	BOOL DrawAnalyzer(CDC* pDC);
-	BOOL DrawPlaytimecounter(CDC* pDC);
+	void DrawInfo();			//top left corner
+	void DrawAnalyzer(CDC* pDC = NULL);
+	void DrawPlayTimeCounter(CDC* pDC = NULL);
 
 	BOOL InfoKey(int vk, int shift, int control);
 	BOOL InfoCursorGotoSongname(int x);
@@ -288,7 +288,7 @@ private:
 	double e_divisor = 1;
 	double e_pitch = 0;
 
-	int m_infoact;
+	int m_infoact;						// Which part of the info area is active for editing: 0 = name, 
 	char m_songname[SONGNAMEMAXLEN + 1];
 	int m_songnamecur;
 

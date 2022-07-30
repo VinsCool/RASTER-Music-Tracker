@@ -137,11 +137,13 @@ int CSong::WarnUnsavedChanges()
 	return 0;
 }
 
-
-BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
+/// <summary>
+/// Draw a volume analyser above each track
+/// </summary>
+/// <param name="pDC"></param>
+void CSong::DrawAnalyzer(CDC* pDC)
 {
-	if (!g_viewanalyzer) return 0;	//the analyser won't be displayed without the setting enabled first
-	int sp = g_scaling_percentage;
+	if (!g_viewVolumeAnalyzer) return;	//the analyser won't be displayed without the setting enabled first
 
 	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == PART_TRACKS) ? 1420 : 960;
 	int MINIMAL_WIDTH_INSTRUMENTS = (g_tracks4_8 > 4 && g_active_ti == PART_INSTRUMENTS) ? 1220 : 1220;
@@ -157,8 +159,8 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 	if (g_width < MINIMAL_WIDTH_TRACKS && g_active_ti == PART_TRACKS) DEBUG_POKEY = DEBUG_MEMORY = 0;
 	if (g_width < MINIMAL_WIDTH_INSTRUMENTS && g_active_ti == PART_INSTRUMENTS) DEBUG_POKEY = DEBUG_MEMORY = 0;
 
-#define ANALYZER_X	(TRACKS_X+6*8+4) 
-#define ANALYZER_Y	(TRACKS_Y-8) 
+#define ANALYZER_X	(TRACKS_X+6*8+4)		// 68
+#define ANALYZER_Y	(TRACKS_Y-8)			// Line 8 = 128
 #define ANALYZER_S	6 
 #define ANALYZER_H	5 
 #define ANALYZER_HP	8 
@@ -177,29 +179,31 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 //
 
 
-
-#define Hook1(g1,g2)																						\
-	{																										\
-		g_mem_dc->MoveTo(((ANALYZER_X+2+ANALYZER_S*15/2+16*8*(g1))*sp)/100,((ANALYZER_Y-1)*sp)/100);		\
-		g_mem_dc->LineTo(((ANALYZER_X+2+ANALYZER_S*15/2+16*8*(g1))*sp)/100,((ANALYZER_Y-yu)*sp)/100); 		\
-		g_mem_dc->LineTo(((ANALYZER_X+2+ANALYZER_S*15/2+16*8*(g2))*sp)/100,((ANALYZER_Y-yu)*sp)/100);		\
-		g_mem_dc->LineTo(((ANALYZER_X+2+ANALYZER_S*15/2+16*8*(g2))*sp)/100,(ANALYZER_Y*sp)/100);			\
+// Draw a bridge between two columns (on the tracks view)
+#define Hook1(g1,g2)																				\
+	{																								\
+		g_mem_dc->MoveTo(SCALE(ANALYZER_X+2+ANALYZER_S*15/2+16*8*(g1)),SCALE(ANALYZER_Y-1));		\
+		g_mem_dc->LineTo(SCALE(ANALYZER_X+2+ANALYZER_S*15/2+16*8*(g1)),SCALE(ANALYZER_Y-yUp)); 		\
+		g_mem_dc->LineTo(SCALE(ANALYZER_X+2+ANALYZER_S*15/2+16*8*(g2)),SCALE(ANALYZER_Y-yUp));		\
+		g_mem_dc->LineTo(SCALE(ANALYZER_X+2+ANALYZER_S*15/2+16*8*(g2)),SCALE(ANALYZER_Y));			\
 	}
-#define Hook2(g1,g2)																						\
-	{																										\
-		g_mem_dc->MoveTo(((ANALYZER2_X+ANALYZER2_S*15/2+3*8*(g1))*sp)/100,((ANALYZER_Y-120-1)*sp)/100);		\
-		g_mem_dc->LineTo(((ANALYZER2_X+ANALYZER2_S*15/2+3*8*(g1))*sp)/100,((ANALYZER_Y-120-yu)*sp)/100);	\
-		g_mem_dc->LineTo(((ANALYZER2_X+ANALYZER2_S*15/2+3*8*(g2))*sp)/100,((ANALYZER_Y-120-yu)*sp)/100);	\
-		g_mem_dc->LineTo(((ANALYZER2_X+ANALYZER2_S*15/2+3*8*(g2))*sp)/100,((ANALYZER_Y-120)*sp)/100);		\
+
+// Draw a bridge between two columns (on the instrument view)
+#define Hook2(g1,g2)																				\
+	{																								\
+		g_mem_dc->MoveTo(SCALE(ANALYZER2_X+ANALYZER2_S*15/2+3*8*(g1)),SCALE(ANALYZER_Y-120-1));		\
+		g_mem_dc->LineTo(SCALE(ANALYZER2_X+ANALYZER2_S*15/2+3*8*(g1)),SCALE(ANALYZER_Y-120-yUp));	\
+		g_mem_dc->LineTo(SCALE(ANALYZER2_X+ANALYZER2_S*15/2+3*8*(g2)),SCALE(ANALYZER_Y-120-yUp));	\
+		g_mem_dc->LineTo(SCALE(ANALYZER2_X+ANALYZER2_S*15/2+3*8*(g2)),SCALE(ANALYZER_Y-120));		\
 	}
 
 	int audf, audf2, audf3, audf16, audc, audc2, audctl, skctl, pitch, dist, vol, vol2;
-	static int idx[8] = { 0xd200,0xd202,0xd204,0xd206,0xd210,0xd212,0xd214,0xd216 };	//AUDF and AUDC
+	static int idx[8] = { 0xd200,0xd202,0xd204,0xd206,0xd210,0xd212,0xd214,0xd216 };	// AUDF and AUDC for mono and stereo
 	static int idx2[2] = { 0xd208,0xd218 };	//AUDCTL and SKCTL
 	int col[8];
 	int R[8];
 	int G[8];
-	int yu = 7;
+	int yUp = 7;
 	for (int i = 0; i < g_tracks4_8; i++) { col[i] = 102; R[i] = 44; G[i] = 60; }
 	int a;
 	int b;
@@ -207,98 +211,131 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 
 	if (g_active_ti == PART_TRACKS) //bigger look for track edit mode
 	{
-		g_mem_dc->FillSolidRect((ANALYZER_X * sp) / 100, ((ANALYZER_Y - ANALYZER_HP) * sp) / 100, ((g_tracks4_8 * 16 * 8 - 34) * sp) / 100, ((ANALYZER_H + ANALYZER_HP) * sp) / 100, RGBBACKGROUND);
+		// In tracks drawing mode
+		// Draw bridge connections between channels. For each connection we move 2 pixels up.
+		// Max rise is 10 pixels
 
-		a = g_atarimem[0xd208]; //audctl1
-		if (a & 0x04) { col[2] = COL_BLOCK; Hook1(0, 2); yu -= 2; }
-		if (a & 0x02) { col[3] = COL_BLOCK;	Hook1(1, 3); yu -= 2; }
-		if (a & 0x10) { col[0] = COL_BLOCK;	Hook1(0, 1); yu -= 2; }
-		if (a & 0x08) { col[2] = COL_BLOCK;	Hook1(2, 3); yu -= 2; }
+		// Clear the area where the analyser is to be drawn
+		g_mem_dc->FillSolidRect(SCALE(ANALYZER_X), SCALE(ANALYZER_Y - ANALYZER_HP), SCALE(g_tracks4_8 * 16 * 8 - 34), SCALE(ANALYZER_H + ANALYZER_HP), RGB_BACKGROUND);
 
-		b = g_atarimem[0xd20f]; //skctl1
-		if (b == 0x8b) { col[1] = COL_BLOCK; Hook1(0, 1); yu -= 2; }
-		yu = 7;
+		// Left/Mono Channel
+		// Draw which channels are joined by highpass filters or normal channel join
+		a = g_atarimem[0xd208]; // AUDCTL @ $D208
+		if (a & 0x04) { col[2] = COL_BLOCK; Hook1(0, 2); yUp -= 2; }	// High pass filter on channel 1, clocked by channel 3
+		if (a & 0x02) { col[3] = COL_BLOCK;	Hook1(1, 3); yUp -= 2; }	// High pass filter on channel 3, clocked by channel 4
+		if (a & 0x10) { col[0] = COL_BLOCK;	Hook1(0, 1); yUp -= 2; }	// Join channels 1 + 2 (16 bit)
+		if (a & 0x08) { col[2] = COL_BLOCK;	Hook1(2, 3); yUp -= 2; }	// Join channels 3 + 4 (16 bit)
 
-		a = g_atarimem[0xd218]; //audctl2
-		if (a & 0x04) { col[2 + 4] = COL_BLOCK; Hook1(0 + 4, 2 + 4); yu -= 2; }
-		if (a & 0x02) { col[3 + 4] = COL_BLOCK; Hook1(1 + 4, 3 + 4); yu -= 2; }
-		if (a & 0x10) { col[0 + 4] = COL_BLOCK; Hook1(0 + 4, 1 + 4); yu -= 2; }
-		if (a & 0x08) { col[2 + 4] = COL_BLOCK; Hook1(2 + 4, 3 + 4); yu -= 2; }
+		b = g_atarimem[0xd20f]; // SKCTL @ $D20F
+		if (b == 0x8b) { col[1] = COL_BLOCK; Hook1(0, 1); yUp -= 2; }	// Two tone mode (join channel 1 + 2)
+		yUp = 7;
 
-		b = g_atarimem[0xd21f]; //skctl2
-		if (b == 0x8b) { col[1 + 4] = COL_BLOCK; Hook1(0 + 4, 1 + 4); yu -= 2; }
+		// Stereo Channel
+		a = g_atarimem[0xd218]; // AUDCTL2 @ $D218
+		if (a & 0x04) { col[2 + 4] = COL_BLOCK; Hook1(0 + 4, 2 + 4); yUp -= 2; }	// High pass filter on channel 5 clocked by channel 7
+		if (a & 0x02) { col[3 + 4] = COL_BLOCK; Hook1(1 + 4, 3 + 4); yUp -= 2; }	// High pass filter on channel 7, clocked by channel 8
+		if (a & 0x10) { col[0 + 4] = COL_BLOCK; Hook1(0 + 4, 1 + 4); yUp -= 2; }	// Join channels 5 + 6 (16 bit)
+		if (a & 0x08) { col[2 + 4] = COL_BLOCK; Hook1(2 + 4, 3 + 4); yUp -= 2; }	// Join channels 7 + 8 (16 bit)
 
-		for (int i = 0; i < g_tracks4_8; i++)
+		b = g_atarimem[0xd21f]; // SKCTL2 @ $D21F
+		if (b == 0x8b) { col[1 + 4] = COL_BLOCK; Hook1(0 + 4, 1 + 4); yUp -= 2; }	// Two tone mode (join channel 5 + 6)
+
+		for (int channelNr = 0; channelNr < g_tracks4_8; channelNr++)
 		{
-			audf = g_atarimem[idx[i]];
-			audc = g_atarimem[idx[i] + 1];
-			int skctl1 = g_atarimem[0xd20f];
-			int skctl2 = g_atarimem[0xd21f];
-			vol = audc & 0x0f;
-			a = i * 16 * 8;
+			audf = g_atarimem[idx[channelNr]];		// Get the frequency
+			audc = g_atarimem[idx[channelNr] + 1];	// Get audio control, Bits: 0-3 = volume, 4 = Volume only, 5-7 = Distortion
+			int skctl1 = g_atarimem[0xd20f];		// Two tone mode Mono
+			int skctl2 = g_atarimem[0xd21f];		// Two tone mode Stereo
+			
+			vol = audc & 0x0f;						// Volume in lower nibble 
+			a = channelNr * 16 * 8;					// X offset
 
-			g_mem_dc->FillSolidRect(((ANALYZER_X + a + 2) * sp) / 100, (ANALYZER_Y * sp) / 100, ((15 * ANALYZER_S) * sp) / 100, (ANALYZER_H * sp) / 100, RGB(R[i], G[i], col[i]));
+			// Draw the background box of the volume analyser for this channel
+			// 15 unit wide, each unit is 6 pixels (ANALYZER_S)
+			// Default color is RGB(44, 60, 102) - Dark blue
+			g_mem_dc->FillSolidRect(SCALE(ANALYZER_X + a + 2), SCALE(ANALYZER_Y), SCALE(15 * ANALYZER_S), SCALE(ANALYZER_H), RGB(R[channelNr], G[channelNr], col[channelNr]));
 
-			acol = GetChannelOnOff(i) ? ((audc & 0x10) ? RGBVOLUMEONLY : RGBNORMAL) : RGBMUTE;
+			// Determine the color of the channels volume bar: Normal, mute or Volume only
+			acol = GetChannelOnOff(channelNr) ? ((audc & 0x10) ? RGB_VOLUME_ONLY : RGB_NORMAL) : RGB_MUTE;
 
-			if (GetChannelOnOff(i) && ((skctl1 == 0x8b && i == 0) || (skctl2 == 0x8b && i == 4))) acol = RGBTWOTONE;
-			if (vol) g_mem_dc->FillSolidRect(((ANALYZER_X + a + 3 + (15 - vol) * ANALYZER_S / 2) * sp) / 100, (ANALYZER_Y * sp) / 100, ((vol * ANALYZER_S) * sp) / 100, (ANALYZER_H * sp) / 100, acol);
+			// Check if its a two tone channel (1 or 5)
+			if (GetChannelOnOff(channelNr) && ((skctl1 == 0x8b && channelNr == 0) || (skctl2 == 0x8b && channelNr == 4))) acol = RGB_TWO_TONE;
 
-			if (g_viewpokeyregs)
+			// Draw the volume bar in the selected color
+			if (vol) g_mem_dc->FillSolidRect(SCALE(ANALYZER_X + a + 3 + (15 - vol) * ANALYZER_S / 2), SCALE(ANALYZER_Y), SCALE(vol * ANALYZER_S), SCALE(ANALYZER_H), acol);
+
+			// Draw the frequency and audio control numbers for this channel
+			if (g_viewPokeyRegisters)
 			{
 				NumberMiniXY(audf, ANALYZER_X + 10 + a + 17, ANALYZER_Y - 8, TEXT_MINI_COLOR_GRAY);
 				NumberMiniXY(audc, ANALYZER_X + 36 + a + 17, ANALYZER_Y - 8, TEXT_MINI_COLOR_GRAY);
 			}
 		}
-		if (g_viewpokeyregs)
+		if (g_viewPokeyRegisters)
 		{
-			NumberMiniXY(g_atarimem[0xd208], ANALYZER_X + 23 + 1 * 8 * 16 + 80, ANALYZER_Y - 8);
-			if (g_tracks4_8 > 4) NumberMiniXY(g_atarimem[0xd218], ANALYZER_X + 23 + 5 * 8 * 16 + 80, ANALYZER_Y - 8);
-			NumberMiniXY(g_atarimem[0xd20f], ANALYZER_X + 23 + 1 * 8 * 16 + 80, ANALYZER_Y - 0);
-			if (g_tracks4_8 > 4) NumberMiniXY(g_atarimem[0xd21f], ANALYZER_X + 23 + 5 * 8 * 16 + 80, ANALYZER_Y - 0);
+			// Draw the AUDCTL (audio control) register value
+			NumberMiniXY(g_atarimem[0xd208], ANALYZER_X + 23 + 1 * 8 * 16 + 80, ANALYZER_Y - 8);						// Mono
+			if (g_tracks4_8 > 4) NumberMiniXY(g_atarimem[0xd218], ANALYZER_X + 23 + 5 * 8 * 16 + 80, ANALYZER_Y - 8);	// Stereo
+
+			// Draw the SKCTL (Two tone control/Serial port control) register value
+			NumberMiniXY(g_atarimem[0xd20f], ANALYZER_X + 23 + 1 * 8 * 16 + 80, ANALYZER_Y - 0);						// Mono
+			if (g_tracks4_8 > 4) NumberMiniXY(g_atarimem[0xd21f], ANALYZER_X + 23 + 5 * 8 * 16 + 80, ANALYZER_Y - 0);	// Stereo
 		}
-		if (pDC) pDC->BitBlt((ANALYZER_X * sp) / 100, ((ANALYZER_Y - ANALYZER_HP) * sp) / 100, ((g_tracks4_8 * 16 * 8 - 8) * sp) / 100, ((ANALYZER_H + ANALYZER_HP + 4) * sp) / 100, g_mem_dc, (ANALYZER_X * sp) / 100, ((ANALYZER_Y - ANALYZER_HP) * sp) / 100, SRCCOPY);
+		if (pDC) pDC->BitBlt(SCALE(ANALYZER_X), SCALE(ANALYZER_Y - ANALYZER_HP), SCALE(g_tracks4_8 * 16 * 8 - 8), SCALE(ANALYZER_H + ANALYZER_HP + 4), g_mem_dc, SCALE(ANALYZER_X), SCALE(ANALYZER_Y - ANALYZER_HP), SRCCOPY);
 	}
-	else
-		if (g_active_ti == PART_INSTRUMENTS) //smaller appearance for instrument edit mode
+	else if (g_active_ti == PART_INSTRUMENTS) //smaller appearance for instrument edit mode
+	{
+		// In instrument drawing mode
+
+		// Clear the area where the mini volume controls are to be drawn
+		g_mem_dc->FillSolidRect(SCALE(ANALYZER2_X), SCALE(ANALYZER2_Y - ANALYZER2_HP), SCALE(g_tracks4_8 * 3 * 8 - 8), SCALE(ANALYZER2_H + ANALYZER2_HP), RGB_BACKGROUND);
+
+		// Left / Mono Channel
+		// Draw which channels are joined by highpass filters or normal channel join
+		a = g_atarimem[0xd208]; // AUDCTL @ $D208
+		if (a & 0x04) { col[2] = COL_BLOCK; Hook2(0, 2); yUp -= 2; }	// High pass filter on channel 1, clocked by channel 3
+		if (a & 0x02) { col[3] = COL_BLOCK;	Hook2(1, 3); yUp -= 2; }	// High pass filter on channel 3, clocked by channel 4
+		if (a & 0x10) { col[0] = COL_BLOCK;	Hook2(0, 1); yUp -= 2; }	// Join channels 1 + 2 (16 bit)
+		if (a & 0x08) { col[2] = COL_BLOCK;	Hook2(2, 3); yUp -= 2; }	// Join channels 3 + 4 (16 bit)
+
+		b = g_atarimem[0xd20f]; // SKCTL @ $D20F
+		if (b == 0x8b) { col[1] = COL_BLOCK; Hook2(0, 1); yUp -= 2; }	// Two tone mode (join channel 1 + 2)
+		yUp = 7;
+
+		// Stereo Channel
+		a = g_atarimem[0xd218]; // AUDCTL2 @ $D218
+		if (a & 0x04) { col[2 + 4] = COL_BLOCK; Hook2(0 + 4, 2 + 4); yUp -= 2; }	// High pass filter on channel 5 clocked by channel 7
+		if (a & 0x02) { col[3 + 4] = COL_BLOCK; Hook2(1 + 4, 3 + 4); yUp -= 2; }	// High pass filter on channel 7, clocked by channel 8
+		if (a & 0x10) { col[0 + 4] = COL_BLOCK; Hook2(0 + 4, 1 + 4); yUp -= 2; }	// Join channels 5 + 6 (16 bit)
+		if (a & 0x08) { col[2 + 4] = COL_BLOCK; Hook2(2 + 4, 3 + 4); yUp -= 2; }	// Join channels 7 + 8 (16 bit)
+
+		b = g_atarimem[0xd21f]; // SKCTL2 @ $D21F
+		if (b == 0x8b) { col[1 + 4] = COL_BLOCK; Hook2(0 + 4, 1 + 4); yUp -= 2; }	// Two tone mode (join channel 5 + 6)
+
+		for (int channelNr = 0; channelNr < g_tracks4_8; channelNr++)
 		{
-			g_mem_dc->FillSolidRect((ANALYZER2_X * sp) / 100, ((ANALYZER2_Y - ANALYZER2_HP) * sp) / 100, ((g_tracks4_8 * 3 * 8 - 8) * sp) / 100, ((ANALYZER2_H + ANALYZER2_HP) * sp) / 100, RGBBACKGROUND);
+			audc = g_atarimem[idx[channelNr] + 1];	// Get the frequency
+			int skctl1 = g_atarimem[0xd20f];		// Two tone mode Mono
+			int skctl2 = g_atarimem[0xd21f];		// Two tone mode Stereo
 
-			a = g_atarimem[0xd208]; //audctl1
-			if (a & 0x04) { col[2] = COL_BLOCK; Hook2(0, 2); yu -= 2; }
-			if (a & 0x02) { col[3] = COL_BLOCK;	Hook2(1, 3); yu -= 2; }
-			if (a & 0x10) { col[0] = COL_BLOCK;	Hook2(0, 1); yu -= 2; }
-			if (a & 0x08) { col[2] = COL_BLOCK;	Hook2(2, 3); yu -= 2; }
+			vol = audc & 0x0f;						// Volume in lower nibble 
 
-			b = g_atarimem[0xd20f]; //skctl1
-			if (b == 0x8b) { col[1] = COL_BLOCK; Hook2(0, 1); yu -= 2; }
-			yu = 7;
+			// Draw the background box of the volume analyser for this channel
+			// 15 unit wide, each unit is 6 pixels (ANALYZER_S)
+			// Default color is RGB(44, 60, 102) - Dark blue
+			g_mem_dc->FillSolidRect(SCALE(ANALYZER2_X + channelNr * 3 * 8), SCALE(ANALYZER2_Y), SCALE(15 * ANALYZER2_S), SCALE(ANALYZER2_H), RGB(R[channelNr], G[channelNr], col[channelNr]));
 
-			a = g_atarimem[0xd218]; //audctl2
-			if (a & 0x04) { col[2 + 4] = COL_BLOCK; Hook2(0 + 4, 2 + 4); yu -= 2; }
-			if (a & 0x02) { col[3 + 4] = COL_BLOCK; Hook2(1 + 4, 3 + 4); yu -= 2; }
-			if (a & 0x10) { col[0 + 4] = COL_BLOCK; Hook2(0 + 4, 1 + 4); yu -= 2; }
-			if (a & 0x08) { col[2 + 4] = COL_BLOCK; Hook2(2 + 4, 3 + 4); yu -= 2; }
+			// Determine the color of the channels volume bar: Normal, mute or Volume only
+			acol = GetChannelOnOff(channelNr) ? ((audc & 0x10) ? RGB_VOLUME_ONLY : RGB_NORMAL) : RGB_MUTE;
 
-			b = g_atarimem[0xd21f]; //skctl2
-			if (b == 0x8b) { col[1 + 4] = COL_BLOCK; Hook2(0 + 4, 1 + 4); yu -= 2; }
+			// Check if its a two tone channel (1 or 5)
+			if (GetChannelOnOff(channelNr) && ((skctl1 == 0x8b && channelNr == 0) || (skctl2 == 0x8b && channelNr == 4))) acol = RGB_TWO_TONE;
 
-			for (int i = 0; i < g_tracks4_8; i++)
-			{
-				audc = g_atarimem[idx[i] + 1];
-				int skctl1 = g_atarimem[0xd20f];
-				int skctl2 = g_atarimem[0xd21f];
-				vol = audc & 0x0f;
-
-				g_mem_dc->FillSolidRect(((ANALYZER2_X + i * 3 * 8) * sp) / 100, (ANALYZER2_Y * sp) / 100, ((15 * ANALYZER2_S) * sp) / 100, (ANALYZER2_H * sp) / 100, RGB(R[i], G[i], col[i]));
-
-				acol = GetChannelOnOff(i) ? ((audc & 0x10) ? RGBVOLUMEONLY : RGBNORMAL) : RGBMUTE;
-
-				if (GetChannelOnOff(i) && ((skctl1 == 0x8b && i == 0) || (skctl2 == 0x8b && i == 4))) acol = RGBTWOTONE;
-				if (vol) g_mem_dc->FillSolidRect(((ANALYZER2_X + i * 3 * 8 + (15 - vol) * ANALYZER2_S / 2) * sp) / 100, (ANALYZER2_Y * sp) / 100, ((vol * ANALYZER2_S) * sp) / 100, (ANALYZER2_H * sp) / 100, acol);
-			}
-			if (pDC) pDC->BitBlt((ANALYZER2_X * sp) / 100, ((ANALYZER2_Y - ANALYZER2_HP) * sp) / 100, ((g_tracks4_8 * 3 * 8 - 8) * sp) / 100, ((ANALYZER2_H + ANALYZER2_HP) * sp) / 100, g_mem_dc, (ANALYZER2_X * sp) / 100, ((ANALYZER2_Y - ANALYZER2_HP) * sp) / 100, SRCCOPY);
+			// Draw the volume bar in the selected color
+			if (vol) g_mem_dc->FillSolidRect(SCALE(ANALYZER2_X + channelNr * 3 * 8 + (15 - vol) * ANALYZER2_S / 2), SCALE(ANALYZER2_Y), SCALE(vol * ANALYZER2_S), SCALE(ANALYZER2_H), acol);
 		}
+		if (pDC) pDC->BitBlt(SCALE(ANALYZER2_X), SCALE(ANALYZER2_Y - ANALYZER2_HP), SCALE(g_tracks4_8 * 3 * 8 - 8), SCALE(ANALYZER2_H + ANALYZER2_HP), g_mem_dc, SCALE(ANALYZER2_X), SCALE(ANALYZER2_Y - ANALYZER2_HP), SRCCOPY);
+	}
 	if (DEBUG_POKEY)	//detailed registers viewer
 	{
 		//AUDCTL bits
@@ -321,7 +358,7 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 		BOOL SAWTOOTH_INVERTED = 0;
 		BOOL CLOCK_179 = 0;
 
-		g_mem_dc->FillSolidRect((ANALYZER3_X * sp) / 100, (ANALYZER3_Y * sp) / 100, (680 * sp) / 100, (192 * sp) / 100, RGBBACKGROUND);
+		g_mem_dc->FillSolidRect(SCALE(ANALYZER3_X), SCALE(ANALYZER3_Y), SCALE(680), SCALE(192), RGB_BACKGROUND);
 
 		for (int i = 0; i < g_tracks4_8; i++)
 		{
@@ -395,7 +432,7 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 			PITCH = generate_freq(audc, i_audf, audctl, i);
 			snprintf(p, 10, "%9.2f", PITCH);
 
-			if (g_viewpokeyregs)
+			if (g_viewPokeyRegisters)
 			{
 				TextMiniXY("$D200: $   $     PITCH = $     (         HZ ---  +  ), VOL = $ , DIST = $ ,", ANALYZER3_X, ANALYZER3_Y + a, TEXT_MINI_COLOR_GRAY);
 				TextMiniXY("$D208: $  ", ANALYZER3_X, ANALYZER3_Y + gap2 + 48, TEXT_MINI_COLOR_GRAY);
@@ -626,11 +663,11 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 				}
 			}
 		}
-		if (pDC) pDC->BitBlt((ANALYZER3_X * sp) / 100, (ANALYZER3_Y * sp) / 100, (680 * sp) / 100, (192 * sp) / 100, g_mem_dc, (ANALYZER3_X * sp) / 100, (ANALYZER3_Y * sp) / 100, SRCCOPY);
+		if (pDC) pDC->BitBlt(SCALE(ANALYZER3_X), SCALE(ANALYZER3_Y), SCALE(680), SCALE(192), g_mem_dc, SCALE(ANALYZER3_X), SCALE(ANALYZER3_Y), SRCCOPY);
 	}
 	if (DEBUG_MEMORY)	//Atari memory display, do not use unless there is a useful purpose for it
 	{
-		g_mem_dc->FillSolidRect((ANALYZER3_X * sp) / 100, ((ANALYZER3_Y + 192) * sp) / 100, ((680 + (8 * 42)) * sp) / 100, (432 * sp) / 100, RGBBACKGROUND);
+		g_mem_dc->FillSolidRect(SCALE(ANALYZER3_X), SCALE(ANALYZER3_Y + 192), SCALE(680 + (8 * 42)), SCALE(432), RGB_BACKGROUND);
 
 		int gap = 0; int gap2 = 32; int page = 0;
 
@@ -652,9 +689,9 @@ BOOL CSong::DrawAnalyzer(CDC* pDC = NULL)
 				TextMiniXY("0XB 00", ANALYZER3_X + 8 * 12, ANALYZER3_Y + 192 + 8 * d + gap + gap2 - 8, TEXT_MINI_COLOR_WHITE);
 			}
 		}
-		if (pDC) pDC->BitBlt((ANALYZER3_X * sp) / 100, ((ANALYZER3_Y + 192) * sp) / 100, ((680 + (8 * 42)) * sp) / 100, (432 * sp) / 100, g_mem_dc, (ANALYZER3_X * sp) / 100, ((ANALYZER3_Y + 192) * sp) / 100, SRCCOPY);
+		if (pDC) pDC->BitBlt(SCALE(ANALYZER3_X), SCALE(ANALYZER3_Y + 192), SCALE(680 + (8 * 42)), SCALE(432), g_mem_dc, SCALE(ANALYZER3_X), SCALE(ANALYZER3_Y + 192), SRCCOPY);
 	}
-	return 1;
+	return;
 }
 
 /// <summary>
@@ -670,9 +707,8 @@ void CSong::DrawSong()
 	int line, i, j, k, y, t;
 	char szBuffer[32], color;
 	
-	BOOL smooth_scroll = 1;	//TODO: make smooth scrolling an option that can be saved to .ini file
+	BOOL smooth_scroll = g_viewDoSmoothScrolling;	//TODO: make smooth scrolling an option that can be saved to .ini file
 
-	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == PART_TRACKS) ? 1420 : 960;
 	int MINIMAL_WIDTH_INSTRUMENTS = (g_tracks4_8 > 4 && g_active_ti == PART_INSTRUMENTS) ? 1220 : 1220;
 	int WINDOW_OFFSET = (g_width < 1320 && g_tracks4_8 > 4 && g_active_ti == PART_TRACKS) ? -250 : 0;	//test displacement with the window size
 	int INSTRUMENT_OFFSET = (g_active_ti == PART_INSTRUMENTS && g_tracks4_8 > 4) ? -250 : 0;
@@ -788,8 +824,8 @@ void CSong::DrawSong()
 	// This gets rid of the pixels we dont want to see with smooth scrolling
 	int width = SCALE(8 * ((g_tracks4_8 == 8) ? 30 : 18));
 	int height = SCALE(32);
-	g_mem_dc->FillSolidRect(SCALE(SONG_OFFSET), 0, width, height, RGBBACKGROUND);	//top
-	g_mem_dc->FillSolidRect(SCALE(SONG_OFFSET), SCALE(linescount * 16 + 32), width, height, RGBBACKGROUND);	//bottom
+	g_mem_dc->FillSolidRect(SCALE(SONG_OFFSET), 0, width, height, RGB_BACKGROUND);	//top
+	g_mem_dc->FillSolidRect(SCALE(SONG_OFFSET), SCALE(linescount * 16 + 32), width, height, RGB_BACKGROUND);	//bottom
 
 	TextXY("SONG", SONG_OFFSET + 8, SONG_Y, TEXT_COLOR_WHITE);
 
@@ -837,8 +873,8 @@ BOOL CSong::DrawTracks()
 	char s[16], stmp[16];
 	int i, x, y, tr, line, color;
 	int t;
-	int sp = g_scaling_percentage;
-	BOOL smooth_scroll = 1;	//TODO: make smooth scrolling an option that can be saved to .ini file
+
+	BOOL smooth_scroll = g_viewDoSmoothScrolling;
 
 	//coordinates for only the TRACKS width block rendering
 	int mask_x = (g_tracks4_8 == 4) ? TRACKS_X + (93 - 4 * 11) * 11 - 4 : TRACKS_X + (93 + 3) * 11 - 8;
@@ -930,7 +966,7 @@ BOOL CSong::DrawTracks()
 		if (is_goto)
 		{
 			//mask out the first line
-			g_mem_dc->FillSolidRect((TRACKS_X * sp) / 100, (y * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
+			g_mem_dc->FillSolidRect(SCALE(TRACKS_X), SCALE(y), SCALE(mask_x), SCALE(16), RGB_BACKGROUND);
 			
 			//get the songline that has the goto set
 			sl = m_songactiveline + oob;
@@ -965,9 +1001,9 @@ BOOL CSong::DrawTracks()
 		x = TRACKS_X + 5 * 8;
 	}
 
-	//mask rectangles for hidin extra rendered lines
-	g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 1 * 16) * sp) / 100, (mask_x * sp) / 100, (32 * sp) / 100, RGBBACKGROUND);
-	g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16 + ((g_tracklines + 1) * 16) + 1) * sp) / 100, (mask_x * sp) / 100, (48 * sp) / 100, RGBBACKGROUND);
+	//mask rectangles for hiding extra rendered lines
+	g_mem_dc->FillSolidRect(SCALE(TRACKS_X - 8), SCALE(TRACKS_Y + 1 * 16), SCALE(mask_x), SCALE(32), RGB_BACKGROUND);
+	g_mem_dc->FillSolidRect(SCALE(TRACKS_X - 8), SCALE(TRACKS_Y + 2 * 16 + ((g_tracklines + 1) * 16) + 1), SCALE(mask_x), SCALE(48), RGB_BACKGROUND);
 
 	//tracks
 	strcpy(s, "  TRACK XX   ");
@@ -995,10 +1031,10 @@ BOOL CSong::DrawTracks()
 	y = TRACKS_Y + 3 * 16 - 2 + g_line_y * 16;
 	last_y = y;
 
-	g_mem_dc->MoveTo((TRACKS_X * sp) / 100, (y * sp) / 100);
-	g_mem_dc->LineTo((x * sp) / 100, (y * sp) / 100);
-	g_mem_dc->MoveTo((TRACKS_X * sp) / 100, ((y + 19) * sp) / 100);
-	g_mem_dc->LineTo((x * sp) / 100, ((y + 19) * sp) / 100);
+	g_mem_dc->MoveTo(SCALE(TRACKS_X), SCALE(y));
+	g_mem_dc->LineTo(SCALE(x), SCALE(y));
+	g_mem_dc->MoveTo(SCALE(TRACKS_X), SCALE(y + 19));
+	g_mem_dc->LineTo(SCALE(x), SCALE(y + 19));
 
 	//a line delimiting the boundary between left/right
 	if (g_tracks4_8 > 4)
@@ -1013,13 +1049,13 @@ BOOL CSong::DrawTracks()
 		if (fl < 0) { fl = 0; fls = active_smooth * 5; }
 		if (tl > g_tracklines) { tl = g_tracklines; tls = active_smooth * 7; }
 
-		g_mem_dc->MoveTo(((TRACKS_X + 50 * 11 - 3) * sp) / 100, ((y - 2 - fls + fl * 16) * sp) / 100);
-		g_mem_dc->LineTo(((TRACKS_X + 50 * 11 - 3) * sp) / 100, ((y + 2 + tls + tl * 16) * sp) / 100);
+		g_mem_dc->MoveTo(SCALE(TRACKS_X + 50 * 11 - 3), SCALE(y - 2 - fls + fl * 16));
+		g_mem_dc->LineTo(SCALE(TRACKS_X + 50 * 11 - 3), SCALE(y + 2 + tls + tl * 16));
 	}
 
 	//mask out any extra pixels after rendering each elements
-	g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16) * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
-	g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16 + (g_tracklines + 1) * 16) * sp) / 100, (mask_x * sp) / 100, (32 * sp) / 100, RGBBACKGROUND);
+	g_mem_dc->FillSolidRect(SCALE(TRACKS_X - 8), SCALE(TRACKS_Y + 2 * 16), SCALE(mask_x), SCALE(16), RGB_BACKGROUND);
+	g_mem_dc->FillSolidRect(SCALE(TRACKS_X - 8), SCALE(TRACKS_Y + 2 * 16 + (g_tracklines + 1) * 16), SCALE(mask_x), SCALE(32), RGB_BACKGROUND);
 
 	//selected block
 	if (g_TrackClipboard.IsBlockSelected())
@@ -1045,13 +1081,13 @@ BOOL CSong::DrawTracks()
 			CPen redpen(PS_SOLID, 1, RGB(255, 255, 255));
 			CPen* origpen = g_mem_dc->SelectObject(&redpen);
 
-			g_mem_dc->MoveTo((x * sp) / 100, ((y - 2 - fls + yf * 16) * sp) / 100);
-			g_mem_dc->LineTo((x * sp) / 100, ((y + 2 + tls + yt * 16) * sp) / 100);
-			g_mem_dc->MoveTo((xt * sp) / 100, ((y - 2 - fls + yf * 16) * sp) / 100);
-			g_mem_dc->LineTo((xt * sp) / 100, ((y + 2 + tls + yt * 16) * sp) / 100);
+			g_mem_dc->MoveTo(SCALE(x), SCALE(y - 2 - fls + yf * 16));
+			g_mem_dc->LineTo(SCALE(x), SCALE(y + 2 + tls + yt * 16));
+			g_mem_dc->MoveTo(SCALE(xt), SCALE(y - 2 - fls + yf * 16));
+			g_mem_dc->LineTo(SCALE(xt), SCALE(y + 2 + tls + yt * 16));
 
-			if (p1) { g_mem_dc->MoveTo((x * sp) / 100, ((y - 2 + yf * 16) * sp) / 100); g_mem_dc->LineTo((xt * sp) / 100, ((y - 2 + yf * 16) * sp) / 100); }
-			if (p2) { g_mem_dc->MoveTo((x * sp) / 100, ((y + 2 + yt * 16) * sp) / 100); g_mem_dc->LineTo(((xt + 1) * sp) / 100, ((y + 2 + yt * 16) * sp) / 100); }
+			if (p1) { g_mem_dc->MoveTo(SCALE(x), SCALE(y - 2 + yf * 16)); g_mem_dc->LineTo(SCALE(xt), SCALE(y - 2 + yf * 16)); }
+			if (p2) { g_mem_dc->MoveTo(SCALE(x), SCALE(y + 2 + yt * 16)); g_mem_dc->LineTo(SCALE(xt + 1), SCALE(y + 2 + yt * 16)); }
 
 			g_mem_dc->SelectObject(origpen);
 		}
@@ -1064,8 +1100,8 @@ BOOL CSong::DrawTracks()
 		//mask out any extra pixels after rendering the selection box before drawing the infos below
 		if (active_smooth)
 		{
-			g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16) * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
-			g_mem_dc->FillSolidRect(((TRACKS_X - 8) * sp) / 100, ((TRACKS_Y + 2 * 16 + (g_tracklines + 1) * 16) * sp) / 100, (mask_x * sp) / 100, (16 * sp) / 100, RGBBACKGROUND);
+			g_mem_dc->FillSolidRect(SCALE(TRACKS_X - 8), SCALE(TRACKS_Y + 2 * 16), SCALE(mask_x), SCALE(16), RGB_BACKGROUND);
+			g_mem_dc->FillSolidRect(SCALE(TRACKS_X - 8), SCALE(TRACKS_Y + 2 * 16 + (g_tracklines + 1) * 16), SCALE(mask_x), SCALE(16), RGB_BACKGROUND);
 		}
 
 		sprintf(tx, "%i line(s) [%s-%s] selected in the pattern track %02X", bto - bfro + 1, s1, s2, g_TrackClipboard.m_seltrack);
@@ -1117,105 +1153,120 @@ BOOL CSong::DrawInstrument()
 	return 1;
 }
 
-BOOL CSong::DrawInfo()
+/// <summary>
+/// Draw song/play information:
+/// Line 1: Time  BPM  PAL/NTSC  Highlight  FPS
+/// Line 2: Song name
+/// Line 3: Music Speed   MaxTrackLength   Mono/Stereo
+/// Line 4: Edit/Jam/Midi/Explorer mode    Octave
+/// Line 5: Instrument                     Volume
+/// Line 6: Instrument flags
+/// </summary>
+void CSong::DrawInfo()
 {
-	char s[80];
+	char szBuffer[80];
 	int i, color;
 	is_editing_infos = 0;
 
+	// Line 1: Time  BPM  PAL/NTSC  Hightlight  FPS
+	TextXY((g_ntsc) ? "NTSC" : "PAL", INFO_X + 33 * 8, INFO_Y_LINE_1, TEXT_COLOR_LIGHT_GRAY);
+
+	TextXY("HIGHLIGHT:", 344, INFO_Y_LINE_1, TEXT_COLOR_WHITE);
+	snprintf(szBuffer, 4, "%02d", g_tracklinehighlight);
+	TextXY(szBuffer, 344 + 11 * 8, INFO_Y_LINE_1, TEXT_COLOR_LIGHT_GRAY);
+
 	//poor attempt at an FPS counter
-	snprintf(s, 16, "%1.2f FPS", last_fps);
+	snprintf(szBuffer, 16, "%1.2f FPS", last_fps);
+	TextXY(szBuffer, 560 - 9 * 8, INFO_Y_LINE_1, TEXT_COLOR_LIGHT_GRAY);
 
-	//TextXY(s, INFO_X + 40 * 8, INFO_Y, TEXT_COLOR_LIGHT_GRAY);
-	TextXY(s, 560 - 9 * 8, INFO_Y, TEXT_COLOR_LIGHT_GRAY);
-
-	TextXY("HIGHLIGHT: ", 344, INFO_Y, TEXT_COLOR_WHITE);
-	snprintf(s, 4, "%02d", g_tracklinehighlight);
-	TextXY(s, 344 + 12 * 8, INFO_Y, TEXT_COLOR_LIGHT_GRAY);
-
-	if (g_prove == PROVE_POKEY_EXPLORER_MODE)	// test mode exclusive to keyboard input for sound debugging, this cannot be set by accident unless I did something stupid
-		TextXY("EXPLORER MODE (PITCH CALCULATIONS)", INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_LIGHT_GRAY);
-	else if (g_prove == PROVE_MIDI_CH15_MODE)	// test mode exclusive from MIDI CH15 inputs, this cannot be set by accident unless I did something stupid
-		TextXY("EXPLORER MODE (MIDI CH15)", INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_LIGHT_GRAY);
-	else if (g_prove > PROVE_EDIT_MODE)
-		TextXY((g_prove == PROVE_JAM_MONO_MODE) ? "JAM MODE (MONO)" : "JAM MODE (STEREO)", INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_BLUE);
-	else
-		TextXY("EDIT MODE", INFO_X, INFO_Y + 3 * 16, TEXT_COLOR_RED);
-
-	if (g_activepart == PART_INFO && m_infoact == 0) //info? && edit name?
+	// Line 2: Name
+	if (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_NAME) //info? && edit name?
 	{
 		is_editing_infos = 1;
 		i = m_songnamecur;
-		if (g_prove) color = TEXT_COLOR_BLUE;
-		else color = TEXT_COLOR_RED;
+		color = g_prove ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
 	}
 	else
 	{
 		i = -1;
 		color = TEXT_COLOR_LIGHT_GRAY;
 	}
-	TextXY("NAME:", INFO_X, INFO_Y + 1 * 16, TEXT_COLOR_WHITE);
-	TextXYSelN(m_songname, i, INFO_X + 6 * 8, INFO_Y + 1 * 16, color);
+	TextXY("NAME:", INFO_X, INFO_Y_LINE_2, TEXT_COLOR_WHITE);
+	TextXYSelN(m_songname, i, INFO_X + 6 * 8, INFO_Y_LINE_2, color);
 
-	TextXY((g_ntsc) ? "NTSC" : "PAL", INFO_X + 33 * 8, INFO_Y, TEXT_COLOR_LIGHT_GRAY);
+	// Line 3: Speed (XX/XX/X)  MaxTrackLength (XX)  (Mono/Stereo)
+	TextXY("MUSIC SPEED: --/--/-    MAXTRACKLENGTH: --", INFO_X, INFO_Y_LINE_3, TEXT_COLOR_WHITE);
 
-	TextXY("MUSIC SPEED: --/--/-    MAXTRACKLENGTH: --", INFO_X, INFO_Y + 2 * 16, TEXT_COLOR_WHITE);
-	TextXY((g_tracks4_8 == 4) ? "MONO-4-TRACKS" : "STEREO-8-TRACKS", INFO_X + 46 * 8, INFO_Y + 2 * 16, TEXT_COLOR_LIGHT_GRAY);
+	// 3x Speed indicators XX/XX/X (go and override --)
+	color = g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
+	BOOL selected = FALSE;
 
-	sprintf(s, "%02X", g_Tracks.m_maxtracklen);
-	TextXY(s, INFO_X + 40 * 8, INFO_Y + 2 * 16, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(szBuffer, "%02X", m_speed);
+	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_SPEED) ? TRUE : FALSE;
+	TextXY(szBuffer, INFO_X + 13 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
 
-	if (g_prove) color = COLOR_SELECTED_PROVE;
-	else color = COLOR_SELECTED;
-	BOOL selected = 0;
+	sprintf(szBuffer, "%02X", m_mainspeed);
+	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_MAIN_SPEED) ? TRUE : FALSE;
+	TextXY(szBuffer, INFO_X + 16 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
 
-	sprintf(s, "%02X", m_speed);
-	selected = (g_activepart == PART_INFO && m_infoact == 1) ? 1 : 0;
-	TextXY(s, INFO_X + 13 * 8, INFO_Y + 2 * 16, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+	sprintf(szBuffer, "%X", m_instrspeed);
+	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_INSTR_SPEED) ? TRUE : FALSE;
+	TextXY(szBuffer, INFO_X + 19 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
 
-	sprintf(s, "%02X", m_mainspeed);
-	selected = (g_activepart == PART_INFO && m_infoact == 2) ? 1 : 0;
-	TextXY(s, INFO_X + 16 * 8, INFO_Y + 2 * 16, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+	// Max Track Length @ 40 chars
+	sprintf(szBuffer, "%02X", g_Tracks.m_maxtracklen);
+	TextXY(szBuffer, INFO_X + 40 * 8, INFO_Y_LINE_3, TEXT_COLOR_LIGHT_GRAY);
 
-	sprintf(s, "%X", m_instrspeed);
-	selected = (g_activepart == PART_INFO && m_infoact == 3) ? 1 : 0;
-	TextXY(s, INFO_X + 19 * 8, INFO_Y + 2 * 16, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+	// Mono or Stereo @ 46 chars
+	TextXY((g_tracks4_8 == 4) ? "MONO-4-TRACKS" : "STEREO-8-TRACKS", INFO_X + 46 * 8, INFO_Y_LINE_3, TEXT_COLOR_LIGHT_GRAY);
 
-	TextXY("INSTRUMENT ", INFO_X, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);
-	sprintf(s, "%02X: %s", m_activeinstr, g_Instruments.GetName(m_activeinstr));
-	TextXY(s, INFO_X + 11 * 8, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);
-	s[40] = 0;
-	TextXY(s + 4, INFO_X + 15 * 8, INFO_Y + 4 * 16, TEXT_COLOR_LIGHT_GRAY);
+	// Line 4: (Mode)  Octive (X-X)
+	int xpos = INFO_X;
+	int ypos = INFO_Y_LINE_4;
+	if (g_prove == PROVE_POKEY_EXPLORER_MODE)	// test mode exclusive to keyboard input for sound debugging, this cannot be set by accident unless I did something stupid
+		TextXY("EXPLORER MODE (PITCH CALCULATIONS)", xpos, ypos, TEXT_COLOR_LIGHT_GRAY);
+	else if (g_prove == PROVE_MIDI_CH15_MODE)	// test mode exclusive from MIDI CH15 inputs, this cannot be set by accident unless I did something stupid
+		TextXY("EXPLORER MODE (MIDI CH15)", xpos, ypos, TEXT_COLOR_LIGHT_GRAY);
+	else if (g_prove > PROVE_EDIT_MODE)
+		TextXY((g_prove == PROVE_JAM_MONO_MODE) ? "JAM MODE (MONO)" : "JAM MODE (STEREO)", xpos, ypos, TEXT_COLOR_BLUE);
+	else
+		TextXY("EDIT MODE", xpos, ypos, TEXT_COLOR_RED);
 
-	sprintf(s, "OCTAVE %i-%i", m_octave + 1, m_octave + 2);
-	TextXY(s, INFO_X + 55 * 8, INFO_Y + 3 * 16, TEXT_COLOR_WHITE);
-	s[40] = 0;
-	TextXY(s + 7, INFO_X + 62 * 8, INFO_Y + 3 * 16, TEXT_COLOR_LIGHT_GRAY);
+	sprintf(szBuffer, "OCTAVE %i-%i", m_octave + 1, m_octave + 2);
+	szBuffer[6] = 0;
+	TextXY(szBuffer, INFO_X + 55 * 8, INFO_Y_LINE_4, TEXT_COLOR_WHITE);
+	TextXY(szBuffer + 7, INFO_X + 62 * 8, INFO_Y_LINE_4, TEXT_COLOR_LIGHT_GRAY);
 
-	sprintf(s, "VOLUME %X", m_volume);
-	TextXY(s, INFO_X + 57 * 8, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);
-	s[40] = 0;
-	TextXY(s + 7, INFO_X + 64 * 8, INFO_Y + 4 * 16, TEXT_COLOR_LIGHT_GRAY);
+	// Line 5: Instrument (XX): (name)
+	TextXY("INSTRUMENT", INFO_X, INFO_Y_LINE_5, TEXT_COLOR_WHITE);
+	sprintf(szBuffer, "%02X: %s", m_activeinstr, g_Instruments.GetName(m_activeinstr));
+	szBuffer[3] = 0;
+	TextXY(szBuffer, INFO_X + 11 * 8, INFO_Y_LINE_5, TEXT_COLOR_WHITE);
+	szBuffer[40] = 0;
+	TextXY(szBuffer + 4, INFO_X + 15 * 8, INFO_Y_LINE_5, TEXT_COLOR_LIGHT_GRAY);
 
-	if (g_respectvolume) TextXY("\x17", INFO_X + 56 * 8, INFO_Y + 4 * 16, TEXT_COLOR_WHITE);	//respect volume mode
+	sprintf(szBuffer, "%cVOLUME %X", g_respectvolume ? '*' : ' ', m_volume);	// Put a * infront of Volume if the RESPECT volume mode is on
+	szBuffer[7] = 0;
+	TextXY(szBuffer, INFO_X + 56 * 8, INFO_Y_LINE_5, TEXT_COLOR_WHITE);
+	TextXY(szBuffer + 8, INFO_X + 64 * 8, INFO_Y_LINE_5, TEXT_COLOR_LIGHT_GRAY);
 
-	//over instrument line with flags
+	// Line 6: Under the instrument line draw small text indicating the instrument flags
 	BYTE flag = g_Instruments.GetFlag(m_activeinstr);
 
-	int x = INFO_X;	//+4*8;
-	const int y = INFO_Y + 5 * 16;
-	int g = (m_trackactivecol % 4) + 1;		//channel 1 to 4
+	int x = INFO_X;
+	const int y = INFO_Y_LINE_6;
+	int activeChannel = (m_trackactivecol % 4) + 1;		// channel 1 to 4
 
 	if (flag & IF_FILTER)
 	{
-		if (g > 2)
+		if (activeChannel > 2)
 		{
 			TextMiniXY("NO FILTER", x, y, TEXT_MINI_COLOR_GRAY);
 			x += 10 * 8;
 		}
 		else
 		{
-			if (g == 1)
+			if (activeChannel == 1)
 				TextMiniXY("AUTOFILTER(1+3)", x, y, TEXT_MINI_COLOR_BLUE);
 			else
 				TextMiniXY("AUTOFILTER(2+4)", x, y, TEXT_MINI_COLOR_BLUE);
@@ -1225,22 +1276,21 @@ BOOL CSong::DrawInfo()
 
 	if (flag & IF_BASS16)
 	{
-		if (g == 2)
+		if (activeChannel == 2)
 		{
 			TextMiniXY("BASS16(2+1)", x, y, TEXT_MINI_COLOR_BLUE);
 			x += 12 * 8;
 		}
+		else if (activeChannel == 4)
+		{
+			TextMiniXY("BASS16(4+3)", x, y, TEXT_MINI_COLOR_BLUE);
+			x += 12 * 8;
+		}
 		else
-			if (g == 4)
-			{
-				TextMiniXY("BASS16(4+3)", x, y, TEXT_MINI_COLOR_BLUE);
-				x += 12 * 8;
-			}
-			else
-			{
-				TextMiniXY("NO BASS16", x, y, TEXT_MINI_COLOR_GRAY);;
-				x += 10 * 8;
-			}
+		{
+			TextMiniXY("NO BASS16", x, y, TEXT_MINI_COLOR_GRAY);;
+			x += 10 * 8;
+		}
 	}
 
 	if (flag & IF_PORTAMENTO)
@@ -1248,6 +1298,7 @@ BOOL CSong::DrawInfo()
 		TextMiniXY("PORTAMENTO", x, y, TEXT_MINI_COLOR_BLUE);
 		x += 11 * 8;
 	}
+
 	if (flag & IF_AUDCTL)
 	{
 		TInstrument& ti = g_Instruments.m_instr[m_activeinstr];
@@ -1259,24 +1310,25 @@ BOOL CSong::DrawInfo()
 			| (ti.par[PAR_AUDCTL5] << 5)
 			| (ti.par[PAR_AUDCTL6] << 6)
 			| (ti.par[PAR_AUDCTL7] << 7);
-		sprintf(s, "AUDCTL:%02X", audctl);
-		TextMiniXY(s, x, y, TEXT_MINI_COLOR_BLUE);
-		x += 6 * 8;
+		sprintf(szBuffer, "AUDCTL:%02X", audctl);
+		TextMiniXY(szBuffer, x, y, TEXT_MINI_COLOR_BLUE);
+		// x += 6 * 8;
 	}
-
-	return 1;
 }
 
-BOOL CSong::DrawPlaytimecounter(CDC* pDC = NULL)
+/// <summary>
+/// Draw the song play time and BPM
+/// </summary>
+/// <param name="pDC"></param>
+void CSong::DrawPlayTimeCounter(CDC* pDC)
 {
-	if (!g_viewplaytimecounter) return 0;	//the timer won't be displayed without the setting enabled first
+	if (!g_viewPlayTimeCounter) return;	//the timer won't be displayed without the setting enabled first
 
 #define PLAYTC_X	16		//(SONG_OFFSET+7)
 #define PLAYTC_Y	16		//(SONG_Y-8) 
-#define PLAYTC_S	(32*8)	//(4*8)  
+#define PLAYTC_W	(32*8)	//(4*8)  
 #define PLAYTC_H	16		//8 
 
-	int sp = g_scaling_percentage;
 	int fps = (g_ntsc) ? 60 : 50;
 	int ts = g_playtime / fps;							//total time in seconds
 	int timesec = ts % 60;								//seconds 0 to 59
@@ -1295,12 +1347,11 @@ BOOL CSong::DrawPlaytimecounter(CDC* pDC = NULL)
 	snprintf(timstr, 16, !(timesec & 1) ? "%2d:%02d.%02d" : "%2d %02d.%02d", timemin, timesec, timemilisec);
 	snprintf(bpmstr, 8, (m_play) ? "%1.2f" : "---.--", bpm);
 
-	TextXY("TIME:             BPM:       ", PLAYTC_X, PLAYTC_Y, TEXT_COLOR_WHITE);
+	TextXY("TIME:             BPM:", PLAYTC_X, PLAYTC_Y, TEXT_COLOR_WHITE);
 	TextXY(timstr, PLAYTC_X + 8 * 6, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 	TextXY(bpmstr, PLAYTC_X + 8 * 23, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 
-	if (pDC) pDC->BitBlt((PLAYTC_X * sp) / 100, (PLAYTC_Y * sp) / 100, (PLAYTC_S * sp) / 100, (PLAYTC_H * sp) / 100, g_mem_dc, (PLAYTC_X * sp) / 100, (PLAYTC_Y * sp) / 100, SRCCOPY);
-	return 1;
+	if (pDC) pDC->BitBlt( SCALE(PLAYTC_X), SCALE(PLAYTC_Y), SCALE(PLAYTC_W), SCALE(PLAYTC_H), g_mem_dc, SCALE(PLAYTC_X), SCALE(PLAYTC_Y), SRCCOPY);
 }
 
 
@@ -1308,7 +1359,7 @@ BOOL CSong::InfoKey(int vk, int shift, int control)
 {
 	BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
 
-	if (m_infoact == 0)
+	if (m_infoact == INFO_ACTIVE_NAME)
 	{
 		is_editing_infos = 1;
 		if (vk == VK_DIVIDE || vk == VK_MULTIPLY || vk == VK_ADD || vk == VK_SUBTRACT) goto edit_ok;	//a workaround so the Octave and Volume can be set anywhere
@@ -1317,7 +1368,7 @@ BOOL CSong::InfoKey(int vk, int shift, int control)
 		{	//saves undo only if it is not cursor movement
 			g_Undo.ChangeInfo(0, UETYPE_INFODATA);
 		}
-		if (EditText(vk, shift, control, m_songname, m_songnamecur, SONGNAMEMAXLEN)) m_infoact = 1;
+		if (EditText(vk, shift, control, m_songname, m_songnamecur, SONGNAMEMAXLEN)) m_infoact = INFO_ACTIVE_SPEED;
 		return 1;
 	}
 
@@ -1348,12 +1399,12 @@ edit_ok:
 			if (control) break;	//do nothing
 			if (shift)
 			{
-				m_infoact = 0;	//Shift+TAB => Name
+				m_infoact = INFO_ACTIVE_NAME;	//Shift+TAB => Name
 				is_editing_infos = 1;
 			}
 			else
 			{
-				if (m_infoact < 3) m_infoact++; else m_infoact = 1; //TAB => Speed variables 1, 2 or 3
+				if (m_infoact < INFO_ACTIVE_INSTR_SPEED) m_infoact++; else m_infoact = INFO_ACTIVE_SPEED; //TAB => Speed variables 1, 2 or 3
 				is_editing_infos = 0;
 			}
 			return 1;
@@ -1387,7 +1438,7 @@ edit_ok:
 				}
 				else
 				{
-					if (m_infoact > 1) m_infoact--; else m_infoact = 3;
+					if (m_infoact > INFO_ACTIVE_SPEED) m_infoact--; else m_infoact = INFO_ACTIVE_INSTR_SPEED;
 				}
 		}
 		return 1;
@@ -1411,7 +1462,7 @@ edit_ok:
 				}
 				else
 				{
-					if (m_infoact < 3) m_infoact++; else m_infoact = 1;
+					if (m_infoact < INFO_ACTIVE_INSTR_SPEED) m_infoact++; else m_infoact = INFO_ACTIVE_SPEED;
 				}
 		}
 		return 1;
@@ -2036,7 +2087,7 @@ BOOL CSong::InfoCursorGotoSongname(int x)
 	{
 		m_songnamecur = x;
 		g_activepart = PART_INFO;
-		m_infoact = 0;
+		m_infoact = INFO_ACTIVE_NAME;
 		is_editing_infos = 1;	//Song Name is being edited
 		return 1;
 	}
@@ -2046,11 +2097,10 @@ BOOL CSong::InfoCursorGotoSongname(int x)
 BOOL CSong::InfoCursorGotoSpeed(int x)
 {
 	x = (x - 4) / 8;
-	if (x < 2) m_infoact = 1;
-	else
-		if (x < 5) m_infoact = 2;
-		else
-			m_infoact = 3;
+	if (x < 2) m_infoact = INFO_ACTIVE_SPEED;
+	else if (x < 5) m_infoact = INFO_ACTIVE_MAIN_SPEED;
+	else m_infoact = INFO_ACTIVE_INSTR_SPEED;
+
 	g_activepart = PART_INFO;
 	is_editing_infos = 0;	//Song Speed is being edited
 	return 1;

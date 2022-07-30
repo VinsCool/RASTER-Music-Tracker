@@ -36,6 +36,7 @@ public:
 	int     m_scaling_percentage;
 	double	m_tuning;
 	BOOL	m_ntsc;
+	BOOL	m_doSmoothScrolling;
 	BOOL	m_displayflatnotes;
 	BOOL	m_usegermannotation;
 	BOOL	m_midi_NoteOff;

@@ -9,14 +9,7 @@
 #define SCREENUPDATE	g_screenupdate=1
 
 
-#define COL_BLOCK		56
-#define RGBMUTE			RGB(120,160,240)
-#define RGBNORMAL		RGB(255,255,255)
-#define RGBVOLUMEONLY	RGB(128,255,255)
-#define RGBTWOTONE		RGB(128,255,0) 
-#define RGBBACKGROUND	RGB(34,50,80)	//dark blue
-#define RGBLINES		RGB(149,194,240)	//blue gray
-#define RGBBLACK		RGB(0,0,0)	//black
+
 
 extern void SetStatusBarText(const char* text);
 extern int EditText(int vk, int shift, int control, char* txt, int& cur, int max);

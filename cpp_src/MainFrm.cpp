@@ -112,8 +112,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	m_ToolBarBlock.SetBarStyle(m_ToolBarBlock.GetBarStyle() | CBRS_TOOLTIPS | CBRS_FLYBY);
 
-	g_viewblocktoolbar	= 1;
-	ShowControlBar((CControlBar*)&m_ToolBarBlock,g_viewblocktoolbar,0); //Show the block edit toolbar
+	g_viewBlockToolbar	= 1;
+	ShowControlBar((CControlBar*)&m_ToolBarBlock,g_viewBlockToolbar,0); //Show the block edit toolbar
 
 	return 0;
 }

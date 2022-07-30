@@ -109,7 +109,7 @@ BOOL CSong::ClearSong(int numoftracks)
 
 	ClearBookmark();
 
-	m_infoact = 0;
+	m_infoact = INFO_ACTIVE_NAME;
 
 	memset(m_songname, ' ', SONGNAMEMAXLEN);
 	strncpy(m_songname, "Noname song", 11);

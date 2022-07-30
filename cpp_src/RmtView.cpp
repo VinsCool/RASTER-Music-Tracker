@@ -353,16 +353,16 @@ void CRmtView::OnDraw(CDC* pDC)
 	SCREENUPDATE;
 }
 
-BOOL CRmtView::DrawAll()
+void CRmtView::DrawAll()
 {
-	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBACKGROUND);		// Clear the screen
+	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);		// Clear the screen
 
 	GetFPS();	//it's crappy but it does an ok job
 
 	g_Song.DrawInfo();
 	g_Song.DrawSong();
-	g_Song.DrawAnalyzer(NULL);
-	g_Song.DrawPlaytimecounter(NULL);
+	g_Song.DrawAnalyzer();
+	g_Song.DrawPlayTimeCounter();
 	
 	if (g_active_ti == PART_TRACKS)	//which one is the active screen?
 	{
@@ -372,12 +372,11 @@ BOOL CRmtView::DrawAll()
 	{
 		g_Song.DrawInstrument();
 	}
-
-	return 1;
 }
 
 void CRmtView::DrawAnalyzer()
 {
+	return;
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
@@ -493,6 +492,8 @@ void CRmtView::ReadConfig()
 		else
 		if (NAME("NTSC_SYSTEM")) g_ntsc = atoi(value);
 		else
+		if (NAME("SMOOTH_SCROLL")) g_viewDoSmoothScrolling = atoi(value);
+		else
 		if (NAME("NOHWSOUNDBUFFER")) g_nohwsoundbuffer = atoi(value);
 		else
 		//keyboard
@@ -527,19 +528,19 @@ void CRmtView::ReadConfig()
 		if (NAME("PATH_TRACKS")) g_path_tracks = value;
 		else
 		//view
-		if (NAME("VIEW_MAINTOOLBAR")) g_viewmaintoolbar = atoi(value);
+		if (NAME("VIEW_MAINTOOLBAR")) g_viewMainToolbar = atoi(value);
 		else
-		if (NAME("VIEW_BLOCKTOOLBAR")) g_viewblocktoolbar = atoi(value);
+		if (NAME("VIEW_BLOCKTOOLBAR")) g_viewBlockToolbar = atoi(value);
 		else
-		if (NAME("VIEW_STATUSBAR")) g_viewstatusbar = atoi(value);
+		if (NAME("VIEW_STATUSBAR")) g_viewStatusBar = atoi(value);
 		else
-		if (NAME("VIEW_PLAYTIMECOUNTER")) g_viewplaytimecounter = atoi(value);
+		if (NAME("VIEW_PLAYTIMECOUNTER")) g_viewPlayTimeCounter = atoi(value);
 		else
-		if (NAME("VIEW_VOLUMEANALYZER")) g_viewanalyzer = atoi(value);
+		if (NAME("VIEW_VOLUMEANALYZER")) g_viewVolumeAnalyzer = atoi(value);
 		else
-		if (NAME("VIEW_POKEYCHIPREGISTERS")) g_viewpokeyregs = atoi(value);
+		if (NAME("VIEW_POKEYCHIPREGISTERS")) g_viewPokeyRegisters = atoi(value);
 		else
-		if (NAME("VIEW_INSTRUMENTACTIVEHELP")) g_viewinstractivehelp = atoi(value);
+		if (NAME("VIEW_INSTRUMENTACTIVEHELP")) g_viewInstrumentEditHelp = atoi(value);
 		else
 		//tuning
 		if (NAME("TUNING")) g_basetuning = atof(value);
@@ -602,6 +603,7 @@ void CRmtView::WriteConfig()
 	ou << "DISPLAYFLATNOTES=" << g_displayflatnotes << endl;
 	ou << "USEGERMANNOTATION=" << g_usegermannotation << endl;
 	ou << "NTSC_SYSTEM=" << g_ntsc << endl;
+	ou << "SMOOTH_SCROLL=" << g_viewDoSmoothScrolling << endl;
 	ou << "NOHWSOUNDBUFFER=" << g_nohwsoundbuffer << endl;
 	//keyboard
 	ou << "KEYBOARD_LAYOUT=" << g_keyboard_layout << endl;
@@ -621,13 +623,13 @@ void CRmtView::WriteConfig()
 	ou << "PATH_INSTRUMENTS=" << g_path_instruments << endl;
 	ou << "PATH_TRACKS=" << g_path_tracks << endl;
 	//view
-	ou << "VIEW_MAINTOOLBAR=" << g_viewmaintoolbar << endl;
-	ou << "VIEW_BLOCKTOOLBAR=" << g_viewblocktoolbar << endl;
-	ou << "VIEW_STATUSBAR=" << g_viewstatusbar << endl;
-	ou << "VIEW_PLAYTIMECOUNTER=" << g_viewplaytimecounter << endl;
-	ou << "VIEW_VOLUMEANALYZER=" << g_viewanalyzer << endl;
-	ou << "VIEW_POKEYCHIPREGISTERS=" << g_viewpokeyregs << endl;
-	ou << "VIEW_INSTRUMENTACTIVEHELP=" << g_viewinstractivehelp << endl;
+	ou << "VIEW_MAINTOOLBAR=" << g_viewMainToolbar << endl;
+	ou << "VIEW_BLOCKTOOLBAR=" << g_viewBlockToolbar << endl;
+	ou << "VIEW_STATUSBAR=" << g_viewStatusBar << endl;
+	ou << "VIEW_PLAYTIMECOUNTER=" << g_viewPlayTimeCounter << endl;
+	ou << "VIEW_VOLUMEANALYZER=" << g_viewVolumeAnalyzer << endl;
+	ou << "VIEW_POKEYCHIPREGISTERS=" << g_viewPokeyRegisters << endl;
+	ou << "VIEW_INSTRUMENTACTIVEHELP=" << g_viewInstrumentEditHelp << endl;
 	//tuning
 	ou << "TUNING=" << g_basetuning << endl;
 	ou << "BASENOTE=" << g_basenote << endl;
@@ -661,6 +663,7 @@ void CRmtView::OnViewConfiguration()
 	dlg.m_usegermannotation = g_usegermannotation;
 	//
 	dlg.m_ntsc = g_ntsc;
+	dlg.m_doSmoothScrolling = g_viewDoSmoothScrolling;
 	dlg.m_nohwsoundbuffer = g_nohwsoundbuffer;
 	//keyboard
 	dlg.m_keyboard_layout = g_keyboard_layout;
@@ -708,6 +711,7 @@ void CRmtView::OnViewConfiguration()
 			SCREENUPDATE;
 		}
 		g_ntsc = dlg.m_ntsc;
+		g_viewDoSmoothScrolling = dlg.m_doSmoothScrolling;
 
 		g_tracklinehighlight = dlg.m_tracklinehighlight;
 		g_tracklinealtnumbering = dlg.m_tracklinealtnumbering;
@@ -862,9 +866,9 @@ bool CRmtView::Resize(int width, int height)
 
 		g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
 		if (m_pen1) delete m_pen1;
-		m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
+		m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);	
 		m_penorig = g_mem_dc->SelectObject(m_pen1);
-		m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBLACK); //initial black background
+		m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BLACK); //initial black background
 		ReleaseDC(dc);
 		SCREENUPDATE;
 	}
@@ -912,9 +916,9 @@ void CRmtView::OnInitialUpdate()
 	g_hwnd = AfxGetApp()->GetMainWnd()->m_hWnd;
 	g_viewhwnd = this->m_hWnd;
 	if (m_pen1) delete m_pen1;
-	m_pen1 = new CPen(PS_SOLID, 1, RGBLINES);	
+	m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);	
 	m_penorig = g_mem_dc->SelectObject(m_pen1);
-	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGBBLACK); //initial black background
+	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BLACK); //initial black background
 	ReleaseDC(dc);
 
 	//cursor
@@ -2370,92 +2374,92 @@ void CRmtView::OnUpdateProvemode(CCmdUI* pCmdUI)
 void CRmtView::ChangeViewElements(BOOL writeconfig)
 {
 	CMainFrame* mf = (CMainFrame*)AfxGetApp()->GetMainWnd();
-	mf->ShowControlBar((CControlBar*)(&mf->m_wndToolBar),g_viewmaintoolbar,0);
-	mf->ShowControlBar((CControlBar*)(&mf->m_ToolBarBlock),g_viewblocktoolbar,0);
-	mf->ShowControlBar((CControlBar*)(&mf->m_wndStatusBar),g_viewstatusbar,0);
+	mf->ShowControlBar((CControlBar*)(&mf->m_wndToolBar),g_viewMainToolbar,0);
+	mf->ShowControlBar((CControlBar*)(&mf->m_ToolBarBlock),g_viewBlockToolbar,0);
+	mf->ShowControlBar((CControlBar*)(&mf->m_wndStatusBar),g_viewStatusBar,0);
 	if (writeconfig) WriteConfig();
 }
 
 void CRmtView::OnViewToolbar() 
 {
-	g_viewmaintoolbar ^= 1;
+	g_viewMainToolbar ^= 1;
 	ChangeViewElements();
 }
 
 void CRmtView::OnUpdateViewToolbar(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(g_viewmaintoolbar);
+	pCmdUI->SetCheck(g_viewMainToolbar);
 }
 
 void CRmtView::OnViewBlocktoolbar() 
 {
-	g_viewblocktoolbar ^= 1;
+	g_viewBlockToolbar ^= 1;
 	ChangeViewElements();
 }
 
 void CRmtView::OnUpdateViewBlocktoolbar(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(g_viewblocktoolbar);
+	pCmdUI->SetCheck(g_viewBlockToolbar);
 }
 
 void CRmtView::OnViewStatusBar() 
 {
-	g_viewstatusbar ^= 1;
+	g_viewStatusBar ^= 1;
 	ChangeViewElements();
 }
 
 void CRmtView::OnUpdateViewStatusBar(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(g_viewstatusbar);
+	pCmdUI->SetCheck(g_viewStatusBar);
 }
 
 void CRmtView::OnViewPlaytimecounter() 
 {
-	g_viewplaytimecounter ^= 1;
+	g_viewPlayTimeCounter ^= 1;
 	SCREENUPDATE;
 	ChangeViewElements();
 }
 
 void CRmtView::OnUpdateViewPlaytimecounter(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(g_viewplaytimecounter);
+	pCmdUI->SetCheck(g_viewPlayTimeCounter);
 }
 
 void CRmtView::OnViewVolumeanalyzer() 
 {
-	g_viewanalyzer ^= 1;
+	g_viewVolumeAnalyzer ^= 1;
 	SCREENUPDATE;
 	ChangeViewElements();
 }
 
 void CRmtView::OnUpdateViewVolumeanalyzer(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(g_viewanalyzer);	
+	pCmdUI->SetCheck(g_viewVolumeAnalyzer);	
 }
 
 void CRmtView::OnViewPokeyregs() 
 {
-	g_viewpokeyregs ^= 1;
+	g_viewPokeyRegisters ^= 1;
 	SCREENUPDATE;
 	ChangeViewElements();
 }
 
 void CRmtView::OnUpdateViewPokeyregs(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(g_viewpokeyregs);
-	pCmdUI->Enable(g_viewanalyzer);
+	pCmdUI->SetCheck(g_viewPokeyRegisters);
+	pCmdUI->Enable(g_viewVolumeAnalyzer);
 }
 
 void CRmtView::OnViewInstrumentactivehelp() 
 {
-	g_viewinstractivehelp ^= 1;
+	g_viewInstrumentEditHelp ^= 1;
 	SCREENUPDATE;
 	ChangeViewElements();
 }
 
 void CRmtView::OnUpdateViewInstrumentactivehelp(CCmdUI* pCmdUI) 
 {
-	pCmdUI->SetCheck(g_viewinstractivehelp);	
+	pCmdUI->SetCheck(g_viewInstrumentEditHelp);	
 }
 
 void CRmtView::OnBlockNoteup() 

@@ -33,7 +33,7 @@ public:
 	void ReadConfig();
 	void WriteConfig();
 
-	BOOL DrawAll();
+	void DrawAll();
 	void DrawAnalyzer();
 	void DrawPlaytimecounter();
 	void GetFPS();

@@ -147,13 +147,14 @@ BOOL g_usegermannotation = 0;	//H notes instead of B
 int g_channelon[SONGTRACKS];
 int g_rmtinstr[SONGTRACKS];
 
-BOOL g_viewmaintoolbar = 1;		//1 yes, 0 no
-BOOL g_viewblocktoolbar = 1;	//1 yes, 0 no
-BOOL g_viewstatusbar = 1;		//1 yes, 0 no
-BOOL g_viewplaytimecounter = 1;	//1 yes, 0 no
-BOOL g_viewanalyzer = 1;		//1 yes, 0 no
-BOOL g_viewpokeyregs = 1;		//1 yes, 0 no
-BOOL g_viewinstractivehelp = 1;	//1 yes, 0 no
+BOOL g_viewMainToolbar = 1;			// 1 yes, 0 no
+BOOL g_viewBlockToolbar = 1;		// 1 yes, 0 no
+BOOL g_viewStatusBar = 1;			// 1 yes, 0 no
+BOOL g_viewPlayTimeCounter = 1;		// 1 yes, 0 no
+BOOL g_viewVolumeAnalyzer = 1;		// 1 yes, 0 no - Show the volume analyser bars
+BOOL g_viewPokeyRegisters = 1;		// 1 yes, 0 no
+BOOL g_viewInstrumentEditHelp = 1;	// 1 yes, 0 no - View useful info when editing various parts of an instrument
+BOOL g_viewDoSmoothScrolling = 1;	// True then the track and song line data is smooth scrolled during playback
 
 long g_playtime = 1;	//1 yes, 0 no
 

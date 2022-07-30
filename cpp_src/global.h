@@ -136,6 +136,7 @@ extern int g_linesafter;			//number of lines to scroll after inserting a note (i
 extern BOOL g_ntsc;				//NTSC (60Hz)
 extern BOOL g_nohwsoundbuffer;	//Don't use hardware soundbuffer
 extern int g_cursoractview;		//default position, line 0
+extern BOOL g_viewDoSmoothScrolling;	// True then the track and note data is smooth scrolled during playback
 
 extern BOOL g_displayflatnotes;	//flats instead of sharps
 extern BOOL g_usegermannotation;	//H notes instead of B
@@ -143,13 +144,13 @@ extern BOOL g_usegermannotation;	//H notes instead of B
 extern int g_channelon[SONGTRACKS];
 extern int g_rmtinstr[SONGTRACKS];
 
-extern BOOL g_viewmaintoolbar;		//1 yes, 0 no
-extern BOOL g_viewblocktoolbar;		//1 yes, 0 no
-extern BOOL g_viewstatusbar;		//1 yes, 0 no
-extern BOOL g_viewplaytimecounter;	//1 yes, 0 no
-extern BOOL g_viewanalyzer;			//1 yes, 0 no
-extern BOOL g_viewpokeyregs;		//1 yes, 0 no
-extern BOOL g_viewinstractivehelp;	//1 yes, 0 no
+extern BOOL g_viewMainToolbar;		//1 yes, 0 no
+extern BOOL g_viewBlockToolbar;		//1 yes, 0 no
+extern BOOL g_viewStatusBar;		//1 yes, 0 no
+extern BOOL g_viewPlayTimeCounter;	//1 yes, 0 no
+extern BOOL g_viewVolumeAnalyzer;			//1 yes, 0 no
+extern BOOL g_viewPokeyRegisters;		//1 yes, 0 no
+extern BOOL g_viewInstrumentEditHelp;	//1 yes, 0 no
 
 extern long g_playtime;				//1 yes, 0 no
 

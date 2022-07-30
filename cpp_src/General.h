@@ -28,6 +28,19 @@
 #define TEXT_MINI_COLOR_WHITE 2
 #define TEXT_MINI_COLOR_YELLOW 3
 
+
+
+// ---------------------
+// Analyser and other RGB colors
+#define COL_BLOCK		56
+#define RGB_MUTE		RGB(120,160,240)		// Channel is muted
+#define RGB_NORMAL		RGB(255,255,255)		// Volume bar in white
+#define RGB_VOLUME_ONLY	RGB(128,255,255)		// Turquoise for volume only channel
+#define RGB_TWO_TONE	RGB(128,255,0)			// Green for two tone channel
+#define RGB_BACKGROUND	RGB(34,50,80)			// Dark blue
+#define RGB_LINES		RGB(149,194,240)		// Blue gray
+#define RGB_BLACK		RGB(0,0,0)				// Black
+
 // ----------------------------------------------------------------------------
 // GUI edit modes
 #define PROVE_EDIT_MODE				0		// Hit the Jam mode button to switch between
@@ -36,6 +49,7 @@
 #define PROVE_EDIT_AND_JAM_MODES	3		// < this is edit and jam
 #define PROVE_MIDI_CH15_MODE		3		// Hit RECORD key in Midi channel 15 to cycle to this mode
 #define PROVE_POKEY_EXPLORER_MODE	4		// Ctrl + Shift + F5
+#define PROVE_MODE_MAX				4		// <-- Adjust as you add/remove modes
 
 
 // ----------------------------------------------------------------------------
@@ -54,8 +68,25 @@
 #define TRACKS_Y 8*16+8
 #define	SONG_X	768
 #define SONG_Y	16
+
+// Info area
+// Shown at top-left
+// 6 lines of text
 #define INFO_X	2*8
 #define INFO_Y	1*16
+
+#define INFO_Y_LINE_1	INFO_Y
+#define INFO_Y_LINE_2	INFO_Y+1*16
+#define INFO_Y_LINE_3	INFO_Y+2*16
+#define INFO_Y_LINE_4	INFO_Y+3*16
+#define INFO_Y_LINE_5	INFO_Y+4*16
+#define INFO_Y_LINE_6	INFO_Y+5*16
+
+// Which part of the info area is active for editing (drawn in red)
+#define INFO_ACTIVE_NAME		0			// song name can be edited
+#define INFO_ACTIVE_SPEED		1			// song speed can be changed
+#define INFO_ACTIVE_MAIN_SPEED	2			// over all song speed
+#define INFO_ACTIVE_INSTR_SPEED	3			// How many times per frame is the instrument code called (1-8)
 
 // Which part of the data is currently active/visible/primary
 #define PART_INFO			0
