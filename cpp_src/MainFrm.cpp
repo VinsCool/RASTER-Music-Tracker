@@ -18,6 +18,7 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 extern BOOL g_closeapplication;
+extern CSong g_Song;
 
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame
@@ -53,6 +54,7 @@ CMainFrame::CMainFrame()
 
 CMainFrame::~CMainFrame()
 {
+
 }
 
 int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)

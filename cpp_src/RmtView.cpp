@@ -376,7 +376,6 @@ void CRmtView::DrawAll()
 
 void CRmtView::DrawAnalyzer()
 {
-	return;
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
@@ -505,7 +504,7 @@ void CRmtView::ReadConfig()
 		else
 		if (NAME("KEYBOARD_UPDOWNCONTINUE")) g_keyboard_updowncontinue = atoi(value);
 		else
-		if (NAME("KEYBOARD_REMEMBEROCTAVESANDVOLUMES")) g_keyboard_rememberoctavesandvolumes = atoi(value);
+		if (NAME("KEYBOARD_REMEMBEROCTAVESANDVOLUMES")) g_keyboard_RememberOctavesAndVolumes = atoi(value);
 		else
 		if (NAME("KEYBOARD_ESCRESETATARISOUND")) g_keyboard_escresetatarisound = atoi(value);
 		else
@@ -610,7 +609,7 @@ void CRmtView::WriteConfig()
 	ou << "KEYBOARD_PLAYAUTOFOLLOW=" << g_keyboard_playautofollow << endl;
 	ou << "KEYBOARD_SWAPENTER=" << g_keyboard_swapenter << endl;
 	ou << "KEYBOARD_UPDOWNCONTINUE=" << g_keyboard_updowncontinue << endl;
-	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES=" << g_keyboard_rememberoctavesandvolumes << endl;
+	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES=" << g_keyboard_RememberOctavesAndVolumes << endl;
 	ou << "KEYBOARD_ESCRESETATARISOUND=" << g_keyboard_escresetatarisound << endl;
 	ou << "KEYBOARD_ASKWHENCONTROL_S=" << g_keyboard_askwhencontrol_s << endl;
 	//midi
@@ -671,7 +670,7 @@ void CRmtView::OnViewConfiguration()
 	dlg.m_keyboard_playautofollow = g_keyboard_playautofollow;
 	dlg.m_keyboard_swapenter = g_keyboard_swapenter;
 	dlg.m_keyboard_updowncontinue = g_keyboard_updowncontinue;
-	dlg.m_keyboard_rememberoctavesandvolumes = g_keyboard_rememberoctavesandvolumes;
+	dlg.m_keyboard_rememberoctavesandvolumes = g_keyboard_RememberOctavesAndVolumes;
 	dlg.m_keyboard_askwhencontrol_s = g_keyboard_askwhencontrol_s;
 
 	// MIDI settings
@@ -724,7 +723,7 @@ void CRmtView::OnViewConfiguration()
 		g_keyboard_playautofollow = dlg.m_keyboard_playautofollow;
 		g_keyboard_swapenter = dlg.m_keyboard_swapenter;
 		g_keyboard_updowncontinue=dlg.m_keyboard_updowncontinue;
-		g_keyboard_rememberoctavesandvolumes = dlg.m_keyboard_rememberoctavesandvolumes;
+		g_keyboard_RememberOctavesAndVolumes = dlg.m_keyboard_rememberoctavesandvolumes;
 		g_keyboard_askwhencontrol_s = dlg.m_keyboard_askwhencontrol_s;
 		//midi
 		if (dlg.m_midi_device>=0)
@@ -866,7 +865,7 @@ bool CRmtView::Resize(int width, int height)
 
 		g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
 		if (m_pen1) delete m_pen1;
-		m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);	
+		m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);
 		m_penorig = g_mem_dc->SelectObject(m_pen1);
 		m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BLACK); //initial black background
 		ReleaseDC(dc);
@@ -916,18 +915,18 @@ void CRmtView::OnInitialUpdate()
 	g_hwnd = AfxGetApp()->GetMainWnd()->m_hWnd;
 	g_viewhwnd = this->m_hWnd;
 	if (m_pen1) delete m_pen1;
-	m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);	
+	m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);
 	m_penorig = g_mem_dc->SelectObject(m_pen1);
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BLACK); //initial black background
 	ReleaseDC(dc);
 
 	//cursor
 	m_cursororig = LoadCursor(NULL,IDC_ARROW);
-	m_cursorchanonoff = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORCHANNELONOFF));
-	m_cursorenvvolume = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORENVVOLUME));
-	m_cursorgoto = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORGOTO));
-	m_cursordlg = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORDLG));
-	m_cursorsetpos = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORSETPOS));
+	m_cursorChanbelOnOff = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORCHANNELONOFF));
+	m_cursorEnvelopVolume = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORENVVOLUME));
+	m_cursorGoto = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORGOTO));
+	m_cursorDialog = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORDLG));
+	m_cursorSetPosition = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORSETPOS));
 
 	//keyboard
 	g_shiftkey=g_controlkey=0;	//TODO: add support for ALT key as well
@@ -1032,7 +1031,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (rec.PtInRect(point))
 	{
 		//Song
-		SetCursor(m_cursorgoto);
+		SetCursor(m_cursorGoto);
 		
 		if (mousebutt & MK_LBUTTON)
 		{
@@ -1060,7 +1059,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		else
 		{	if (i>=g_tracks4_8) i=g_tracks4_8-1; }
 		px = i;
-		SetCursor(m_cursorchanonoff);
+		SetCursor(m_cursorChanbelOnOff);
 		if (mousebutt & MK_LBUTTON)
 		{
 			SetChannelOnOff(px,-1);	//inversion
@@ -1075,11 +1074,11 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	}
 
 	//INFO PARTS
-	rec.SetRect(64, 32, 64 + SONGNAMEMAXLEN * 8, 32 + 16);
+	rec.SetRect(64, 32, 64 + SONG_NAME_MAX_LEN * 8, 32 + 16);
 	if (rec.PtInRect(point))
 	{
 		//Song name
-		SetCursor(m_cursorgoto);
+		SetCursor(m_cursorGoto);
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r = g_Song.InfoCursorGotoSongname(point.x - 64);
@@ -1092,7 +1091,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (rec.PtInRect(point))
 	{
 		//Song speed
-		SetCursor(m_cursorgoto);
+		SetCursor(m_cursorGoto);
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r = g_Song.InfoCursorGotoSpeed(point.x - 120);
@@ -1105,7 +1104,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (rec.PtInRect(point))
 	{
 		//MAXTRACKLENGTH
-		SetCursor(m_cursordlg);
+		SetCursor(m_cursorDialog);
 		if (mousebutt & MK_LBUTTON)
 		{
 			OnSongSongchangemaximallengthoftracks();
@@ -1118,7 +1117,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (rec.PtInRect(point))
 	{
 		//MONO-4-TRACKS or STEREO-8-TRACKS
-		SetCursor(m_cursordlg);
+		SetCursor(m_cursorDialog);
 		if (mousebutt & MK_LBUTTON)
 		{
 			OnSongSongswitch4_8();
@@ -1131,7 +1130,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (rec.PtInRect(point))
 	{
 		//PAL or NTSC
-		SetCursor(m_cursorgoto);
+		SetCursor(m_cursorGoto);
 		if (mousebutt & MK_LBUTTON)
 		{
 			g_ntsc ^=1;
@@ -1149,7 +1148,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (rec.PtInRect(point))
 	{
 		//Songline highlight
-		SetCursor(m_cursorgoto);
+		SetCursor(m_cursorGoto);
 		if (mousebutt & MK_LBUTTON)
 		{
 			//TODO
@@ -1177,7 +1176,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (rec.PtInRect(point))
 	{
 		//Octave Select Dialog
-		SetCursor(m_cursordlg);
+		SetCursor(m_cursorDialog);
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r = g_Song.InfoCursorGotoOctaveSelect(point.x, point.y);
@@ -1197,7 +1196,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	if (rec.PtInRect(point))
 	{
 		//Volume Select Dialog
-		SetCursor(m_cursordlg);
+		SetCursor(m_cursorDialog);
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r = g_Song.InfoCursorGotoVolumeSelect(point.x, point.y);
@@ -1213,13 +1212,13 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 6;
 	}
 
-	rec.SetRect(136, 80, 136 + INSTRNAMEMAXLEN * 8, 80 + 16);
+	rec.SetRect(136, 80, 136 + INSTRUMENT_NAME_MAX_LEN * 8, 80 + 16);
 	if (rec.PtInRect(point))
 	{
 		//Instrument Select Dialog
 	Instrument_Select_Dialog:
 
-		SetCursor(m_cursordlg);
+		SetCursor(m_cursorDialog);
 		if (mousebutt & MK_LBUTTON)
 		{
 			BOOL r = g_Song.InfoCursorGotoInstrumentSelect(point.x, point.y);
@@ -1247,7 +1246,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			if (i>=g_tracks4_8) i=g_tracks4_8-1;
 			px = i;
 
-			SetCursor(m_cursorchanonoff);
+			SetCursor(m_cursorChanbelOnOff);
 
 			if (mousebutt & MK_LBUTTON)
 			{
@@ -1265,7 +1264,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		rec.SetRect(TRACKS_X + 6 * 8, TRACKS_Y + 48, TRACKS_X + 3 * 8 + g_tracks4_8 * 8 * 16, TRACKS_Y + 48 + g_tracklines * 16);
 		if (rec.PtInRect(point))
 		{
-			SetCursor(m_cursorgoto);
+			SetCursor(m_cursorGoto);
 			if (mousebutt & MK_LBUTTON)
 			{
 				BOOL r = g_Song.TrackCursorGoto(CPoint(point.x - (TRACKS_X + 6 * 8), point.y - (TRACKS_Y + 48)));
@@ -1285,119 +1284,131 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	else
 	if (g_active_ti==PART_INSTRUMENTS)
 	{
-		//InstrEdit
-		int ainstr = g_Song.GetActiveInstr();
+		// Detect bounding box hits on various parts of the instrument display
+		// Algo:
+		// 1. Find the area that a specific GUI part (zone) will cover.
+		//		Size depends on instrument data
+		// 2. Check if the action point is within the zone
+		// 3. Do zone specific action
+
+		int activeInstrNum = g_Song.GetActiveInstr();
 		//VOLUME LEFT (bottom)
-		int r= g_Instruments.GetInstrArea(ainstr,0,rec);
+		int r = g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_ENVELOPE_LEFT_ENVELOPE, rec);
 		if (r && rec.PtInRect(point))
 		{
-			px = (point.x - rec.left) /8;
-			py = 15- ((point.y - rec.top) /4);
-			SetCursor(m_cursorenvvolume);
+			// In the left volume envelope area
+			px = (point.x - rec.left) /8;			// px is how far into the envelop the cursor is
+			py = 15- ((point.y - rec.top) /4);		// py is the volume at the cursor position
+			SetCursor(m_cursorEnvelopVolume);
 			if (g_mousebutt & MK_LBUTTON) //compares g_mousebutt to make it work while moving
 			{
-				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				g_Instruments.SetEnvVolume(ainstr,0,px,py);
+				// Set the volume
+				g_Undo.ChangeInstrument(activeInstrNum,0,UETYPE_INSTRDATA);
+				g_Instruments.SetEnvelopeVolume(activeInstrNum,0,px,py);
 				SCREENUPDATE;
 			}
 			if (g_mousebutt & MK_RBUTTON) //compares g_mousebutt to make it work while moving
 			{
-				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				g_Instruments.SetEnvVolume(ainstr,0,px,0);
+				// Clear the volume
+				g_Undo.ChangeInstrument(activeInstrNum,0,UETYPE_INSTRDATA);
+				g_Instruments.SetEnvelopeVolume(activeInstrNum,0,px,0);
 				SCREENUPDATE;
 			}
 			return 2;
 		}
 
 		//VOLUME RIGHT (upper)
-		r= g_Instruments.GetInstrArea(ainstr,1,rec);
+		r = g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_ENVELOPE_RIGHT_ENVELOPE, rec);
 		if (r && rec.PtInRect(point))
 		{
+			// In the right volume envelope area
 			px = (point.x - rec.left) /8;
 			py = 15- ((point.y - rec.top) /4);
-			SetCursor(m_cursorenvvolume);
+			SetCursor(m_cursorEnvelopVolume);
 			if (g_mousebutt & MK_LBUTTON) //compares g_mousebutt to make it work while moving
 			{
-				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				g_Instruments.SetEnvVolume(ainstr,1,px,py);
+				// Set the volume
+				g_Undo.ChangeInstrument(activeInstrNum,0,UETYPE_INSTRDATA);
+				g_Instruments.SetEnvelopeVolume(activeInstrNum,1,px,py);
 				SCREENUPDATE;
 			}
 			if (g_mousebutt & MK_RBUTTON) //compares g_mousebutt to make it work while moving
 			{
-				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				g_Instruments.SetEnvVolume(ainstr,1,px,0);
+				// Clear the volume
+				g_Undo.ChangeInstrument(activeInstrNum,0,UETYPE_INSTRDATA);
+				g_Instruments.SetEnvelopeVolume(activeInstrNum,1,px,0);
 				SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//ENVELOPE PARAMETERS large table
-		r= g_Instruments.GetInstrArea(ainstr,2,rec);
+		r = g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_ENVELOPE_PARAM_TABLE, rec);
 		if (r && rec.PtInRect(point))
 		{
-			SetCursor(m_cursorgoto);
+			SetCursor(m_cursorGoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),0);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),0);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//ENVELOPE PARAMETERS series of numbers for the right channel volume
-		r= g_Instruments.GetInstrArea(ainstr,3,rec);
+		r = g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_ENVELOPE_RIGHT_VOL_NUMS, rec);
 		if (r && rec.PtInRect(point))
 		{
-			SetCursor(m_cursorgoto);
+			SetCursor(m_cursorGoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),1);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),1);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
-		//INSTRUMENT TABLE
-		r= g_Instruments.GetInstrArea(ainstr,4,rec);
+		//INSTRUMENT NOTE TABLE
+		r = g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_NOTE_TABLE, rec);
 		if (r && rec.PtInRect(point))
 		{
-			SetCursor(m_cursorgoto);
+			SetCursor(m_cursorGoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),2);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),2);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//INSTRUMENT NAME
-		r= g_Instruments.GetInstrArea(ainstr,5,rec);
+		r = g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_INSTRUMENT_NAME, rec);
 		if (r && rec.PtInRect(point))
 		{
-			SetCursor(m_cursorgoto);
+			SetCursor(m_cursorGoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),3);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),3);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//INSTRUMENT PARAMETERS
-		r= g_Instruments.GetInstrArea(ainstr,6,rec);
+		r= g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_PARAMETERS, rec);
 		if (r && rec.PtInRect(point))
 		{
-			SetCursor(m_cursorgoto);
+			SetCursor(m_cursorGoto);
 			if (mousebutt & MK_LBUTTON)
 			{
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),4);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),4);
 				if (r) SCREENUPDATE;
 			}
 			return 3;
 		}
 
 		//INSTRUMENT SELECT DIALOG
-		r= g_Instruments.GetInstrArea(ainstr,7,rec);
+		r= g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_INSTRUMENT_NUMBER_DLG, rec);
 		if (r && rec.PtInRect(point))
 		{
 			point.y-=(4*16+8);
@@ -1406,40 +1417,41 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		}
 
 		//ENVELOPE LEN a GO PARAMETER - length and loop to help the mouse
-		r= g_Instruments.GetInstrArea(ainstr,8,rec);
+		r= g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_LEN_AND_GOTO_ARROWS, rec);
 		if (r && rec.PtInRect(point))
 		{
-			SetCursor(m_cursorsetpos);
+			SetCursor(m_cursorSetPosition);
 			r=0;
 			if (mousebutt & MK_LBUTTON)
 			{
-				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),5);
+				// Set the
+				g_Undo.ChangeInstrument(activeInstrNum,0,UETYPE_INSTRDATA);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),5);
 			}
 			if (mousebutt & MK_RBUTTON)
 			{
-				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),6);
+				g_Undo.ChangeInstrument(activeInstrNum,0,UETYPE_INSTRDATA);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),6);
 			}
 			if (r) SCREENUPDATE;
 			return 7;
 		}
 
 		//TABLE LEN a GO PARAMETER - length and loop to help the mouse
-		r= g_Instruments.GetInstrArea(ainstr,9,rec);
+		r= g_Instruments.GetGUIArea(activeInstrNum, INSTR_GUI_ZONE_NOTE_TBL_LEN_AND_GOTO, rec);
 		if (r && rec.PtInRect(point))
 		{
-			SetCursor(m_cursorsetpos);
+			SetCursor(m_cursorSetPosition);
 			r=0;
 			if (mousebutt & MK_LBUTTON)
 			{
-				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),7);
+				g_Undo.ChangeInstrument(activeInstrNum,0,UETYPE_INSTRDATA);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),7);
 			}
 			if (mousebutt & MK_RBUTTON)
 			{
-				g_Undo.ChangeInstrument(ainstr,0,UETYPE_INSTRDATA);
-				r=g_Instruments.CursorGoto(ainstr,CPoint(point.x-rec.left,point.y-rec.top),8);
+				g_Undo.ChangeInstrument(activeInstrNum,0,UETYPE_INSTRDATA);
+				r=g_Instruments.CursorGoto(activeInstrNum,CPoint(point.x-rec.left,point.y-rec.top),8);
 			}
 			if (r) SCREENUPDATE;
 			return 7;
@@ -1858,19 +1870,19 @@ do_infokey_anyway:
 				break;
 
 			case PART_INSTRUMENTS:
-				if (g_shiftkey && !is_editing_instr && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
+				if (g_shiftkey && !g_isEditingInstrumentName && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
 					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Instrument Name field, it will be ignored
-				else if (g_shiftkey && !is_editing_instr && (NoteKey(vk) < 0))
+				else if (g_shiftkey && !g_isEditingInstrumentName && (NoteKey(vk) < 0))
 					if (vk == VK_TAB || vk == VK_INSERT || vk == VK_DELETE || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN || vk == VK_DIVIDE || vk == VK_MULTIPLY || vk == VK_SUBTRACT || vk == VK_ADD || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_instrkey_anyway;
 					else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
-				else if (is_editing_instr && CAPSLOCK && !g_shiftkey)
+				else if (g_isEditingInstrumentName && CAPSLOCK && !g_shiftkey)
 				{
 					g_shiftkey = 1;
 					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
 					g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
 					break;
 				}
-				else if (is_editing_instr && CAPSLOCK && g_shiftkey)
+				else if (g_isEditingInstrumentName && CAPSLOCK && g_shiftkey)
 				{
 					g_shiftkey = 0;
 					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
@@ -2061,7 +2073,7 @@ void CRmtView::OnUpdateInstrumentPastespecialInsertvolenvsandenvparstocurpos(CCm
 	//to cur pos
 	int i = g_Song.GetActiveInstr();
 	TInstrument* ai = &g_Instruments.m_instr[i];
-	pCmdUI->Enable(g_activepart==PART_INSTRUMENTS && (ai->act==2)); //when the envelope is being edited
+	pCmdUI->Enable(g_activepart==PART_INSTRUMENTS && (ai->activeEditSection==2)); //when the envelope is being edited
 }
 
 void CRmtView::OnUpdateInstrumentPastespecialVolumelenvelopeonly(CCmdUI* pCmdUI) 
@@ -3129,7 +3141,8 @@ void CRmtView::OnWantExit() //called from the menu File/Exit ID_WANTEXIT instead
 		return; //there is no exit
 	}
 	g_Song.Stop();
-	g_closeapplication=1;
+	g_closeapplication = 1;
+	g_Song.StopTimer();
 	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE,0,0);
 }
 

@@ -26,7 +26,7 @@
 
 struct TInfo
 {
-	char songname[SONGNAMEMAXLEN + 1];
+	char songname[SONG_NAME_MAX_LEN + 1];
 	int speed;
 	int mainspeed;
 	int instrspeed;

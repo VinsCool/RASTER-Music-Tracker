@@ -23,8 +23,6 @@ using namespace std;
 
 #include "global.h"
 
-#include "GUI_Instruments.h"
-
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 
@@ -34,17 +32,21 @@ extern CInstruments g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
 extern CXPokey g_Pokey;
 
+static BOOL busyInTimer = 0;
+
 void WaitForTimerRoutineProcessed()
 {
 	g_timerroutineprocessed = 0;
-	while (!g_timerroutineprocessed) Sleep(1);		//waiting
+	while (!g_timerroutineprocessed && !g_closeapplication) Sleep(1);		//waiting
 }
 
 // ----------------------------------------------------------------------------
 
 void CALLBACK G_TimerRoutine(UINT, UINT, DWORD, DWORD, DWORD)
 {
+	busyInTimer = 1;
 	g_Song.TimerRoutine();
+	busyInTimer = 0;
 }
 
 
@@ -69,18 +71,40 @@ CSong::CSong()
 
 CSong::~CSong()
 {
-	if (m_timer) { timeKillEvent(m_timer); m_timer = 0; }
+	//if (m_timer) { timeKillEvent(m_timer); m_timer = 0; }
 }
 
+/// <summary>
+/// Stop the timer and make sure that the timer event is not running
+/// </summary>
+void CSong::StopTimer()
+{
+	if (m_timer)
+	{
+		
+		while (busyInTimer);				// Wait until not in timer handler
+		
+		timeKillEvent(m_timer);		// Kill the timer
+		m_timer = 0;
+		
+		while (busyInTimer);				// Make sure not in the timer handler
+	}
+}
+
+/// <summary>
+/// Change the timing of how often the CSong::TimerRoutine is being called.
+/// Depends on PAL or NTSC timing.
+/// </summary>
+/// <param name="ms">ms between calls (17=NTSC, 20=PAL)</param>
 void CSong::ChangeTimer(int ms)
 {
 	if (m_timer) { timeKillEvent(m_timer); m_timer = 0; }
 	m_timer = timeSetEvent(ms, 0, G_TimerRoutine, (ULONG)(NULL), TIME_PERIODIC);
 }
 
-BOOL CSong::ClearSong(int numoftracks)
+void CSong::ClearSong(int numOfTracks)
 {
-	g_tracks4_8 = numoftracks;	//track for 4/8 channels
+	g_tracks4_8 = numOfTracks;	//track for 4/8 channels
 	g_rmtroutine = 1;			//RMT routine execution enabled
 	g_prove = 0;
 	g_respectvolume = 0;
@@ -111,9 +135,9 @@ BOOL CSong::ClearSong(int numoftracks)
 
 	m_infoact = INFO_ACTIVE_NAME;
 
-	memset(m_songname, ' ', SONGNAMEMAXLEN);
+	memset(m_songname, ' ', SONG_NAME_MAX_LEN);
 	strncpy(m_songname, "Noname song", 11);
-	m_songname[SONGNAMEMAXLEN] = 0;
+	m_songname[SONG_NAME_MAX_LEN] = 0;
 
 	m_songnamecur = 0;
 
@@ -141,7 +165,7 @@ BOOL CSong::ClearSong(int numoftracks)
 	//empty clipboards
 	g_TrackClipboard.Empty();
 	//
-	m_instrclipboard.act = -1;			//according to -1 it knows that it is empty
+	m_instrclipboard.activeEditSection = -1;			//according to -1 it knows that it is empty
 	m_songgoclipboard = -2;				//according to -2 it knows that it is empty
 
 	//delete all tracks and instruments
@@ -153,8 +177,6 @@ BOOL CSong::ClearSong(int numoftracks)
 
 	//Changes in the module
 	g_changes = 0;
-
-	return 1;
 }
 
 
@@ -307,7 +329,7 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 		//in addition to the instruments used in the tracks that are in the song, all non-empty instruments are stored in the RMT
 		for (i = 0; i < INSTRSNUM; i++)
 		{
-			if (g_Instruments.CalculateNoEmpty(i)) instrsave[i] |= IF_NOEMPTY;
+			if (g_Instruments.CalculateNotEmpty(i)) instrsave[i] |= IF_NOEMPTY;
 		}
 	}
 
@@ -651,7 +673,7 @@ int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instr
 			r = g_Instruments.AtaV0ToInstr(mem + instrdata, i);
 		else
 			r = g_Instruments.AtaToInstr(mem + instrdata, i);
-		g_Instruments.ModificationInstrument(i);	//writes to Atari ram
+		g_Instruments.WasModified(i);	//writes to Atari ram
 		if (!r) return 0; //some problem with the instrument => END
 		instrloaded[i] = 1;
 	}
@@ -879,11 +901,11 @@ int* CSong::GetUECursor(int part)
 			cursor = new int[6];
 			cursor[0] = m_activeinstr;
 			TInstrument* in = &(g_Instruments.m_instr[m_activeinstr]);
-			cursor[1] = in->act;
-			cursor[2] = in->activeenvx;
-			cursor[3] = in->activeenvy;
-			cursor[4] = in->activepar;
-			cursor[5] = in->activetab;
+			cursor[1] = in->activeEditSection;
+			cursor[2] = in->editEnvelopeX;
+			cursor[3] = in->editEnvelopeY;
+			cursor[4] = in->editParameterNr;
+			cursor[5] = in->editNoteTableCursorPos;
 			//=in->activenam; It omits that any change in the cursor position in the name is not a reason for undo separation
 		}
 		break;
@@ -1518,7 +1540,7 @@ void CSong::InstrCopy()
 
 void CSong::InstrPaste(int special)
 {
-	if (m_instrclipboard.act < 0) return;	//he has never been filled with anything
+	if (m_instrclipboard.activeEditSection < 0) return;	//he has never been filled with anything
 
 	int i = GetActiveInstr();
 
@@ -1536,7 +1558,7 @@ void CSong::InstrPaste(int special)
 	{
 		case 0: //normal paste
 			memcpy((void*)(&ai), (void*)(&m_instrclipboard), sizeof(TInstrument));
-			ai.act = ai.activenam = 0; //so that the cursor is at the beginning of the instrument name
+			ai.activeEditSection = ai.editNameCursorPos = 0; //so that the cursor is at the beginning of the instrument name
 			break;
 
 		case 1: //volume L/R
@@ -1551,27 +1573,27 @@ void CSong::InstrPaste(int special)
 		case 4: //envelope parameters
 			ep = 1;
 		InstrPaste_Envelopes:
-			for (x = 0; x <= m_instrclipboard.par[PAR_ENVLEN]; x++)
+			for (x = 0; x <= m_instrclipboard.parameters[PAR_ENV_LENGTH]; x++)
 			{
-				if (br) ai.env[x][ENV_VOLUMER] = m_instrclipboard.env[x][ENV_VOLUMER];
-				if (bl) ai.env[x][ENV_VOLUMEL] = m_instrclipboard.env[x][ENV_VOLUMEL];
-				if (bltor) ai.env[x][ENV_VOLUMER] = m_instrclipboard.env[x][ENV_VOLUMEL];
-				if (brtol) ai.env[x][ENV_VOLUMEL] = m_instrclipboard.env[x][ENV_VOLUMER];
+				if (br) ai.envelope[x][ENV_VOLUMER] = m_instrclipboard.envelope[x][ENV_VOLUMER];
+				if (bl) ai.envelope[x][ENV_VOLUMEL] = m_instrclipboard.envelope[x][ENV_VOLUMEL];
+				if (bltor) ai.envelope[x][ENV_VOLUMER] = m_instrclipboard.envelope[x][ENV_VOLUMEL];
+				if (brtol) ai.envelope[x][ENV_VOLUMEL] = m_instrclipboard.envelope[x][ENV_VOLUMER];
 				if (ep)
 				{
-					for (y = ENV_DISTORTION; y < ENVROWS; y++) ai.env[x][y] = m_instrclipboard.env[x][y];
+					for (y = ENV_DISTORTION; y < ENVROWS; y++) ai.envelope[x][y] = m_instrclipboard.envelope[x][y];
 				}
 			}
-			ai.par[PAR_ENVLEN] = m_instrclipboard.par[PAR_ENVLEN];
-			ai.par[PAR_ENVGO] = m_instrclipboard.par[PAR_ENVGO];
-			ai.activeenvx = 0;
+			ai.parameters[PAR_ENV_LENGTH] = m_instrclipboard.parameters[PAR_ENV_LENGTH];
+			ai.parameters[PAR_ENV_GOTO] = m_instrclipboard.parameters[PAR_ENV_GOTO];
+			ai.editEnvelopeX = 0;
 			break;
 
 		case 5: //TABLE
-			for (x = 0; x <= m_instrclipboard.par[PAR_TABLEN]; x++) ai.tab[x] = m_instrclipboard.tab[x];
-			ai.par[PAR_TABLEN] = m_instrclipboard.par[PAR_TABLEN];
-			ai.par[PAR_TABGO] = m_instrclipboard.par[PAR_TABGO];
-			ai.activetab = 0;
+			for (x = 0; x <= m_instrclipboard.parameters[PAR_TBL_LENGTH]; x++) ai.noteTable[x] = m_instrclipboard.noteTable[x];
+			ai.parameters[PAR_TBL_LENGTH] = m_instrclipboard.parameters[PAR_TBL_LENGTH];
+			ai.parameters[PAR_TBL_GOTO] = m_instrclipboard.parameters[PAR_TBL_GOTO];
+			ai.editNoteTableCursorPos = 0;
 			break;
 
 		case 6: //vol+env
@@ -1585,35 +1607,35 @@ void CSong::InstrPaste(int special)
 			goto InstrPaste_Envelopes;
 
 		case 7: //vol+env insert to cursor
-			int sx = m_instrclipboard.par[PAR_ENVLEN] + 1;
-			if (ai.activeenvx + sx > ENVCOLS) sx = ENVCOLS - ai.activeenvx;
-			for (x = ENVCOLS - 2; x >= ai.activeenvx; x--) //offset
+			int sx = m_instrclipboard.parameters[PAR_ENV_LENGTH] + 1;
+			if (ai.editEnvelopeX + sx > ENVCOLS) sx = ENVCOLS - ai.editEnvelopeX;
+			for (x = ENVCOLS - 2; x >= ai.editEnvelopeX; x--) //offset
 			{
 				int i = x + sx;
 				if (i >= ENVCOLS) continue;
-				for (y = 0; y < ENVROWS; y++) ai.env[i][y] = ai.env[x][y];
+				for (y = 0; y < ENVROWS; y++) ai.envelope[i][y] = ai.envelope[x][y];
 			}
 			for (x = 0; x < sx; x++) //insertion
 			{
-				int i = ai.activeenvx + x;
-				for (y = 0; y < ENVROWS; y++) ai.env[i][y] = m_instrclipboard.env[x][y];
+				int i = ai.editEnvelopeX + x;
+				for (y = 0; y < ENVROWS; y++) ai.envelope[i][y] = m_instrclipboard.envelope[x][y];
 			}
-			int i = ai.par[PAR_ENVLEN] + sx;
+			int i = ai.parameters[PAR_ENV_LENGTH] + sx;
 			if (i >= ENVCOLS) i = ENVCOLS - 1;
-			ai.par[PAR_ENVLEN] = i;
-			if (ai.par[PAR_ENVGO] > ai.activeenvx)
+			ai.parameters[PAR_ENV_LENGTH] = i;
+			if (ai.parameters[PAR_ENV_GOTO] > ai.editEnvelopeX)
 			{
-				i = ai.par[PAR_ENVGO] + sx;
+				i = ai.parameters[PAR_ENV_GOTO] + sx;
 				if (i >= ENVCOLS) i = ENVCOLS - 1;
-				ai.par[PAR_ENVGO] = i;
+				ai.parameters[PAR_ENV_GOTO] = i;
 			}
-			i = ai.activeenvx + sx;
+			i = ai.editEnvelopeX + sx;
 			if (i >= ENVCOLS) i = ENVCOLS - 1;
-			ai.activeenvx = i;
+			ai.editEnvelopeX = i;
 			break;
 
 	}
-	g_Instruments.ModificationInstrument(i); //write to Atari RAM
+	g_Instruments.WasModified(i); //write to Atari RAM
 }
 
 void CSong::InstrCut()
@@ -2496,7 +2518,7 @@ int CSong::ClearAllInstrumentsUnusedInAnyTrack()
 		if (!instrused[i])
 		{
 			//unused
-			if (g_Instruments.CalculateNoEmpty(i)) clearedinstruments++;	//is it empty? yes => it will be deleted
+			if (g_Instruments.CalculateNotEmpty(i)) clearedinstruments++;	//is it empty? yes => it will be deleted
 			g_Instruments.ClearInstrument(i);
 		}
 	}
@@ -2536,7 +2558,7 @@ void CSong::RenumberAllInstruments(int type)
 	//and now it adds even those that are not used in any track
 	for (i = 0; i < INSTRSNUM; i++)
 	{
-		if (moveinstrfrom[i] < 0 && g_Instruments.CalculateNoEmpty(i))
+		if (moveinstrfrom[i] < 0 && g_Instruments.CalculateNotEmpty(i))
 		{
 			moveinstrfrom[i] = order;
 			moveinstrto[order] = i;
@@ -2665,7 +2687,7 @@ void CSong::RenumberAllInstruments(int type)
 	}
 
 	//and finally write all the instruments in Atari memory
-	for (i = 0; i < INSTRSNUM; i++) g_Instruments.ModificationInstrument(i); //writes to Atari
+	for (i = 0; i < INSTRSNUM; i++) g_Instruments.WasModified(i); //writes to Atari
 
 	//Hooray, done
 }
@@ -3038,7 +3060,8 @@ void CSong::TimerRoutine()
 		if (g_screenupdate) //Does it want to redraw?
 		{
 			g_invalidatebytimer = 1;
-			AfxGetApp()->GetMainWnd()->Invalidate();
+			if (!g_closeapplication)
+				AfxGetApp()->GetMainWnd()->Invalidate();
 		}
 	}
 	g_timerroutineprocessed = 1;	//TimerRoutine took place
@@ -3050,37 +3073,37 @@ BOOL CInstruments::AtaV0ToInstr(unsigned char* ata, int instr)
 	TInstrument& ai = m_instr[instr];
 	int i, j;
 	//0-7 table
-	for (i = 0; i <= 7; i++) ai.tab[i] = ata[i];
+	for (i = 0; i <= 7; i++) ai.noteTable[i] = ata[i];
 	//8 ;instr len  0-31 *8, table len  0-7  (iiii ittt)
-	int* par = ai.par;
-	int len = par[PAR_ENVLEN] = ata[8] >> 3;
-	par[PAR_TABLEN] = ata[8] & 0x07;
-	par[PAR_ENVGO] = ata[9] >> 3;
-	par[PAR_TABGO] = ata[9] & 0x07;
-	par[PAR_TABTYPE] = ata[10] >> 7;
-	par[PAR_TABMODE] = (ata[10] >> 6) & 0x01;
-	par[PAR_TABSPD] = ata[10] & 0x3f;
-	par[PAR_VSLIDE] = ata[11];
-	par[PAR_VMIN] = ata[12] >> 4;
+	int* par = ai.parameters;
+	int len = par[PAR_ENV_LENGTH] = ata[8] >> 3;
+	par[PAR_TBL_LENGTH] = ata[8] & 0x07;
+	par[PAR_ENV_GOTO] = ata[9] >> 3;
+	par[PAR_TBL_GOTO] = ata[9] & 0x07;
+	par[PAR_TBL_TYPE] = ata[10] >> 7;
+	par[PAR_TBL_MODE] = (ata[10] >> 6) & 0x01;
+	par[PAR_TBL_SPEED] = ata[10] & 0x3f;
+	par[PAR_VOL_FADEOUT] = ata[11];
+	par[PAR_VOL_MIN] = ata[12] >> 4;
 	//par[PAR_POLY9]	= (ata[12]>>1) & 0x01;
 	//par[PAR_15KHZ]	= ata[12] & 0x01;
-	par[PAR_AUDCTL0] = ata[12] & 0x01;
-	par[PAR_AUDCTL1] = 0;
-	par[PAR_AUDCTL2] = 0;
-	par[PAR_AUDCTL3] = 0;
-	par[PAR_AUDCTL4] = 0;
-	par[PAR_AUDCTL5] = 0;
-	par[PAR_AUDCTL6] = 0;
-	par[PAR_AUDCTL7] = (ata[12] >> 1) & 0x01;
+	par[PAR_AUDCTL_15KHZ] = ata[12] & 0x01;
+	par[PAR_AUDCTL_HPF_CH2] = 0;
+	par[PAR_AUDCTL_HPF_CH1] = 0;
+	par[PAR_AUDCTL_JOIN_3_4] = 0;
+	par[PAR_AUDCTL_JOIN_1_2] = 0;
+	par[PAR_AUDCTL_179_CH3] = 0;
+	par[PAR_AUDCTL_179_CH1] = 0;
+	par[PAR_AUDCTL_POLY9] = (ata[12] >> 1) & 0x01;
 	//
 	par[PAR_DELAY] = ata[13];
 	par[PAR_VIBRATO] = ata[14] & 0x03;
-	par[PAR_FSHIFT] = ata[15];
+	par[PAR_FREQ_SHIFT] = ata[15];
 	//
 	BOOL stereo = (g_tracks4_8 > 4);
 	for (i = 0, j = 16; i <= len; i++, j += 3)
 	{
-		int* env = (int*)&ai.env[i];
+		int* env = (int*)&ai.envelope[i];
 		env[ENV_VOLUMER] = (stereo) ? (ata[j] >> 4) : (ata[j] & 0x0f); //if mono, then VOLUME R = VOLUME L
 		env[ENV_VOLUMEL] = ata[j] & 0x0f;
 		env[ENV_FILTER] = ata[j + 1] >> 7;
@@ -3112,39 +3135,39 @@ BOOL CInstruments::AtaToInstr(unsigned char* ata, int instr)
 	}
 
 	//only if the ranges are ok, they change the content of the instrument
-	int* par = ai.par;
-	par[PAR_TABLEN] = tablen;
-	par[PAR_TABGO] = tabgo;
-	par[PAR_ENVLEN] = envlen;
-	par[PAR_ENVGO] = envgo;
+	int* par = ai.parameters;
+	par[PAR_TBL_LENGTH] = tablen;
+	par[PAR_TBL_GOTO] = tabgo;
+	par[PAR_ENV_LENGTH] = envlen;
+	par[PAR_ENV_GOTO] = envgo;
 	//
-	par[PAR_TABTYPE] = ata[4] >> 7;
-	par[PAR_TABMODE] = (ata[4] >> 6) & 0x01;
-	par[PAR_TABSPD] = ata[4] & 0x3f;
+	par[PAR_TBL_TYPE] = ata[4] >> 7;
+	par[PAR_TBL_MODE] = (ata[4] >> 6) & 0x01;
+	par[PAR_TBL_SPEED] = ata[4] & 0x3f;
 	//
-	par[PAR_AUDCTL0] = ata[5] & 0x01;
-	par[PAR_AUDCTL1] = (ata[5] >> 1) & 0x01;
-	par[PAR_AUDCTL2] = (ata[5] >> 2) & 0x01;
-	par[PAR_AUDCTL3] = (ata[5] >> 3) & 0x01;
-	par[PAR_AUDCTL4] = (ata[5] >> 4) & 0x01;
-	par[PAR_AUDCTL5] = (ata[5] >> 5) & 0x01;
-	par[PAR_AUDCTL6] = (ata[5] >> 6) & 0x01;
-	par[PAR_AUDCTL7] = (ata[5] >> 7) & 0x01;
+	par[PAR_AUDCTL_15KHZ] = ata[5] & 0x01;
+	par[PAR_AUDCTL_HPF_CH2] = (ata[5] >> 1) & 0x01;
+	par[PAR_AUDCTL_HPF_CH1] = (ata[5] >> 2) & 0x01;
+	par[PAR_AUDCTL_JOIN_3_4] = (ata[5] >> 3) & 0x01;
+	par[PAR_AUDCTL_JOIN_1_2] = (ata[5] >> 4) & 0x01;
+	par[PAR_AUDCTL_179_CH3] = (ata[5] >> 5) & 0x01;
+	par[PAR_AUDCTL_179_CH1] = (ata[5] >> 6) & 0x01;
+	par[PAR_AUDCTL_POLY9] = (ata[5] >> 7) & 0x01;
 	//
-	par[PAR_VSLIDE] = ata[6];
-	par[PAR_VMIN] = ata[7] >> 4;
+	par[PAR_VOL_FADEOUT] = ata[6];
+	par[PAR_VOL_MIN] = ata[7] >> 4;
 	par[PAR_DELAY] = ata[8];
 	par[PAR_VIBRATO] = ata[9] & 0x03;
-	par[PAR_FSHIFT] = ata[10];
+	par[PAR_FREQ_SHIFT] = ata[10];
 
 	//0-31 table
-	for (i = 0; i <= par[PAR_TABLEN]; i++) ai.tab[i] = ata[12 + i];
+	for (i = 0; i <= par[PAR_TBL_LENGTH]; i++) ai.noteTable[i] = ata[12 + i];
 
 	//envelope
 	BOOL stereo = (g_tracks4_8 > 4);
-	for (i = 0, j = ata[0] + 1; i <= par[PAR_ENVLEN]; i++, j += 3)
+	for (i = 0, j = ata[0] + 1; i <= par[PAR_ENV_LENGTH]; i++, j += 3)
 	{
-		int* env = (int*)&ai.env[i];
+		int* env = (int*)&ai.envelope[i];
 		env[ENV_VOLUMER] = (stereo) ? (ata[j] >> 4) : (ata[j] & 0x0f); //if mono, then VOLUME R = VOLUME L
 		env[ENV_VOLUMEL] = ata[j] & 0x0f;
 		env[ENV_FILTER] = ata[j + 1] >> 7;

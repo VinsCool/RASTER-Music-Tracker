@@ -239,9 +239,6 @@
     <ClInclude Include="global.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="GUI_Instruments.h">
-      <Filter>Source Files\GUI</Filter>
-    </ClInclude>
     <ClInclude Include="GuiHelpers.h">
       <Filter>Source Files\GUI</Filter>
     </ClInclude>

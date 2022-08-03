@@ -20,6 +20,8 @@ extern CString g_aboutpokey;
 extern CString g_about6502;
 extern CString g_driverversion;	//used to display the RMT Driver "tracker.obx" version number
 
+extern CSong g_Song;
+
 /////////////////////////////////////////////////////////////////////////////
 // CRmtApp
 
@@ -99,6 +101,8 @@ BOOL CRmtApp::InitInstance()
 
 	// Initialization of a random number
 	srand( (unsigned)time( NULL ) );
+
+	g_Song.ClearSong(8);
 
 	//PostMessage(m_pMainWnd->m_hWnd,WM_COMMAND,ID_APP_ABOUT,0); //so that the dialogue can be triggered first
 

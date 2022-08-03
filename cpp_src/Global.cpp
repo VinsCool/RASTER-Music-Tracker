@@ -19,7 +19,7 @@ int SAPRDUMP = 0;		//0, the SAPR dumper is disabled; 1, output is currently reco
 int framecount = 0;		//SAPR dumper frame counter used for calculations and memory allignment with bytes 
 
 
-BOOL g_closeapplication = 0;
+BOOL g_closeapplication = 0;			// Set when the application is busy shutting down
 CDC* g_mem_dc = NULL;
 CDC* g_gfx_dc = NULL;
 
@@ -129,7 +129,7 @@ double avg_fps[120] = { 0 };
 int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 int g_active_ti;			//1 tracks, 2 instrs
 
-BOOL is_editing_instr;		//0 no, 1 instrument name is edited
+BOOL g_isEditingInstrumentName;		//0 no, 1 instrument name is edited
 BOOL is_editing_infos;		//0 no, 1 song name is edited
 
 int g_line_y = 0;			//active line coordinate, used to reference g_cursoractview to the correct position
@@ -176,7 +176,7 @@ int g_keyboard_layout = 0;	//1 yes, 0 no, not be useful anymore... should be del
 BOOL g_keyboard_swapenter = 0;	//1 yes, 0 no, probably not needed anymore but will be kept for now
 BOOL g_keyboard_playautofollow = 1;	//1 yes, 0 no
 BOOL g_keyboard_updowncontinue = 1;	//1 yes, 0 no
-BOOL g_keyboard_rememberoctavesandvolumes = 1;	//1 yes, 0 no
+BOOL g_keyboard_RememberOctavesAndVolumes = 1;	// 1 yes, 0 no, the last used octave and volume are stored in the instrument data
 BOOL g_keyboard_escresetatarisound = 1;	//1 yes, 0 no
 BOOL g_keyboard_askwhencontrol_s = 1;	//1 yes, 0 no
 

@@ -23,8 +23,6 @@ using namespace std;
 
 #include "global.h"
 
-#include "GUI_Instruments.h"
-
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 #include "RmtMidi.h"
@@ -905,7 +903,7 @@ void CSong::FileTrackLoad()
 	&g_keyboard_swapenter,										\
 	&g_keyboard_playautofollow,									\
 	&g_keyboard_updowncontinue,									\
-	&g_keyboard_rememberoctavesandvolumes,						\
+	&g_keyboard_RememberOctavesAndVolumes,						\
 	&g_keyboard_escresetatarisound,								\
 	&m_trackactivecol,&m_trackactivecur,						\
 	&m_activeinstr,&m_volume,&m_octave,							\
@@ -1079,9 +1077,9 @@ int CSong::Load(ifstream& in, int iotype)
 							if (strcmp(line, "NAME:") == 0)
 							{
 								Trimstr(value);
-								memset(m_songname, ' ', SONGNAMEMAXLEN);
-								int lname = SONGNAMEMAXLEN;
-								if (strlen(value) <= SONGNAMEMAXLEN) lname = strlen(value);
+								memset(m_songname, ' ', SONG_NAME_MAX_LEN);
+								int lname = SONG_NAME_MAX_LEN;
+								if (strlen(value) <= SONG_NAME_MAX_LEN) lname = strlen(value);
 								strncpy(m_songname, value, lname);
 							}
 							else
@@ -2260,20 +2258,20 @@ int CSong::LoadRMT(ifstream& in)
 	}
 
 	char a;
-	for (j = 0; j < SONGNAMEMAXLEN && (a = mem[bfrom + j]); j++)
+	for (j = 0; j < SONG_NAME_MAX_LEN && (a = mem[bfrom + j]); j++)
 		m_songname[j] = a;
 
-	for (k = j; k < SONGNAMEMAXLEN; k++) m_songname[k] = ' '; //fill in the gaps
+	for (k = j; k < SONG_NAME_MAX_LEN; k++) m_songname[k] = ' '; //fill in the gaps
 
 	int adrinames = bfrom + j + 1; //+1 that's the zero behind the name
 	for (i = 0; i < INSTRSNUM; i++)
 	{
 		if (instrloaded[i])
 		{
-			for (j = 0; j < INSTRNAMEMAXLEN && (a = mem[adrinames + j]); j++)
+			for (j = 0; j < INSTRUMENT_NAME_MAX_LEN && (a = mem[adrinames + j]); j++)
 				g_Instruments.m_instr[i].name[j] = a;
 
-			for (k = j; k < INSTRNAMEMAXLEN; k++) g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
+			for (k = j; k < INSTRUMENT_NAME_MAX_LEN; k++) g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
 			adrinames += j + 1; //+1 is zero behind the name
 		}
 	}
@@ -2337,13 +2335,13 @@ BOOL CSong::ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrsaved
 		{
 			TInstrument& ai = g_Instruments.m_instr[i];
 			//commands
-			for (j = 0; j <= ai.par[PAR_ENVLEN]; j++)
+			for (j = 0; j <= ai.parameters[PAR_ENV_LENGTH]; j++)
 			{
-				int cmd = ai.env[j][ENV_COMMAND] & 0x07;
+				int cmd = ai.envelope[j][ENV_COMMAND] & 0x07;
 				usedcmd[cmd]++;
 				if (cmd == 7)
 				{
-					if (ai.env[j][ENV_X] == 0x08 && ai.env[j][ENV_Y] == 0x00)
+					if (ai.envelope[j][ENV_X] == 0x08 && ai.envelope[j][ENV_Y] == 0x00)
 					{
 						usedcmd7volumeonly++;
 						for (g = 0; g < g_tracks4_8; g++) { if (instrongx[i][g]) usedcmd7volumeonlyongx[g]++; }
@@ -2352,16 +2350,16 @@ BOOL CSong::ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrsaved
 						usedcmd7setnote++;
 				}
 				//portamento
-				if (ai.env[j][ENV_PORTAMENTO]) usedportamento++;
+				if (ai.envelope[j][ENV_PORTAMENTO]) usedportamento++;
 				//filter
-				if (ai.env[j][ENV_FILTER])
+				if (ai.envelope[j][ENV_FILTER])
 				{
 					usedfilter++;
 					for (g = 0; g < g_tracks4_8; g++) { if (instrongx[i][g]) usedfilterongx[g]++; }
 				}
 
 				//bass16
-				if (ai.env[j][ENV_DISTORTION] == 6)
+				if (ai.envelope[j][ENV_DISTORTION] == 6)
 				{
 					usedbass16++;
 					for (g = 0; g < g_tracks4_8; g++) { if (instrongx[i][g]) usedbass16ongx[g]++; }
@@ -2369,27 +2367,27 @@ BOOL CSong::ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrsaved
 
 			}
 			//table type
-			if (ai.par[PAR_TABTYPE]) usedtabtype++;
+			if (ai.parameters[PAR_TBL_TYPE]) usedtabtype++;
 			//table mode
-			if (ai.par[PAR_TABMODE]) usedtabmode++;
+			if (ai.parameters[PAR_TBL_MODE]) usedtabmode++;
 			//table go
-			if (ai.par[PAR_TABGO]) usedtablego++;	//non-zero table go
+			if (ai.parameters[PAR_TBL_GOTO]) usedtablego++;	//non-zero table go
 			//audctl manual set
-			if (ai.par[PAR_AUDCTL0]
-				|| ai.par[PAR_AUDCTL1]
-				|| ai.par[PAR_AUDCTL2]
-				|| ai.par[PAR_AUDCTL3]
-				|| ai.par[PAR_AUDCTL4]
-				|| ai.par[PAR_AUDCTL5]
-				|| ai.par[PAR_AUDCTL6]
-				|| ai.par[PAR_AUDCTL7]) usedaudctlmanualset++;
+			if (ai.parameters[PAR_AUDCTL_15KHZ]
+				|| ai.parameters[PAR_AUDCTL_HPF_CH2]
+				|| ai.parameters[PAR_AUDCTL_HPF_CH1]
+				|| ai.parameters[PAR_AUDCTL_JOIN_3_4]
+				|| ai.parameters[PAR_AUDCTL_JOIN_1_2]
+				|| ai.parameters[PAR_AUDCTL_179_CH3]
+				|| ai.parameters[PAR_AUDCTL_179_CH1]
+				|| ai.parameters[PAR_AUDCTL_POLY9]) usedaudctlmanualset++;
 			//volume mininum
-			if (ai.par[PAR_VMIN]) usedvolumemin++;
+			if (ai.parameters[PAR_VOL_MIN]) usedvolumemin++;
 			//effect vibrato and fshift
-			if (ai.par[PAR_DELAY]) //only when the effect delay is nonzero
+			if (ai.parameters[PAR_DELAY]) //only when the effect delay is nonzero
 			{
-				if (ai.par[PAR_VIBRATO]) usedeffectvibrato++;
-				if (ai.par[PAR_FSHIFT]) usedeffectfshift++;
+				if (ai.parameters[PAR_VIBRATO]) usedeffectvibrato++;
+				if (ai.parameters[PAR_FREQ_SHIFT]) usedeffectfshift++;
 			}
 		}
 	}

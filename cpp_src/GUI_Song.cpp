@@ -20,10 +20,7 @@ using namespace std;
 #include "Song.h"
 #include "Clipboard.h"
 
-
 #include "global.h"
-
-#include "GUI_Instruments.h"
 
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
@@ -867,7 +864,7 @@ int last_x;
 int last_y;
 int last_linesnum;
 
-BOOL CSong::DrawTracks()
+void CSong::DrawTracks()
 {
 	static char* tnames = "L1L2L3L4R1R2R3R4";
 	char s[16], stmp[16];
@@ -887,7 +884,7 @@ BOOL CSong::DrawTracks()
 		else color = (g_activepart == PART_TRACKS) ? COLOR_SELECTED : TEXT_COLOR_RED;
 		sprintf(s, "%02X", SongGetGo());
 		TextXY(s, TRACKS_X + TRACKS_OFFSET * 8 + 11 * 8, TRACKS_Y + 8 * 16, color);
-		return 1;
+		return;
 	}
 
 	//the cursor position is alway centered regardless of the window size with this simple formula
@@ -1143,14 +1140,11 @@ BOOL CSong::DrawTracks()
 	TextXY(s, TRACKS_X + 112 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
 	sprintf(s, "OL = %02d", g_tracklines / 2);
 	TextXY(s, TRACKS_X + 128 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
-
-	return 1;
 }
 
-BOOL CSong::DrawInstrument()
+void CSong::DrawInstrument()
 {
 	g_Instruments.DrawInstrument(m_activeinstr);
-	return 1;
 }
 
 /// <summary>
@@ -1302,14 +1296,14 @@ void CSong::DrawInfo()
 	if (flag & IF_AUDCTL)
 	{
 		TInstrument& ti = g_Instruments.m_instr[m_activeinstr];
-		int audctl = ti.par[PAR_AUDCTL0]
-			| (ti.par[PAR_AUDCTL1] << 1)
-			| (ti.par[PAR_AUDCTL2] << 2)
-			| (ti.par[PAR_AUDCTL3] << 3)
-			| (ti.par[PAR_AUDCTL4] << 4)
-			| (ti.par[PAR_AUDCTL5] << 5)
-			| (ti.par[PAR_AUDCTL6] << 6)
-			| (ti.par[PAR_AUDCTL7] << 7);
+		int audctl = ti.parameters[PAR_AUDCTL_15KHZ]
+			| (ti.parameters[PAR_AUDCTL_HPF_CH2] << 1)
+			| (ti.parameters[PAR_AUDCTL_HPF_CH1] << 2)
+			| (ti.parameters[PAR_AUDCTL_JOIN_3_4] << 3)
+			| (ti.parameters[PAR_AUDCTL_JOIN_1_2] << 4)
+			| (ti.parameters[PAR_AUDCTL_179_CH3] << 5)
+			| (ti.parameters[PAR_AUDCTL_179_CH1] << 6)
+			| (ti.parameters[PAR_AUDCTL_POLY9] << 7);
 		sprintf(szBuffer, "AUDCTL:%02X", audctl);
 		TextMiniXY(szBuffer, x, y, TEXT_MINI_COLOR_BLUE);
 		// x += 6 * 8;
@@ -1368,7 +1362,7 @@ BOOL CSong::InfoKey(int vk, int shift, int control)
 		{	//saves undo only if it is not cursor movement
 			g_Undo.ChangeInfo(0, UETYPE_INFODATA);
 		}
-		if (EditText(vk, shift, control, m_songname, m_songnamecur, SONGNAMEMAXLEN)) m_infoact = INFO_ACTIVE_SPEED;
+		if (EditText(vk, shift, control, m_songname, m_songnamecur, SONG_NAME_MAX_LEN)) m_infoact = INFO_ACTIVE_SPEED;
 		return 1;
 	}
 
@@ -1505,19 +1499,19 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 {
 	//note: if returning 1, then screenupdate is done in RmtView
 	TInstrument& ai = g_Instruments.m_instr[m_activeinstr];
-	int& ap = ai.par[ai.activepar];
-	int& ae = ai.env[ai.activeenvx][ai.activeenvy];
-	int& at = ai.tab[ai.activetab];
+	int& ap = ai.parameters[ai.editParameterNr];
+	int& ae = ai.envelope[ai.editEnvelopeX][ai.editEnvelopeY];
+	int& at = ai.noteTable[ai.editNoteTableCursorPos];
 	int i;
 
 	BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
 
 	if (!control && !shift && NumbKey(vk) >= 0)
 	{
-		if (ai.act == 1) //parameters
+		if (ai.activeEditSection == INSTRUMENT_SECTION_PARAMETERS) //parameters
 		{
-			int pmax = shpar[ai.activepar].pmax;
-			int pfrom = shpar[ai.activepar].pfrom;
+			int pmax = shpar[ai.editParameterNr].maxParameterValue;
+			int pfrom = shpar[ai.editParameterNr].displayOffset;
 			if (NumbKey(vk) > pmax + pfrom) return 0;
 			i = ap + pfrom;
 			i &= 0x0f; //lower digit
@@ -1537,30 +1531,28 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 			ap = i;
 			goto ChangeInstrumentPar;
 		}
-		else
-			if (ai.act == 2) //envelope
-			{
-				int eand = shenv[ai.activeenvy].pand;
-				int num = NumbKey(vk);
-				i = num & eand;
-				if (i != num) return 0; //something else came out after and number pressed out of range
-				g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-				ae = i;
-				//shift to the right
-				i = ai.activeenvx;
-				if (i < ai.par[PAR_ENVLEN]) i++;	// else i=0; //length of env
-				ai.activeenvx = i;
-				goto ChangeInstrumentEnv;
-			}
-			else
-				if (ai.act == 3) //table
-				{
-					int num = NumbKey(vk);
-					i = ((at << 4) | num) & 0xff;
-					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-					at = i;
-					goto ChangeInstrumentTab;
-				}
+		else if (ai.activeEditSection == INSTRUMENT_SECTION_ENVELOPE) //envelope
+		{
+			int eand = shenv[ai.editEnvelopeY].pand;
+			int num = NumbKey(vk);
+			i = num & eand;
+			if (i != num) return 0; //something else came out after and number pressed out of range
+			g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+			ae = i;
+			//shift to the right
+			i = ai.editEnvelopeX;
+			if (i < ai.parameters[PAR_ENV_LENGTH]) i++;	// else i=0; //length of env
+			ai.editEnvelopeX = i;
+			goto ChangeInstrumentEnv;
+		}
+		else if (ai.activeEditSection == INSTRUMENT_SECTION_NOTETABLE) //table
+		{
+			int num = NumbKey(vk);
+			i = ((at << 4) | num) & 0xff;
+			g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+			at = i;
+			goto ChangeInstrumentTab;
+		}
 	}
 
 	//for name, parameters, envelope and table
@@ -1568,22 +1560,25 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 	{
 		case VK_TAB:
 			if (control) break;	//do nothing
-			if (ai.act == 0) break;	//is editing text
+			if (ai.activeEditSection == INSTRUMENT_SECTION_NAME) break;	//is editing text
 			if (shift)
 			{
-				ai.act = 0;	//Shift+TAB => Name
-				is_editing_instr = 1;
+				ai.activeEditSection = INSTRUMENT_SECTION_NAME;	//Shift+TAB => Name
+				g_isEditingInstrumentName = 1;
 			}
 			else
 			{
-				if (ai.act < 3) ai.act++;	else ai.act = 1; //TAB 1,2,3
-				is_editing_instr = 0;
+				if (ai.activeEditSection < INSTRUMENT_SECTION_NOTETABLE) 
+					ai.activeEditSection++; 
+				else 
+					ai.activeEditSection = INSTRUMENT_SECTION_PARAMETERS; //TAB 1,2,3
+				g_isEditingInstrumentName = 0;
 			}
 			g_Undo.Separator();
 			return 1;
 
 		case VK_LEFT:
-			if (!control && (!CAPSLOCK && shift || (CAPSLOCK && !shift && is_editing_instr) || (CAPSLOCK && shift && !is_editing_instr)))
+			if (!control && (!CAPSLOCK && shift || (CAPSLOCK && !shift && g_isEditingInstrumentName) || (CAPSLOCK && shift && !g_isEditingInstrumentName)))
 			{
 				ActiveInstrPrev();
 				return 1;
@@ -1591,7 +1586,7 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 			break;
 
 		case VK_RIGHT:
-			if (!control && (!CAPSLOCK && shift || (CAPSLOCK && !shift && is_editing_instr) || (CAPSLOCK && shift && !is_editing_instr)))
+			if (!control && (!CAPSLOCK && shift || (CAPSLOCK && !shift && g_isEditingInstrumentName) || (CAPSLOCK && shift && !g_isEditingInstrumentName)))
 			{
 				ActiveInstrNext();
 				return 1;
@@ -1603,7 +1598,7 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 			if (CAPSLOCK && shift) break;
 
 			if (shift && !control) return 0;	//the combination Shift + Control + UP / DOWN is enabled for edit ENVELOPE and TABLE
-			if (shift && control && ai.act == 1) return 0;	//except for edit PARAM, is not allowed there
+			if (shift && control && ai.activeEditSection == INSTRUMENT_SECTION_PARAMETERS) return 0;	//except for edit PARAM, is not allowed there
 			break;
 
 		case VK_MULTIPLY:
@@ -1625,15 +1620,15 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 			{
 				g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
 				BOOL br = 0, bl = 0;
-				if (ai.act == 2 && ai.activeenvy == ENV_VOLUMER) br = 1;
+				if (ai.activeEditSection == INSTRUMENT_SECTION_ENVELOPE && ai.editEnvelopeY == ENV_VOLUMER) br = 1;
 				else
-					if (ai.act == 2 && ai.activeenvy == ENV_VOLUMEL) bl = 1;
+					if (ai.activeEditSection == INSTRUMENT_SECTION_ENVELOPE && ai.editEnvelopeY == ENV_VOLUMEL) bl = 1;
 					else
 						br = bl = 1;
-				for (int i = 0; i <= ai.par[PAR_ENVLEN]; i++)
+				for (int i = 0; i <= ai.parameters[PAR_ENV_LENGTH]; i++)
 				{
-					if (br) { if (ai.env[i][ENV_VOLUMER] > 0) ai.env[i][ENV_VOLUMER]--; }
-					if (bl) { if (ai.env[i][ENV_VOLUMEL] > 0) ai.env[i][ENV_VOLUMEL]--; }
+					if (br) { if (ai.envelope[i][ENV_VOLUMER] > 0) ai.envelope[i][ENV_VOLUMER]--; }
+					if (bl) { if (ai.envelope[i][ENV_VOLUMEL] > 0) ai.envelope[i][ENV_VOLUMEL]--; }
 				}
 				goto ChangeInstrumentEnv;
 			}
@@ -1647,15 +1642,15 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 			{
 				g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
 				BOOL br = 0, bl = 0;
-				if (ai.act == 2 && ai.activeenvy == ENV_VOLUMER) br = 1;
+				if (ai.activeEditSection == INSTRUMENT_SECTION_ENVELOPE && ai.editEnvelopeY == ENV_VOLUMER) br = 1;
 				else
-					if (ai.act == 2 && ai.activeenvy == ENV_VOLUMEL) bl = 1;
+					if (ai.activeEditSection == INSTRUMENT_SECTION_ENVELOPE && ai.editEnvelopeY == ENV_VOLUMEL) bl = 1;
 					else
 						br = bl = 1;
-				for (int i = 0; i <= ai.par[PAR_ENVLEN]; i++)
+				for (int i = 0; i <= ai.parameters[PAR_ENV_LENGTH]; i++)
 				{
-					if (br) { if (ai.env[i][ENV_VOLUMER] < 0x0f) ai.env[i][ENV_VOLUMER]++; }
-					if (bl) { if (ai.env[i][ENV_VOLUMEL] < 0x0f) ai.env[i][ENV_VOLUMEL]++; }
+					if (br) { if (ai.envelope[i][ENV_VOLUMER] < 0x0f) ai.envelope[i][ENV_VOLUMER]++; }
+					if (bl) { if (ai.envelope[i][ENV_VOLUMEL] < 0x0f) ai.envelope[i][ENV_VOLUMEL]++; }
 				}
 				goto ChangeInstrumentEnv;
 			}
@@ -1666,277 +1661,284 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 	}
 
 	//and now only for special parts
-	if (ai.act == 0)
+	if (ai.activeEditSection == INSTRUMENT_SECTION_NAME)
 	{
-		is_editing_instr = 1;
+		g_isEditingInstrumentName = 1;
 		//NAME
 		if (IsnotMovementVKey(vk))
 		{	//saves undo only if it is not cursor movement
 			g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
 		}
-		if (EditText(vk, shift, control, ai.name, ai.activenam, INSTRNAMEMAXLEN)) ai.act = 1;
+		if (EditText(vk, shift, control, ai.name, ai.editNameCursorPos, INSTRUMENT_NAME_MAX_LEN)) ai.activeEditSection = 1;
 
 		return 1;
 	}
-	else
-		if (ai.act == 1)
-		{
-			is_editing_instr = 0;
-			//PARAMETERS
-			switch (vk)
-			{
-				case VK_UP:
-					if (control) goto ParameterInc;
-					ai.activepar = shpar[ai.activepar].gup;
-					return 1;
-
-				case VK_DOWN:
-					if (control) goto ParameterDec;
-					ai.activepar = shpar[ai.activepar].gdw;
-					return 1;
-
-				case VK_LEFT:
-					if (control)
-					{
-					ParameterDec:
-						g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-						int v = ap - 1;
-						if (v < 0) v = shpar[ai.activepar].pmax;
-						ap = v;
-						goto ChangeInstrumentPar;
-					}
-					else
-						ai.activepar = shpar[ai.activepar].gle;
-					return 1;
-
-				case VK_RIGHT:
-					if (control)
-					{
-					ParameterInc:
-						g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-						int v = ap + 1;
-						if (v > shpar[ai.activepar].pmax) v = 0;
-						ap = v;
-						goto ChangeInstrumentPar;
-					}
-					else
-						ai.activepar = shpar[ai.activepar].gri;
-					return 1;
-
-				case VK_HOME:
-					ai.activepar = PAR_ENVLEN;
-					return 1;
-
-				case VK_SPACE:
-					if (control) break;	//prevents inputing a SPACE while exiting PROVE mode
-				case VK_BACK:	//BACKSPACE
-				case VK_DELETE:
-					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-					ap = 0;
-					goto ChangeInstrumentPar;
-					return 1;
-
-				ChangeInstrumentPar:
-					//because there has been some change in the instrument parameter => stop this instrument in all channels
-					Atari_InstrumentTurnOff(m_activeinstr);
-					g_Instruments.CheckInstrumentParameters(m_activeinstr);
-					g_Instruments.ModificationInstrument(m_activeinstr);
-					return 1;
-			}
-		}
-		else
-			if (ai.act == 2)
-			{
-				is_editing_instr = 0;
-				//ENVELOPE
-				switch (vk)
-				{
-					case VK_UP:
-						if (control)
-						{	//
-							if (shift)	//SHIFT+CONTROL+UP
-							{
-								g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-								for (int i = 0; i <= ai.par[PAR_ENVLEN]; i++)
-								{
-									int& ae = ai.env[i][ai.activeenvy];
-									ae = (ae + shenv[ai.activeenvy].padd) & shenv[ai.activeenvy].pand;
-								}
-								goto ChangeInstrumentEnv;
-							}
-							goto EnvelopeInc;
-						}
-						i = ai.activeenvy;
-						if (i > 0)
-						{
-							i--;
-							if (i == 0 && g_tracks4_8 <= 4) i = 7;	//mono mode
-						}
-						else
-							i = 7;
-						ai.activeenvy = i;
-						return 1;
-
-					case VK_DOWN:
-						if (control)
-						{	//
-							if (shift)	//SHIFT+CONTROL+DOWN
-							{
-								g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-								for (int i = 0; i <= ai.par[PAR_ENVLEN]; i++)
-								{
-									int& ae = ai.env[i][ai.activeenvy];
-									ae = (ae + shenv[ai.activeenvy].psub) & shenv[ai.activeenvy].pand;
-								}
-								goto ChangeInstrumentEnv;
-							}
-							goto EnvelopeDec;
-						}
-						i = ai.activeenvy;
-						if (i < 7) i++; else i = (g_tracks4_8 > 4) ? 0 : 1;
-						ai.activeenvy = i;
-						return 1;
-
-					case VK_LEFT:
-						if (control)
-						{
-						EnvelopeDec:
-							g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-							ae = (ae + shenv[ai.activeenvy].psub) & shenv[ai.activeenvy].pand;
-							goto ChangeInstrumentEnv;
-						}
-						else
-						{
-							i = ai.activeenvx;
-							if (i > 0) i--; else i = ai.par[PAR_ENVLEN]; //length of env
-							ai.activeenvx = i;
-						}
-						return 1;
-
-					case VK_RIGHT:
-						if (control)
-						{
-						EnvelopeInc:
-							g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-							ae = (ae + shenv[ai.activeenvy].padd) & shenv[ai.activeenvy].pand;
-							goto ChangeInstrumentEnv;
-						}
-						else
-						{
-							i = ai.activeenvx;
-							if (i < ai.par[PAR_ENVLEN]) i++; else i = 0; //length of env
-							ai.activeenvx = i;
-						}
-						return 1;
-
-					case VK_HOME:
-						if (control)
-						{
-							g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-							ai.par[PAR_ENVGO] = ai.activeenvx; //sets ENVGO to this column
-							goto ChangeInstrumentPar;	//yes, that's fine, it really changed the PARAMETER, even if it's in the envelope
-						}
-						else
-						{
-							//goes left to column 0 or to the beginning of the GO loop
-							if (ai.activeenvx != 0)
-								ai.activeenvx = 0;
-							else
-								ai.activeenvx = ai.par[PAR_ENVGO];
-						}
-						return 1;
-
-					case VK_END:
-						if (control)
-						{
-							g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-							if (ai.activeenvx == ai.par[PAR_ENVLEN])	//sets ENVLEN to this column or to the end
-								ai.par[PAR_ENVLEN] = ENVCOLS - 1;
-							else
-								ai.par[PAR_ENVLEN] = ai.activeenvx;
-							goto ChangeInstrumentPar;	//yes, changed PAR from envelope
-						}
-						else
-						{
-							ai.activeenvx = ai.par[PAR_ENVLEN];	//moves the cursor to the right to the end
-						}
-						return 1;
-
-					case 8:			//VK_BACKSPACE:
-						g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-						ae = 0;
-						goto ChangeInstrumentEnv;
-						return 1;
-
-					case VK_SPACE:	//VK_SPACE
-						if (control) break;	//prevents inputing a SPACE while exiting PROVE mode
-						{
-							g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-							for (int j = 0; j < ENVROWS; j++) ai.env[ai.activeenvx][j] = 0;
-							if (ai.activeenvx < ai.par[PAR_ENVLEN]) ai.activeenvx++; //shift to the right
-						}
-						goto ChangeInstrumentEnv;
-						return 1;
-
-					case VK_INSERT:
-						if (!control)
-						{	//moves the envelope from the current position to the right
-							g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-							int i, j;
-							int ele = ai.par[PAR_ENVLEN];
-							int ego = ai.par[PAR_ENVGO];
-							if (ele < ENVCOLS - 1) ele++;
-							if (ai.activeenvx < ego && ego < ENVCOLS - 1) ego++;
-							for (i = ENVCOLS - 2; i >= ai.activeenvx; i--)
-							{
-								for (j = 0; j < ENVROWS; j++) ai.env[i + 1][j] = ai.env[i][j];
-							}
-							//improvement: with shift it will leave it there (it will not erase the column)
-							if (!shift) for (j = 0; j < ENVROWS; j++) ai.env[ai.activeenvx][j] = 0;
-							ai.par[PAR_ENVLEN] = ele;
-							ai.par[PAR_ENVGO] = ego;
-							goto ChangeInstrumentPar;	//changed length and / or go parameters
-						}
-						return 0; //without screen update
-
-					case VK_DELETE:
-						if (!control)	//!shift &&
-						{	//moves the envelope from the current position to the left
-							g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-							int i, j;
-							int ele = ai.par[PAR_ENVLEN];
-							int ego = ai.par[PAR_ENVGO];
-							if (ele > 0)
-							{
-								ele--;
-								for (i = ai.activeenvx; i < ENVCOLS - 1; i++)
-								{
-									for (j = 0; j < ENVROWS; j++) ai.env[i][j] = ai.env[i + 1][j];
-								}
-								for (j = 0; j < ENVROWS; j++) ai.env[ENVCOLS - 1][j] = 0;
-							}
-							else
-							{
-								for (j = 0; j < ENVROWS; j++) ai.env[0][j] = 0;
-							}
-							if (ai.activeenvx < ego) ego--;
-							if (ego > ele) ego = ele;
-							ai.par[PAR_ENVGO] = ego;
-							ai.par[PAR_ENVLEN] = ele;
-							if (ai.activeenvx > ele) ai.activeenvx = ele;
-							goto ChangeInstrumentPar;	//changed length and / or go parameters
-						}
-						return 0; //without screen update
-
-					ChangeInstrumentEnv:
-						//something changed => Save instrument to Atari memory
-						g_Instruments.ModificationInstrument(m_activeinstr);
-						return 1;
-				}
-			}
-	if (ai.act == 3)
+	else if (ai.activeEditSection == INSTRUMENT_SECTION_PARAMETERS)
 	{
-		is_editing_instr = 0;
+		// Parameter section is active
+
+		g_isEditingInstrumentName = 0;
+		switch (vk)
+		{
+			case VK_UP:
+				if (control) goto ParameterInc;
+				ai.editParameterNr = shpar[ai.editParameterNr].gotoUp;
+				return 1;
+
+			case VK_DOWN:
+				if (control) goto ParameterDec;
+				ai.editParameterNr = shpar[ai.editParameterNr].gotoDown;
+				return 1;
+
+			case VK_LEFT:
+				if (control)
+				{
+					// Change the parameter value
+ParameterDec:
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					int v = ap - 1;
+					if (v < 0) v = shpar[ai.editParameterNr].maxParameterValue;
+					ap = v;
+					goto ChangeInstrumentPar;
+				}
+				else
+				{
+					// Move to the next parameter
+					ai.editParameterNr = shpar[ai.editParameterNr].gotoLeft;
+				}
+				return 1;
+
+			case VK_RIGHT:
+				if (control)
+				{
+					// Change the parameter value
+ParameterInc:
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					int v = ap + 1;
+					if (v > shpar[ai.editParameterNr].maxParameterValue) v = 0;
+					ap = v;
+					goto ChangeInstrumentPar;
+				}
+				else
+				{
+					// Move to the next parameter
+					ai.editParameterNr = shpar[ai.editParameterNr].gotoRight;
+				}
+				return 1;
+
+			case VK_HOME:
+				ai.editParameterNr = PAR_ENV_LENGTH;
+				return 1;
+
+			case VK_SPACE:
+				if (control) break;	//prevents inputing a SPACE while exiting PROVE mode
+			case VK_BACK:	//BACKSPACE
+			case VK_DELETE:
+				g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+				ap = 0;
+				goto ChangeInstrumentPar;
+				return 1;
+
+ChangeInstrumentPar:
+				//because there has been some change in the instrument parameter => stop this instrument in all channels
+				Atari_InstrumentTurnOff(m_activeinstr);
+				g_Instruments.CheckInstrumentParameters(m_activeinstr);
+				g_Instruments.WasModified(m_activeinstr);
+				return 1;
+		}
+	}
+	else if (ai.activeEditSection == INSTRUMENT_SECTION_ENVELOPE)
+	{
+		g_isEditingInstrumentName = 0;
+		//ENVELOPE
+		switch (vk)
+		{
+			case VK_UP:
+				if (control)
+				{	//
+					if (shift)	//SHIFT+CONTROL+UP
+					{
+						g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+						for (int i = 0; i <= ai.parameters[PAR_ENV_LENGTH]; i++)
+						{
+							int& ae = ai.envelope[i][ai.editEnvelopeY];
+							ae = (ae + shenv[ai.editEnvelopeY].padd) & shenv[ai.editEnvelopeY].pand;
+						}
+						goto ChangeInstrumentEnv;
+					}
+					goto EnvelopeInc;
+				}
+				i = ai.editEnvelopeY;
+				if (i > 0)
+				{
+					i--;
+					if (i == 0 && g_tracks4_8 <= 4) i = 7;	//mono mode
+				}
+				else
+					i = 7;
+				ai.editEnvelopeY = i;
+				return 1;
+
+			case VK_DOWN:
+				if (control)
+				{	//
+					if (shift)	//SHIFT+CONTROL+DOWN
+					{
+						g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+						for (int i = 0; i <= ai.parameters[PAR_ENV_LENGTH]; i++)
+						{
+							int& ae = ai.envelope[i][ai.editEnvelopeY];
+							ae = (ae + shenv[ai.editEnvelopeY].psub) & shenv[ai.editEnvelopeY].pand;
+						}
+						goto ChangeInstrumentEnv;
+					}
+					goto EnvelopeDec;
+				}
+				i = ai.editEnvelopeY;
+				if (i < 7) i++; else i = (g_tracks4_8 > 4) ? 0 : 1;
+				ai.editEnvelopeY = i;
+				return 1;
+
+			case VK_LEFT:
+				if (control)
+				{
+				EnvelopeDec:
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					ae = (ae + shenv[ai.editEnvelopeY].psub) & shenv[ai.editEnvelopeY].pand;
+					goto ChangeInstrumentEnv;
+				}
+				else
+				{
+					i = ai.editEnvelopeX;
+					if (i > 0) i--; else i = ai.parameters[PAR_ENV_LENGTH]; //length of env
+					ai.editEnvelopeX = i;
+				}
+				return 1;
+
+			case VK_RIGHT:
+				if (control)
+				{
+				EnvelopeInc:
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					ae = (ae + shenv[ai.editEnvelopeY].padd) & shenv[ai.editEnvelopeY].pand;
+					goto ChangeInstrumentEnv;
+				}
+				else
+				{
+					i = ai.editEnvelopeX;
+					if (i < ai.parameters[PAR_ENV_LENGTH]) i++; else i = 0; //length of env
+					ai.editEnvelopeX = i;
+				}
+				return 1;
+
+			case VK_HOME:
+				if (control)
+				{
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					ai.parameters[PAR_ENV_GOTO] = ai.editEnvelopeX; //sets ENVGO to this column
+					goto ChangeInstrumentPar;	//yes, that's fine, it really changed the PARAMETER, even if it's in the envelope
+				}
+				else
+				{
+					//goes left to column 0 or to the beginning of the GO loop
+					if (ai.editEnvelopeX != 0)
+						ai.editEnvelopeX = 0;
+					else
+						ai.editEnvelopeX = ai.parameters[PAR_ENV_GOTO];
+				}
+				return 1;
+
+			case VK_END:
+				if (control)
+				{
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					if (ai.editEnvelopeX == ai.parameters[PAR_ENV_LENGTH])	//sets ENVLEN to this column or to the end
+						ai.parameters[PAR_ENV_LENGTH] = ENVCOLS - 1;
+					else
+						ai.parameters[PAR_ENV_LENGTH] = ai.editEnvelopeX;
+					goto ChangeInstrumentPar;	//yes, changed PAR from envelope
+				}
+				else
+				{
+					ai.editEnvelopeX = ai.parameters[PAR_ENV_LENGTH];	//moves the cursor to the right to the end
+				}
+				return 1;
+
+			case 8:			//VK_BACKSPACE:
+				g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+				ae = 0;
+				goto ChangeInstrumentEnv;
+				return 1;
+
+			case VK_SPACE:	//VK_SPACE
+				if (control) break;	//prevents inputing a SPACE while exiting PROVE mode
+				{
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					for (int j = 0; j < ENVROWS; j++) ai.envelope[ai.editEnvelopeX][j] = 0;
+					if (ai.editEnvelopeX < ai.parameters[PAR_ENV_LENGTH]) ai.editEnvelopeX++; //shift to the right
+				}
+				goto ChangeInstrumentEnv;
+				return 1;
+
+			case VK_INSERT:
+				if (!control)
+				{	//moves the envelope from the current position to the right
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					int i, j;
+					int ele = ai.parameters[PAR_ENV_LENGTH];
+					int ego = ai.parameters[PAR_ENV_GOTO];
+					if (ele < ENVCOLS - 1) ele++;
+					if (ai.editEnvelopeX < ego && ego < ENVCOLS - 1) ego++;
+					for (i = ENVCOLS - 2; i >= ai.editEnvelopeX; i--)
+					{
+						for (j = 0; j < ENVROWS; j++) ai.envelope[i + 1][j] = ai.envelope[i][j];
+					}
+					//improvement: with shift it will leave it there (it will not erase the column)
+					if (!shift) for (j = 0; j < ENVROWS; j++) ai.envelope[ai.editEnvelopeX][j] = 0;
+					ai.parameters[PAR_ENV_LENGTH] = ele;
+					ai.parameters[PAR_ENV_GOTO] = ego;
+					goto ChangeInstrumentPar;	//changed length and / or go parameters
+				}
+				return 0; //without screen update
+
+			case VK_DELETE:
+				if (!control)	//!shift &&
+				{	//moves the envelope from the current position to the left
+					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
+					int i, j;
+					int ele = ai.parameters[PAR_ENV_LENGTH];
+					int ego = ai.parameters[PAR_ENV_GOTO];
+					if (ele > 0)
+					{
+						ele--;
+						for (i = ai.editEnvelopeX; i < ENVCOLS - 1; i++)
+						{
+							for (j = 0; j < ENVROWS; j++) ai.envelope[i][j] = ai.envelope[i + 1][j];
+						}
+						for (j = 0; j < ENVROWS; j++) ai.envelope[ENVCOLS - 1][j] = 0;
+					}
+					else
+					{
+						for (j = 0; j < ENVROWS; j++) ai.envelope[0][j] = 0;
+					}
+					if (ai.editEnvelopeX < ego) ego--;
+					if (ego > ele) ego = ele;
+					ai.parameters[PAR_ENV_GOTO] = ego;
+					ai.parameters[PAR_ENV_LENGTH] = ele;
+					if (ai.editEnvelopeX > ele) ai.editEnvelopeX = ele;
+					goto ChangeInstrumentPar;	//changed length and / or go parameters
+				}
+				return 0; //without screen update
+
+			ChangeInstrumentEnv:
+				//something changed => Save instrument to Atari memory
+				g_Instruments.WasModified(m_activeinstr);
+				return 1;
+		}
+	}
+	if (ai.activeEditSection == INSTRUMENT_SECTION_NOTETABLE)
+	{
+		g_isEditingInstrumentName = 0;
 		//TABLE
 		switch (vk)
 		{
@@ -1944,17 +1946,17 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 				if (control)
 				{	//set a TABLE go loop here
 					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-					ai.par[PAR_TABGO] = ai.activetab;
-					if (ai.activetab > ai.par[PAR_TABLEN]) ai.par[PAR_TABLEN] = ai.activetab;
+					ai.parameters[PAR_TBL_GOTO] = ai.editNoteTableCursorPos;
+					if (ai.editNoteTableCursorPos > ai.parameters[PAR_TBL_LENGTH]) ai.parameters[PAR_TBL_LENGTH] = ai.editNoteTableCursorPos;
 					goto ChangeInstrumentPar;
 				}
 				else
 				{
 					//go to the beginning of the TABLE and to the beginning of the TABLE loop
-					if (ai.activetab != 0)
-						ai.activetab = 0;
+					if (ai.editNoteTableCursorPos != 0)
+						ai.editNoteTableCursorPos = 0;
 					else
-						ai.activetab = ai.par[PAR_TABGO];
+						ai.editNoteTableCursorPos = ai.parameters[PAR_TBL_GOTO];
 				}
 				return 1;
 
@@ -1962,14 +1964,14 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 				if (control)
 				{	//set TABLE only by location
 					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-					if (ai.activetab == ai.par[PAR_TABLEN])
-						ai.par[PAR_TABLEN] = TABLEN - 1;
+					if (ai.editNoteTableCursorPos == ai.parameters[PAR_TBL_LENGTH])
+						ai.parameters[PAR_TBL_LENGTH] = TABLEN - 1;
 					else
-						ai.par[PAR_TABLEN] = ai.activetab;
+						ai.parameters[PAR_TBL_LENGTH] = ai.editNoteTableCursorPos;
 					goto ChangeInstrumentPar;
 				}
 				else	//goes to the last parameter in the TABLE
-					ai.activetab = ai.par[PAR_TABLEN];
+					ai.editNoteTableCursorPos = ai.parameters[PAR_TBL_LENGTH];
 				return 1;
 
 			case VK_UP:
@@ -1978,7 +1980,7 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 					if (shift)	//Shift+Control+UP
 					{
 						g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-						for (int i = 0; i <= ai.par[PAR_TABLEN]; i++) ai.tab[i] = (ai.tab[i] + 1) & 0xff;
+						for (int i = 0; i <= ai.parameters[PAR_TBL_LENGTH]; i++) ai.noteTable[i] = (ai.noteTable[i] + 1) & 0xff;
 						goto ChangeInstrumentTab;
 					}
 				TableInc:
@@ -1994,7 +1996,7 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 					if (shift)	//Shift+Control+DOWN
 					{
 						g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
-						for (int i = 0; i <= ai.par[PAR_TABLEN]; i++) ai.tab[i] = (ai.tab[i] - 1) & 0xff;
+						for (int i = 0; i <= ai.parameters[PAR_TBL_LENGTH]; i++) ai.noteTable[i] = (ai.noteTable[i] - 1) & 0xff;
 						goto ChangeInstrumentTab;
 					}
 				TableDec:
@@ -2006,21 +2008,21 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 
 			case VK_LEFT:
 				if (control) goto TableDec;
-				i = ai.activetab - 1;
-				if (i < 0) i = ai.par[PAR_TABLEN];
-				ai.activetab = i;
+				i = ai.editNoteTableCursorPos - 1;
+				if (i < 0) i = ai.parameters[PAR_TBL_LENGTH];
+				ai.editNoteTableCursorPos = i;
 				goto ChangeInstrumentTab;
 
 			case VK_RIGHT:
 				if (control) goto TableInc;
-				i = ai.activetab + 1;
-				if (i > ai.par[PAR_TABLEN]) i = 0;
-				ai.activetab = i;
+				i = ai.editNoteTableCursorPos + 1;
+				if (i > ai.parameters[PAR_TBL_LENGTH]) i = 0;
+				ai.editNoteTableCursorPos = i;
 				goto ChangeInstrumentTab;
 
 			case VK_SPACE:	//VK_SPACE: parameter reset and shift by 1 to the right
 				if (control) break;	//prevents inputing a SPACE while exiting PROVE mode
-				if (ai.activetab < ai.par[PAR_TABLEN]) ai.activetab++;
+				if (ai.editNoteTableCursorPos < ai.parameters[PAR_TBL_LENGTH]) ai.editNoteTableCursorPos++;
 				//and proceeds the same as VK_BACKSPACE
 			case 8:			//VK_BACKSPACE: parameter reset
 				g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
@@ -2032,14 +2034,14 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 				{	//moves the table from the current position to the right
 					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
 					int i;
-					int tle = ai.par[PAR_TABLEN];
-					int tgo = ai.par[PAR_TABGO];
+					int tle = ai.parameters[PAR_TBL_LENGTH];
+					int tgo = ai.parameters[PAR_TBL_GOTO];
 					if (tle < TABLEN - 1) tle++;
-					if (ai.activetab < tgo && tgo < TABLEN - 1) tgo++;
-					for (i = TABLEN - 2; i >= ai.activetab; i--) ai.tab[i + 1] = ai.tab[i];
-					if (!shift) ai.tab[ai.activetab] = 0; //with the shift it will leave there
-					ai.par[PAR_TABLEN] = tle;
-					ai.par[PAR_TABGO] = tgo;
+					if (ai.editNoteTableCursorPos < tgo && tgo < TABLEN - 1) tgo++;
+					for (i = TABLEN - 2; i >= ai.editNoteTableCursorPos; i--) ai.noteTable[i + 1] = ai.noteTable[i];
+					if (!shift) ai.noteTable[ai.editNoteTableCursorPos] = 0; //with the shift it will leave there
+					ai.parameters[PAR_TBL_LENGTH] = tle;
+					ai.parameters[PAR_TBL_GOTO] = tgo;
 					//goto ChangeInstrumentTab; <-- It is not enough!
 					goto ChangeInstrumentPar; //changed TABLE LEN or GO, must stop the instrument
 				}
@@ -2050,21 +2052,21 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 				{	//moves the table from the current position to the left
 					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
 					int i;
-					int tle = ai.par[PAR_TABLEN];
-					int tgo = ai.par[PAR_TABGO];
+					int tle = ai.parameters[PAR_TBL_LENGTH];
+					int tgo = ai.parameters[PAR_TBL_GOTO];
 					if (tle > 0)
 					{
 						tle--;
-						for (i = ai.activetab; i < TABLEN - 1; i++) ai.tab[i] = ai.tab[i + 1];
-						ai.tab[TABLEN - 1] = 0;
+						for (i = ai.editNoteTableCursorPos; i < TABLEN - 1; i++) ai.noteTable[i] = ai.noteTable[i + 1];
+						ai.noteTable[TABLEN - 1] = 0;
 					}
 					else
-						ai.tab[0] = 0;
-					if (ai.activetab < tgo) tgo--;
+						ai.noteTable[0] = 0;
+					if (ai.editNoteTableCursorPos < tgo) tgo--;
 					if (tgo > tle) tgo = tle;
-					ai.par[PAR_TABLEN] = tle;
-					ai.par[PAR_TABGO] = tgo;
-					if (ai.activetab > tle) ai.activetab = tle;
+					ai.parameters[PAR_TBL_LENGTH] = tle;
+					ai.parameters[PAR_TBL_GOTO] = tgo;
+					if (ai.editNoteTableCursorPos > tle) ai.editNoteTableCursorPos = tle;
 					//goto ChangeInstrumentTab; <-- It is not enough!
 					goto ChangeInstrumentPar; //changed TABLE LEN or GO, must stop the instrument
 				}
@@ -2072,7 +2074,7 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 
 			ChangeInstrumentTab:
 				//something changed => Save instrument to Atari memory
-				g_Instruments.ModificationInstrument(m_activeinstr);
+				g_Instruments.WasModified(m_activeinstr);
 				return 1;
 
 		}
@@ -2083,7 +2085,7 @@ BOOL CSong::InstrKey(int vk, int shift, int control)
 BOOL CSong::InfoCursorGotoSongname(int x)
 {
 	x = x / 8;
-	if (x >= 0 && x < SONGNAMEMAXLEN)
+	if (x >= 0 && x < SONG_NAME_MAX_LEN)
 	{
 		m_songnamecur = x;
 		g_activepart = PART_INFO;
@@ -2145,7 +2147,7 @@ BOOL CSong::InfoCursorGotoVolumeSelect(int x, int y)
 
 BOOL CSong::InfoCursorGotoInstrumentSelect(int x, int y)
 {
-	is_editing_instr = 0;
+	g_isEditingInstrumentName = 0;
 	CInstrumentSelectDlg dlg;
 	CRect rec;
 	::GetWindowRect(g_viewhwnd, &rec);

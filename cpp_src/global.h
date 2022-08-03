@@ -125,7 +125,7 @@ extern double avg_fps[120];
 extern int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 extern int g_active_ti;			//1 tracks, 2 instrs
 
-extern BOOL is_editing_instr;		//0 no, 1 instrument name is edited
+extern BOOL g_isEditingInstrumentName;		//0 no, 1 instrument name is edited
 extern BOOL is_editing_infos;		//0 no, 1 song name is edited
 
 extern int g_line_y;			//active line coordinate, used to reference g_cursoractview to the correct position
@@ -172,7 +172,7 @@ extern int g_keyboard_layout;			//1 yes, 0 no, not be useful anymore... should b
 extern BOOL g_keyboard_swapenter;		//1 yes, 0 no, probably not needed anymore but will be kept for now
 extern BOOL g_keyboard_playautofollow;	//1 yes, 0 no
 extern BOOL g_keyboard_updowncontinue;	//1 yes, 0 no
-extern BOOL g_keyboard_rememberoctavesandvolumes;	//1 yes, 0 no
+extern BOOL g_keyboard_RememberOctavesAndVolumes;	//1 yes, 0 no
 extern BOOL g_keyboard_escresetatarisound;	//1 yes, 0 no
 extern BOOL g_keyboard_askwhencontrol_s;	//1 yes, 0 no
 

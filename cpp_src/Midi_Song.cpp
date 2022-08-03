@@ -23,8 +23,6 @@ using namespace std;
 
 #include "global.h"
 
-#include "GUI_Instruments.h"
-
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 #include "RmtMidi.h"

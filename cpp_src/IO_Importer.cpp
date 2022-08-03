@@ -214,7 +214,7 @@ int CSong::ImportTMC(ifstream& in)
 		if (a < 32 || a >= 127) a = ' ';
 		m_songname[j] = a;
 	}
-	for (k = j; k < SONGNAMEMAXLEN; k++) m_songname[k] = ' '; //fill in the gaps
+	for (k = j; k < SONG_NAME_MAX_LEN; k++) m_songname[k] = ' '; //fill in the gaps
 
 	CImportTmcDlg importdlg;
 	CString s = m_songname;
@@ -428,16 +428,16 @@ int CSong::ImportTMC(ifstream& in)
 			//filter
 			if (((audctl & 0x04) == 0x04 || (audctl & 0x02) == 0x02))
 			{
-				ai.env[j][ENV_FILTER] = 1;
+				ai.envelope[j][ENV_FILTER] = 1;
 				filteru = 1;
 			}
 
-			ai.env[j][ENV_DISTORTION] = dist;
+			ai.envelope[j][ENV_DISTORTION] = dist;
 			int vol = c1 & 0x0f;			//volumeL 0-F;
-			ai.env[j][ENV_VOLUMEL] = lastvol = vol;			//lastvol is needed to correct the fading
+			ai.envelope[j][ENV_VOLUMEL] = lastvol = vol;			//lastvol is needed to correct the fading
 			if (vol > maxvolL) maxvolL = vol;	//maximum volumeL of the whole envelope
 			vol = c2 & 0x0f;			//volumeR 0-F
-			ai.env[j][ENV_VOLUMER] = vol;
+			ai.envelope[j][ENV_VOLUMER] = vol;
 			if (vol > maxvolR) maxvolR = vol;	//maximum volumeR of the whole envelope
 			if (vol > 0) anyrightvolisntzero = 1;	//some volumeR is> 0
 
@@ -528,9 +528,9 @@ int CSong::ImportTMC(ifstream& in)
 			//forced volume
 			if (dist08) { rmtcmd = 7; rmtpar = 0x80; } //volume only
 
-			ai.env[j][ENV_COMMAND] = rmtcmd;
-			ai.env[j][ENV_X] = (rmtpar >> 4) & 0x0f;
-			ai.env[j][ENV_Y] = rmtpar & 0x0f;
+			ai.envelope[j][ENV_COMMAND] = rmtcmd;
+			ai.envelope[j][ENV_X] = (rmtpar >> 4) & 0x0f;
+			ai.envelope[j][ENV_Y] = rmtpar & 0x0f;
 
 			lasttmccmd = tmccmd;
 			lasttmcpar = tmcpar;
@@ -543,13 +543,13 @@ int CSong::ImportTMC(ifstream& in)
 		//is all right volume = 0? => copies left to right
 		if (!anyrightvolisntzero)
 		{
-			for (j = 0; j <= 21; j++) ai.env[j][ENV_VOLUMER] = ai.env[j][ENV_VOLUMEL];
+			for (j = 0; j <= 21; j++) ai.envelope[j][ENV_VOLUMER] = ai.envelope[j][ENV_VOLUMEL];
 			maxvolR = maxvolL;
 		}
 
 		//envelope length
-		ai.par[PAR_ENVLEN] = 20;			//the envelope is 21 columns
-		ai.par[PAR_ENVGO] = 20;
+		ai.parameters[PAR_ENV_LENGTH] = 20;			//the envelope is 21 columns
+		ai.parameters[PAR_ENV_GOTO] = 20;
 
 		TInstrumentMark* im = cot.GetIMark(i);
 		im->maxvolL = maxvolL;
@@ -564,14 +564,14 @@ int CSong::ImportTMC(ifstream& in)
 			if (nut >= 0x80 && nut <= 0xc0) nut += 0x40;
 			if (nut >= 0x40 && nut <= 0x7f) nut -= 0x40;
 			if (nut != 0) tableu = 1; //table is used for something
-			ai.tab[j] = nut;
+			ai.noteTable[j] = nut;
 		}
 
 		//parameters
 		//table length and speed
 		int tablen = (mem[adr_p + 8] >> 4) & 0x07;
-		ai.par[PAR_TABLEN] = tablen;		//0-7
-		ai.par[PAR_TABSPD] = mem[adr_p + 8] & 0x0f;			//speed 0-15
+		ai.parameters[PAR_TBL_LENGTH] = tablen;		//0-7
+		ai.parameters[PAR_TBL_SPEED] = mem[adr_p + 8] & 0x0f;			//speed 0-15
 
 		//other parameters
 
@@ -582,8 +582,8 @@ int CSong::ImportTMC(ifstream& in)
 		if (t2vslide > 255) t2vslide = 255;
 		else
 			if (t2vslide < 0) t2vslide = 0;
-		ai.par[PAR_VSLIDE] = t2vslide;
-		ai.par[PAR_VMIN] = 0;
+		ai.parameters[PAR_VOL_FADEOUT] = t2vslide;
+		ai.parameters[PAR_VOL_MIN] = 0;
 
 		//vibrato or fshift
 		BYTE pvib = mem[adr_p + 5] & 0x7f;
@@ -603,18 +603,18 @@ int CSong::ImportTMC(ifstream& in)
 		if (!nobytable && tableu && tablen == 0 && (pvib & 0x40))		//(pvib & 0x40) <- only if vibrato uses something, otherwise it doesn't make sense to redo it
 		{
 			//that is, it optimizes over the shift of all notes in the envelope
-			int psn = ai.tab[0];	//0th place in the table
+			int psn = ai.noteTable[0];	//0th place in the table
 			for (j = 0; j < 21; j++)
 			{
-				if (ai.env[j][ENV_COMMAND] == 0) //music shift
+				if (ai.envelope[j][ENV_COMMAND] == 0) //music shift
 				{
-					BYTE notenum = (ai.env[j][ENV_X] << 4) + ai.env[j][ENV_Y];
+					BYTE notenum = (ai.envelope[j][ENV_X] << 4) + ai.envelope[j][ENV_Y];
 					notenum += psn; //shifts
-					ai.env[j][ENV_X] = (notenum >> 4) & 0x0f;
-					ai.env[j][ENV_Y] = notenum & 0x0f;
+					ai.envelope[j][ENV_X] = (notenum >> 4) & 0x0f;
+					ai.envelope[j][ENV_Y] = notenum & 0x0f;
 				}
 			}
-			ai.tab[0] = 0; //so the parameter in the table is reset
+			ai.noteTable[0] = 0; //so the parameter in the table is reset
 			tableu = 0;	//and thus the table is free for further use
 		}
 
@@ -644,46 +644,46 @@ int CSong::ImportTMC(ifstream& in)
 				if (hn == 1 && (dn > 2 || vibspe > 0))							//(dn>=4 || vibspe>0) )
 				{
 					if (posuntable > TABLEN - 4) posuntable = TABLEN - 4; //did not give what is possible according to the delay
-					ai.tab[posuntable] = 0;
-					ai.tab[posuntable + 1] = (pvib8) ? (BYTE)(256 - dn) : dn;
-					ai.tab[posuntable + 2] = 0;
-					ai.tab[posuntable + 3] = (pvib8) ? dn : (BYTE)(256 - dn);
-					ai.par[PAR_TABLEN] = posuntable + 3;
-					ai.par[PAR_TABGO] = posuntable;
-					ai.par[PAR_TABTYPE] = 1;	//frequency table
-					ai.par[PAR_TABSPD] = (vibspe < 0x3f) ? vibspe : 0x3f;
+					ai.noteTable[posuntable] = 0;
+					ai.noteTable[posuntable + 1] = (pvib8) ? (BYTE)(256 - dn) : dn;
+					ai.noteTable[posuntable + 2] = 0;
+					ai.noteTable[posuntable + 3] = (pvib8) ? dn : (BYTE)(256 - dn);
+					ai.parameters[PAR_TBL_LENGTH] = posuntable + 3;
+					ai.parameters[PAR_TBL_GOTO] = posuntable;
+					ai.parameters[PAR_TBL_TYPE] = 1;	//frequency table
+					ai.parameters[PAR_TBL_SPEED] = (vibspe < 0x3f) ? vibspe : 0x3f;
 					vpt = 1; //successful
 				}
 				else
 					if (hn == 2 && (dn > 2 || vibspe > 0))							//(dn>=4 || vibspe>0))
 					{
 						if (posuntable > TABLEN - 4) posuntable = TABLEN - 4; //did not give what is possible according to the delay
-						ai.tab[posuntable] = (pvib8) ? (BYTE)(256 - dn) : dn;
-						ai.tab[posuntable + 1] = 0;
-						ai.tab[posuntable + 2] = (pvib8) ? dn : (BYTE)(256 - dn);
-						ai.tab[posuntable + 3] = 0;
-						ai.par[PAR_TABLEN] = posuntable + 3;
-						ai.par[PAR_TABGO] = posuntable;
-						ai.par[PAR_TABTYPE] = 1;	//frequency table
+						ai.noteTable[posuntable] = (pvib8) ? (BYTE)(256 - dn) : dn;
+						ai.noteTable[posuntable + 1] = 0;
+						ai.noteTable[posuntable + 2] = (pvib8) ? dn : (BYTE)(256 - dn);
+						ai.noteTable[posuntable + 3] = 0;
+						ai.parameters[PAR_TBL_LENGTH] = posuntable + 3;
+						ai.parameters[PAR_TBL_GOTO] = posuntable;
+						ai.parameters[PAR_TBL_TYPE] = 1;	//frequency table
 						int sp = dn * (vibspe + 1) - 1;
 						if (sp < 0) sp = 0;	else if (sp > 0x3f) sp = 0x3f;
-						ai.par[PAR_TABSPD] = sp;
+						ai.parameters[PAR_TBL_SPEED] = sp;
 						vpt = 1; //successful
 					}
 					else
 						if (hn == 3 && (dn > 2 || vibspe > 0))							//(dn>=4 || vibspe>0))
 						{
 							if (posuntable > TABLEN - 4) posuntable = TABLEN - 4; //did not give what is possible according to the delay
-							ai.tab[posuntable] = (pvib8) ? (BYTE)(dn * 4) : (BYTE)(256 - (dn * 4)); //for notes it is the other way around (add note = read frequency
-							ai.tab[posuntable + 1] = 0;
-							ai.tab[posuntable + 2] = (pvib8) ? (BYTE)(256 - (dn * 4)) : (BYTE)(dn * 4); //it is the other way around
-							ai.tab[posuntable + 3] = 0;
-							ai.par[PAR_TABLEN] = posuntable + 3;
-							ai.par[PAR_TABGO] = posuntable;
-							ai.par[PAR_TABTYPE] = 1;	//frequency table
+							ai.noteTable[posuntable] = (pvib8) ? (BYTE)(dn * 4) : (BYTE)(256 - (dn * 4)); //for notes it is the other way around (add note = read frequency
+							ai.noteTable[posuntable + 1] = 0;
+							ai.noteTable[posuntable + 2] = (pvib8) ? (BYTE)(256 - (dn * 4)) : (BYTE)(dn * 4); //it is the other way around
+							ai.noteTable[posuntable + 3] = 0;
+							ai.parameters[PAR_TBL_LENGTH] = posuntable + 3;
+							ai.parameters[PAR_TBL_GOTO] = posuntable;
+							ai.parameters[PAR_TBL_TYPE] = 1;	//frequency table
 							int sp = dn * (vibspe + 1) - 1;
 							if (sp < 0) sp = 0;	else if (sp > 0x3f) sp = 0x3f;
-							ai.par[PAR_TABSPD] = sp;
+							ai.parameters[PAR_TBL_SPEED] = sp;
 							vpt = 1; //successful
 						}
 			}
@@ -699,13 +699,13 @@ int CSong::ImportTMC(ifstream& in)
 				if (!nobytable && !tableu && vibspe > 0)
 				{
 					if (posuntable > TABLEN - 2) posuntable = TABLEN - 2; //he didn't give up
-					ai.tab[posuntable] = fshift;
-					ai.tab[posuntable + 1] = fshift;
-					ai.par[PAR_TABLEN] = posuntable + 1;
-					ai.par[PAR_TABGO] = posuntable + 1;
-					ai.par[PAR_TABTYPE] = 1;	//frequency table
-					ai.par[PAR_TABMODE] = 1;	//read
-					ai.par[PAR_TABSPD] = (vibspe < 0x3f) ? vibspe : 0x3f;
+					ai.noteTable[posuntable] = fshift;
+					ai.noteTable[posuntable + 1] = fshift;
+					ai.parameters[PAR_TBL_LENGTH] = posuntable + 1;
+					ai.parameters[PAR_TBL_GOTO] = posuntable + 1;
+					ai.parameters[PAR_TBL_TYPE] = 1;	//frequency table
+					ai.parameters[PAR_TBL_MODE] = 1;	//read
+					ai.parameters[PAR_TBL_SPEED] = (vibspe < 0x3f) ? vibspe : 0x3f;
 					vpt = 1; //successful
 				}
 			}
@@ -723,13 +723,13 @@ int CSong::ImportTMC(ifstream& in)
 						if (posuntable > TABLEN - 2) posuntable = TABLEN - 2; //it didn't give up
 						int nshift = pvib - 0x50;
 						if (!pvib8) nshift = (BYTE)(256 - nshift);		//for notes it is the opposite (5x is <- down, Dx is up ->)
-						ai.tab[posuntable] = nshift;
-						ai.tab[posuntable + 1] = nshift;
-						ai.par[PAR_TABLEN] = posuntable + 1;
-						ai.par[PAR_TABGO] = posuntable + 1;
-						ai.par[PAR_TABTYPE] = 0;	//note table
-						ai.par[PAR_TABMODE] = 1;	//read
-						ai.par[PAR_TABSPD] = (vibspe < 0x3f) ? vibspe : 0x3f;
+						ai.noteTable[posuntable] = nshift;
+						ai.noteTable[posuntable + 1] = nshift;
+						ai.parameters[PAR_TBL_LENGTH] = posuntable + 1;
+						ai.parameters[PAR_TBL_GOTO] = posuntable + 1;
+						ai.parameters[PAR_TBL_TYPE] = 0;	//note table
+						ai.parameters[PAR_TBL_MODE] = 1;	//read
+						ai.parameters[PAR_TBL_SPEED] = (vibspe < 0x3f) ? vibspe : 0x3f;
 						vpt = 1; //succesful
 					}
 				}
@@ -750,12 +750,12 @@ int CSong::ImportTMC(ifstream& in)
 			delay = 0;
 		}
 
-		ai.par[PAR_VIBRATO] = vib;
-		ai.par[PAR_FSHIFT] = fshift;
+		ai.parameters[PAR_VIBRATO] = vib;
+		ai.parameters[PAR_FREQ_SHIFT] = fshift;
 		if (vib == 0 && fshift == 0) delay = 0;
 		else
 			if ((vib > 0 || fshift > 0) && delay == 0) delay = 1;
-		ai.par[PAR_DELAY] = delay;
+		ai.parameters[PAR_DELAY] = delay;
 
 		//optimalization
 		//envelope length
@@ -763,12 +763,12 @@ int CSong::ImportTMC(ifstream& in)
 		int lastchangecol = 0;
 		for (int k = 0; k <= 20; k++)
 		{
-			if (ai.env[k][ENV_VOLUMEL] > 0 || ai.env[k][ENV_VOLUMER] > 0) lastnonzerovolumecol = k;
+			if (ai.envelope[k][ENV_VOLUMEL] > 0 || ai.envelope[k][ENV_VOLUMER] > 0) lastnonzerovolumecol = k;
 			if (k > 0)
 			{
 				for (int m = 0; m < ENVROWS; m++)
 				{
-					if (ai.env[k][m] != ai.env[k - 1][m])	//is there anything else? (volumeL, R, distortion, ..., portamento)
+					if (ai.envelope[k][m] != ai.envelope[k - 1][m])	//is there anything else? (volumeL, R, distortion, ..., portamento)
 					{
 						lastchangecol = k;	//yeah, something else.
 						break;
@@ -780,31 +780,31 @@ int CSong::ImportTMC(ifstream& in)
 
 		if (lastnonzerovolumecol < 20)
 		{
-			ai.par[PAR_ENVLEN] = ai.par[PAR_ENVGO] = lastnonzerovolumecol + 1; //shortens to the last non-zero volume
+			ai.parameters[PAR_ENV_LENGTH] = ai.parameters[PAR_ENV_GOTO] = lastnonzerovolumecol + 1; //shortens to the last non-zero volume
 		}
 
 		if (lastchangecol < lastnonzerovolumecol	//the last arbitrary change took place in the last change col column
-			&& ai.par[PAR_VSLIDE] == 0				//only when the volume does not decrease
+			&& ai.parameters[PAR_VOL_FADEOUT] == 0				//only when the volume does not decrease
 			)
 		{
-			ai.par[PAR_ENVLEN] = ai.par[PAR_ENVGO] = lastchangecol; //shorten it to the column where the last change of anything was
+			ai.parameters[PAR_ENV_LENGTH] = ai.parameters[PAR_ENV_GOTO] = lastchangecol; //shorten it to the column where the last change of anything was
 		}
 
 		//table
-		for (int v = 0; v <= ai.par[PAR_TABLEN]; v++)	//are there only zeros?
+		for (int v = 0; v <= ai.parameters[PAR_TBL_LENGTH]; v++)	//are there only zeros?
 		{
-			if (ai.tab[v] != 0) goto NoTableOptimize;
+			if (ai.noteTable[v] != 0) goto NoTableOptimize;
 		}
-		if (ai.par[PAR_TABLEN] >= 1 && ai.par[PAR_TABGO] == 0)
+		if (ai.parameters[PAR_TBL_LENGTH] >= 1 && ai.parameters[PAR_TBL_GOTO] == 0)
 		{
-			ai.par[PAR_TABLEN] = 0;
-			ai.par[PAR_TABSPD] = 0;
+			ai.parameters[PAR_TBL_LENGTH] = 0;
+			ai.parameters[PAR_TBL_SPEED] = 0;
 		}
 	NoTableOptimize:
 
 
 		//projected instrument into Atari's RAM
-		g_Instruments.ModificationInstrument(i);
+		g_Instruments.WasModified(i);
 	} //and another instrument
 
 
@@ -1114,7 +1114,7 @@ int CSong::ImportMOD(ifstream& in)
 			else
 				dname[j] = ' ';
 		}
-		for (; j < INSTRNAMEMAXLEN; j++) dname[j] = ' '; //deletes the rest of the instrument name
+		for (; j < INSTRUMENT_NAME_MAX_LEN; j++) dname[j] = ' '; //deletes the rest of the instrument name
 		int samplen = (sdata[23] | (sdata[22] << 8)) * 2;
 		//BYTE finetune=sdata[24]&0x0f;		//0-15
 		//if (finetune>=8) finetune+=240;		//0-7 or 248-255
@@ -1646,7 +1646,7 @@ int CSong::ImportMOD(ifstream& in)
 			for (i = 1; i <= modsamples; i++)
 			{
 				if (!imark[i].used) continue;
-				g_Instruments.m_instr[i].tab[0] = (BYTE)(noteshift);
+				g_Instruments.m_instr[i].noteTable[0] = (BYTE)(noteshift);
 			}
 		}
 	}
@@ -1732,28 +1732,28 @@ int CSong::ImportMOD(ifstream& in)
 		{
 			int avol = (int)((double)16 * ((double)sumtab[k] / maxsum) * sampvol + 0.5);
 			if (avol > 15) avol = 15;
-			rmti->env[k][ENV_VOLUMEL] = rmti->env[k][ENV_VOLUMER] = avol;
-			rmti->env[k][ENV_DISTORTION] = 0x0a;	//pure tone
+			rmti->envelope[k][ENV_VOLUMEL] = rmti->envelope[k][ENV_VOLUMER] = avol;
+			rmti->envelope[k][ENV_DISTORTION] = 0x0a;	//pure tone
 		}
 
-		rmti->par[PAR_ENVLEN] = ix - 1;
+		rmti->parameters[PAR_ENV_LENGTH] = ix - 1;
 		if (im->replen > 2 || im->reppoint > 0) //is there a loop?
 		{
 			//loop
 			int ego = (int)((double)im->reppoint / blocksize + 0.5);
 			if (ego > ix - 1) ego = ix - 1;
-			rmti->par[PAR_ENVGO] = ego;
+			rmti->parameters[PAR_ENV_GOTO] = ego;
 			//and divides the end of the instrument according to the length of the loop
 			int lopend = (int)((double)(im->reppoint + im->replen) / blocksize + 0.5);
 			if (lopend > ix - 1) lopend = ix - 1;
-			rmti->par[PAR_ENVLEN];
+			rmti->parameters[PAR_ENV_LENGTH];
 		}
 		else
 		{
 			//no loop (ix is max 31, so it can add a "silent loop" to the end)
-			rmti->env[ix][ENV_VOLUMEL] = rmti->env[ix][ENV_VOLUMER] = 0; //silence at the end
-			rmti->par[PAR_ENVLEN] = ix;	//length of 1 vic
-			rmti->par[PAR_ENVGO] = ix;	//jump on the same thing
+			rmti->envelope[ix][ENV_VOLUMEL] = rmti->envelope[ix][ENV_VOLUMER] = 0; //silence at the end
+			rmti->parameters[PAR_ENV_LENGTH] = ix;	//length of 1 vic
+			rmti->parameters[PAR_ENV_GOTO] = ix;	//jump on the same thing
 		}
 
 		//Fourier
@@ -1833,7 +1833,7 @@ int CSong::ImportMOD(ifstream& in)
 	for (i = 1; i <= modsamples; i++)
 	{
 		//send to Atari
-		g_Instruments.ModificationInstrument(i);
+		g_Instruments.WasModified(i);
 	}
 
 	//CLEAR MEMORY 

@@ -94,6 +94,13 @@
 #define PART_INSTRUMENTS	2
 #define PART_SONG			3
 
+// Which section of an instrument's data is currently being editied (is active)
+#define INSTRUMENT_SECTION_NAME			0
+#define INSTRUMENT_SECTION_PARAMETERS	1
+#define INSTRUMENT_SECTION_ENVELOPE		2
+#define INSTRUMENT_SECTION_NOTETABLE	3
+
+
 // ----------------------------------------------------------------------------
 // RMT file format
 //
@@ -110,8 +117,8 @@
 #define ENVROWS		8			//8 line (parameter) in the envelope
 #define TABLEN		32			//maximum 32 steps in the table
 
-#define INSTRNAMEMAXLEN	32		//maximum length of instrument name
-#define SONGNAMEMAXLEN	64		//maximum length of song name
+#define INSTRUMENT_NAME_MAX_LEN	32		// maximum length of instrument name
+#define SONG_NAME_MAX_LEN		64		// maximum length of song name
 #define TRACKMAXSPEED	256		//maximum speed values, highest the slowest
 
 #define MAXATAINSTRLEN	256		//16+(ENVCOLS*3)	//atari instrument has a maximum of 16 parameters + 32 * 3 bytes envelope
@@ -170,41 +177,58 @@
 #define IF_AUDCTL		32
 
 // Instument definitions
-#define PAR_TABLEN		0
-#define PAR_TABGO		1
-#define PAR_TABSPD		2
-#define PAR_TABTYPE		3
-#define PAR_TABMODE		4
+#define PAR_TBL_LENGTH		0
+#define PAR_TBL_GOTO		1
+#define PAR_TBL_SPEED		2
+#define PAR_TBL_TYPE		3
+#define PAR_TBL_MODE		4
 
-#define PAR_ENVLEN		5
-#define PAR_ENVGO		6
-#define PAR_VSLIDE		7
-#define PAR_VMIN		8
-#define PAR_DELAY		9
-#define PAR_VIBRATO		10
-#define PAR_FSHIFT		11
+#define PAR_ENV_LENGTH		5
+#define PAR_ENV_GOTO		6
+#define PAR_VOL_FADEOUT		7
+#define PAR_VOL_MIN			8
+#define PAR_DELAY			9
+#define PAR_VIBRATO			10
+#define PAR_FREQ_SHIFT		11
 
-#define PAR_AUDCTL0		12
-#define PAR_AUDCTL1		13
-#define PAR_AUDCTL2		14
-#define PAR_AUDCTL3		15
-#define PAR_AUDCTL4		16
-#define PAR_AUDCTL5		17
-#define PAR_AUDCTL6		18
-#define PAR_AUDCTL7		19
+#define PAR_AUDCTL_15KHZ		12
+#define PAR_AUDCTL_HPF_CH2		13
+#define PAR_AUDCTL_HPF_CH1		14
+#define PAR_AUDCTL_JOIN_3_4		15
+#define PAR_AUDCTL_JOIN_1_2		16
+#define PAR_AUDCTL_179_CH3		17
+#define PAR_AUDCTL_179_CH1		18
+#define PAR_AUDCTL_POLY9		19
+
+#define INSTRUMENT_TABLE_OF_NOTES	1
+#define INSTRUMENT_TABLE_OF_FREQ	2
+#define INSTRUMENT_TABLE_MODE_SET	3
+#define INSTRUMENT_TABLE_MODE_ADD	4
+
+#define INSTR_GUI_ZONE_ENVELOPE_LEFT_ENVELOPE	0		// 368,220	8x64 -> 384x64
+#define INSTR_GUI_ZONE_ENVELOPE_RIGHT_ENVELOPE	1		// 368,140	8x64 -> 384x64
+#define INSTR_GUI_ZONE_ENVELOPE_PARAM_TABLE		2		// 368,296	8x64 -> 384x64
+#define INSTR_GUI_ZONE_ENVELOPE_RIGHT_VOL_NUMS	3		// 368,200	8x64 -> 384x64
+#define INSTR_GUI_ZONE_NOTE_TABLE				4		// 16,424	16x16 -> 760x16
+#define INSTR_GUI_ZONE_INSTRUMENT_NAME			5		// 16,152	304x16
+#define INSTR_GUI_ZONE_PARAMETERS				6		// 16,200	208x192
+#define INSTR_GUI_ZONE_INSTRUMENT_NUMBER_DLG	7		// 16,136	104x16
+#define INSTR_GUI_ZONE_LEN_AND_GOTO_ARROWS		8		// 368,280	384x16
+#define INSTR_GUI_ZONE_NOTE_TBL_LEN_AND_GOTO	9		// 16,440	760x16
+
 
 // GUI instrument definitions
-#define INSTRS_X 2*8
-#define INSTRS_Y 8*16+8
-#define INSTRS_PX	INSTRS_X			//parameter X
-#define INSTRS_PY	INSTRS_Y+2*16		//parametry Y
-#define INSTRS_EX	INSTRS_X+32*8		//envelope X  (29)
-#define INSTRS_EY	INSTRS_Y+2*16		//envelope Y
-#define INSTRS_TX	INSTRS_X+0*8		//table X	(16)(37)
-#define INSTRS_TY	INSTRS_Y+18*16-8	//table Y
-#define INSTRS_HX INSTRS_X				//active help X
-#define INSTRS_HY INSTRS_Y+21*16		//active help Y
-#define NUMBEROFPARS	20
+#define INSTRS_X			2*8
+#define INSTRS_Y			8*16+8
+#define INSTRS_PARAM_X		INSTRS_X			// parameter X
+#define INSTRS_PARAM_Y		INSTRS_Y+2*16		// parametry Y
+#define INSTRS_ENV_X		INSTRS_X+32*8		// envelope X  (29)
+#define INSTRS_ENV_Y		INSTRS_Y+2*16		// envelope Y
+#define INSTRS_TABLE_X		INSTRS_X+0*8		// table X	(16)(37)
+#define INSTRS_TABLE_Y		INSTRS_Y+18*16-8	// table Y
+#define INSTRS_HELP_X		INSTRS_X			// active help X
+#define INSTRS_HELP_Y		INSTRS_Y+21*16		// active help Y
+#define NUMBER_OF_PARAMS	20
 
 
 #define	ENV_VOLUMER		0

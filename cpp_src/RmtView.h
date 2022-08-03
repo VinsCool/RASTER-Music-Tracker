@@ -55,11 +55,11 @@ public:
 	CPen*	m_penorig;
 
 	HCURSOR m_cursororig;
-	HCURSOR m_cursorchanonoff;
-	HCURSOR m_cursorenvvolume;
-	HCURSOR m_cursorgoto;
-	HCURSOR m_cursordlg;
-	HCURSOR m_cursorsetpos;
+	HCURSOR m_cursorChanbelOnOff;
+	HCURSOR m_cursorEnvelopVolume;
+	HCURSOR m_cursorGoto;
+	HCURSOR m_cursorDialog;
+	HCURSOR m_cursorSetPosition;
 
 	UINT m_timeranalyzer;
 

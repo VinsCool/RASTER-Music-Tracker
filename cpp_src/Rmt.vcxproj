@@ -316,7 +316,6 @@
     <ClInclude Include="getopt.h" />
     <ClInclude Include="global.h" />
     <ClInclude Include="GuiHelpers.h" />
-    <ClInclude Include="GUI_Instruments.h" />
     <ClInclude Include="ChannelControl.h" />
     <ClInclude Include="Instruments.h" />
     <ClInclude Include="IOHelpers.h" />

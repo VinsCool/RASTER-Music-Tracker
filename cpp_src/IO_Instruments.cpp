@@ -10,7 +10,6 @@ using namespace std;
 
 #include "global.h"
 
-#include "GUI_Instruments.h"
 #include "GuiHelpers.h"
 
 
@@ -18,7 +17,7 @@ int CInstruments::SaveAll(ofstream& ou, int iotype)
 {
 	for (int i = 0; i < INSTRSNUM; i++)
 	{
-		if (iotype == IOINSTR_TXT && !CalculateNoEmpty(i)) continue; //to TXT only non-empty instruments
+		if (iotype == IOINSTR_TXT && !CalculateNotEmpty(i)) continue; //to TXT only non-empty instruments
 		SaveInstrument(i, ou, iotype);	//,IOINSTR_RMW);
 	}
 	return 1;
@@ -62,26 +61,26 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 
 			char bfpar[PARCOUNT], bfenv[ENVCOLS][ENVROWS], bftab[TABLEN];
 			//
-			for (j = 0; j < PARCOUNT; j++) bfpar[j] = ai.par[j];
+			for (j = 0; j < PARCOUNT; j++) bfpar[j] = ai.parameters[j];
 			ou.write(bfpar, sizeof(bfpar));
 			//
 			for (k = 0; k < ENVROWS; k++)
 			{
 				for (j = 0; j < ENVCOLS; j++)
-					bfenv[j][k] = ai.env[j][k];
+					bfenv[j][k] = ai.envelope[j][k];
 			}
 			ou.write((char*)bfenv, sizeof(bfenv));
 			//
-			for (j = 0; j < TABLEN; j++) bftab[j] = ai.tab[j];
+			for (j = 0; j < TABLEN; j++) bftab[j] = ai.noteTable[j];
 			ou.write(bftab, sizeof(bftab));
 			//
 			//+editing options:
-			ou.write((char*)&ai.act, sizeof(ai.act));
-			ou.write((char*)&ai.activenam, sizeof(ai.activenam));
-			ou.write((char*)&ai.activepar, sizeof(ai.activepar));
-			ou.write((char*)&ai.activeenvx, sizeof(ai.activeenvx));
-			ou.write((char*)&ai.activeenvy, sizeof(ai.activeenvy));
-			ou.write((char*)&ai.activetab, sizeof(ai.activetab));
+			ou.write((char*)&ai.activeEditSection, sizeof(ai.activeEditSection));
+			ou.write((char*)&ai.editNameCursorPos, sizeof(ai.editNameCursorPos));
+			ou.write((char*)&ai.editParameterNr, sizeof(ai.editParameterNr));
+			ou.write((char*)&ai.editEnvelopeX, sizeof(ai.editEnvelopeX));
+			ou.write((char*)&ai.editEnvelopeY, sizeof(ai.editEnvelopeY));
+			ou.write((char*)&ai.editNoteTableCursorPos, sizeof(ai.editNoteTableCursorPos));
 			//octaves and volumes
 			ou.write((char*)&ai.octave, sizeof(ai.octave));
 			ou.write((char*)&ai.volume, sizeof(ai.volume));
@@ -95,16 +94,16 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 			s.Format("[INSTRUMENT]\n%02X: %s\n", instr, (LPCTSTR)nambf);
 			ou << (LPCTSTR)s;
 			//instrument parameters
-			for (j = 0; j < NUMBEROFPARS; j++)
+			for (j = 0; j < NUMBER_OF_PARAMS; j++)
 			{
-				s.Format("%s %X\n", shpar[j].name, ai.par[j] + shpar[j].pfrom);
+				s.Format("%s %X\n", shpar[j].name, ai.parameters[j] + shpar[j].displayOffset);
 				ou << (LPCTSTR)s;
 			}
 			//table
 			ou << "TABLE: ";
-			for (j = 0; j <= ai.par[PAR_TABLEN]; j++)
+			for (j = 0; j <= ai.parameters[PAR_TBL_LENGTH]; j++)
 			{
-				s.Format("%02X ", ai.tab[j]);
+				s.Format("%02X ", ai.noteTable[j]);
 				ou << (LPCTSTR)s;
 			}
 			ou << endl;
@@ -112,11 +111,11 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 			for (k = 0; k < ENVROWS; k++)
 			{
 				char bf[ENVCOLS + 1];
-				for (j = 0; j <= ai.par[PAR_ENVLEN]; j++)
+				for (j = 0; j <= ai.parameters[PAR_ENV_LENGTH]; j++)
 				{
-					bf[j] = CharL4(ai.env[j][k]);
+					bf[j] = CharL4(ai.envelope[j][k]);
 				}
-				bf[ai.par[PAR_ENVLEN] + 1] = 0; //buffer termination
+				bf[ai.parameters[PAR_ENV_LENGTH] + 1] = 0; //buffer termination
 				s.Format("%s %s\n", shenv[k].name, bf);
 				ou << (LPCTSTR)s;
 			}
@@ -155,7 +154,7 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 					r = AtaV0ToInstr(ibf, instr);
 				else
 					r = AtaToInstr(ibf, instr);
-				ModificationInstrument(instr);	//writes to Atari ram
+				WasModified(instr);	//writes to Atari ram
 				if (!r) return 0; //if there was some problem with the instrument, return 0
 			}
 		}
@@ -174,27 +173,27 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 			int j, k;
 			//
 			in.read(bfpar, sizeof(bfpar));
-			for (j = 0; j < PARCOUNT; j++) ai.par[j] = bfpar[j];
+			for (j = 0; j < PARCOUNT; j++) ai.parameters[j] = bfpar[j];
 			//
 			in.read((char*)bfenv, sizeof(bfenv));
 			for (j = 0; j < ENVCOLS; j++)
 			{
 				for (k = 0; k < ENVROWS; k++)
-					ai.env[j][k] = bfenv[j][k];
+					ai.envelope[j][k] = bfenv[j][k];
 			}
 			//
 			in.read((char*)bftab, sizeof(bftab));
-			for (j = 0; j < TABLEN; j++) ai.tab[j] = bftab[j];
+			for (j = 0; j < TABLEN; j++) ai.noteTable[j] = bftab[j];
 			//
-			ModificationInstrument(instr);	//writes to Atari mem
+			WasModified(instr);	//writes to Atari mem
 			//
 			//+editing options:
-			in.read((char*)&ai.act, sizeof(ai.act));
-			in.read((char*)&ai.activenam, sizeof(ai.activenam));
-			in.read((char*)&ai.activepar, sizeof(ai.activepar));
-			in.read((char*)&ai.activeenvx, sizeof(ai.activeenvx));
-			in.read((char*)&ai.activeenvy, sizeof(ai.activeenvy));
-			in.read((char*)&ai.activetab, sizeof(ai.activetab));
+			in.read((char*)&ai.activeEditSection, sizeof(ai.activeEditSection));
+			in.read((char*)&ai.editNameCursorPos, sizeof(ai.editNameCursorPos));
+			in.read((char*)&ai.editParameterNr, sizeof(ai.editParameterNr));
+			in.read((char*)&ai.editEnvelopeX, sizeof(ai.editEnvelopeX));
+			in.read((char*)&ai.editEnvelopeY, sizeof(ai.editEnvelopeY));
+			in.read((char*)&ai.editNoteTableCursorPos, sizeof(ai.editNoteTableCursorPos));
 			//octaves and volumes
 			in.read((char*)&ai.octave, sizeof(ai.octave));
 			in.read((char*)&ai.volume, sizeof(ai.volume));
@@ -222,9 +221,9 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 
 			char* value = line + 4;
 			Trimstr(value);
-			memset(ai.name, ' ', INSTRNAMEMAXLEN);
-			int lname = INSTRNAMEMAXLEN;
-			if (strlen(value) <= INSTRNAMEMAXLEN) lname = strlen(value);
+			memset(ai.name, ' ', INSTRUMENT_NAME_MAX_LEN);
+			int lname = INSTRUMENT_NAME_MAX_LEN;
+			if (strlen(value) <= INSTRUMENT_NAME_MAX_LEN) lname = strlen(value);
 			strncpy(ai.name, value, lname);
 
 			int v, j, k, vlen;
@@ -244,15 +243,15 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 				else
 					continue;
 
-				for (j = 0; j < NUMBEROFPARS; j++)
+				for (j = 0; j < NUMBER_OF_PARAMS; j++)
 				{
 					if (strcmp(line, shpar[j].name) == 0)
 					{
-						v = Hexstr(value, 2) - shpar[j].pfrom;
+						v = Hexstr(value, 2) - shpar[j].displayOffset;
 						if (v < 0) goto NextInstrLine;
-						v &= shpar[j].pand;
-						if (v > shpar[j].pmax) v = 0;
-						ai.par[shpar[j].c] = v;
+						v &= shpar[j].parameterAND;
+						if (v > shpar[j].maxParameterValue) v = 0;
+						ai.parameters[shpar[j].paramIndex] = v;
 						goto NextInstrLine;
 					}
 				}
@@ -264,7 +263,7 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 					{
 						v = Hexstr(value + j, 2);
 						if (v < 0) goto NextInstrLine;
-						ai.tab[j / 3] = v;
+						ai.noteTable[j / 3] = v;
 					}
 					goto NextInstrLine;
 				}
@@ -278,7 +277,7 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 							v = Hexstr(&a, 1);
 							if (v < 0) goto NextInstrLine;
 							v &= shenv[j].pand;
-							ai.env[k][j] = v;
+							ai.envelope[k][j] = v;
 						}
 						goto NextInstrLine;
 					}
@@ -287,7 +286,7 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 			}
 		}
 	InstrEnd:
-		ModificationInstrument(instr);	//write to Atari mem
+		WasModified(instr);	//write to Atari mem
 		break;
 
 	}
@@ -301,7 +300,7 @@ BYTE CInstruments::InstrToAta(int instr, unsigned char* ata, int max)
 {
 	TInstrument& ai = m_instr[instr];
 	int i, j;
-	int* par = ai.par;
+	int* par = ai.parameters;
 
 	/*
 	  0 IDXTABLEEND
@@ -320,40 +319,40 @@ BYTE CInstruments::InstrToAta(int instr, unsigned char* ata, int max)
 
 	const int INSTRPAR = 12;			//12th byte starts the table
 
-	int tablelast = par[PAR_TABLEN] + INSTRPAR;
+	int tablelast = par[PAR_TBL_LENGTH] + INSTRPAR;
 	ata[0] = tablelast;
-	ata[1] = par[PAR_TABGO] + INSTRPAR;
-	ata[2] = par[PAR_ENVLEN] * 3 + tablelast + 1;	//behind the table is the envelope
-	ata[3] = par[PAR_ENVGO] * 3 + tablelast + 1;
+	ata[1] = par[PAR_TBL_GOTO] + INSTRPAR;
+	ata[2] = par[PAR_ENV_LENGTH] * 3 + tablelast + 1;	//behind the table is the envelope
+	ata[3] = par[PAR_ENV_GOTO] * 3 + tablelast + 1;
 	//
-	ata[4] = (par[PAR_TABTYPE] << 7)
-		| (par[PAR_TABMODE] << 6)
-		| (par[PAR_TABSPD]);
+	ata[4] = (par[PAR_TBL_TYPE] << 7)
+		| (par[PAR_TBL_MODE] << 6)
+		| (par[PAR_TBL_SPEED]);
 	//
-	ata[5] = par[PAR_AUDCTL0]
-		| (par[PAR_AUDCTL1] << 1)
-		| (par[PAR_AUDCTL2] << 2)
-		| (par[PAR_AUDCTL3] << 3)
-		| (par[PAR_AUDCTL4] << 4)
-		| (par[PAR_AUDCTL5] << 5)
-		| (par[PAR_AUDCTL6] << 6)
-		| (par[PAR_AUDCTL7] << 7);
-	ata[6] = par[PAR_VSLIDE];
-	ata[7] = par[PAR_VMIN] << 4;
+	ata[5] = par[PAR_AUDCTL_15KHZ]
+		| (par[PAR_AUDCTL_HPF_CH2] << 1)
+		| (par[PAR_AUDCTL_HPF_CH1] << 2)
+		| (par[PAR_AUDCTL_JOIN_3_4] << 3)
+		| (par[PAR_AUDCTL_JOIN_1_2] << 4)
+		| (par[PAR_AUDCTL_179_CH3] << 5)
+		| (par[PAR_AUDCTL_179_CH1] << 6)
+		| (par[PAR_AUDCTL_POLY9] << 7);
+	ata[6] = par[PAR_VOL_FADEOUT];
+	ata[7] = par[PAR_VOL_MIN] << 4;
 	ata[8] = par[PAR_DELAY];
 	ata[9] = par[PAR_VIBRATO] & 0x03;
-	ata[10] = par[PAR_FSHIFT];
+	ata[10] = par[PAR_FREQ_SHIFT];
 	ata[11] = 0; //unused, for now
 
 	//the entire table length gets the data copied
-	for (i = 0; i <= par[PAR_TABLEN]; i++) ata[INSTRPAR + i] = ai.tab[i];
+	for (i = 0; i <= par[PAR_TBL_LENGTH]; i++) ata[INSTRPAR + i] = ai.noteTable[i];
 
 	//envelope is behind the table
 	BOOL stereo = (g_tracks4_8 > 4);
-	int len = par[PAR_ENVLEN];
+	int len = par[PAR_ENV_LENGTH];
 	for (i = 0, j = tablelast + 1; i <= len; i++, j += 3)
 	{
-		int* env = (int*)&ai.env[i];
+		int* env = (int*)&ai.envelope[i];
 		ata[j] = (stereo) ?
 			(env[ENV_VOLUMER] << 4) | (env[ENV_VOLUMEL])	//stereo
 			:
@@ -373,7 +372,7 @@ BYTE CInstruments::InstrToAtaRMF(int instr, unsigned char* ata, int max)
 {
 	TInstrument& ai = m_instr[instr];
 	int i, j;
-	int* par = ai.par;
+	int* par = ai.parameters;
 
 	/*							RMF
 	  0 IDXTABLEEND
@@ -392,40 +391,40 @@ BYTE CInstruments::InstrToAtaRMF(int instr, unsigned char* ata, int max)
 
 	const int INSTRPAR = 11;			//RMF (default is 12)
 
-	int tablelast = par[PAR_TABLEN] + INSTRPAR;	 //+12	//12th byte starts the table
+	int tablelast = par[PAR_TBL_LENGTH] + INSTRPAR;	 //+12	//12th byte starts the table
 	ata[0] = tablelast;
-	ata[1] = par[PAR_TABGO] + INSTRPAR;				//12th byte starts the table
-	ata[2] = par[PAR_ENVLEN] * 3 + tablelast + 1 + 1;	//behind the table is the envelope // RMF +1
-	ata[3] = par[PAR_ENVGO] * 3 + tablelast + 1;
+	ata[1] = par[PAR_TBL_GOTO] + INSTRPAR;				//12th byte starts the table
+	ata[2] = par[PAR_ENV_LENGTH] * 3 + tablelast + 1 + 1;	//behind the table is the envelope // RMF +1
+	ata[3] = par[PAR_ENV_GOTO] * 3 + tablelast + 1;
 	//
-	ata[4] = (par[PAR_TABTYPE] << 7)
-		| (par[PAR_TABMODE] << 6)
-		| (par[PAR_TABSPD]);
+	ata[4] = (par[PAR_TBL_TYPE] << 7)
+		| (par[PAR_TBL_MODE] << 6)
+		| (par[PAR_TBL_SPEED]);
 	//
-	ata[5] = par[PAR_AUDCTL0]
-		| (par[PAR_AUDCTL1] << 1)
-		| (par[PAR_AUDCTL2] << 2)
-		| (par[PAR_AUDCTL3] << 3)
-		| (par[PAR_AUDCTL4] << 4)
-		| (par[PAR_AUDCTL5] << 5)
-		| (par[PAR_AUDCTL6] << 6)
-		| (par[PAR_AUDCTL7] << 7);
-	ata[6] = par[PAR_VSLIDE];
-	ata[7] = par[PAR_VMIN] << 4;
+	ata[5] = par[PAR_AUDCTL_15KHZ]
+		| (par[PAR_AUDCTL_HPF_CH2] << 1)
+		| (par[PAR_AUDCTL_HPF_CH1] << 2)
+		| (par[PAR_AUDCTL_JOIN_3_4] << 3)
+		| (par[PAR_AUDCTL_JOIN_1_2] << 4)
+		| (par[PAR_AUDCTL_179_CH3] << 5)
+		| (par[PAR_AUDCTL_179_CH1] << 6)
+		| (par[PAR_AUDCTL_POLY9] << 7);
+	ata[6] = par[PAR_VOL_FADEOUT];
+	ata[7] = par[PAR_VOL_MIN] << 4;
 	ata[8] = par[PAR_DELAY];
 	ata[9] = par[PAR_VIBRATO] & 0x03;
-	ata[10] = par[PAR_FSHIFT];
+	ata[10] = par[PAR_FREQ_SHIFT];
 	ata[11] = 0; //unused
 
 	//write for the entire length of the table
-	for (i = 0; i <= par[PAR_TABLEN]; i++) ata[INSTRPAR + i] = ai.tab[i];
+	for (i = 0; i <= par[PAR_TBL_LENGTH]; i++) ata[INSTRPAR + i] = ai.noteTable[i];
 
 	//envelope is behind the table
 	BOOL stereo = (g_tracks4_8 > 4);
-	int len = par[PAR_ENVLEN];
+	int len = par[PAR_ENV_LENGTH];
 	for (i = 0, j = tablelast + 1; i <= len; i++, j += 3)
 	{
-		int* env = (int*)&ai.env[i];
+		int* env = (int*)&ai.envelope[i];
 		ata[j] = (stereo) ?
 			(env[ENV_VOLUMER] << 4) | (env[ENV_VOLUMEL]) //stereo
 			:
@@ -441,12 +440,19 @@ BYTE CInstruments::InstrToAtaRMF(int instr, unsigned char* ata, int max)
 	return tablelast + 1 + (len + 1) * 3;	//returns the data length of the instrument
 }
 
-BOOL CInstruments::ModificationInstrument(int instr)
+/// <summary>
+/// The instrument was modified in some way.
+/// Push the new instrument data to Atari
+/// and update the display hint flag.
+/// </summary>
+/// <param name="instr">Instrument #</param>
+/// <returns></returns>
+void CInstruments::WasModified(int instr)
 {
 	unsigned char* ata = g_atarimem + instr * 256 + 0x4000;
 	g_rmtroutine = 0;			//turn off RMT routines
-	BYTE r = InstrToAta(instr, ata, MAXATAINSTRLEN);
+	InstrToAta(instr, ata, MAXATAINSTRLEN);
 	g_rmtroutine = 1;			//RMT routines are turned on
+
 	RecalculateFlag(instr);
-	return r;
 }

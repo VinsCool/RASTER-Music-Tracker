@@ -37,14 +37,16 @@ public:
 	CSong();
 	~CSong();
 
+	void StopTimer();
+
 	void ChangeTimer(int ms);
-	BOOL ClearSong(int numoftracks);
+	void ClearSong(int numoftracks);
 
 	void MidiEvent(DWORD dwParam);
 
 	void DrawSong();				// Draw the song line info on the right
-	BOOL DrawTracks();
-	BOOL DrawInstrument();
+	void DrawTracks();
+	void DrawInstrument();
 	void DrawInfo();			//top left corner
 	void DrawAnalyzer(CDC* pDC = NULL);
 	void DrawPlayTimeCounter(CDC* pDC = NULL);
@@ -245,8 +247,8 @@ public:
 
 	int GetPlayMode() { return m_play; };
 
-	void GetSongInfoPars(TInfo* info) { memcpy(info->songname, m_songname, SONGNAMEMAXLEN); info->speed = m_speed; info->mainspeed = m_mainspeed; info->instrspeed = m_instrspeed; info->songnamecur = m_songnamecur; };
-	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONGNAMEMAXLEN); m_speed = info->speed; m_mainspeed = info->mainspeed; m_instrspeed = info->instrspeed; m_songnamecur = info->songnamecur; };
+	void GetSongInfoPars(TInfo* info) { memcpy(info->songname, m_songname, SONG_NAME_MAX_LEN); info->speed = m_speed; info->mainspeed = m_mainspeed; info->instrspeed = m_instrspeed; info->songnamecur = m_songnamecur; };
+	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONG_NAME_MAX_LEN); m_speed = info->speed; m_mainspeed = info->mainspeed; m_instrspeed = info->instrspeed; m_songnamecur = info->songnamecur; };
 
 	BOOL volatile m_followplay;
 	int volatile m_play;
@@ -289,7 +291,7 @@ private:
 	double e_pitch = 0;
 
 	int m_infoact;						// Which part of the info area is active for editing: 0 = name, 
-	char m_songname[SONGNAMEMAXLEN + 1];
+	char m_songname[SONG_NAME_MAX_LEN + 1];
 	int m_songnamecur;
 
 	TBookmark m_bookmark;
