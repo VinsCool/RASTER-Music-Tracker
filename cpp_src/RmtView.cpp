@@ -689,6 +689,7 @@ void CRmtView::OnViewConfiguration()
 			g_width = INVERSE_SCALE(m_width);
 			g_height = INVERSE_SCALE(m_height);
 			g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16; 
+			g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
 			SCREENUPDATE;
 		}
 
