@@ -895,7 +895,7 @@ void CSong::DrawTracks()
 	if (y != last_y && g_tracklines == last_linesnum && m_play && m_followplay)
 	{
 		m_trackactiveline = last_active_trackline;
-		m_trackplayline = last_play_line;
+		//m_trackplayline = last_play_line;	//must not edit manually! This will cause the player to actually "try" to play the line again!
 		g_cursoractview = last_activecur;
 	}
 
