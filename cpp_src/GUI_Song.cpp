@@ -804,17 +804,12 @@ void CSong::DrawSong()
 
 	if (g_tracks4_8 > 4)	//a line delimiting the boundary between left/right
 	{
-		int fl, tl;
-		int LINE = m_songactiveline;
-		int SEPARATION = SONG_Y + 80 + 5 * 8 + 3;
-		int INITIAL_LINE = (WINDOW_OFFSET) ? 64 : 96;
-		int TOTAL_LINES = (WINDOW_OFFSET) ? 253 : 251;
-		fl = INITIAL_LINE - m_songactiveline * 16 - smooth_y;
-		if (fl < 32) fl = 32;
-		tl = 32 + linescount * 16;
-		if (LINE > TOTAL_LINES - active_smooth) tl = 32 + linescount * 16 - (LINE - TOTAL_LINES) * 16 - smooth_y;
-		g_mem_dc->MoveTo(SCALE(SONG_OFFSET + SEPARATION), SCALE(fl) );
-		g_mem_dc->LineTo(SCALE(SONG_OFFSET + SEPARATION), SCALE(tl) );
+		int fl = 32;
+		int tl = 32 + linescount * 16;
+		int x = SONG_Y + 80 + 5 * 8 + 3 + SONG_OFFSET;
+
+		g_mem_dc->MoveTo(SCALE(x), SCALE(fl));
+		g_mem_dc->LineTo(SCALE(x), SCALE(tl)); 
 	}
 
 	// Draw mask rectangles over the extra pixels above and below the song lines.
@@ -892,7 +887,7 @@ void CSong::DrawTracks()
 
 	//attempts to stabilise the line position by forcing the last known valid parameters
 	y = TRACKS_Y + 3 * 16 - 2 + (m_trackactiveline - g_cursoractview + 8) * 16;
-	if (y != last_y && g_tracklines == last_linesnum && m_play && m_followplay)
+	if (y != last_y && g_tracklines == last_linesnum && m_play && m_followplay) 
 	{
 		m_trackactiveline = last_active_trackline;
 		//m_trackplayline = last_play_line;	//must not edit manually! This will cause the player to actually "try" to play the line again!
@@ -1036,18 +1031,16 @@ void CSong::DrawTracks()
 	//a line delimiting the boundary between left/right
 	if (g_tracks4_8 > 4)
 	{
-		int fl = 8 - g_cursoractview;
-		int fls = 0;
-		int tl = 8 - g_cursoractview + g_Tracks.m_maxtracklen;
-		int tls = 0;
+		y = (TRACKS_Y + 3 * 16);
+		int line_end = y + g_tracklines * 16;
 
-		y = (TRACKS_Y + 3 * 16) + smooth_y;
+		if (is_goto)
+		{
+			line_end = y + (8 - g_cursoractview + GetSmallestMaxtracklen(m_songactiveline)) * 16 + smooth_y;
+		}
 
-		if (fl < 0) { fl = 0; fls = active_smooth * 5; }
-		if (tl > g_tracklines) { tl = g_tracklines; tls = active_smooth * 7; }
-
-		g_mem_dc->MoveTo(SCALE(TRACKS_X + 50 * 11 - 3), SCALE(y - 2 - fls + fl * 16));
-		g_mem_dc->LineTo(SCALE(TRACKS_X + 50 * 11 - 3), SCALE(y + 2 + tls + tl * 16));
+		g_mem_dc->MoveTo(SCALE(TRACKS_X + 50 * 11 - 3), SCALE(y));
+		g_mem_dc->LineTo(SCALE(TRACKS_X + 50 * 11 - 3), SCALE(line_end));
 	}
 
 	//mask out any extra pixels after rendering each elements
@@ -2372,7 +2365,8 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 		if (!control && (vk == VK_UP || vk == VK_PAGE_UP))  //GO - key up
 		{
 			m_trackactiveline = 0;
-			TrackUp(1);
+			if (!g_linesafter) TrackUp(1);
+			else TrackUp(g_linesafter);
 			return 1;
 		}
 		if (!control && (vk == VK_DOWN || vk == VK_PAGE_DOWN)) //GO - key down
@@ -2408,7 +2402,10 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 		case VK_UP:
 			if (shift) break;	//do nothing
 			if (control || g_activepart != 1)	//anywhere but tracks
+			{
 				SongUp();
+				TrackRespectBoundaries();
+			}
 			else
 			{
 				if (!g_linesafter) TrackUp(1);
@@ -2419,7 +2416,10 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 		case VK_DOWN:
 			if (shift) break;	//do nothing
 			if (control || g_activepart != 1)	//anywhere but tracks
+			{
 				SongDown();
+				TrackRespectBoundaries();
+			}
 			else
 			{
 				if (!g_linesafter) TrackDown(1, 0);
@@ -2464,6 +2464,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 				else
 				{
 					SongUp();
+					TrackRespectBoundaries();
 				}
 				break;
 			}
@@ -2473,6 +2474,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					if (!shift && control)
 					{
 						SongUp();
+						TrackRespectBoundaries();
 					}
 					else
 						if (!control && shift)
@@ -2499,6 +2501,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 				else
 				{
 					SongDown();
+					TrackRespectBoundaries();
 				}
 				break;
 			}
@@ -2508,6 +2511,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					if (!shift && control)
 					{
 						SongDown();
+						TrackRespectBoundaries();
 					}
 					else
 						if (!control && shift)
@@ -2518,9 +2522,9 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					if (m_play && m_followplay) break;	//prevents moving at all during play+follow
 					else
 					{
-						i = ((m_trackactiveline + g_tracklinehighlight) / g_tracklinehighlight) * g_tracklinehighlight;
-						if (i >= g_Tracks.m_maxtracklen) i = g_Tracks.m_maxtracklen - 1;
-						m_trackactiveline = i;
+						m_trackactiveline = ((m_trackactiveline + g_tracklinehighlight) / g_tracklinehighlight) * g_tracklinehighlight;
+						if (m_trackactiveline > GetSmallestMaxtracklen(m_songactiveline) - 1)
+							m_trackactiveline -= g_tracklinehighlight;
 					}
 				}
 			break;
@@ -2606,7 +2610,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 
 BOOL CSong::TrackKey(int vk, int shift, int control)
 {
-	//
+//
 #define VKX_SONGINSERTLINE	73		//VK_I
 #define VKX_SONGDELETELINE	85		//VK_U
 #define VKX_SONGDUPLICATELINE 79	//VK_O
@@ -2622,16 +2626,15 @@ BOOL CSong::TrackKey(int vk, int shift, int control)
 	{
 		if (!control && (vk == VK_UP || vk == VK_PAGE_UP))  //GO - key up
 		{
-			m_trackactiveline = 0;
-			TrackUp(1);
-			//TrackUp(g_linesafter);	//assumes the pattern it went from was on line 0
+			m_trackactiveline = 0;	//always assume it went from line 0
+			if (!g_linesafter) TrackUp(1);
+			else TrackUp(g_linesafter);
 			return 1;
 		}
 		if (!control && (vk == VK_DOWN || vk == VK_PAGE_DOWN)) //GO - key down
 		{
-			m_trackactiveline = g_Tracks.m_maxtracklen - 1;
+			m_trackactiveline = g_Tracks.m_maxtracklen - 1;	//always reset to line 0
 			TrackDown(1, 0);
-			//TrackDown(g_linesafter, 0);	//doesn't work too well, better reset to line 0
 			return 1;
 		}
 		if (!control && !shift) return 0;
@@ -2777,6 +2780,7 @@ TrackKeyOk:
 							break;
 						}
 						else SongUp();
+						TrackRespectBoundaries();
 					}
 					else
 					{
@@ -2815,7 +2819,11 @@ TrackKeyOk:
 							BLOCKDESELECT;
 							break;
 						}
-						else SongDown();
+						else
+						{
+							SongDown();
+							TrackRespectBoundaries();
+						}
 					}
 					else
 					{
@@ -2894,6 +2902,7 @@ TrackKeyOk:
 			{
 				BLOCKDESELECT;
 				SongUp();
+				TrackRespectBoundaries();
 			}
 			else
 				if (!control && shift)
@@ -2919,6 +2928,7 @@ TrackKeyOk:
 			{
 				BLOCKDESELECT;
 				SongDown();
+				TrackRespectBoundaries();
 			}
 			else
 				if (!control && shift)
@@ -2932,9 +2942,9 @@ TrackKeyOk:
 					else
 					{
 						BLOCKDESELECT;
-						i = ((m_trackactiveline + g_tracklinehighlight) / g_tracklinehighlight) * g_tracklinehighlight;
-						if (i >= g_Tracks.m_maxtracklen) i = g_Tracks.m_maxtracklen - 1;
-						m_trackactiveline = i;
+						m_trackactiveline = ((m_trackactiveline + g_tracklinehighlight) / g_tracklinehighlight) * g_tracklinehighlight;
+						if (m_trackactiveline > GetSmallestMaxtracklen(m_songactiveline) - 1)
+							m_trackactiveline -= g_tracklinehighlight;
 					}
 			break;
 
@@ -2981,10 +2991,7 @@ TrackKeyOk:
 					//selection of the whole track (from 0 to the length of that track)
 					g_TrackClipboard.BlockDeselect();
 					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), 0);
-					if (TrackGetGoLine() >= 0)
-						g_TrackClipboard.BlockSetEnd(g_Tracks.m_maxtracklen - 1);
-					else
-						g_TrackClipboard.BlockSetEnd(g_Tracks.GetLastLine(SongGetActiveTrack()));
+					g_TrackClipboard.BlockSetEnd(GetSmallestMaxtracklen(m_songactiveline) - 1);
 				}
 			break;
 
@@ -3346,7 +3353,8 @@ BOOL CSong::TrackCursorGoto(CPoint point)
 
 	y = (point.y + 0) / 16 - 8 + g_cursoractview;	//m_trackactiveline;
 
-	if (y >= 0 && y < g_Tracks.m_maxtracklen)
+	//if (y >= 0 && y < g_Tracks.m_maxtracklen)
+	if (y >= 0 && y < GetSmallestMaxtracklen(m_songactiveline))	//variable pattern size, to prevent clicking "out of bounds" with the new tracks display
 	{
 		if (xch >= 0 && xch < g_tracks4_8) m_trackactivecol = xch;
 		if (m_play && m_followplay)	//prevents moving at all during play+follow
@@ -3405,11 +3413,13 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 		case VK_UP:
 			BLOCKDESELECT;
 			SongUp();
+			TrackRespectBoundaries();
 			break;
 
 		case VK_DOWN:
 			BLOCKDESELECT;
 			SongDown();
+			TrackRespectBoundaries();
 			break;
 
 		case VK_LEFT:
@@ -3518,14 +3528,21 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 			if (shift)
 				SongSubsongPrev();
 			else
+			{
 				SongUp();
+				TrackRespectBoundaries();
+			}
+
 			break;
 
 		case VK_PAGE_DOWN:
 			if (shift)
 				SongSubsongNext();
 			else
+			{
 				SongDown();
+				TrackRespectBoundaries();
+			}
 			break;
 
 		case VK_MULTIPLY:
@@ -3590,5 +3607,6 @@ BOOL CSong::SongCursorGoto(CPoint point)
 		return 0;
 	m_trackactivecol = xch;
 	g_activepart = PART_SONG;
+	TrackRespectBoundaries();
 	return 1;
 }

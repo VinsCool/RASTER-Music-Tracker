@@ -93,9 +93,9 @@ BOOL CTracks::DrawTrackHeader(int col, int x, int y, int tr)	// , int line_cnt, 
 BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu, int oob)
 {
 	char s[16];
-	int line, xline, n, color, len, last, go;
+	int line, xline, n, color, len, last, go, endline;
 
-	len = last = 0;
+	len = last = endline = 0;
 	TTrack* tt = NULL;
 
 	line = line_cnt;
@@ -108,20 +108,19 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 		if (go >= 0) last = m_maxtracklen;
 	}
 
+	//fetch the last line infos early, so it could be drawn immediately after the track line was processed
+	if (line + 1 == last && len > 0 && last != m_maxtracklen)
+	{
+		endline = line;
+	}
+
 	if (line >= last)
 	{
 		if (line == aline && isactive) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//blue or red
 		else if (line == pline) color = TEXT_COLOR_YELLOW;	//yellow
 		else color = TEXT_COLOR_GRAY;	//gray
 		if (oob) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
-
-		if (line == last && len > 0)
-		{
-			if (color != TEXT_COLOR_BLUE && color != TEXT_COLOR_RED) color = TEXT_COLOR_WHITE;	//The end line is white unless the active colour is used
-			if (oob) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
-			TextXY("\x12\x12\x12\x12\x12\x13\x14\x15\x12\x12\x12\x12\x12", x + 1 * 8, y, color);
-		}
-		else TextXY(" \x8\x8\x8 \x8\x8 \x8\x8 \x8\x8\x8", x, y, color);	//empty track line
+			TextXY(" \x8\x8\x8 \x8\x8 \x8\x8 \x8\x8\x8", x, y, color);	//empty track line
 		return 0;
 	}
 
@@ -202,6 +201,11 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 		else TextXYCol(s, x, y, colac[acu]);
 	}
 	else TextXY(s, x, y, color);
+
+	if (endline)
+	{
+		TextXY("\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B", x + 7, y + 13, (oob) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+	}
 
 	return 1;
 }

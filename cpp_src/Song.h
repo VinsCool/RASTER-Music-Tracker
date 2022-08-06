@@ -86,10 +86,11 @@ public:
 	int TrackGetInstr() { return g_Tracks.GetInstr(SongGetActiveTrack(), m_trackactiveline); };
 	int TrackGetVol() { return g_Tracks.GetVol(SongGetActiveTrack(), m_trackactiveline); };
 	int TrackGetSpeed() { return g_Tracks.GetSpeed(SongGetActiveTrack(), m_trackactiveline); };
-	BOOL TrackSetEnd() { return g_Tracks.SetEnd(SongGetActiveTrack(), m_trackactiveline); };
+	BOOL TrackSetEnd() { return g_Tracks.SetEnd(SongGetActiveTrack(), m_trackactiveline + 1); };
 	int TrackGetLastLine() { return g_Tracks.GetLastLine(SongGetActiveTrack()); };
 	BOOL TrackSetGo() { return g_Tracks.SetGo(SongGetActiveTrack(), m_trackactiveline); };
 	int TrackGetGoLine() { return g_Tracks.GetGoLine(SongGetActiveTrack()); };
+	void TrackRespectBoundaries() { if (m_trackactiveline < 0) { m_trackactiveline = 0; } if (m_trackactiveline > GetSmallestMaxtracklen(m_songactiveline) - 1) { m_trackactiveline = GetSmallestMaxtracklen(m_songactiveline) - 1; } };
 
 	void TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol);
 

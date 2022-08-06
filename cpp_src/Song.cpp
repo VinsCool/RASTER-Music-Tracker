@@ -758,24 +758,33 @@ BOOL CSong::TrackUp(int lines)
 {
 	if (m_play && m_followplay)	//prevents moving at all during play+follow
 		return 0;
+
 	g_Undo.Separator();
-	m_trackactiveline -= lines;
-	if (m_trackactiveline < 0)
+	m_trackactiveline -= lines;	//subtract the number of lines from active track line 
+
+	//GetSmallestMaxtracklen() seems to do a really good job for the navigation within the "compact" tracks display so far
+	int trlen = GetSmallestMaxtracklen(m_songactiveline);
+
+	if (m_trackactiveline < 0)	//track line is below 0
 	{
-		if (ISBLOCKSELECTED)
+		if (ISBLOCKSELECTED)	//a selection block is currently in use
 		{
 			m_trackactiveline = 0;	//prevent moving anywhere else
 			return 1;
 		}
-		if (g_keyboard_updowncontinue)
+		if (g_keyboard_updowncontinue)	//navigation between tracks is enabled
 		{
 			BLOCKDESELECT;
-			SongUp();
+			SongUp();	//go to the next songline with current trackline position
+			trlen = GetSmallestMaxtracklen(m_songactiveline);	//fetch the new pattern length as well
 		}
-		m_trackactiveline = m_trackactiveline + TrackGetLastLine() + 1;
-		if (m_trackactiveline < 0 || TrackGetGoLine() >= 0) m_trackactiveline = m_trackactiveline + g_Tracks.m_maxtracklen;
-		if (m_trackactiveline > g_Tracks.m_maxtracklen) m_trackactiveline = m_trackactiveline - TrackGetLastLine() - 1;
+		m_trackactiveline = m_trackactiveline + trlen;	//active line should appear at the bottom line, from the previous pattern movement 
+		if (m_trackactiveline < 0)	//active line is still below 0? assume max track length to be the correct position, so the next movement up will rectify itself
+			m_trackactiveline = trlen - lines; 
 	}
+	if (m_trackactiveline > trlen)
+		m_trackactiveline = trlen - lines;	//above max track length, snap back in-bounds, and take the number of used for movements as well 
+
 	return 1;
 }
 
@@ -783,44 +792,39 @@ BOOL CSong::TrackDown(int lines, BOOL stoponlastline)
 {
 	if (m_play && m_followplay)	//prevents moving at all during play+follow
 		return 0;
-	if (!g_keyboard_updowncontinue && stoponlastline && m_trackactiveline + lines > TrackGetLastLine()) return 0;
+
+	if (!g_keyboard_updowncontinue && stoponlastline && m_trackactiveline + lines > TrackGetLastLine()) // an invalid combination should be ignored
+		return 0;
+
 	g_Undo.Separator();
-	m_trackactiveline += lines;
-	if (SongGetActiveTrack() >= 0 && TrackGetGoLine() < 0)
+	m_trackactiveline += lines;	//add the number of lines to move down to the current active trackline
+
+	//GetSmallestMaxtracklen() seems to do a really good job for the navigation within the "compact" tracks display so far
+	int trlen = GetSmallestMaxtracklen(m_songactiveline);	//identify the true track length in song line 
+	if (!trlen) trlen = g_Tracks.m_maxtracklen;	//in case the smallest max track length returned zero (eg from a goto line)
+
+	if (m_trackactiveline >= trlen)	//active line is equal or above max track length
 	{
-		int trlen = TrackGetLastLine() + 1;
-		if (m_trackactiveline >= trlen)
+		if (ISBLOCKSELECTED)
 		{
-			if (ISBLOCKSELECTED)
-			{
-				m_trackactiveline = trlen - 1;	//prevent moving anywhere else
-				return 1;
-			}
-			m_trackactiveline = m_trackactiveline % trlen;
-			if (g_keyboard_updowncontinue)
-			{
-				BLOCKDESELECT;
-				SongDown();
-			}
+			//m_trackactiveline = g_Tracks.m_maxtracklen - 1;	//prevent moving anywhere else
+			m_trackactiveline = trlen - 1;	//prevent moving anywhere else
+			return 1;
 		}
-	}
-	else
-	{
-		if (m_trackactiveline >= g_Tracks.m_maxtracklen)
+		//m_trackactiveline = m_trackactiveline % g_Tracks.m_maxtracklen;
+		m_trackactiveline = m_trackactiveline % trlen;	//active line is modulo of track length, it will roll over 
+		if (g_keyboard_updowncontinue)	//navigation between tracks is enabled
 		{
-			if (ISBLOCKSELECTED)
-			{
-				m_trackactiveline = g_Tracks.m_maxtracklen - 1;	//prevent moving anywhere else
-				return 1;
-			}
-			m_trackactiveline = m_trackactiveline % g_Tracks.m_maxtracklen;
-			if (g_keyboard_updowncontinue)
-			{
-				BLOCKDESELECT;
-				SongDown();
-			}
+			BLOCKDESELECT;
+			SongDown();	//go to the next songline with current trackline position
+			trlen = GetSmallestMaxtracklen(m_songactiveline);	//fetch the new pattern length as well
 		}
+		if (m_trackactiveline < 0)	//active line is still below 0? assume max track length to be the correct position, so the next movement up will rectify itself
+			m_trackactiveline = 0 + lines;
 	}
+	if (m_trackactiveline > trlen)
+		m_trackactiveline = 0 + lines;	//above max track length, snap back in-bounds, and take the number of used for movements as well 
+
 	return 1;
 }
 
@@ -988,7 +992,8 @@ BOOL CSong::SongUp()
 	BLOCKDESELECT;
 	g_Undo.Separator();
 	m_songactiveline--;
-	if (m_songactiveline < 0) m_songactiveline = SONGLEN - 1;
+	if (m_songactiveline < 0)	//below zero => roll back to 255
+		m_songactiveline = SONGLEN - 1;
 
 	if (m_play && m_followplay)
 	{
@@ -1007,7 +1012,8 @@ BOOL CSong::SongDown()
 	BLOCKDESELECT;
 	g_Undo.Separator();
 	m_songactiveline++;
-	if (m_songactiveline >= SONGLEN) m_songactiveline = 0;
+	if (m_songactiveline >= SONGLEN)	//above 255 => roll back from 0 
+		m_songactiveline = 0;
 
 	if (m_play && m_followplay)
 	{
@@ -1024,9 +1030,11 @@ BOOL CSong::SongDown()
 BOOL CSong::SongSubsongPrev()
 {
 	g_Undo.Separator();
-	int i;
-	i = m_songactiveline - 1;
-	if (m_trackactiveline == 0) i--;	//is on 0. line => search for 1 songline driv
+	int i = m_songactiveline - 1;
+
+	//only few lines in track have been played, or active line is 0, search for 1 subsong earlier to avoid being sent back to the same line each time 
+	if ((m_play && m_followplay && m_trackplayline < 16) || m_trackactiveline == 0)	 
+		i--;
 	for (; i >= 0; i--)
 	{
 		if (m_songgo[i] >= 0)
@@ -2165,7 +2173,7 @@ int CSong::GetSmallestMaxtracklen(int songline)
 	int min = g_Tracks.m_maxtracklen;
 	int p = 0;
 
-	if (m_songgo[so] >= 0) return 0; //go to line is ignored
+	if (m_songgo[so] >= 0)	return 0; //go to line is ignored
 
 	for (int i = 0; i < g_tracks4_8; i++)
 	{

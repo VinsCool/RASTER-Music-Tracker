@@ -226,7 +226,10 @@ int CTrackClipboard::BlockPasteToTrack(int track, int line, int special)
 	else
 		linemax = line + ts.len;
 
-	if (linemax > g_Tracks.m_maxtracklen) linemax = g_Tracks.m_maxtracklen;
+	int songline = g_Song.SongGetActiveLine();
+	if (linemax > g_Song.GetSmallestMaxtracklen(songline)) 
+		linemax = g_Song.GetSmallestMaxtracklen(songline);
+
 	if (line > td.len)
 	{
 		//if it makes a paste under the --end-- line, empty the gap between --end-- and the end of the place where it pastes

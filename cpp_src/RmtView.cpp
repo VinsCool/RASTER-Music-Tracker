@@ -1145,7 +1145,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 6;
 	}
 
-	rec.SetRect(440, 16, 440 + 8 * 2, 16 + 16);
+	rec.SetRect(432, 16, 432 + 8 * 2, 16 + 16);
 	if (rec.PtInRect(point))
 	{
 		//Songline highlight
