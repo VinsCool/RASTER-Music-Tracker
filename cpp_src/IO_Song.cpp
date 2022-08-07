@@ -208,12 +208,14 @@ void CSong::FileOpen(const char* filename, BOOL warnunsavedchanges)
 			return;
 		}
 		//
+		/*
 		if (type == 2)
 		{
 			MessageBox(g_hwnd, "Can't open this file: " + fn, "Open error", MB_ICONERROR);
 			MessageBox(g_hwnd, "TXT format is currently broken, this will be fixed in a future RMT version.\nSorry for the inconvenience...", "Open error", MB_ICONERROR);
 			return;
 		}
+		*/
 		//
 		//deletes the current song
 		ClearSong(g_tracks4_8);
@@ -226,11 +228,11 @@ void CSong::FileOpen(const char* filename, BOOL warnunsavedchanges)
 				m_filetype = IOTYPE_RMT;
 				break;
 			case 2: //second choice in Dialog (TXT)
-				result = Load(in, IOTYPE_TXT);
+				result = LoadTxt(in);
 				m_filetype = IOTYPE_TXT;
 				break;
 			case 3: //third choice in Dialog (RMW)
-				result = Load(in, IOTYPE_RMW);
+				result = LoadRMW(in);
 				m_filetype = IOTYPE_RMW;
 				break;
 		}
@@ -399,12 +401,14 @@ void CSong::FileSaveAs()
 		g_lastloadpath_songs = GetFilePath(m_filename); //direct way
 
 		//TODO: fix saving the TXT format in a future version
+		/*
 		if (type == 2)
 		{
 			MessageBox(g_hwnd, "Can't save this file: " + m_filename, "Save error", MB_ICONERROR);
 			MessageBox(g_hwnd, "TXT format is currently broken, this will be fixed in a future RMT version.\nSorry for the inconvenience...", "Save error", MB_ICONERROR);
 			return;
 		}
+		*/
 
 		switch (type)
 		{
@@ -801,8 +805,8 @@ void CSong::FileTrackLoad()
 	if (g_lastloadpath_tracks != "")
 		fid.m_ofn.lpstrInitialDir = g_lastloadpath_tracks;
 	else
-		if (g_path_tracks != "")
-			fid.m_ofn.lpstrInitialDir = g_path_tracks;
+	if (g_path_tracks != "")
+		fid.m_ofn.lpstrInitialDir = g_path_tracks;
 
 	//if not ok, nothing will be loaded
 	if (fid.DoModal() == IDOK)
@@ -834,18 +838,17 @@ void CSong::FileTrackLoad()
 			MessageBox(g_hwnd, "Sorry, this file doesn't contain any track in TXT format", "Data error", MB_ICONERROR);
 			return;
 		}
-		else
-			if (nt > 1)
-			{
-				CTracksLoadDlg dlg;
-				dlg.m_trackfrom = track;
-				dlg.m_tracknum = nt;
-				if (dlg.DoModal() != IDOK) return;
-				type = dlg.m_radio;
-			}
+		else if (nt > 1)
+		{
+			CTracksLoadDlg dlg;
+			dlg.m_trackfrom = track;
+			dlg.m_tracknum = nt;
+			if (dlg.DoModal() != IDOK) return;
+			type = dlg.m_radio;
+		}
 
+		in.clear();			//reset the flag from the end
 		in.seekg(0);	//again at the beginning
-		in.clear();		//reset the flag from the end
 		int nr = 0;
 		NextSegment(in);	//move after the first "["
 		while (!in.eof())
@@ -997,159 +1000,159 @@ int CSong::Save(ofstream& ou, int iotype)
 	return 1;
 }
 
-
-int CSong::Load(ifstream& in, int iotype)
+int CSong::LoadTxt(ifstream& in)
 {
 	ClearSong(8);	//always clear 8 tracks 
 
-	if (iotype == IOTYPE_RMW)
+	//LOAD TXT
+	g_Tracks.InitTracks();
+
+	char b;
+	char line[1025];
+	//read after the first "[" (inclusive)
+	NextSegment(in);
+
+	while (!in.eof())
 	{
-		//LOAD RMW
-		CString version;
-		version.LoadString(IDS_RMTVERSION);
-		char filever[256];
-		in.getline(filever, 255);
-		if (strcmp((char*)(LPCTSTR)version, filever) != 0)
+		in.getline(line, 1024);
+		Trimstr(line);
+		if (strcmp(line, "MODULE]") == 0)
 		{
-			MessageBox(g_hwnd, CString("Incorrect version: ") + filever, "Load error", MB_ICONERROR);
-			return 0;
-		}
-		//
-		in.read((char*)m_songname, sizeof(m_songname));
-		//
-		DEFINE_MAINPARAMS;
-		int p = 0;
-		in.read((char*)&p, sizeof(p));	//read the number of main parameters
-		for (int i = 0; i < p; i++)
-			in.read((char*)mainparams[i], sizeof(mainparams[0]));
-		//
-
-		//read the complete song and songgo
-		in.read((char*)m_song, sizeof(m_song));
-		in.read((char*)m_songgo, sizeof(m_songgo));
-
-		g_Instruments.LoadAll(in, iotype);
-		g_Tracks.LoadAll(in, iotype);
-	}
-	else
-		if (iotype == IOTYPE_TXT)
-		{
-			//LOAD TXT
-			g_Tracks.InitTracks();
-
-			char b;
-			char line[1025];
-			//read after the first "[" (inclusive)
-			NextSegment(in);
-
+			//MODULE
 			while (!in.eof())
 			{
-				in.getline(line, 1024);
-				Trimstr(line);
-				if (strcmp(line, "MODULE]") == 0)
+				in.read((char*)&b, 1);
+				if (b == '[') break;
+				line[0] = b;
+				in.getline(line + 1, 1024);
+				char* value = strstr(line, ": ");
+				if (value)
 				{
-					//MODULE
-					while (!in.eof())
-					{
-						in.read((char*)&b, 1);
-						if (b == '[') break;
-						line[0] = b;
-						in.getline(line + 1, 1024);
-						char* value = strstr(line, ": ");
-						if (value)
-						{
-							value[1] = 0;	//gap
-							value += 2;	//move to the first character after the space
-						}
-						else
-							continue;
-
-						if (strcmp(line, "RMT:") == 0)
-						{
-							int v = Hexstr(value, 2);
-							if (v <= 4)
-								v = 4;
-							else
-								v = 8;
-							g_tracks4_8 = v;
-						}
-						else
-							if (strcmp(line, "NAME:") == 0)
-							{
-								Trimstr(value);
-								memset(m_songname, ' ', SONG_NAME_MAX_LEN);
-								int lname = SONG_NAME_MAX_LEN;
-								if (strlen(value) <= SONG_NAME_MAX_LEN) lname = strlen(value);
-								strncpy(m_songname, value, lname);
-							}
-							else
-								if (strcmp(line, "MAXTRACKLEN:") == 0)
-								{
-									int v = Hexstr(value, 2);
-									if (v == 0) v = 256;
-									g_Tracks.m_maxtracklen = v;
-									//g_cursoractview = g_Tracks.m_maxtracklen / 2;
-									g_Tracks.InitTracks();	//reinitialise
-								}
-								else
-									if (strcmp(line, "MAINSPEED:") == 0)
-									{
-										int v = Hexstr(value, 2);
-										if (v > 0) m_mainspeed = v;
-									}
-									else
-										if (strcmp(line, "INSTRSPEED:") == 0)
-										{
-											int v = Hexstr(value, 1);
-											if (v > 0) m_instrspeed = v;
-										}
-										else
-											if (strcmp(line, "VERSION:") == 0)
-											{
-												//int v = Hexstr(value,2);
-												//the version number is not needed for TXT yet, because it only selects the parameters it knows
-											}
-					}
+					value[1] = 0;	//gap
+					value += 2;	//move to the first character after the space
 				}
 				else
-					if (strcmp(line, "SONG]") == 0)
-					{
-						//SONG 
-						int idx, i;
-						for (idx = 0; !in.eof() && idx < SONGLEN; idx++)
-						{
-							memset(line, 0, 32);
-							in.read((char*)&b, 1);
-							if (b == '[') break;
-							line[0] = b;
-							in.getline(line + 1, 1024);
-							if (strncmp(line, "Go to line ", 11) == 0)
-							{
-								int go = Hexstr(line + 11, 2);
-								if (go >= 0 && go < SONGLEN) m_songgo[idx] = go;
-								continue;
-							}
-							for (i = 0; i < g_tracks4_8; i++)
-							{
-								int track = Hexstr(line + i * 3, 2);
-								if (track >= 0 && track < TRACKSNUM) m_song[idx][i] = track;
-							}
-						}
-					}
+					continue;
+
+				if (strcmp(line, "RMT:") == 0)
+				{
+					int v = Hexstr(value, 2);
+					if (v <= 4)
+						v = 4;
 					else
-						if (strcmp(line, "INSTRUMENT]") == 0)
-						{
-							g_Instruments.LoadInstrument(-1, in, iotype); //-1 => retrieve the instrument number from the TXT source
-						}
-						else
-							if (strcmp(line, "TRACK]") == 0)
-							{
-								g_Tracks.LoadTrack(-1, in, iotype);	//-1 => retrieve the track number from TXT source
-							}
-							else
-								NextSegment(in); //will therefore look for the beginning of the next segment
+						v = 8;
+					g_tracks4_8 = v;
+				}
+				else
+				if (strcmp(line, "NAME:") == 0)
+				{
+					Trimstr(value);
+					memset(m_songname, ' ', SONG_NAME_MAX_LEN);
+					int lname = SONG_NAME_MAX_LEN;
+					if (strlen(value) <= SONG_NAME_MAX_LEN) lname = strlen(value);
+					strncpy(m_songname, value, lname);
+				}
+				else
+				if (strcmp(line, "MAXTRACKLEN:") == 0)
+				{
+					int v = Hexstr(value, 2);
+					if (v == 0) v = 256;
+					g_Tracks.m_maxtracklen = v;
+					//g_cursoractview = g_Tracks.m_maxtracklen / 2;
+					g_Tracks.InitTracks();	//reinitialise
+				}
+				else
+				if (strcmp(line, "MAINSPEED:") == 0)
+				{
+					int v = Hexstr(value, 2);
+					if (v > 0) m_mainspeed = v;
+				}
+				else
+				if (strcmp(line, "INSTRSPEED:") == 0)
+				{
+					int v = Hexstr(value, 1);
+					if (v > 0) m_instrspeed = v;
+				}
+				else
+				if (strcmp(line, "VERSION:") == 0)
+				{
+					//int v = Hexstr(value,2);
+					//the version number is not needed for TXT yet, because it only selects the parameters it knows
+				}
 			}
 		}
+		else
+		if (strcmp(line, "SONG]") == 0)
+		{
+			//SONG 
+			int idx, i;
+			for (idx = 0; !in.eof() && idx < SONGLEN; idx++)
+			{
+				memset(line, 0, 32);
+				in.read((char*)&b, 1);
+				if (b == '[') break;
+				line[0] = b;
+				in.getline(line + 1, 1024);
+				if (strncmp(line, "Go to line ", 11) == 0)
+				{
+					int go = Hexstr(line + 11, 2);
+					if (go >= 0 && go < SONGLEN) m_songgo[idx] = go;
+					continue;
+				}
+				for (i = 0; i < g_tracks4_8; i++)
+				{
+					int track = Hexstr(line + i * 3, 2);
+					if (track >= 0 && track < TRACKSNUM) m_song[idx][i] = track;
+				}
+			}
+		}
+		else
+		if (strcmp(line, "INSTRUMENT]") == 0)
+		{
+			g_Instruments.LoadInstrument(-1, in, IOTYPE_TXT); //-1 => retrieve the instrument number from the TXT source
+		}
+		else
+		if (strcmp(line, "TRACK]") == 0)
+		{
+			g_Tracks.LoadTrack(-1, in, IOTYPE_TXT);	//-1 => retrieve the track number from TXT source
+		}
+		else
+			NextSegment(in); //will therefore look for the beginning of the next segment
+	}
+
+	return 1;
+}
+
+int CSong::LoadRMW(ifstream& in)
+{
+	ClearSong(8);	//always clear 8 tracks 
+
+	//LOAD RMW
+	CString version;
+	version.LoadString(IDS_RMTVERSION);
+	char filever[256];
+	in.getline(filever, 255);
+	if (strcmp((char*)(LPCTSTR)version, filever) != 0)
+	{
+		MessageBox(g_hwnd, CString("Incorrect version: ") + filever, "Load error", MB_ICONERROR);
+		return 0;
+	}
+	//
+	in.read((char*)m_songname, sizeof(m_songname));
+	//
+	DEFINE_MAINPARAMS;
+	int p = 0;
+	in.read((char*)&p, sizeof(p));	//read the number of main parameters
+	for (int i = 0; i < p; i++)
+		in.read((char*)mainparams[i], sizeof(mainparams[0]));
+	//
+
+	//read the complete song and songgo
+	in.read((char*)m_song, sizeof(m_song));
+	in.read((char*)m_songgo, sizeof(m_songgo));
+
+	g_Instruments.LoadAll(in, IOTYPE_RMW);
+	g_Tracks.LoadAll(in, IOTYPE_RMW);
 
 	return 1;
 }

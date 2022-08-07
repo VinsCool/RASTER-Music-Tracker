@@ -162,17 +162,17 @@ int CTracks::LoadTrack(int track, ifstream& in, int iotype)
 
 				if (b == 'C') note = 0;
 				else
-					if (b == 'D') note = 2;
-					else
-						if (b == 'E') note = 4;
-						else
-							if (b == 'F') note = 5;
-							else
-								if (b == 'G') note = 7;
-								else
-									if (b == 'A') note = 9;
-									else
-										if (b == 'H') note = 11;
+				if (b == 'D') note = 2;
+				else
+				if (b == 'E') note = 4;
+				else
+				if (b == 'F') note = 5;
+				else
+				if (b == 'G') note = 7;
+				else
+				if (b == 'A') note = 9;
+				else
+				if (b == 'B') note = 11;
 
 				a = line[1];
 				if (a == '#' && note >= 0) note++;

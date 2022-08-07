@@ -96,7 +96,7 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 			//instrument parameters
 			for (j = 0; j < NUMBER_OF_PARAMS; j++)
 			{
-				s.Format("%s %X\n", shpar[j].name, ai.parameters[j] + shpar[j].displayOffset);
+				s.Format("%s %X\n", shpar[j].fieldName, ai.parameters[j] + shpar[j].displayOffset);
 				ou << (LPCTSTR)s;
 			}
 			//table
@@ -116,7 +116,7 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 					bf[j] = CharL4(ai.envelope[j][k]);
 				}
 				bf[ai.parameters[PAR_ENV_LENGTH] + 1] = 0; //buffer termination
-				s.Format("%s %s\n", shenv[k].name, bf);
+				s.Format("%s %s\n", shenv[k].fieldName, bf);
 				ou << (LPCTSTR)s;
 			}
 			ou << "\n"; //gap
@@ -245,7 +245,7 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 
 				for (j = 0; j < NUMBER_OF_PARAMS; j++)
 				{
-					if (strcmp(line, shpar[j].name) == 0)
+					if (strcmp(line, shpar[j].fieldName) == 0)
 					{
 						v = Hexstr(value, 2) - shpar[j].displayOffset;
 						if (v < 0) goto NextInstrLine;
@@ -270,7 +270,7 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 
 				for (j = 0; j < ENVROWS; j++)
 				{
-					if (strcmp(line, shenv[j].name) == 0)
+					if (strcmp(line, shenv[j].fieldName) == 0)
 					{
 						for (k = 0; (a = value[k]) && k < ENVCOLS; k++)
 						{

@@ -16,6 +16,7 @@ struct Tshpar
 	// If the up, down, left or right keys are pressed which parameter is the next
 	// one to be edited
 	int gotoUp, gotoDown, gotoLeft, gotoRight;
+	char* fieldName;			// Name to be used in TXT instrument load/save
 };
 
 extern const Tshpar shpar[NUMBER_OF_PARAMS];
@@ -31,6 +32,7 @@ struct Tshenv
 	char* name;
 	int xpos;
 	int ypos;
+	char* fieldName;			// Name to be used in TXT instrument load/save
 };
 
 extern const Tshenv shenv[ENVROWS];

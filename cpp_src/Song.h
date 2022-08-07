@@ -183,8 +183,9 @@ public:
 	BOOL AtaToSong(unsigned char* sour, int len, int adr);
 
 	int Save(std::ofstream& ou, int iotype);
-	int Load(std::ifstream& in, int iotype);
 	int LoadRMT(std::ifstream& in);
+	int LoadTxt(std::ifstream& in);
+	int LoadRMW(std::ifstream& in);
 
 	int ImportTMC(std::ifstream& in);
 	int ImportMOD(std::ifstream& in);
