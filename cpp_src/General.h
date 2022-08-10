@@ -104,7 +104,7 @@
 // ----------------------------------------------------------------------------
 // RMT file format
 //
-#define RMTFORMATVERSION	1	//the version number that is saved into modules, highest means more recent
+#define RMTFORMATVERSION	2	//the version number that is saved into modules, highest means more recent
 #define TRACKLEN	256			//drive 128
 #define TRACKSNUM	254			//0-253
 #define SONGLEN		256

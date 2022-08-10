@@ -13,11 +13,18 @@ offset	type	desc
 05	BYTE	song speed
 06	BYTE	player freq
 07	BYTE	format version number ($01 for player routine 1.x compatible format)
-08	WORD	pointer to instruments table
-0a	WORD 	pointer to tracks table (lo)
-0c	WORD	pointer to tracks table (hi)
-0e	WORD	pointer to tracks list (SONG)
-
+08	BYTE	module region ($00 for PAL, $01 for NTSC)
+09	BYTE	tuning base note (eg A-)
+0a	BYTE	tuning temperament ($00 for no temperament, any number above preset is detected as custom)
+0b	BYTE	track line highlight
+0c	BYTE	track line highlight (secondary), not yet implemented
+//
+10	DOUBLE	tuning base frequency (eg 440Hz), 8 bytes long
+//
+20	WORD	pointer to instruments table
+22	WORD 	pointer to tracks table (lo)
+24	WORD	pointer to tracks table (hi)
+26	WORD	pointer to tracks list (SONG)
 
 instrument struct
 =================

@@ -289,14 +289,20 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 	BYTE* instrsave = instrsaved;
 	BYTE* tracksave = tracksaved;
 	memset(instrsave, 0, INSTRSNUM);	//init
-	memset(tracksave, 0, TRACKSNUM); //init
+	memset(tracksave, 0, TRACKSNUM);	//init
 
 	strncpy((char*)(mem + adr), "RMT", 3);
-	mem[adr + 3] = g_tracks4_8 + '0';	//4 or 8
-	mem[adr + 4] = g_Tracks.m_maxtracklen & 0xff;
-	mem[adr + 5] = m_mainspeed & 0xff;
-	mem[adr + 6] = m_instrspeed;		//instr speed 1-4
-	mem[adr + 7] = RMTFORMATVERSION;	//RMT format version number
+	mem[adr + 0x03] = g_tracks4_8 + '0';			//4 or 8
+	mem[adr + 0x04] = g_Tracks.m_maxtracklen & 0xff;
+	mem[adr + 0x05] = m_mainspeed & 0xff;
+	mem[adr + 0x06] = m_instrspeed;					//instr speed 1-8
+	mem[adr + 0x07] = RMTFORMATVERSION;				//RMT format version number
+	mem[adr + 0x08] = g_ntsc;						//RMT module region, 0 -> PAL, 1 -> NTSC
+	mem[adr + 0x09] = g_basenote;					//base note used in tuning calculations, eg A-4
+	mem[adr + 0x0A] = g_temperament;				//tuning temperament, 0 -> no temperament, any number above preset number is custom (saving ratios not yet implemented)
+	mem[adr + 0x0B] = g_tracklinehighlight;			//track line highlight
+	//mem[adr + 0x0c] = g_tracklinehighlight2;		//secondary track line highlight (not yet implemented)
+	memcpy((mem + adr + 0x10), &g_basetuning, 8);	//base tuning frequency, double type uses 8 bytes in memory
 
 	//in RMT all non-empty tracks and non-empty instruments will be stored in others only non-empty used tracks and used instruments in them
 	int i, j;
@@ -352,7 +358,7 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 	//tracks
 	//songlines
 
-	int adrpinstruments = adr + 16;
+	int adrpinstruments = adr + 40;
 	int adrptrackslbs = adrpinstruments + numinstrs * 2;
 	int adrptrackshbs = adrptrackslbs + numtracks;
 
@@ -406,16 +412,16 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 	int endofmodule = adrsong + lensong;
 
 	//writes computed pointers to the header
-	mem[adr + 8] = adrpinstruments & 0xff;	//dbyte
-	mem[adr + 9] = adrpinstruments >> 8;		//hbyte
+	mem[adr + 0x20] = adrpinstruments & 0xff;	//dbyte
+	mem[adr + 0x21] = adrpinstruments >> 8;		//hbyte
 	//
-	mem[adr + 10] = adrptrackslbs & 0xff;		//dbyte
-	mem[adr + 11] = adrptrackslbs >> 8;		//hbyte
-	mem[adr + 12] = adrptrackshbs & 0xff;		//dbyte
-	mem[adr + 13] = adrptrackshbs >> 8;		//hbyte
+	mem[adr + 0x22] = adrptrackslbs & 0xff;		//dbyte
+	mem[adr + 0x23] = adrptrackslbs >> 8;		//hbyte
+	mem[adr + 0x24] = adrptrackshbs & 0xff;		//dbyte
+	mem[adr + 0x25] = adrptrackshbs >> 8;		//hbyte
 	//
-	mem[adr + 14] = adrsong & 0xff;		//dbyte
-	mem[adr + 15] = adrsong >> 8;			//hbyte
+	mem[adr + 0x26] = adrsong & 0xff;			//dbyte
+	mem[adr + 0x27] = adrsong >> 8;				//hbyte
 
 	return endofmodule;
 }
@@ -626,6 +632,7 @@ int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tr
 int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instrloaded, BYTE* trackloaded)
 {
 	int adr = adrfrom;
+	int adrpinstruments, adrptrackslbs, adrptrackshbs, adrsong, version;
 
 	memset(instrloaded, 0, INSTRSNUM);
 	memset(trackloaded, 0, TRACKSNUM);
@@ -639,24 +646,45 @@ int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instr
 	g_tracks4_8 = b & 0x0f;
 	b = mem[adr + 4];
 	g_Tracks.m_maxtracklen = (b > 0) ? b : 256;	//0 => 256
-	//g_cursoractview = g_Tracks.m_maxtracklen / 2;
 	b = mem[adr + 5];
 	m_mainspeed = b;
-	if (b < 1) return 0;		//there can be no zero speed
+	if (b < 1) return 0;			//there can be no zero speed
 	b = mem[adr + 6];
 	if (b < 1 || b>8) return 0;		//instrument speed is less than 1 or greater than 8 (note: should be max 4, but allows up to 8 and will only display a warning)
 	m_instrspeed = b;
-	int version = mem[adr + 7];
+	version = mem[adr + 7];
 	if (version > RMTFORMATVERSION)	return 0;	//the byte version is above the current one
 
 	//Now g_tracks.m_maxtracklen is set to the value according to the header from the RMT module, 
 	//so they have to re-initialize the Tracks so that this value is set to them all as the length
 	g_Tracks.InitTracks();
 
-	int adrpinstruments = mem[adr + 8] + (mem[adr + 9] << 8);
-	int adrptrackslbs = mem[adr + 10] + (mem[adr + 11] << 8);
-	int adrptrackshbs = mem[adr + 12] + (mem[adr + 13] << 8);
-	int adrsong = mem[adr + 14] + (mem[adr + 15] << 8);
+	if (version >= 2)	//new RMT module format, introducing new saved parameters
+	{
+		g_ntsc = mem[adr + 0x08];
+		g_basenote = mem[adr + 0x09];
+		g_temperament = mem[adr + 0x0A];
+		g_tracklinehighlight = mem[adr + 0x0B];
+		//g_tracklinehighlight2 = mem[adr + 0x0C];
+		memcpy(&g_basetuning, (mem + adr + 0x10), 8);
+		adrpinstruments = mem[adr + 0x20] + (mem[adr + 0x21] << 8);
+		adrptrackslbs = mem[adr + 0x22] + (mem[adr + 0x23] << 8);
+		adrptrackshbs = mem[adr + 0x24] + (mem[adr + 0x25] << 8);
+		adrsong = mem[adr + 0x26] + (mem[adr + 0x27] << 8);
+	}
+	else				//old RMT module format, used in versions 0 and 1
+	{
+		g_ntsc = 0;
+		g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
+		g_basenote = 3;	//3 = A-
+		g_temperament = 0;
+		g_tracklinehighlight = 8;
+		adrpinstruments = mem[adr + 8] + (mem[adr + 9] << 8);
+		adrptrackslbs = mem[adr + 10] + (mem[adr + 11] << 8);
+		adrptrackshbs = mem[adr + 12] + (mem[adr + 13] << 8);
+		adrsong = mem[adr + 14] + (mem[adr + 15] << 8);
+		MessageBox(g_hwnd, "Old RMT module version detected.\n\nDefault parameters will be set.", "RMT", MB_ICONINFORMATION);
+	}
 
 	int numinstrs = (adrptrackslbs - adrpinstruments) / 2;
 	int numtracks = (adrptrackshbs - adrptrackslbs);
