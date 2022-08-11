@@ -302,7 +302,41 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 	mem[adr + 0x0A] = g_temperament;				//tuning temperament, 0 -> no temperament, any number above preset number is custom (saving ratios not yet implemented)
 	mem[adr + 0x0B] = g_tracklinehighlight;			//track line highlight
 	//mem[adr + 0x0c] = g_tracklinehighlight2;		//secondary track line highlight (not yet implemented)
+	mem[adr + 0x0C] = 0;							//unused
+	mem[adr + 0x0D] = 0;							//unused
+	mem[adr + 0x0E] = 0;							//unused
+	mem[adr + 0x0F] = 0;							//unused
 	memcpy((mem + adr + 0x10), &g_basetuning, 8);	//base tuning frequency, double type uses 8 bytes in memory
+	memcpy((mem + adr + 0x18), &g_UNISON_L, 2);		//tuning ratio variables, each values are truncated to use 2 bytes (16-bit precision) 
+	memcpy((mem + adr + 0x1A), &g_UNISON_R, 2);
+	memcpy((mem + adr + 0x1C), &g_MIN_2ND_L, 2);
+	memcpy((mem + adr + 0x1E), &g_MIN_2ND_R, 2);
+	memcpy((mem + adr + 0x20), &g_MAJ_2ND_L, 2);
+	memcpy((mem + adr + 0x22), &g_MAJ_2ND_R, 2);
+	memcpy((mem + adr + 0x24), &g_MIN_3RD_L, 2);
+	memcpy((mem + adr + 0x26), &g_MIN_3RD_R, 2);
+	memcpy((mem + adr + 0x28), &g_MAJ_3RD_L, 2);
+	memcpy((mem + adr + 0x2A), &g_MAJ_3RD_R, 2);
+	memcpy((mem + adr + 0x2C), &g_PERF_4TH_L, 2);
+	memcpy((mem + adr + 0x2E), &g_PERF_4TH_R, 2);
+	memcpy((mem + adr + 0x30), &g_TRITONE_L, 2);
+	memcpy((mem + adr + 0x32), &g_TRITONE_R, 2);
+	memcpy((mem + adr + 0x34), &g_PERF_5TH_L, 2);
+	memcpy((mem + adr + 0x36), &g_PERF_5TH_R, 2);
+	memcpy((mem + adr + 0x38), &g_MIN_6TH_L, 2);
+	memcpy((mem + adr + 0x3A), &g_MIN_6TH_R, 2);
+	memcpy((mem + adr + 0x3C), &g_MAJ_6TH_L, 2);
+	memcpy((mem + adr + 0x3E), &g_MAJ_6TH_R, 2);
+	memcpy((mem + adr + 0x40), &g_MIN_7TH_L, 2);
+	memcpy((mem + adr + 0x42), &g_MIN_7TH_R, 2);
+	memcpy((mem + adr + 0x44), &g_MAJ_7TH_L, 2);
+	memcpy((mem + adr + 0x46), &g_MAJ_7TH_R, 2);
+	memcpy((mem + adr + 0x48), &g_OCTAVE_L, 2);
+	memcpy((mem + adr + 0x4A), &g_OCTAVE_R, 2);
+	mem[adr + 0x4C] = 0;							//unused
+	mem[adr + 0x4D] = 0;							//unused
+	mem[adr + 0x4E] = 0;							//unused
+	mem[adr + 0x4F] = 0;							//unused
 
 	//in RMT all non-empty tracks and non-empty instruments will be stored in others only non-empty used tracks and used instruments in them
 	int i, j;
@@ -358,7 +392,8 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 	//tracks
 	//songlines
 
-	int adrpinstruments = adr + 40;
+	//instruments table address begins 0x50 bytes after header + 0x08 bytes including pointers offset 
+	int adrpinstruments = adr + 0x58; 
 	int adrptrackslbs = adrpinstruments + numinstrs * 2;
 	int adrptrackshbs = adrptrackslbs + numtracks;
 
@@ -412,16 +447,16 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 	int endofmodule = adrsong + lensong;
 
 	//writes computed pointers to the header
-	mem[adr + 0x20] = adrpinstruments & 0xff;	//dbyte
-	mem[adr + 0x21] = adrpinstruments >> 8;		//hbyte
+	mem[adr + 0x50] = adrpinstruments & 0xff;	//dbyte
+	mem[adr + 0x51] = adrpinstruments >> 8;		//hbyte
 	//
-	mem[adr + 0x22] = adrptrackslbs & 0xff;		//dbyte
-	mem[adr + 0x23] = adrptrackslbs >> 8;		//hbyte
-	mem[adr + 0x24] = adrptrackshbs & 0xff;		//dbyte
-	mem[adr + 0x25] = adrptrackshbs >> 8;		//hbyte
+	mem[adr + 0x52] = adrptrackslbs & 0xff;		//dbyte
+	mem[adr + 0x53] = adrptrackslbs >> 8;		//hbyte
+	mem[adr + 0x54] = adrptrackshbs & 0xff;		//dbyte
+	mem[adr + 0x55] = adrptrackshbs >> 8;		//hbyte
 	//
-	mem[adr + 0x26] = adrsong & 0xff;			//dbyte
-	mem[adr + 0x27] = adrsong >> 8;				//hbyte
+	mem[adr + 0x56] = adrsong & 0xff;			//dbyte
+	mem[adr + 0x57] = adrsong >> 8;				//hbyte
 
 	return endofmodule;
 }
@@ -650,7 +685,7 @@ int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instr
 	m_mainspeed = b;
 	if (b < 1) return 0;			//there can be no zero speed
 	b = mem[adr + 6];
-	if (b < 1 || b>8) return 0;		//instrument speed is less than 1 or greater than 8 (note: should be max 4, but allows up to 8 and will only display a warning)
+	if (b < 1 || b > 8) return 0;		//instrument speed is less than 1 or greater than 8 (note: should be max 4, but allows up to 8 and will only display a warning)
 	m_instrspeed = b;
 	version = mem[adr + 7];
 	if (version > RMTFORMATVERSION)	return 0;	//the byte version is above the current one
@@ -667,18 +702,73 @@ int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instr
 		g_tracklinehighlight = mem[adr + 0x0B];
 		//g_tracklinehighlight2 = mem[adr + 0x0C];
 		memcpy(&g_basetuning, (mem + adr + 0x10), 8);
-		adrpinstruments = mem[adr + 0x20] + (mem[adr + 0x21] << 8);
-		adrptrackslbs = mem[adr + 0x22] + (mem[adr + 0x23] << 8);
-		adrptrackshbs = mem[adr + 0x24] + (mem[adr + 0x25] << 8);
-		adrsong = mem[adr + 0x26] + (mem[adr + 0x27] << 8);
+		memcpy(&g_UNISON_L, (mem + adr + 0x18), 2);
+		memcpy(&g_UNISON_R, (mem + adr + 0x1A), 2);
+		memcpy(&g_MIN_2ND_L, (mem + adr + 0x1C), 2);
+		memcpy(&g_MIN_2ND_R, (mem + adr + 0x1E), 2);
+		memcpy(&g_MAJ_2ND_L, (mem + adr + 0x20), 2);
+		memcpy(&g_MAJ_2ND_R, (mem + adr + 0x22), 2);
+		memcpy(&g_MIN_3RD_L, (mem + adr + 0x24), 2);
+		memcpy(&g_MIN_3RD_R, (mem + adr + 0x26), 2);
+		memcpy(&g_MAJ_3RD_L, (mem + adr + 0x28), 2);
+		memcpy(&g_MAJ_3RD_R, (mem + adr + 0x2A), 2);
+		memcpy(&g_PERF_4TH_L, (mem + adr + 0x2C), 2);
+		memcpy(&g_PERF_4TH_R, (mem + adr + 0x2E), 2);
+		memcpy(&g_TRITONE_L, (mem + adr + 0x30), 2);
+		memcpy(&g_TRITONE_R, (mem + adr + 0x32), 2);
+		memcpy(&g_PERF_5TH_L, (mem + adr + 0x34), 2);
+		memcpy(&g_PERF_5TH_R, (mem + adr + 0x36), 2);
+		memcpy(&g_MIN_6TH_L, (mem + adr + 0x38), 2);
+		memcpy(&g_MIN_6TH_R, (mem + adr + 0x3A), 2);
+		memcpy(&g_MAJ_6TH_L, (mem + adr + 0x3C), 2);
+		memcpy(&g_MAJ_6TH_R, (mem + adr + 0x3E), 2);
+		memcpy(&g_MIN_7TH_L, (mem + adr + 0x40), 2);
+		memcpy(&g_MIN_7TH_R, (mem + adr + 0x42), 2);
+		memcpy(&g_MAJ_7TH_L, (mem + adr + 0x44), 2);
+		memcpy(&g_MAJ_7TH_R, (mem + adr + 0x46), 2);
+		memcpy(&g_OCTAVE_L, (mem + adr + 0x48), 2);
+		memcpy(&g_OCTAVE_R, (mem + adr + 0x4A), 2); 
+		adrpinstruments = mem[adr + 0x50] + (mem[adr + 0x51] << 8);
+		adrptrackslbs = mem[adr + 0x52] + (mem[adr + 0x53] << 8);
+		adrptrackshbs = mem[adr + 0x54] + (mem[adr + 0x55] << 8);
+		adrsong = mem[adr + 0x56] + (mem[adr + 0x57] << 8);
 	}
 	else				//old RMT module format, used in versions 0 and 1
 	{
-		g_ntsc = 0;
+		//reset all tuning variables 
+		g_ntsc = 0;	//PAL region
 		g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
 		g_basenote = 3;	//3 = A-
-		g_temperament = 0;
-		g_tracklinehighlight = 8;
+		g_temperament = 0;	//no temperament
+		g_tracklinehighlight = 8;	//highlight every 8 rows
+		//g_tracklinehighlight2 = 4;	//highlight every 4 rows
+		g_UNISON_L = 1;	//ratio left
+		g_MIN_2ND_L = 40;
+		g_MAJ_2ND_L = 10;
+		g_MIN_3RD_L = 20;
+		g_MAJ_3RD_L = 5;
+		g_PERF_4TH_L = 4;
+		g_TRITONE_L = 60;
+		g_PERF_5TH_L = 3;
+		g_MIN_6TH_L = 30;
+		g_MAJ_6TH_L = 5;
+		g_MIN_7TH_L = 30;
+		g_MAJ_7TH_L = 15;
+		g_OCTAVE_L = 2;
+		g_UNISON_R = 1;	//ratio right
+		g_MIN_2ND_R = 38;
+		g_MAJ_2ND_R = 9;
+		g_MIN_3RD_R = 17;
+		g_MAJ_3RD_R = 4;
+		g_PERF_4TH_R = 3;
+		g_TRITONE_R = 43;
+		g_PERF_5TH_R = 2;
+		g_MIN_6TH_R = 19;
+		g_MAJ_6TH_R = 3;
+		g_MIN_7TH_R = 17;
+		g_MAJ_7TH_R = 8;
+		g_OCTAVE_R = 1;
+
 		adrpinstruments = mem[adr + 8] + (mem[adr + 9] << 8);
 		adrptrackslbs = mem[adr + 10] + (mem[adr + 11] << 8);
 		adrptrackshbs = mem[adr + 12] + (mem[adr + 13] << 8);
