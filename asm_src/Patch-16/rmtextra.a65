@@ -2,24 +2,6 @@
 
 ;---------------------------------------------------------------------------------------------------------------------------------------------;
 
-;* start of PortamentoHack code...
-
-	org $B500
-	ldy #TRACKS-1			;* for some reason, this does not seem to work on the tracker side...
-portafixinit
-	lda trackn_portafrqc,y		; load target frequency 
-	beq portafixinit_a 		; skip if 0, there was no portamento used 
-	sta trackn_portafrqa,y		; overwrite current portamento frequency in memory
-	sta trackn_audf,y		; also overwrite the actual channel output to be synced with the expected pitch 
-portafixinit_a
-	dey
-	bpl portafixinit
-	rts
-
-;* end of PortamentoHack code...
-
-;---------------------------------------------------------------------------------------------------------------------------------------------;
-
 ;* start of GetInstrumentY2 code...
 
         org $3D00
@@ -76,7 +58,7 @@ StopInstrument                  ; 6502_jsr() was called by RMT with values in me
        dta $00			; allign memory for the DriverVersion label... 
 ;	org $????		; could be set anywhere... not yet decided...
 DriverVersion
-	dta c"Patch 16-3.3 by VinsCool"
+	dta c"Patch 16-3.4 by VinsCool"
 	dta $00			; allign memory, and text terminator
 	dta c"Hello Bitches... :3 Please don't mind me I am testing bytes overflow... is it dead?"
 	dta $00			; allign memory, and easter egg... hehehehe ;)
