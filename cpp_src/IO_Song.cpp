@@ -896,7 +896,7 @@ void CSong::FileTrackLoad()
 	(int*)&m_trackactiveline,(int*)&m_trackplayline,			\
 	(int*)&g_activepart,(int*)&g_active_ti,						\
 	(int*)&g_prove,(int*)&g_respectvolume,						\
-	&g_tracklinehighlight,										\
+	&g_trackLinePrimaryHighlight,								\
 	&g_tracklinealtnumbering,									\
 	&g_displayflatnotes,										\
 	&g_usegermannotation,										\

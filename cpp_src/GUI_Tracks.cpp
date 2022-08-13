@@ -191,7 +191,9 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 	if (line == aline && isactive) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//blue or red
 	else if (line == pline) color = TEXT_COLOR_YELLOW;	//yellow
 	else if (line >= len) color = TEXT_COLOR_GRAY;	//gray
-	else if ((line % g_tracklinehighlight) == 0) color = TEXT_COLOR_CYAN;	//cyan
+	else if ((line % g_trackLinePrimaryHighlight) == 0 || (line % g_trackLineSecondaryHighlight) == 0)
+		color = ((line % g_trackLinePrimaryHighlight) == 0) ? TEXT_COLOR_CYAN : TEXT_COLOR_PURPLE;	//cyan or purple
+	//else if ((line % g_trackLinePrimaryHighlight) == 0) color = TEXT_COLOR_CYAN;	//cyan
 	else color = TEXT_COLOR_WHITE;	//white
 	if (oob) color = TEXT_COLOR_TURQUOISE;
 

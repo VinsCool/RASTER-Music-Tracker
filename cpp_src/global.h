@@ -130,7 +130,8 @@ extern BOOL is_editing_infos;		//0 no, 1 song name is edited
 
 extern int g_line_y;			//active line coordinate, used to reference g_cursoractview to the correct position
 
-extern int g_tracklinehighlight;	//line highlighted every x lines
+extern int g_trackLinePrimaryHighlight;	//primary line highlighted every x lines
+extern int g_trackLineSecondaryHighlight;	//secondary line highlighted every x lines
 extern BOOL g_tracklinealtnumbering; //alternative way of line numbering in tracks
 extern int g_linesafter;			//number of lines to scroll after inserting a note (initializes in CSong :: Clear)
 extern BOOL g_ntsc;				//NTSC (60Hz)

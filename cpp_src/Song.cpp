@@ -300,9 +300,8 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 	mem[adr + 0x08] = g_ntsc;						//RMT module region, 0 -> PAL, 1 -> NTSC
 	mem[adr + 0x09] = g_basenote;					//base note used in tuning calculations, eg A-4
 	mem[adr + 0x0A] = g_temperament;				//tuning temperament, 0 -> no temperament, any number above preset number is custom (saving ratios not yet implemented)
-	mem[adr + 0x0B] = g_tracklinehighlight;			//track line highlight
-	//mem[adr + 0x0c] = g_tracklinehighlight2;		//secondary track line highlight (not yet implemented)
-	mem[adr + 0x0C] = 0;							//unused
+	mem[adr + 0x0B] = g_trackLinePrimaryHighlight;	//track primary line highlight
+	mem[adr + 0x0C] = g_trackLineSecondaryHighlight;//track secondary line highlight 
 	mem[adr + 0x0D] = 0;							//unused
 	mem[adr + 0x0E] = 0;							//unused
 	mem[adr + 0x0F] = 0;							//unused
@@ -699,8 +698,10 @@ int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instr
 		g_ntsc = mem[adr + 0x08];
 		g_basenote = mem[adr + 0x09];
 		g_temperament = mem[adr + 0x0A];
-		g_tracklinehighlight = mem[adr + 0x0B];
-		//g_tracklinehighlight2 = mem[adr + 0x0C];
+		g_trackLinePrimaryHighlight = mem[adr + 0x0B];
+		if (!g_trackLinePrimaryHighlight) g_trackLinePrimaryHighlight = 8;	//default
+		g_trackLineSecondaryHighlight = mem[adr + 0x0C];
+		if (!g_trackLineSecondaryHighlight) g_trackLineSecondaryHighlight = 4;	//default
 		memcpy(&g_basetuning, (mem + adr + 0x10), 8);
 		memcpy(&g_UNISON_L, (mem + adr + 0x18), 2);
 		memcpy(&g_UNISON_R, (mem + adr + 0x1A), 2);
@@ -740,8 +741,8 @@ int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instr
 		g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
 		g_basenote = 3;	//3 = A-
 		g_temperament = 0;	//no temperament
-		g_tracklinehighlight = 8;	//highlight every 8 rows
-		//g_tracklinehighlight2 = 4;	//highlight every 4 rows
+		g_trackLinePrimaryHighlight = 8;	//highlight every 8 rows
+		g_trackLineSecondaryHighlight = 4;	//highlight every 4 rows
 		g_UNISON_L = 1;	//ratio left
 		g_MIN_2ND_L = 40;
 		g_MAJ_2ND_L = 10;

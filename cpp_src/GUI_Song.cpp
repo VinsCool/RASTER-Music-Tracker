@@ -46,9 +46,9 @@ void GetTracklineText(char* dest, int line)
 	if (line < 0 || line>0xff) { dest[0] = 0; return; }
 	if (g_tracklinealtnumbering)
 	{
-		int a = line / g_tracklinehighlight;
+		int a = line / g_trackLinePrimaryHighlight;
 		if (a >= 35) a = (a - 35) % 26 + 'a' - '9' + 1;
-		int b = line % g_tracklinehighlight;
+		int b = line % g_trackLinePrimaryHighlight;
 		if (b >= 35) b = (b - 35) % 26 + 'a' - '9' + 1;
 		if (a <= 8)
 			a = '1' + a;
@@ -973,7 +973,9 @@ void CSong::DrawTracks()
 
 		if (line == m_trackactiveline) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//red or blue
 		else if (line == m_trackplayline) color = TEXT_COLOR_YELLOW;	//yellow
-		else if ((line % g_tracklinehighlight) == 0) color = TEXT_COLOR_CYAN;	//blue
+		else if ((line % g_trackLinePrimaryHighlight) == 0 || (line % g_trackLineSecondaryHighlight) == 0) 
+			color = ((line % g_trackLinePrimaryHighlight) == 0) ? TEXT_COLOR_CYAN : TEXT_COLOR_PURPLE;	//cyan or purple
+		//else if ((line % g_trackLinePrimaryHighlight) == 0) color = TEXT_COLOR_CYAN;	//blue
 		else color = TEXT_COLOR_WHITE;	//white
 		if (oob) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
 		TextXY(s, TRACKS_X, y, color);
@@ -1153,16 +1155,25 @@ void CSong::DrawInfo()
 {
 	char szBuffer[80];
 	int i, color;
+	BOOL selected = FALSE;
 	is_editing_infos = 0;
 
-	// Line 1: Time  BPM  PAL/NTSC  Hightlight  FPS
+	// Line 1: Time  BPM  PAL/NTSC  Hightlight (XX/XX)  FPS
 	TextXY((g_ntsc) ? "NTSC" : "PAL", INFO_X + 33 * 8, INFO_Y_LINE_1, TEXT_COLOR_LIGHT_GRAY);
 
-	TextXY("HIGHLIGHT:", 344, INFO_Y_LINE_1, TEXT_COLOR_WHITE);
-	snprintf(szBuffer, 4, "%02d", g_tracklinehighlight);
-	TextXY(szBuffer, 344 + 11 * 8, INFO_Y_LINE_1, TEXT_COLOR_LIGHT_GRAY);
+	// 2x Line highlights XX/XX (go and override --)
+	TextXY("HIGHLIGHT: --/--", 344, INFO_Y_LINE_1, TEXT_COLOR_WHITE);
+	color = g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
 
-	//poor attempt at an FPS counter
+	sprintf(szBuffer, "%02X", g_trackLinePrimaryHighlight);
+	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_1ST_HIGHLIGHT) ? TRUE : FALSE;
+	TextXY(szBuffer, 344 + 11 * 8, INFO_Y_LINE_1, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+
+	sprintf(szBuffer, "%02X", g_trackLineSecondaryHighlight);
+	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_2ND_HIGHLIGHT) ? TRUE : FALSE;
+	TextXY(szBuffer, 344 + 14 * 8, INFO_Y_LINE_1, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+
+	// A poor attempt at an FPS counter
 	snprintf(szBuffer, 16, "%1.2f FPS", last_fps);
 	TextXY(szBuffer, 560 - 9 * 8, INFO_Y_LINE_1, TEXT_COLOR_LIGHT_GRAY);
 
@@ -1186,7 +1197,6 @@ void CSong::DrawInfo()
 
 	// 3x Speed indicators XX/XX/X (go and override --)
 	color = g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
-	BOOL selected = FALSE;
 
 	sprintf(szBuffer, "%02X", m_speed);
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_SPEED) ? TRUE : FALSE;
@@ -1329,7 +1339,7 @@ void CSong::DrawPlayTimeCounter(CDC* pDC)
 	m_avgspeed[m_trackplayline % 8] = m_speed;				//refreshed every 8 rows
 	for (int i = 0; i < 8; i++) speed += m_avgspeed[i];
 	speed /= 8.0;											//average speed
-	bpm = ((60.0 * fps) / g_tracklinehighlight) / speed;	//average BPM 
+	bpm = ((60.0 * fps) / g_trackLinePrimaryHighlight) / speed;	//average BPM 
 
 	snprintf(timstr, 16, !(timesec & 1) ? "%2d:%02d.%02d" : "%2d %02d.%02d", timemin, timesec, timemilisec);
 	snprintf(bpmstr, 8, (m_play) ? "%1.2f" : "---.--", bpm);
@@ -1360,21 +1370,44 @@ BOOL CSong::InfoKey(int vk, int shift, int control)
 	}
 
 	int i, num;
-	int volatile* infptab[] = { &m_speed,&m_mainspeed,&m_instrspeed };
-	int infandtab[] = { 0xff,0xff,0x08 };	//maximum current speed, main speed and instrument speed
+	int volatile* infptab[] = { &m_speed, &m_mainspeed, &m_instrspeed, &g_trackLinePrimaryHighlight, &g_trackLineSecondaryHighlight };
+	int infandtab[] = { 0xFF, 0xFF, 0x08, g_Tracks.m_maxtracklen / 2, g_Tracks.m_maxtracklen / 2 };	//maximum current speed, main speed, instrument speed, primary and secondary line highlights
 	int volatile& infp = *infptab[m_infoact - 1];
 	int infand = infandtab[m_infoact - 1];
 
 	if ((num = NumbKey(vk)) >= 0 && num <= infand)
 	{
-		i = infp & 0x0f; //lower digit
-		if (infand < 0x0f)
+		if (m_infoact >= INFO_ACTIVE_SPEED && m_infoact <= INFO_ACTIVE_INSTR_SPEED)
 		{
-			if (num <= infand) i = num;
+			i = infp & 0x0f; //lower digit (hex)
+			if (infand < 0x0f)
+			{
+				if (num <= infand) i = num;
+			}
+			else
+				i = ((i << 4) | num) & infand;
 		}
-		else
-			i = ((i << 4) | num) & infand;
-		if (i <= 0) i = 1;	//all speeds must be at least 1
+		//couldn't quite get decimal to work yet... 
+		else if (m_infoact == INFO_ACTIVE_1ST_HIGHLIGHT || m_infoact == INFO_ACTIVE_2ND_HIGHLIGHT)
+		{
+			//if (num > 9) return 0;	//must only accept characters between 0 and 9
+			//i = infp & 9; //lower digit (dec)
+			//if (infand < 9)
+			i = infp & 0x0f; //lower digit (hex)
+			if (infand < 0x0f)
+			{
+				if (num <= infand) i = num;
+			}
+			else
+			{
+				i = (i << 4) | num;
+				if (i > infand) i = infand;
+				//i = ((i * 10) | num) & infand;
+				//if (i > infand) i = infand;
+			}
+
+		} 
+		if (i <= 0) i = 1;	//all values must be at least 1
 		g_Undo.ChangeInfo(0, UETYPE_INFODATA);
 		infp = i;
 		return 1;
@@ -1391,7 +1424,7 @@ edit_ok:
 			}
 			else
 			{
-				if (m_infoact < INFO_ACTIVE_INSTR_SPEED) m_infoact++; else m_infoact = INFO_ACTIVE_SPEED; //TAB => Speed variables 1, 2 or 3
+				if (m_infoact < INFO_ACTIVE_2ND_HIGHLIGHT) m_infoact++; else m_infoact = INFO_ACTIVE_SPEED; //TAB => Speed variables 1, 2 or 3, or line highlights 4 or 5 
 				is_editing_infos = 0;
 			}
 			return 1;
@@ -1414,19 +1447,26 @@ edit_ok:
 			DecrementInfoPar:
 				i = infp;
 				i--;
-				if (i <= 0) i = infand; //speed must be at least 1
+				if (i <= 0) i = infand; //value must be at least 1, roll back to the maximum defined earlier 
 				g_Undo.ChangeInfo(0, UETYPE_INFODATA);
 				infp = i;
 			}
+			else if (!CAPSLOCK && shift || (CAPSLOCK && !shift && is_editing_infos) || (CAPSLOCK && shift && !is_editing_infos))
+			{
+				ActiveInstrPrev();
+			}
 			else
-				if (!CAPSLOCK && shift || (CAPSLOCK && !shift && is_editing_infos) || (CAPSLOCK && shift && !is_editing_infos))
+			{
+				if (m_infoact > INFO_ACTIVE_SPEED)
 				{
-					ActiveInstrPrev();
+					m_infoact--;
+					if (m_infoact == INFO_ACTIVE_1ST_HIGHLIGHT - 1) m_infoact = INFO_ACTIVE_2ND_HIGHLIGHT;
 				}
 				else
 				{
-					if (m_infoact > INFO_ACTIVE_SPEED) m_infoact--; else m_infoact = INFO_ACTIVE_INSTR_SPEED;
+					m_infoact = INFO_ACTIVE_INSTR_SPEED;
 				}
+			}
 		}
 		return 1;
 
@@ -1438,19 +1478,27 @@ edit_ok:
 			IncrementInfoPar:
 				i = infp;
 				i++;
-				if (i > infand) i = 1;	//speed must be at least 1
+				if (i > infand) i = 1;	//value must be at least 1
 				g_Undo.ChangeInfo(0, UETYPE_INFODATA);
 				infp = i;
 			}
+			else if (!CAPSLOCK && shift || (CAPSLOCK && !shift && is_editing_infos) || (CAPSLOCK && shift && !is_editing_infos))
+			{
+				ActiveInstrNext();
+			}
 			else
-				if (!CAPSLOCK && shift || (CAPSLOCK && !shift && is_editing_infos) || (CAPSLOCK && shift && !is_editing_infos))
+			{
+				if (m_infoact >= INFO_ACTIVE_SPEED && m_infoact < INFO_ACTIVE_1ST_HIGHLIGHT)
 				{
-					ActiveInstrNext();
+					m_infoact++;
+					if (m_infoact > INFO_ACTIVE_INSTR_SPEED) m_infoact = INFO_ACTIVE_SPEED;
 				}
-				else
+				else if (m_infoact >= INFO_ACTIVE_1ST_HIGHLIGHT)
 				{
-					if (m_infoact < INFO_ACTIVE_INSTR_SPEED) m_infoact++; else m_infoact = INFO_ACTIVE_SPEED;
+					m_infoact++;
+					if (m_infoact > INFO_ACTIVE_2ND_HIGHLIGHT) m_infoact = INFO_ACTIVE_1ST_HIGHLIGHT;
 				}
+			}
 		}
 		return 1;
 
@@ -2095,9 +2143,18 @@ BOOL CSong::InfoCursorGotoSpeed(int x)
 	if (x < 2) m_infoact = INFO_ACTIVE_SPEED;
 	else if (x < 5) m_infoact = INFO_ACTIVE_MAIN_SPEED;
 	else m_infoact = INFO_ACTIVE_INSTR_SPEED;
-
 	g_activepart = PART_INFO;
 	is_editing_infos = 0;	//Song Speed is being edited
+	return 1;
+}
+
+BOOL CSong::InfoCursorGotoHighlight(int x)
+{
+	x = (x - 4) / 8;
+	if (x < 2) m_infoact = INFO_ACTIVE_1ST_HIGHLIGHT;
+	else m_infoact = INFO_ACTIVE_2ND_HIGHLIGHT;
+	g_activepart = PART_INFO;
+	is_editing_infos = 0;	//Song Highlight is being edited
 	return 1;
 }
 
@@ -2487,7 +2544,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					{
 						if (m_trackactiveline > 0)
 						{
-							m_trackactiveline = ((m_trackactiveline - 1) / g_tracklinehighlight) * g_tracklinehighlight;
+							m_trackactiveline = ((m_trackactiveline - 1) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
 						}
 					}
 				}
@@ -2522,9 +2579,9 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					if (m_play && m_followplay) break;	//prevents moving at all during play+follow
 					else
 					{
-						m_trackactiveline = ((m_trackactiveline + g_tracklinehighlight) / g_tracklinehighlight) * g_tracklinehighlight;
+						m_trackactiveline = ((m_trackactiveline + g_trackLinePrimaryHighlight) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
 						if (m_trackactiveline > GetSmallestMaxtracklen(m_songactiveline) - 1)
-							m_trackactiveline -= g_tracklinehighlight;
+							m_trackactiveline -= g_trackLinePrimaryHighlight;
 					}
 				}
 			break;
@@ -2918,7 +2975,7 @@ TrackKeyOk:
 						BLOCKDESELECT;
 						if (m_trackactiveline > 0)
 						{
-							m_trackactiveline = ((m_trackactiveline - 1) / g_tracklinehighlight) * g_tracklinehighlight;
+							m_trackactiveline = ((m_trackactiveline - 1) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
 						}
 					}
 			break;
@@ -2942,9 +2999,9 @@ TrackKeyOk:
 					else
 					{
 						BLOCKDESELECT;
-						m_trackactiveline = ((m_trackactiveline + g_tracklinehighlight) / g_tracklinehighlight) * g_tracklinehighlight;
+						m_trackactiveline = ((m_trackactiveline + g_trackLinePrimaryHighlight) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
 						if (m_trackactiveline > GetSmallestMaxtracklen(m_songactiveline) - 1)
-							m_trackactiveline -= g_tracklinehighlight;
+							m_trackactiveline -= g_trackLinePrimaryHighlight;
 					}
 			break;
 

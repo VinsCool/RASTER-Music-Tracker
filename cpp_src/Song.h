@@ -54,6 +54,7 @@ public:
 	BOOL InfoKey(int vk, int shift, int control);
 	BOOL InfoCursorGotoSongname(int x);
 	BOOL InfoCursorGotoSpeed(int x);
+	BOOL InfoCursorGotoHighlight(int x);
 	BOOL InfoCursorGotoOctaveSelect(int x, int y);
 	BOOL InfoCursorGotoVolumeSelect(int x, int y);
 	BOOL InfoCursorGotoInstrumentSelect(int x, int y);

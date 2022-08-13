@@ -134,7 +134,8 @@ BOOL is_editing_infos;		//0 no, 1 song name is edited
 
 int g_line_y = 0;			//active line coordinate, used to reference g_cursoractview to the correct position
 
-int g_tracklinehighlight = 8;	//line highlighted every x lines
+int g_trackLinePrimaryHighlight = 8;	//primary line highlighted every x lines
+int g_trackLineSecondaryHighlight = 4;	//secondary line highlighted every x lines
 BOOL g_tracklinealtnumbering = 0; //alternative way of line numbering in tracks
 int g_linesafter;			//number of lines to scroll after inserting a note (initializes in CSong :: Clear)
 BOOL g_ntsc = 0;				//NTSC (60Hz)

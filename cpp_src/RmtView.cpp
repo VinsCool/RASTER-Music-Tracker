@@ -481,7 +481,7 @@ void CRmtView::ReadConfig()
 		//general
 		if (NAME("SCALEPERCENTAGE")) g_scaling_percentage = atoi(value);
 		else
-		if (NAME("TRACKLINEHIGHLIGHT")) g_tracklinehighlight = atoi(value);
+		if (NAME("TRACKLINEPRIMARYHIGHLIGHT")) g_trackLinePrimaryHighlight = atoi(value);
 		else
 		if (NAME("TRACKLINEALTNUMBERING")) g_tracklinealtnumbering = atoi(value);
 		else
@@ -597,7 +597,7 @@ void CRmtView::WriteConfig()
 
 	//general
 	ou << "SCALEPERCENTAGE=" << g_scaling_percentage << endl;
-	ou << "TRACKLINEHIGHLIGHT=" << g_tracklinehighlight << endl;
+	ou << "TRACKLINEPRIMARYHIGHLIGHT=" << g_trackLinePrimaryHighlight << endl;
 	ou << "TRACKLINEALTNUMBERING=" << g_tracklinealtnumbering << endl;
 	ou << "DISPLAYFLATNOTES=" << g_displayflatnotes << endl;
 	ou << "USEGERMANNOTATION=" << g_usegermannotation << endl;
@@ -656,7 +656,7 @@ void CRmtView::OnViewConfiguration()
 	//general
 	dlg.m_scaling_percentage = g_scaling_percentage;
 	dlg.m_tuning = g_basetuning;
-	dlg.m_tracklinehighlight = g_tracklinehighlight;
+	dlg.m_tracklinehighlight = g_trackLinePrimaryHighlight;
 	dlg.m_tracklinealtnumbering = g_tracklinealtnumbering;
 	dlg.m_displayflatnotes = g_displayflatnotes;
 	dlg.m_usegermannotation = g_usegermannotation;
@@ -713,7 +713,7 @@ void CRmtView::OnViewConfiguration()
 		g_ntsc = dlg.m_ntsc;
 		g_viewDoSmoothScrolling = dlg.m_doSmoothScrolling;
 
-		g_tracklinehighlight = dlg.m_tracklinehighlight;
+		g_trackLinePrimaryHighlight = dlg.m_tracklinehighlight;
 		g_tracklinealtnumbering = dlg.m_tracklinealtnumbering;
 		g_displayflatnotes = dlg.m_displayflatnotes;
 		g_usegermannotation = dlg.m_usegermannotation;
@@ -1145,28 +1145,46 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		return 6;
 	}
 
-	rec.SetRect(432, 16, 432 + 8 * 2, 16 + 16);
+	rec.SetRect(432, 16, 432 + 8 * 5, 16 + 16);
 	if (rec.PtInRect(point))
 	{
-		//Songline highlight
+		//track line highlights
+		BOOL r = 0;
+		int ma = (g_Tracks.m_maxtracklen) / 2;
+		int px = (point.x - 432 - 4) / 8;
 		SetCursor(m_cursorGoto);
 		if (mousebutt & MK_LBUTTON)
 		{
-			//TODO
+			r = g_Song.InfoCursorGotoHighlight(point.x - 432);
+			if (r) SCREENUPDATE;
 		}
 		if (wheelzDelta != 0)
 		{
-			BOOL r = 0;
-			int ma = (g_Tracks.m_maxtracklen) / 2;
-			if (wheelzDelta < 0)
+			if (px < 2)	//primary line highlight
 			{
-				r = g_tracklinehighlight++;
-				if (g_tracklinehighlight > ma) g_tracklinehighlight = ma;
+				if (wheelzDelta < 0)
+				{
+					r = g_trackLinePrimaryHighlight++;
+					if (g_trackLinePrimaryHighlight > ma) g_trackLinePrimaryHighlight = ma;
+				}
+				else if (wheelzDelta > 0)
+				{
+					r = g_trackLinePrimaryHighlight--;
+					if (g_trackLinePrimaryHighlight < 1) g_trackLinePrimaryHighlight = 1;
+				}
 			}
-			else if (wheelzDelta > 0)
+			else //secondary line highlight 
 			{
-				r = g_tracklinehighlight--;
-				if (g_tracklinehighlight < 1) g_tracklinehighlight = 1;
+				if (wheelzDelta < 0)
+				{
+					r = g_trackLineSecondaryHighlight++;
+					if (g_trackLineSecondaryHighlight > ma) g_trackLineSecondaryHighlight = ma;
+				}
+				else if (wheelzDelta > 0)
+				{
+					r = g_trackLineSecondaryHighlight--;
+					if (g_trackLineSecondaryHighlight < 1) g_trackLineSecondaryHighlight = 1;
+				}
 			}
 			if (r) SCREENUPDATE;
 		}
