@@ -19,34 +19,43 @@ int tab_64khz_2[64] = { 0 };
 int tab_179mhz_2[64] = { 0 };
 int tab_16bit_2[128] = { 0 };
 //
-//PAGE_DISTORTION_A => Address 0xB100
+//PAGE_DISTORTION_4 => Address 0xB100
+int tab_64khz_4_smooth[64] = { 0 };
+int tab_179mhz_4_smooth[64] = { 0 };
+int tab_16bit_4_smooth[128] = { 0 };
+//
+int tab_64khz_4_buzzy[64] = { 0 };
+int tab_179mhz_4_buzzy[64] = { 0 };
+int tab_16bit_4_buzzy[128] = { 0 };
+//
+//PAGE_DISTORTION_A => Address 0xB200
 int tab_64khz_a_pure[64] = { 0 };
 int tab_179mhz_a_pure[64] = { 0 };
 int tab_16bit_a_pure[128] = { 0 };
 //
-//PAGE_DISTORTION_C => Address 0xB200
+//PAGE_DISTORTION_C => Address 0xB300
 int tab_64khz_c_buzzy[64] = { 0 };
 int tab_179mhz_c_buzzy[64] = { 0 };
 int tab_16bit_c_buzzy[128] = { 0 };
 //
-//PAGE_DISTORTION_E => Address 0xB300
+//PAGE_DISTORTION_E => Address 0xB400
 int tab_64khz_c_gritty[64] = { 0 };
 int tab_179mhz_c_gritty[64] = { 0 };
 int tab_16bit_c_gritty[128] = { 0 };
 //
-//PAGE_EXTRA_0 => Address 0xB400, 0xB480 for 15khz Pure and 0xB4C0 for 15khz Buzzy
+//PAGE_EXTRA_0 => Address 0xB500, 0xB580 for 15khz Pure and 0xB5C0 for 15khz Buzzy
 //Croissant Sawtooth ch1	//no generator yet
 //Croissant Sawtooth ch3	//no generator yet
 int tab_15khz_a_pure[64] = { 0 };
 int tab_15khz_c_buzzy[64] = { 0 };
 //
-//PAGE_EXTRA_1 => Address 0xB500
+//PAGE_EXTRA_1 => Address 0xB600
 //Clarinet Lo	//no generator yet
 //Clarinet Hi	//no generator yet
 //unused
 //unused
 //
-//PAGE_EXTRA_2 => Address 0xB600
+//PAGE_EXTRA_2 => Address 0xB700
 int tab_64khz_c_unstable[64] = { 0 };
 int tab_179mhz_c_unstable[64] = { 0 };
 int tab_16bit_c_unstable[128] = { 0 };
@@ -77,6 +86,10 @@ bool SAWTOOTH_INVERTED = 0;		//valid Sawtooth mode (inverted)
 bool TWO_TONE = 0;				//0x8B, Two-Tone Filter
 
 //combined AUDC and AUDF bits for special cases
+bool IS_SMOOTH_DIST_4 = 0;
+bool IS_BUZZY_DIST_4 = 0;
+bool IS_UNSTABLE_DIST_4_1 = 0;
+bool IS_UNSTABLE_DIST_4_2 = 0;
 bool IS_BUZZY_DIST_C = 0;		//Distortion C, MOD3 AUDF and not MOD5 AUDF
 bool IS_GRITTY_DIST_C = 0;		//Distortion C, neither MOD3 nor MOD5 AUDF
 bool IS_UNSTABLE_DIST_C = 0;	//Distortion C, MOD5 AUDF and not MOD3 AUDF
@@ -579,9 +592,6 @@ const double NINTENDO[20] =
 	1.928352,
 	2
 };
-bool IS_SMOOTH_DIST_4 = 0;
-bool IS_UNSTABLE_DIST_4_1 = 0;
-bool IS_UNSTABLE_DIST_4_2 = 0;
 
 //Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
 void real_freq()
@@ -998,6 +1008,46 @@ void generate_table(int note, double freq, int distortion, bool IS_15KHZ, bool I
 		else tab_64khz_2[note] = audf;
 		break;
 
+	case 0x40:
+		divisor = (IS_SMOOTH_DIST_4 || CLOCK_15) ? 77.5 : 232.5;		//Smooth
+		v_modulo = (CLOCK_15) ? 5 : 15;
+		audf = get_audf(freq, coarse_divisor, divisor, modoffset);
+		if ((CLOCK_15 && (audf + modoffset) % v_modulo == 0) ||
+			(IS_SMOOTH_DIST_4 && ((audf + modoffset) % 3 != 0 || (audf + modoffset) % 5 == 0 || (audf + modoffset) % 31 == 0)) ||
+			(IS_BUZZY_DIST_4 && ((audf + modoffset) % 3 == 0 || (audf + modoffset) % 5 == 0 || (audf + modoffset) % 31 == 0))) 
+		{
+			audf = delta_audf(audf, freq, coarse_divisor, divisor, modoffset, distortion); 
+		}
+		if (!JOIN_16BIT)	//not 16-bit mode
+		{
+			if (audf > 0xFF) audf = 0xFF;	//lowest possible pitch
+			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
+		}
+		else
+		{
+			if (audf > 0xFFFF) audf = 0xFFFF;	//lowest possible pitch
+			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
+		}
+		if (JOIN_16BIT)
+		{
+			if (IS_SMOOTH_DIST_4) tab_16bit_4_smooth[note * 2] = audf;
+			else if (IS_BUZZY_DIST_4) tab_16bit_4_buzzy[note * 2] = audf;
+			else break;	//invalid parameter
+		}
+		else if (CLOCK_179)
+		{
+			if (IS_SMOOTH_DIST_4) tab_179mhz_4_smooth[note] = audf;
+			else if (IS_BUZZY_DIST_4) tab_179mhz_4_buzzy[note] = audf;
+			else break;	//invalid parameter
+		}
+		else	//64khz mode
+		{
+			if (IS_SMOOTH_DIST_4) tab_64khz_4_smooth[note] = audf;
+			else if (IS_BUZZY_DIST_4) tab_64khz_4_buzzy[note] = audf;
+			else break;	//invalid parameter
+		}
+		break;
+
 	case 0xA0:
 		audf = get_audf(freq, coarse_divisor, divisor, modoffset);
 		if (!JOIN_16BIT)	//not 16-bit mode
@@ -1089,40 +1139,65 @@ int delta_audf(int audf, double freq, int coarse_divisor, double divisor, int mo
 	double tmp_freq_down = 0;
 	double PITCH = 0;
 
-	if (distortion != 0xC0) { tmp_audf_up++; tmp_audf_down--; }	//anything not distortion C, simpliest delta method
-	else if (CLOCK_15)
+	if (distortion != 0x40 && distortion != 0xC0) { tmp_audf_up++; tmp_audf_down--; }	//anything not distortion 4 or C, simpliest delta method
+
+	else if (distortion == 0x40)
 	{
-		for (int o = 0; o < 3; o++)	//MOD5 must be avoided!
+		if (IS_SMOOTH_DIST_4)	//verify MOD3 integrity
 		{
-			if ((tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
-			if ((tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+			for (int o = 0; o < 6; o++)
+			{
+				if ((tmp_audf_up + modoffset) % 3 != 0 || (tmp_audf_up + modoffset) % 5 == 0 || (tmp_audf_up + modoffset) % 31 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + modoffset) % 3 != 0 || (tmp_audf_down + modoffset) % 5 == 0 || (tmp_audf_down + modoffset) % 31 == 0) tmp_audf_down--;
+			}
 		}
+		else if (IS_BUZZY_DIST_4)
+		{
+			for (int o = 0; o < 6; o++) 
+			{
+				if ((tmp_audf_up + modoffset) % 3 == 0 || (tmp_audf_up + modoffset) % 5 == 0 || (tmp_audf_up + modoffset) % 31 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + modoffset) % 3 == 0 || (tmp_audf_down + modoffset) % 5 == 0 || (tmp_audf_down + modoffset) % 31 == 0) tmp_audf_down--;
+			}
+		}
+		else return 0;	//invalid parameter most likely 
 	}
-	else if (IS_BUZZY_DIST_C)	//verify MOD3 integrity
+
+	else if (distortion == 0xC0)
 	{
-		for (int o = 0; o < 6; o++)
+		if (CLOCK_15)
 		{
-			if ((tmp_audf_up + modoffset) % 3 != 0 || (tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
-			if ((tmp_audf_down + modoffset) % 3 != 0 || (tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+			for (int o = 0; o < 3; o++)	//MOD5 must be avoided!
+			{
+				if ((tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+			}
 		}
-	}
-	else if (IS_GRITTY_DIST_C)	//verify neither MOD3 or MOD5 is used
-	{
-		for (int o = 0; o < 6; o++)	//get the closest compromise up and down first
+		else if (IS_BUZZY_DIST_C)	//verify MOD3 integrity
 		{
-			if ((tmp_audf_up + modoffset) % 3 == 0 || (tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
-			if ((tmp_audf_down + modoffset) % 3 == 0 || (tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+			for (int o = 0; o < 6; o++)
+			{
+				if ((tmp_audf_up + modoffset) % 3 != 0 || (tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + modoffset) % 3 != 0 || (tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+			}
 		}
-	}
-	else if (IS_UNSTABLE_DIST_C)	//verify MOD5 integrity
-	{
-		for (int o = 0; o < 6; o++)	//get the closest compromise up and down first
+		else if (IS_GRITTY_DIST_C)	//verify neither MOD3 or MOD5 is used
 		{
-			if ((tmp_audf_up + modoffset) % 3 == 0 || (tmp_audf_up + modoffset) % 5 != 0) tmp_audf_up++;
-			if ((tmp_audf_down + modoffset) % 3 == 0 || (tmp_audf_down + modoffset) % 5 != 0) tmp_audf_down--;
+			for (int o = 0; o < 6; o++)	//get the closest compromise up and down first
+			{
+				if ((tmp_audf_up + modoffset) % 3 == 0 || (tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + modoffset) % 3 == 0 || (tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+			}
 		}
+		else if (IS_UNSTABLE_DIST_C)	//verify MOD5 integrity
+		{
+			for (int o = 0; o < 6; o++)	//get the closest compromise up and down first
+			{
+				if ((tmp_audf_up + modoffset) % 3 == 0 || (tmp_audf_up + modoffset) % 5 != 0) tmp_audf_up++;
+				if ((tmp_audf_down + modoffset) % 3 == 0 || (tmp_audf_down + modoffset) % 5 != 0) tmp_audf_down--;
+			}
+		}
+		else return 0;	//invalid parameter most likely
 	}
-	else return 0;	//invalid parameter most likely
 
 	PITCH = get_pitch(tmp_audf_up, coarse_divisor, divisor, modoffset);
 	tmp_freq_up = freq - PITCH;	//first delta, up
@@ -1153,6 +1228,12 @@ void init_tuning()
 	memset(tab_64khz_2, 0, 64);
 	memset(tab_179mhz_2, 0, 64);
 	memset(tab_16bit_2, 0, 128);
+	memset(tab_64khz_4_smooth, 0, 64);
+	memset(tab_179mhz_4_smooth, 0, 64);
+	memset(tab_16bit_4_smooth, 0, 128);
+	memset(tab_64khz_4_buzzy, 0, 64);
+	memset(tab_179mhz_4_buzzy, 0, 64);
+	memset(tab_16bit_4_buzzy, 0, 128);
 	memset(tab_64khz_a_pure, 0, 64);
 	memset(tab_179mhz_a_pure, 0, 64);
 	memset(tab_16bit_a_pure, 0, 128);
@@ -1168,11 +1249,10 @@ void init_tuning()
 	//if base tuning is null, make sure to reset it, else the program could crash!
 	if (!g_basetuning)
 	{
-		g_basetuning = 440;
-		char c[60] = { 0 };
-		sprintf(c,"Error, tuning has been reset!");
-		MessageBox(g_hwnd,c, "Error!",MB_ICONERROR);
-		return;
+		g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
+		g_basenote = 3;	//3 = A-
+		g_temperament = 0;	//no temperament 
+		MessageBox(g_hwnd, "An invalid tuning configuration has been detected!\n\nTuning has been reset to default parameters.", "Tuning error", MB_ICONERROR); 
 	}
 
 	real_freq();	//generate the tuning reference in memory first
@@ -1180,10 +1260,12 @@ void init_tuning()
 	//All the tables that could be calculated will be generated inside this entire block
 	for (int d = 0x00; d < 0xE0; d += 0x20)
 	{
-		if (d == 0x00 || d == 0x40 || d == 0x60 || d == 0x80) continue;	//no good use yet
-		int distortion = d >> 4;
+		if (d == 0x00 || d == 0x60 || d == 0x80) continue;	//no good use yet
+		
 		int note_offset[4] = { 0 };
 		int dist_2_offset[4] = { 12, 0, 48, 24 };
+		int dist_4_smooth_offset[4] = { 12, 0, 24, 24 };
+		int dist_4_buzzy_offset[4] = { 12, 0, 12, 24 };
 		int dist_a_offset[4] = { 48, 24, 108, 24 };
 		int dist_c_buzzy_offset[4] = { 24, 12, 84, 24 };
 		int dist_c_gritty_offset[4] = { 12, 0, 72, 24 };
@@ -1192,18 +1274,31 @@ void init_tuning()
 		bool IS_15KHZ = 0;
 		bool IS_179MHZ = 0;
 		bool IS_16BIT = 0;
+		int dist_counter = 0;	//a shitty hack but who will call the police really?
 
+		if (d == 0x40)
+		{
+			IS_SMOOTH_DIST_4 = 1;	//iteration 1: Smooth 
+			IS_BUZZY_DIST_4 = 0;
+			IS_UNSTABLE_DIST_4_1 = 0;
+			IS_UNSTABLE_DIST_4_2 = 0;
+		}
 		if (d == 0xC0)
 		{
 			IS_BUZZY_DIST_C = 1;	//iteration 1: Buzzy
 			IS_GRITTY_DIST_C = 0;
 			IS_UNSTABLE_DIST_C = 0;
 		}
-		int dist_c_counter = 0;	//a shitty hack but who will call the police really?
-	repeat_dist_c:
+
+repeat_dist:
 		for (int c = 0; c < 4; c++)
 		{
 			if (d == 0x20) note_offset[c] = dist_2_offset[c];
+			else if (d == 0x40) 
+			{
+				if (IS_SMOOTH_DIST_4) note_offset[c] = dist_4_smooth_offset[c];
+				else if (IS_BUZZY_DIST_4) note_offset[c] = dist_4_buzzy_offset[c];
+			}
 			else if (d == 0xA0) note_offset[c] = dist_a_offset[c];
 			else if (d == 0xC0)
 			{
@@ -1218,20 +1313,31 @@ void init_tuning()
 			if (c == 3) { IS_15KHZ = 0; IS_179MHZ = 0; IS_16BIT = 1; }
 			macro_table_gen(d, note_offset[c], IS_15KHZ, IS_179MHZ, IS_16BIT);
 		}
+		if (d == 0x40)
+		{
+			dist_counter++;	//the number of times the counter was used in the Distortion 4 case
+			if (dist_counter == 1)
+			{
+				IS_SMOOTH_DIST_4 = 0;
+				IS_BUZZY_DIST_4 = 1;		//iteration 2: Buzzy
+				goto repeat_dist;
+			}
+			else IS_BUZZY_DIST_4 = 0;	//done all Distortion 4 modes
+		} 
 		if (d == 0xC0)
 		{
-			dist_c_counter++;	//the number of times the counter was used in the Distortion C case
-			if (dist_c_counter == 1)
+			dist_counter++;	//the number of times the counter was used in the Distortion C case
+			if (dist_counter == 1)
 			{
 				IS_BUZZY_DIST_C = 0;
 				IS_GRITTY_DIST_C = 1;		//iteration 2: Gritty
-				goto repeat_dist_c;
+				goto repeat_dist;
 			}
-			else if (dist_c_counter == 2)
+			else if (dist_counter == 2)
 			{
 				IS_GRITTY_DIST_C = 0;
 				IS_UNSTABLE_DIST_C = 1;		//iteration 3: Unstable
-				goto repeat_dist_c;
+				goto repeat_dist;
 			}
 			else IS_UNSTABLE_DIST_C = 0;	//done all Distortion C modes
 		}
@@ -1240,40 +1346,48 @@ void init_tuning()
 	{
 		g_atarimem[RMT_FRQTABLES + 0x000 + i] = tab_64khz_2[i];
 		g_atarimem[RMT_FRQTABLES + 0x040 + i] = tab_179mhz_2[i];
-		g_atarimem[RMT_FRQTABLES + 0x100 + i] = tab_64khz_a_pure[i];
-		g_atarimem[RMT_FRQTABLES + 0x140 + i] = tab_179mhz_a_pure[i];
-		g_atarimem[RMT_FRQTABLES + 0x300 + i] = tab_64khz_c_gritty[i];
-		g_atarimem[RMT_FRQTABLES + 0x340 + i] = tab_179mhz_c_gritty[i];
-		g_atarimem[RMT_FRQTABLES + 0x480 + i] = tab_15khz_a_pure[i];
-		g_atarimem[RMT_FRQTABLES + 0x4C0 + i] = tab_15khz_c_buzzy[i];
+		g_atarimem[RMT_FRQTABLES + 0x200 + i] = tab_64khz_a_pure[i];
+		g_atarimem[RMT_FRQTABLES + 0x240 + i] = tab_179mhz_a_pure[i];
+		g_atarimem[RMT_FRQTABLES + 0x400 + i] = tab_64khz_c_gritty[i];
+		g_atarimem[RMT_FRQTABLES + 0x440 + i] = tab_179mhz_c_gritty[i];
+		g_atarimem[RMT_FRQTABLES + 0x580 + i] = tab_15khz_a_pure[i];
+		g_atarimem[RMT_FRQTABLES + 0x5C0 + i] = tab_15khz_c_buzzy[i];
 	}
-	for (int i = 0; i < 52; i++) //8-bit tables (Distortion C Gritty filler, so the Buzzies can fill only the bytes that actually have valid pitches
+	for (int i = 0; i < 52; i++) //8-bit tables (fill only the bytes that actually have valid pitches for each combinations) 
 	{
-		g_atarimem[RMT_FRQTABLES + 0x200 + i] = tab_64khz_c_gritty[i + 12];
-		g_atarimem[RMT_FRQTABLES + 0x240 + i] = tab_179mhz_c_gritty[i + 12];
+		g_atarimem[RMT_FRQTABLES + 0x140 + i] = tab_179mhz_4_buzzy[i + 12];
+		g_atarimem[RMT_FRQTABLES + 0x300 + i] = tab_64khz_c_gritty[i + 12];
+		g_atarimem[RMT_FRQTABLES + 0x340 + i] = tab_179mhz_c_gritty[i + 12];
 	}
-	for (int i = 0; i < 64; i++) //8-bit tables (64khz Buzzies)
+	for (int i = 0; i < 64; i++) //8-bit tables (Distortion 4 1.79mhz Smooths)
+	{
+		if (tab_179mhz_4_smooth[i] == 0xFF) continue;	//no useful pitch
+		g_atarimem[RMT_FRQTABLES + 0x140 + i] = tab_179mhz_4_smooth[i];
+	}
+	for (int i = 0; i < 64; i++) //8-bit tables (Distortion C 64khz Buzzies)
 	{
 		if (tab_64khz_c_buzzy[i] == 0xFF) continue;		//no useful pitch
-		g_atarimem[RMT_FRQTABLES + 0x200 + i] = tab_64khz_c_buzzy[i];
+		g_atarimem[RMT_FRQTABLES + 0x300 + i] = tab_64khz_c_buzzy[i];
 	}
-	for (int i = 0; i < 64; i++) //8-bit tables (1.79mhz Buzzies)
+	for (int i = 0; i < 64; i++) //8-bit tables (Distortion C 1.79mhz Buzzies)
 	{
 		if (tab_179mhz_c_buzzy[i] == 0xFF) continue;	//no useful pitch
-		g_atarimem[RMT_FRQTABLES + 0x240 + i] = tab_179mhz_c_buzzy[i];
+		g_atarimem[RMT_FRQTABLES + 0x340 + i] = tab_179mhz_c_buzzy[i];
 	}
 	for (int i = 0; i < 64; i++) //16-bit tables LSB
 	{
 		g_atarimem[RMT_FRQTABLES + 0x080 + (i * 2)] = tab_16bit_2[i * 2] & 0x00FF;
-		g_atarimem[RMT_FRQTABLES + 0x180 + (i * 2)] = tab_16bit_a_pure[i * 2] & 0x00FF;
-		g_atarimem[RMT_FRQTABLES + 0x280 + (i * 2)] = tab_16bit_c_buzzy[i * 2] & 0x00FF;
-		g_atarimem[RMT_FRQTABLES + 0x380 + (i * 2)] = tab_16bit_c_gritty[i * 2] & 0x00FF;
+		g_atarimem[RMT_FRQTABLES + 0x180 + (i * 2)] = tab_16bit_4_smooth[i * 2] & 0x00FF;
+		g_atarimem[RMT_FRQTABLES + 0x280 + (i * 2)] = tab_16bit_a_pure[i * 2] & 0x00FF;
+		g_atarimem[RMT_FRQTABLES + 0x380 + (i * 2)] = tab_16bit_c_buzzy[i * 2] & 0x00FF;
+		g_atarimem[RMT_FRQTABLES + 0x480 + (i * 2)] = tab_16bit_c_gritty[i * 2] & 0x00FF;
 	}
 	for (int i = 0; i < 64; i++) //16-bit tables MSB
 	{
 		g_atarimem[RMT_FRQTABLES + 0x080 + (i * 2) + 1] = tab_16bit_2[i * 2] >> 8;
-		g_atarimem[RMT_FRQTABLES + 0x180 + (i * 2) + 1] = tab_16bit_a_pure[i * 2] >> 8;
-		g_atarimem[RMT_FRQTABLES + 0x280 + (i * 2) + 1] = tab_16bit_c_buzzy[i * 2] >> 8;
-		g_atarimem[RMT_FRQTABLES + 0x380 + (i * 2) + 1] = tab_16bit_c_gritty[i * 2] >> 8;
+		g_atarimem[RMT_FRQTABLES + 0x180 + (i * 2) + 1] = tab_16bit_4_smooth[i * 2] >> 8;
+		g_atarimem[RMT_FRQTABLES + 0x280 + (i * 2) + 1] = tab_16bit_a_pure[i * 2] >> 8;
+		g_atarimem[RMT_FRQTABLES + 0x380 + (i * 2) + 1] = tab_16bit_c_buzzy[i * 2] >> 8;
+		g_atarimem[RMT_FRQTABLES + 0x480 + (i * 2) + 1] = tab_16bit_c_gritty[i * 2] >> 8;
 	}
 }
