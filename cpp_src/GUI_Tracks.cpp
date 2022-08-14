@@ -105,11 +105,11 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 		tt = &m_track[tr];
 		len = last = tt->len;	//len a last
 		go = tt->go;	//go
-		if (go >= 0) last = m_maxtracklen;
+		if (go >= 0) last = m_maxTrackLength;
 	}
 
 	//fetch the last line infos early, so it could be drawn immediately after the track line was processed
-	if (line + 1 == last && len > 0 && last != m_maxtracklen)
+	if (line + 1 == last && len > 0 && last != m_maxTrackLength)
 	{
 		endline = line;
 	}

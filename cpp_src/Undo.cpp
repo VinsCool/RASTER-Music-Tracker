@@ -440,7 +440,7 @@ char CUndo::PerformEvent(int i)
 			g_Tracks.SetTracksAll((TTracksAll*)ue->data); //data to tracksall
 			memcpy(ue->data, (void*)temp, sizeof(TTracksAll));
 			delete temp;
-			int maxtl = g_Tracks.m_maxtracklen;
+			int maxtl = g_Tracks.m_maxTrackLength;
 			if (g_Song.GetActiveLine() >= maxtl) g_Song.SetActiveLine(maxtl - 1);
 		}
 		break;

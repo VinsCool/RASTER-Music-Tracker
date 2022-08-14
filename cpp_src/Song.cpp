@@ -119,8 +119,8 @@ void CSong::ClearSong(int numOfTracks)
 	m_play = MPLAY_STOP;
 	g_playtime = 0;
 	m_followplay = 1;
-	m_mainspeed = m_speed = m_speeda = 16;
-	m_instrspeed = 1;
+	m_mainSpeed = m_speed = m_speeda = 16;
+	m_instrumentSpeed = 1;
 
 	g_activepart = g_active_ti = PART_TRACKS;	//tracks
 
@@ -130,6 +130,8 @@ void CSong::ClearSong(int numOfTracks)
 	m_activeinstr = 0;
 	m_octave = 0;
 	m_volume = MAXVOLUME;
+
+	m_moduleVersion = RMTFORMATVERSION;
 
 	ClearBookmark();
 
@@ -250,23 +252,20 @@ int CSong::GetSubsongParts(CString& resultstr)
 	return asub;
 }
 
-
-
-
-
-
-
+/// <summary>
+/// Mark all tracks that are referenced in song as USED
+/// </summary>
+/// <param name="arrayTRACKSNUM">Array where each used track if marked off</param>
 void CSong::MarkTF_USED(BYTE* arrayTRACKSNUM)
 {
-	int i, tr;
 	//all tracks used in the song
-	for (i = 0; i < SONGLEN; i++)
+	for (int i = 0; i < SONGLEN; i++)
 	{
 		if (m_songgo[i] < 0)
 		{
-			for (int j = 0; j < g_tracks4_8; j++)
+			for (int channelNr = 0; channelNr < g_tracks4_8; channelNr++)
 			{
-				tr = m_song[i][j];
+				int tr = m_song[i][channelNr];
 				if (tr >= 0 && tr < TRACKSNUM) arrayTRACKSNUM[tr] = TF_USED;
 			}
 		}
@@ -277,187 +276,315 @@ void CSong::MarkTF_NOEMPTY(BYTE* arrayTRACKSNUM)
 {
 	for (int i = 0; i < TRACKSNUM; i++)
 	{
-		if (g_Tracks.CalculateNoEmpty(i)) arrayTRACKSNUM[i] |= TF_NOEMPTY;
+		if (g_Tracks.CalculateNotEmpty(i)) arrayTRACKSNUM[i] |= TF_NOEMPTY;
 	}
 }
 
-int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved, BYTE* tracksaved)
+int CSong::MakeTuningBlock(unsigned char* mem, int addr)
 {
-	//returns maxadr (points to the first free address after the module) and sets the instrsaved and tracksaved fields
-	if (iotype == IOTYPE_RMF) return MakeRMFModule(mem, adr, instrsaved, tracksaved);
+	int len = 80;				// 80 bytes of general data
+	for (int i = 0; i < len; ++i) mem[addr + i] = 0;
+	
+	// Block indicator: 0xF3
+	mem[addr] = 0xF3;			// Tuning block indicator
 
-	BYTE* instrsave = instrsaved;
-	BYTE* tracksave = tracksaved;
-	memset(instrsave, 0, INSTRSNUM);	//init
-	memset(tracksave, 0, TRACKSNUM);	//init
+	// First 16 bytes
+	mem[addr + 0x01] = g_ntsc;						//RMT module region, 0 -> PAL, 1 -> NTSC
+	mem[addr + 0x02] = g_basenote;					//base note used in tuning calculations, eg A-4
+	mem[addr + 0x03] = g_temperament;				//tuning temperament, 0 -> no temperament, any number above preset number is custom (saving ratios not yet implemented)
+	mem[addr + 0x04] = g_trackLinePrimaryHighlight;	//track primary line highlight
+	mem[addr + 0x05] = g_trackLineSecondaryHighlight;//track secondary line highlight
+	// 6 - 0xf is unused
 
-	strncpy((char*)(mem + adr), "RMT", 3);
-	mem[adr + 0x03] = g_tracks4_8 + '0';			//4 or 8
-	mem[adr + 0x04] = g_Tracks.m_maxtracklen & 0xff;
-	mem[adr + 0x05] = m_mainspeed & 0xff;
-	mem[adr + 0x06] = m_instrspeed;					//instr speed 1-8
-	mem[adr + 0x07] = RMTFORMATVERSION;				//RMT format version number
-	mem[adr + 0x08] = g_ntsc;						//RMT module region, 0 -> PAL, 1 -> NTSC
-	mem[adr + 0x09] = g_basenote;					//base note used in tuning calculations, eg A-4
-	mem[adr + 0x0A] = g_temperament;				//tuning temperament, 0 -> no temperament, any number above preset number is custom (saving ratios not yet implemented)
-	mem[adr + 0x0B] = g_trackLinePrimaryHighlight;	//track primary line highlight
-	mem[adr + 0x0C] = g_trackLineSecondaryHighlight;//track secondary line highlight 
-	mem[adr + 0x0D] = 0;							//unused
-	mem[adr + 0x0E] = 0;							//unused
-	mem[adr + 0x0F] = 0;							//unused
-	memcpy((mem + adr + 0x10), &g_basetuning, 8);	//base tuning frequency, double type uses 8 bytes in memory
-	memcpy((mem + adr + 0x18), &g_UNISON_L, 2);		//tuning ratio variables, each values are truncated to use 2 bytes (16-bit precision) 
-	memcpy((mem + adr + 0x1A), &g_UNISON_R, 2);
-	memcpy((mem + adr + 0x1C), &g_MIN_2ND_L, 2);
-	memcpy((mem + adr + 0x1E), &g_MIN_2ND_R, 2);
-	memcpy((mem + adr + 0x20), &g_MAJ_2ND_L, 2);
-	memcpy((mem + adr + 0x22), &g_MAJ_2ND_R, 2);
-	memcpy((mem + adr + 0x24), &g_MIN_3RD_L, 2);
-	memcpy((mem + adr + 0x26), &g_MIN_3RD_R, 2);
-	memcpy((mem + adr + 0x28), &g_MAJ_3RD_L, 2);
-	memcpy((mem + adr + 0x2A), &g_MAJ_3RD_R, 2);
-	memcpy((mem + adr + 0x2C), &g_PERF_4TH_L, 2);
-	memcpy((mem + adr + 0x2E), &g_PERF_4TH_R, 2);
-	memcpy((mem + adr + 0x30), &g_TRITONE_L, 2);
-	memcpy((mem + adr + 0x32), &g_TRITONE_R, 2);
-	memcpy((mem + adr + 0x34), &g_PERF_5TH_L, 2);
-	memcpy((mem + adr + 0x36), &g_PERF_5TH_R, 2);
-	memcpy((mem + adr + 0x38), &g_MIN_6TH_L, 2);
-	memcpy((mem + adr + 0x3A), &g_MIN_6TH_R, 2);
-	memcpy((mem + adr + 0x3C), &g_MAJ_6TH_L, 2);
-	memcpy((mem + adr + 0x3E), &g_MAJ_6TH_R, 2);
-	memcpy((mem + adr + 0x40), &g_MIN_7TH_L, 2);
-	memcpy((mem + adr + 0x42), &g_MIN_7TH_R, 2);
-	memcpy((mem + adr + 0x44), &g_MAJ_7TH_L, 2);
-	memcpy((mem + adr + 0x46), &g_MAJ_7TH_R, 2);
-	memcpy((mem + adr + 0x48), &g_OCTAVE_L, 2);
-	memcpy((mem + adr + 0x4A), &g_OCTAVE_R, 2);
-	mem[adr + 0x4C] = 0;							//unused
-	mem[adr + 0x4D] = 0;							//unused
-	mem[adr + 0x4E] = 0;							//unused
-	mem[adr + 0x4F] = 0;							//unused
+	// 64 bytes
+	memcpy((mem + addr + 0x10), &g_basetuning, 8);	//base tuning frequency, double type uses 8 bytes in memory
+	memcpy((mem + addr + 0x18), &g_UNISON_L, 2);		//tuning ratio variables, each values are truncated to use 2 bytes (16-bit precision) 
+	memcpy((mem + addr + 0x1A), &g_UNISON_R, 2);
+	memcpy((mem + addr + 0x1C), &g_MIN_2ND_L, 2);
+	memcpy((mem + addr + 0x1E), &g_MIN_2ND_R, 2);
+	memcpy((mem + addr + 0x20), &g_MAJ_2ND_L, 2);
+	memcpy((mem + addr + 0x22), &g_MAJ_2ND_R, 2);
+	memcpy((mem + addr + 0x24), &g_MIN_3RD_L, 2);
+	memcpy((mem + addr + 0x26), &g_MIN_3RD_R, 2);
+	memcpy((mem + addr + 0x28), &g_MAJ_3RD_L, 2);
+	memcpy((mem + addr + 0x2A), &g_MAJ_3RD_R, 2);
+	memcpy((mem + addr + 0x2C), &g_PERF_4TH_L, 2);
+	memcpy((mem + addr + 0x2E), &g_PERF_4TH_R, 2);
+	memcpy((mem + addr + 0x30), &g_TRITONE_L, 2);
+	memcpy((mem + addr + 0x32), &g_TRITONE_R, 2);
+	memcpy((mem + addr + 0x34), &g_PERF_5TH_L, 2);
+	memcpy((mem + addr + 0x36), &g_PERF_5TH_R, 2);
+	memcpy((mem + addr + 0x38), &g_MIN_6TH_L, 2);
+	memcpy((mem + addr + 0x3A), &g_MIN_6TH_R, 2);
+	memcpy((mem + addr + 0x3C), &g_MAJ_6TH_L, 2);
+	memcpy((mem + addr + 0x3E), &g_MAJ_6TH_R, 2);
+	memcpy((mem + addr + 0x40), &g_MIN_7TH_L, 2);
+	memcpy((mem + addr + 0x42), &g_MIN_7TH_R, 2);
+	memcpy((mem + addr + 0x44), &g_MAJ_7TH_L, 2);
+	memcpy((mem + addr + 0x46), &g_MAJ_7TH_R, 2);
+	memcpy((mem + addr + 0x48), &g_OCTAVE_L, 2);
+	memcpy((mem + addr + 0x4A), &g_OCTAVE_R, 2);
+	// 4 unused bytes at the end
 
-	//in RMT all non-empty tracks and non-empty instruments will be stored in others only non-empty used tracks and used instruments in them
+	return len;
+}
+
+void CSong::ResetTuningVariables()
+{
+	// reset all tuning variables 
+	g_ntsc = 0;		//PAL region
+	g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
+	g_basenote = 3;	//3 = A-
+	g_temperament = 0;	//no temperament
+	g_trackLinePrimaryHighlight = 8;	//highlight every 8 rows
+	g_trackLineSecondaryHighlight = 4;	//highlight every 4 rows
+	g_UNISON_L = 1;	//ratio left
+	g_MIN_2ND_L = 40;
+	g_MAJ_2ND_L = 10;
+	g_MIN_3RD_L = 20;
+	g_MAJ_3RD_L = 5;
+	g_PERF_4TH_L = 4;
+	g_TRITONE_L = 60;
+	g_PERF_5TH_L = 3;
+	g_MIN_6TH_L = 30;
+	g_MAJ_6TH_L = 5;
+	g_MIN_7TH_L = 30;
+	g_MAJ_7TH_L = 15;
+	g_OCTAVE_L = 2;
+	g_UNISON_R = 1;	//ratio right
+	g_MIN_2ND_R = 38;
+	g_MAJ_2ND_R = 9;
+	g_MIN_3RD_R = 17;
+	g_MAJ_3RD_R = 4;
+	g_PERF_4TH_R = 3;
+	g_TRITONE_R = 43;
+	g_PERF_5TH_R = 2;
+	g_MIN_6TH_R = 19;
+	g_MAJ_6TH_R = 3;
+	g_MIN_7TH_R = 17;
+	g_MAJ_7TH_R = 8;
+	g_OCTAVE_R = 1;
+}
+
+int CSong::DecodeTuningBlock(unsigned char* mem, int addr, int endAddr)
+{
+	// Check the block header
+	if (mem[addr] != 0xF3)
+	{
+		ResetTuningVariables();
+		return 0;
+	}
+	// Get the basics
+	g_ntsc							= mem[addr + 0x01];
+	g_basenote						= mem[addr + 0x02];
+	g_temperament					= mem[addr + 0x03];
+	g_trackLinePrimaryHighlight		= mem[addr + 0x04];
+	if (!g_trackLinePrimaryHighlight) g_trackLinePrimaryHighlight = 8;	//default
+	g_trackLineSecondaryHighlight	= mem[addr + 0x05];
+	if (!g_trackLineSecondaryHighlight) g_trackLineSecondaryHighlight = 4;	//default
+
+	memcpy(&g_basetuning, (mem + addr + 0x10), 8);
+	memcpy(&g_UNISON_L, (mem + addr + 0x18), 2);
+	memcpy(&g_UNISON_R, (mem + addr + 0x1A), 2);
+	memcpy(&g_MIN_2ND_L, (mem + addr + 0x1C), 2);
+	memcpy(&g_MIN_2ND_R, (mem + addr + 0x1E), 2);
+	memcpy(&g_MAJ_2ND_L, (mem + addr + 0x20), 2);
+	memcpy(&g_MAJ_2ND_R, (mem + addr + 0x22), 2);
+	memcpy(&g_MIN_3RD_L, (mem + addr + 0x24), 2);
+	memcpy(&g_MIN_3RD_R, (mem + addr + 0x26), 2);
+	memcpy(&g_MAJ_3RD_L, (mem + addr + 0x28), 2);
+	memcpy(&g_MAJ_3RD_R, (mem + addr + 0x2A), 2);
+	memcpy(&g_PERF_4TH_L, (mem + addr + 0x2C), 2);
+	memcpy(&g_PERF_4TH_R, (mem + addr + 0x2E), 2);
+	memcpy(&g_TRITONE_L, (mem + addr + 0x30), 2);
+	memcpy(&g_TRITONE_R, (mem + addr + 0x32), 2);
+	memcpy(&g_PERF_5TH_L, (mem + addr + 0x34), 2);
+	memcpy(&g_PERF_5TH_R, (mem + addr + 0x36), 2);
+	memcpy(&g_MIN_6TH_L, (mem + addr + 0x38), 2);
+	memcpy(&g_MIN_6TH_R, (mem + addr + 0x3A), 2);
+	memcpy(&g_MAJ_6TH_L, (mem + addr + 0x3C), 2);
+	memcpy(&g_MAJ_6TH_R, (mem + addr + 0x3E), 2);
+	memcpy(&g_MIN_7TH_L, (mem + addr + 0x40), 2);
+	memcpy(&g_MIN_7TH_R, (mem + addr + 0x42), 2);
+	memcpy(&g_MAJ_7TH_L, (mem + addr + 0x44), 2);
+	memcpy(&g_MAJ_7TH_R, (mem + addr + 0x46), 2);
+	memcpy(&g_OCTAVE_L, (mem + addr + 0x48), 2);
+	memcpy(&g_OCTAVE_R, (mem + addr + 0x4A), 2);
+
+	return endAddr - addr;
+
+}
+
+/// <summary>
+/// Create the RMT data in memory.
+/// Sets the 'instrumentSavedFlags' and 'trackSavedFlags' if a specific instrument or track is used.
+/// </summary>
+/// <param name="mem">Atari 64K of memory</param>
+/// <param name="addr">Where in memory the start of the module will be</param>
+/// <param name="iotype"></param>
+/// <param name="instrumentSavedFlags"></param>
+/// <param name="trackSavedFlags"></param>
+/// <returns></returns>
+int CSong::MakeModule(unsigned char* mem, int addr, int iotype, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags)
+{
 	int i, j;
 
-	//all tracks used in the song
-	MarkTF_USED(tracksave);
+	//returns maxadr (points to the first free address after the module) and sets the instrsaved and tracksaved fields
+	if (iotype == IOTYPE_RMF) return MakeRMFModule(mem, addr, instrumentSavedFlags, trackSavedFlags);
 
+	// Clear the instrument and tracks used flags
+	memset(instrumentSavedFlags, 0, INSTRSNUM);
+	memset(trackSavedFlags, 0, TRACKSNUM);
+
+	// Write out the RMT header (part 1)
+	// 0: RMT4 or RMT8
+	// 4: Track length
+	// 5: Song speed
+	// 6: Instrument speed
+	// 7: RMT version (1 for now)
+	strncpy((char*)(mem + addr), "RMT", 3);	
+	mem[addr + 3] = g_tracks4_8 + '0';			// 4 or 8
+	mem[addr + 4] = g_Tracks.m_maxTrackLength & 0xff;
+	mem[addr + 5] = m_mainSpeed & 0xff;
+	mem[addr + 6] = m_instrumentSpeed;			// 1-4 player calls per frame
+	mem[addr + 7] = m_moduleVersion;			// RMT format version number
+
+	// Note:
+	// When saving in RMT format ALL non-empty tracks and non-empty instruments will be stored
+	// In other formats only the USED tracks and USED instruments will be stored
+
+	MarkTF_USED(trackSavedFlags);			// Mark all tracks as used
 	if (iotype == IOTYPE_RMT)
 	{
-		//In addition to the used ones, all non-empty tracks are added to the RMT, all non-empty tracks
-		MarkTF_NOEMPTY(tracksave);
+		MarkTF_NOEMPTY(trackSavedFlags);	// In addition to the used ones, all non-empty tracks are added to the RMT, all non-empty tracks
 	}
 
-	//all instruments in the tracks that will be saved
+	// Mark all used instruments in the tracks that will be saved
 	for (i = 0; i < TRACKSNUM; i++)
 	{
-		if (tracksave[i] > 0)
+		if (trackSavedFlags[i] > 0)
 		{
 			TTrack& tr = *g_Tracks.GetTrack(i);
 			for (j = 0; j < tr.len; j++)
 			{
 				int ins = tr.instr[j];
-				if (ins >= 0 && ins < INSTRSNUM) instrsave[ins] = IF_USED;
+				if (ins >= 0 && ins < INSTRSNUM) instrumentSavedFlags[ins] = IF_USED;
 			}
 		}
 	}
 
 	if (iotype == IOTYPE_RMT)
 	{
-		//in addition to the instruments used in the tracks that are in the song, all non-empty instruments are stored in the RMT
+		// In addition to the instruments used in the tracks that are in the song, all non-empty instruments are stored in the RMT
 		for (i = 0; i < INSTRSNUM; i++)
 		{
-			if (g_Instruments.CalculateNotEmpty(i)) instrsave[i] |= IF_NOEMPTY;
+			if (g_Instruments.CalculateNotEmpty(i)) instrumentSavedFlags[i] |= IF_NOEMPTY;
 		}
 	}
 
 	//---
-
-	int numtracks = 0;
+	// Find how many tracks and instruments to save
+	int numTracks = 0;
 	for (i = TRACKSNUM - 1; i >= 0; i--)
 	{
-		if (tracksave[i] > 0) { numtracks = i + 1; break; }
+		if (trackSavedFlags[i] > 0) { numTracks = i + 1; break; }
 	}
 
-	int numinstrs = 0;
+	int numInstruments = 0;
 	for (i = INSTRSNUM - 1; i >= 0; i--)
 	{
-		if (instrsave[i] > 0) { numinstrs = i + 1; break; }
+		if (instrumentSavedFlags[i] > 0) { numInstruments = i + 1; break; }
 	}
 
-	//and now save:
-	//instruments
-	//tracks
-	//songlines
+	// Calculate the offsets for instruments, tracks (lo & hi) and song lines
+	// RMT header is 16 bytes, so instrument ptrs start there
+	// Each instrument ptr is 2 bytes, and the track pointers are 2 bytes
+	// but split into low and high storage areas
+	int ptrInstruments		= addr + 16;
+	int ptrTracksLoBytes	= ptrInstruments + numInstruments * 2;
+	int ptrTracksHiBytes	= ptrTracksLoBytes + numTracks;
+	int ptrInstrumentData	= ptrTracksHiBytes + numTracks; // behind the track byte table
 
-	//instruments table address begins 0x50 bytes after header + 0x08 bytes including pointers offset 
-	int adrpinstruments = adr + 0x58; 
-	int adrptrackslbs = adrpinstruments + numinstrs * 2;
-	int adrptrackshbs = adrptrackslbs + numtracks;
-
-	int adrinstrdata = adrptrackshbs + numtracks; //behind the track byte table
-	//saves instrument data and writes their beginnings to the table
-	for (i = 0; i < numinstrs; i++)
+	// Saves instrument data and writes their beginnings to the table
+	for (i = 0; i < numInstruments; i++)
 	{
-		if (instrsave[i])
+		if (instrumentSavedFlags[i])
 		{
-			int leninstr = g_Instruments.InstrToAta(i, mem + adrinstrdata, MAXATAINSTRLEN);
-			mem[adrpinstruments + i * 2] = adrinstrdata & 0xff;	//dbyte
-			mem[adrpinstruments + i * 2 + 1] = adrinstrdata >> 8;	//hbyte
-			adrinstrdata += leninstr;
+			// Create instrument data
+			int thisInstrumentLength = g_Instruments.InstrToAta(i, mem + ptrInstrumentData, MAXATAINSTRLEN);
+
+			// Save where the instrument data is to be found
+			mem[ptrInstruments + i * 2]		= ptrInstrumentData & 0xff;	// lo byte
+			mem[ptrInstruments + i * 2 + 1] = ptrInstrumentData >> 8;	// hi byte
+
+			// Move where the next instruments data is to be saved
+			ptrInstrumentData += thisInstrumentLength;
 		}
 		else
 		{
-			mem[adrpinstruments + i * 2] = mem[adrpinstruments + i * 2 + 1] = 0;
+			// Oi, nothing to save here, just emit 0
+			// This happens if there are unused instruments between the used ones.
+			// Best to rearrange the instruments to be one continous block
+			mem[ptrInstruments + i * 2] = mem[ptrInstruments + i * 2 + 1] = 0;
 		}
 	}
 
-	int adrtrackdata = adrinstrdata;	//for instrument data
-	//saves track data and writes their beginnings to the table
-	for (i = 0; i < numtracks; i++)
+	// Just after of the instrument data we start with the track data
+	int ptrTrackData = ptrInstrumentData;
+
+	// Saves track data and write their beginnings to the table
+	for (i = 0; i < numTracks; i++)
 	{
-		if (tracksave[i])
+		if (trackSavedFlags[i])
 		{
-			int lentrack = g_Tracks.TrackToAta(i, mem + adrtrackdata, MAXATATRACKLEN);
-			if (lentrack < 1)
-			{	//cannot be saved to RMT
+			// Create the track data
+			int thisTrackLength = g_Tracks.TrackToAta(i, mem + ptrTrackData, MAXATATRACKLEN);
+
+			// Check that the track data is valid
+			if (thisTrackLength < 1)
+			{	
+				// Track cannot be saved to RMT
 				CString msg;
 				msg.Format("Fatal error in track %02X.\n\nThis track contains too many events (notes and speed commands),\nthat's why it can't be coded to RMT internal code format.", i);
 				MessageBox(g_hwnd, msg, "Internal format problem.", MB_ICONERROR);
 				return -1;
 			}
-			mem[adrptrackslbs + i] = adrtrackdata & 0xff;	//dbyte
-			mem[adrptrackshbs + i] = adrtrackdata >> 8;	//hbyte
-			adrtrackdata += lentrack;
+
+			// Save where the track data is to be found
+			mem[ptrTracksLoBytes + i] = ptrTrackData & 0xff;	// lo byte
+			mem[ptrTracksHiBytes + i] = ptrTrackData >> 8;		// hi byte
+
+			// Move where the next track's data is to be saved
+			ptrTrackData += thisTrackLength;
 		}
 		else
 		{
-			mem[adrptrackslbs + i] = mem[adrptrackshbs + i] = 0;
+			// Oi, nothing to save here, just emit 0
+			mem[ptrTracksLoBytes + i] = mem[ptrTracksHiBytes + i] = 0;
 		}
 	}
 
-	int adrsong = adrtrackdata;		//for track data
+	// Just after the track data we store the song lines
+	int ptrSongData = ptrTrackData;
 
-	//save from adrsong data song
-	//int lensong = SongToAta(mem+adrsong,g_tracks4_8*SONGLEN,adrsong);  //<---COARSE WITH MAX BUFFER SIZE!
-	int lensong = SongToAta(mem + adrsong, 0x10000 - adrsong, adrsong);
+	int thisSongLength = SongToAta(mem + ptrSongData, 0x10000 - ptrSongData, ptrSongData);
 
-	int endofmodule = adrsong + lensong;
+	int endOfModule = ptrSongData + thisSongLength;
 
-	//writes computed pointers to the header
-	mem[adr + 0x50] = adrpinstruments & 0xff;	//dbyte
-	mem[adr + 0x51] = adrpinstruments >> 8;		//hbyte
+	// Writes computed pointers to the header
+	mem[addr + 8] = ptrInstruments & 0xff;		// lo byte pointer to instrument table
+	mem[addr + 9] = ptrInstruments >> 8;		// hi byte
 	//
-	mem[adr + 0x52] = adrptrackslbs & 0xff;		//dbyte
-	mem[adr + 0x53] = adrptrackslbs >> 8;		//hbyte
-	mem[adr + 0x54] = adrptrackshbs & 0xff;		//dbyte
-	mem[adr + 0x55] = adrptrackshbs >> 8;		//hbyte
+	mem[addr + 10] = ptrTracksLoBytes & 0xff;	// lo byte pointer to low bytes of track data table
+	mem[addr + 11] = ptrTracksLoBytes >> 8;		// hi byte
+	mem[addr + 12] = ptrTracksHiBytes & 0xff;	// lo byte pointer to high bytes of track data table
+	mem[addr + 13] = ptrTracksHiBytes >> 8;		// hi byte
 	//
-	mem[adr + 0x56] = adrsong & 0xff;			//dbyte
-	mem[adr + 0x57] = adrsong >> 8;				//hbyte
+	mem[addr + 14] = ptrSongData & 0xff;		// lo byte pointer to song data (arrangements of tracks)
+	mem[addr + 15] = ptrSongData >> 8;			// hi byte
 
-	return endofmodule;
+	// Return the address of the first byte past the last one used
+	return endOfModule;
 }
 
 int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tracksaved)
@@ -470,8 +597,8 @@ int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tr
 	memset(instrsave, 0, INSTRSNUM);	//init
 	memset(tracksave, 0, TRACKSNUM); //init
 
-	mem[adr + 0] = m_instrspeed;		//instr speed 1-4
-	mem[adr + 1] = m_mainspeed & 0xff;
+	mem[adr + 0] = m_instrumentSpeed;		//instr speed 1-4
+	mem[adr + 1] = m_mainSpeed & 0xff;
 
 	//all non-empty tracks and non-empty instruments will be stored in the RMT, in others only non-empty tracks and instruments used in them will be stored
 	int i, j;
@@ -519,7 +646,7 @@ int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tr
 	int songline_trackslen[SONGLEN];
 	for (i = 0; i < SONGLEN; i++)
 	{
-		int minlen = g_Tracks.m_maxtracklen;	//init
+		int minlen = g_Tracks.m_maxTrackLength;	//init
 		if (m_songgo[i] >= 0)  //Go to line 
 		{
 			songlines = i + 1;	//temporary end
@@ -662,170 +789,120 @@ int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tr
 	return endofmodule;
 }
 
-
-int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instrloaded, BYTE* trackloaded)
+/// <summary>
+/// Decode the RMT header
+/// </summary>
+/// <param name="mem">Atari 64K memory</param>
+/// <param name="fromAddr">Address where the header is loaded</param>
+/// <param name="endAddr">Address of the first byte past the header</param>
+/// <param name="instrumentLoadedFlags">64 byte memory buffer to indicate if a specific instrument was loaded</param>
+/// <param name="trackLoadedFlags"></param>
+/// <returns>0-If the module could not be loaded, version nr otherwise</returns>
+int CSong::DecodeModule(unsigned char* mem, int fromAddr, int endAddr, BYTE* instrumentLoadedFlags, BYTE* trackLoadedFlags)
 {
-	int adr = adrfrom;
-	int adrpinstruments, adrptrackslbs, adrptrackshbs, adrsong, version;
+	int addr = fromAddr;
 
-	memset(instrloaded, 0, INSTRSNUM);
-	memset(trackloaded, 0, TRACKSNUM);
+	memset(instrumentLoadedFlags, 0, INSTRSNUM);
+	memset(trackLoadedFlags, 0, TRACKSNUM);
 
-	unsigned char b;
+	unsigned char data;
 	int i, j;
 
-	if (strncmp((char*)(mem + adr), "RMT", 3) != 0) return 0; //there is no RMT
-	b = mem[adr + 3];
-	if (b != '4' && b != '8') return 0;	//it is not RMT4 or RMT8
-	g_tracks4_8 = b & 0x0f;
-	b = mem[adr + 4];
-	g_Tracks.m_maxtracklen = (b > 0) ? b : 256;	//0 => 256
-	b = mem[adr + 5];
-	m_mainspeed = b;
-	if (b < 1) return 0;			//there can be no zero speed
-	b = mem[adr + 6];
-	if (b < 1 || b > 8) return 0;		//instrument speed is less than 1 or greater than 8 (note: should be max 4, but allows up to 8 and will only display a warning)
-	m_instrspeed = b;
-	version = mem[adr + 7];
+	BOOL loadState;
+
+	// Check that the header starts with "RMT"
+	if (strncmp((char*)(mem + addr), "RMT", 3) != 0) return 0; //there is no RMT
+
+	// 4th byte: # of channels (4 or 8)
+	data = mem[addr + 3];
+	if (data != '4' && data != '8') return 0;	//it is not RMT4 or RMT8
+	g_tracks4_8 = data & 0x0f;					// Store how many channels this module uses
+
+	// 5th byte: track length
+	data = mem[addr + 4];
+	g_Tracks.m_maxTrackLength = (data > 0) ? data : 256;	//0 => 256
+
+	// 6th byte: song speed
+	data = mem[addr + 5];
+	m_mainSpeed = data;
+	if (data < 1) return 0;						// there can be no zero speed
+
+	// 7th byte: Instrument speed
+	data = mem[addr + 6];
+	if (data < 1 || data > 8) return 0;			// Instrument speed is less than 1 or greater than 8 (note: should be max 4, but allows up to 8 and will only display a warning)
+	m_instrumentSpeed = data;
+
+	// 8th byte: RMT format version nr.
+	int version = mem[addr + 7];
 	if (version > RMTFORMATVERSION)	return 0;	//the byte version is above the current one
 
-	//Now g_tracks.m_maxtracklen is set to the value according to the header from the RMT module, 
-	//so they have to re-initialize the Tracks so that this value is set to them all as the length
+	// Now g_Tracks.m_maxTrackLength is set to the value in the RMT header, 
+	// so re-initialize the tracks to set all tracks to this new length
 	g_Tracks.InitTracks();
 
-	if (version >= 2)	//new RMT module format, introducing new saved parameters
-	{
-		g_ntsc = mem[adr + 0x08];
-		g_basenote = mem[adr + 0x09];
-		g_temperament = mem[adr + 0x0A];
-		g_trackLinePrimaryHighlight = mem[adr + 0x0B];
-		if (!g_trackLinePrimaryHighlight) g_trackLinePrimaryHighlight = 8;	//default
-		g_trackLineSecondaryHighlight = mem[adr + 0x0C];
-		if (!g_trackLineSecondaryHighlight) g_trackLineSecondaryHighlight = 4;	//default
-		memcpy(&g_basetuning, (mem + adr + 0x10), 8);
-		memcpy(&g_UNISON_L, (mem + adr + 0x18), 2);
-		memcpy(&g_UNISON_R, (mem + adr + 0x1A), 2);
-		memcpy(&g_MIN_2ND_L, (mem + adr + 0x1C), 2);
-		memcpy(&g_MIN_2ND_R, (mem + adr + 0x1E), 2);
-		memcpy(&g_MAJ_2ND_L, (mem + adr + 0x20), 2);
-		memcpy(&g_MAJ_2ND_R, (mem + adr + 0x22), 2);
-		memcpy(&g_MIN_3RD_L, (mem + adr + 0x24), 2);
-		memcpy(&g_MIN_3RD_R, (mem + adr + 0x26), 2);
-		memcpy(&g_MAJ_3RD_L, (mem + adr + 0x28), 2);
-		memcpy(&g_MAJ_3RD_R, (mem + adr + 0x2A), 2);
-		memcpy(&g_PERF_4TH_L, (mem + adr + 0x2C), 2);
-		memcpy(&g_PERF_4TH_R, (mem + adr + 0x2E), 2);
-		memcpy(&g_TRITONE_L, (mem + adr + 0x30), 2);
-		memcpy(&g_TRITONE_R, (mem + adr + 0x32), 2);
-		memcpy(&g_PERF_5TH_L, (mem + adr + 0x34), 2);
-		memcpy(&g_PERF_5TH_R, (mem + adr + 0x36), 2);
-		memcpy(&g_MIN_6TH_L, (mem + adr + 0x38), 2);
-		memcpy(&g_MIN_6TH_R, (mem + adr + 0x3A), 2);
-		memcpy(&g_MAJ_6TH_L, (mem + adr + 0x3C), 2);
-		memcpy(&g_MAJ_6TH_R, (mem + adr + 0x3E), 2);
-		memcpy(&g_MIN_7TH_L, (mem + adr + 0x40), 2);
-		memcpy(&g_MIN_7TH_R, (mem + adr + 0x42), 2);
-		memcpy(&g_MAJ_7TH_L, (mem + adr + 0x44), 2);
-		memcpy(&g_MAJ_7TH_R, (mem + adr + 0x46), 2);
-		memcpy(&g_OCTAVE_L, (mem + adr + 0x48), 2);
-		memcpy(&g_OCTAVE_R, (mem + adr + 0x4A), 2); 
-		adrpinstruments = mem[adr + 0x50] + (mem[adr + 0x51] << 8);
-		adrptrackslbs = mem[adr + 0x52] + (mem[adr + 0x53] << 8);
-		adrptrackshbs = mem[adr + 0x54] + (mem[adr + 0x55] << 8);
-		adrsong = mem[adr + 0x56] + (mem[adr + 0x57] << 8);
-	}
-	else				//old RMT module format, used in versions 0 and 1
-	{
-		//reset all tuning variables 
-		g_ntsc = 0;	//PAL region
-		g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
-		g_basenote = 3;	//3 = A-
-		g_temperament = 0;	//no temperament
-		g_trackLinePrimaryHighlight = 8;	//highlight every 8 rows
-		g_trackLineSecondaryHighlight = 4;	//highlight every 4 rows
-		g_UNISON_L = 1;	//ratio left
-		g_MIN_2ND_L = 40;
-		g_MAJ_2ND_L = 10;
-		g_MIN_3RD_L = 20;
-		g_MAJ_3RD_L = 5;
-		g_PERF_4TH_L = 4;
-		g_TRITONE_L = 60;
-		g_PERF_5TH_L = 3;
-		g_MIN_6TH_L = 30;
-		g_MAJ_6TH_L = 5;
-		g_MIN_7TH_L = 30;
-		g_MAJ_7TH_L = 15;
-		g_OCTAVE_L = 2;
-		g_UNISON_R = 1;	//ratio right
-		g_MIN_2ND_R = 38;
-		g_MAJ_2ND_R = 9;
-		g_MIN_3RD_R = 17;
-		g_MAJ_3RD_R = 4;
-		g_PERF_4TH_R = 3;
-		g_TRITONE_R = 43;
-		g_PERF_5TH_R = 2;
-		g_MIN_6TH_R = 19;
-		g_MAJ_6TH_R = 3;
-		g_MIN_7TH_R = 17;
-		g_MAJ_7TH_R = 8;
-		g_OCTAVE_R = 1;
+	// Get various pointers
+	int ptrInstruments = mem[addr + 8] + (mem[addr + 9] << 8);			// Get ptr to the instuments
+	int ptrTracksLow = mem[addr + 10] + (mem[addr + 11] << 8);			// Get ptr to tracks table low
+	int ptrTracksHigh = mem[addr + 12] + (mem[addr + 13] << 8);			// Get ptr to tracks table high
+	int ptrSong = mem[addr + 14] + (mem[addr + 15] << 8);				// Get ptr to track list (the song)
 
-		adrpinstruments = mem[adr + 8] + (mem[adr + 9] << 8);
-		adrptrackslbs = mem[adr + 10] + (mem[adr + 11] << 8);
-		adrptrackshbs = mem[adr + 12] + (mem[adr + 13] << 8);
-		adrsong = mem[adr + 14] + (mem[adr + 15] << 8);
-		MessageBox(g_hwnd, "Old RMT module version detected.\n\nDefault parameters will be set.", "RMT", MB_ICONINFORMATION);
-	}
+	// Calculate how long each of the sections are
+	int numInstruments = (ptrTracksLow - ptrInstruments) / 2;
+	int numTracks = (ptrTracksHigh - ptrTracksLow);
+	int lengthSong = endAddr - ptrSong;
 
-	int numinstrs = (adrptrackslbs - adrpinstruments) / 2;
-	int numtracks = (adrptrackshbs - adrptrackslbs);
-	int lensong = adrend - adrsong;
-
-	//decoding of individual instruments
-	for (i = 0; i < numinstrs; i++)
+	// Decoding of individual instruments
+	for (int instrumentNr = 0; instrumentNr < numInstruments; instrumentNr++)
 	{
-		int instrdata = mem[adrpinstruments + i * 2] + (mem[adrpinstruments + i * 2 + 1] << 8);
-		if (instrdata == 0) continue; //the omitted instruments have the pointer db, hb = 0
-		//othwewise it has a non-zero pointer
-		BOOL r;
+		// Get the ptr to an instruments configuration data
+		int ptrOneInstrument = mem[ptrInstruments + instrumentNr * 2] + (mem[ptrInstruments + instrumentNr * 2 + 1] << 8);
+
+		// Skip over empty instruments
+		if (ptrOneInstrument == 0) continue; // Empty instruments have a NULL ptr
+
+		// Depending on the file version load the instrument data into g_Instruments
 		if (version == 0)
-			r = g_Instruments.AtaV0ToInstr(mem + instrdata, i);
+			loadState = g_Instruments.AtaV0ToInstr(mem + ptrOneInstrument, instrumentNr);
 		else
-			r = g_Instruments.AtaToInstr(mem + instrdata, i);
-		g_Instruments.WasModified(i);	//writes to Atari ram
-		if (!r) return 0; //some problem with the instrument => END
-		instrloaded[i] = 1;
+			loadState = g_Instruments.AtaToInstr(mem + ptrOneInstrument, instrumentNr);
+
+		g_Instruments.WasModified(instrumentNr);	//writes to Atari ram
+
+		if (!loadState) return 0; // some problem with the instrument => END
+
+		// Mark the instrument as loaded
+		instrumentLoadedFlags[instrumentNr] = 1;
 	}
 
-	//decoding individual tracks
-	for (i = 0; i < numtracks; i++)
+	// Track data ptrs are split over two tables.  Low and high bytes, each indexed by the track number
+	// Decoding individual tracks
+	for (i = 0; i < numTracks; i++)
 	{
-		int track = i;
-		int trackdata = mem[adrptrackslbs + i] + (mem[adrptrackshbs + i] << 8);
-		if (trackdata == 0) continue; //omitted tracks have pointer db, hb = 0
+		int trackNr = i;
+		int ptrTrack = mem[ptrTracksLow + i] + (mem[ptrTracksHigh + i] << 8);
+		if (ptrTrack == 0) continue; // Omitted tracks have pointer of 0
 
-		//identify the end of the track by the address of the next track and at the last by the address of the song that follows the data of the last track
-		int trackend = 0;
-		for (j = i; j < numtracks; j++)
+		// Identify the end of the track by the starting address of the next track,
+		// and at the end by the starting address of the song data that follows the data of the last track
+		int ptrTrackEnd = 0;
+		for (j = i; j < numTracks; j++)
 		{
-			trackend = (j + 1 == numtracks) ? adrsong : mem[adrptrackslbs + j + 1] + (mem[adrptrackshbs + j + 1] << 8);
-			if (trackend != 0) break;
+			ptrTrackEnd = (j + 1 == numTracks) ? ptrSong : mem[ptrTracksLow + j + 1] + (mem[ptrTracksHigh + j + 1] << 8);
+			if (ptrTrackEnd != 0) break;
 			i++;	//continue from the next and skip the omitted one
 		}
-		int tracklen = trackend - trackdata;
-		//
-		BOOL r;
-		r = g_Tracks.AtaToTrack(mem + trackdata, tracklen, track);
-		if (!r) return 0; //some problem with the track => END
-		trackloaded[track] = 1;
+
+		int trackLength = ptrTrackEnd - ptrTrack;
+		if (!g_Tracks.AtaToTrack(mem + ptrTrack, trackLength, trackNr)) return 0; //some problem with the track => END
+		
+		// Mark the track as loaded
+		trackLoadedFlags[trackNr] = 1;
 	}
 
-	//decoded song
-	BOOL r;
-	r = AtaToSong(mem + adrsong, lensong, adrsong);
-	if (!r) return 0; //some problem with the song => END
+	// Decoded song
+	if (!AtaToSong(mem + ptrSong, lengthSong, ptrSong)) return 0; //some problem with the song => END
 
-	return 1;
+	return version;
 }
 
 //---
@@ -920,7 +997,7 @@ BOOL CSong::TrackDown(int lines, BOOL stoponlastline)
 
 	//GetSmallestMaxtracklen() seems to do a really good job for the navigation within the "compact" tracks display so far
 	int trlen = GetSmallestMaxtracklen(m_songactiveline);	//identify the true track length in song line 
-	if (!trlen) trlen = g_Tracks.m_maxtracklen;	//in case the smallest max track length returned zero (eg from a goto line)
+	if (!trlen) trlen = g_Tracks.m_maxTrackLength;	//in case the smallest max track length returned zero (eg from a goto line)
 
 	if (m_trackactiveline >= trlen)	//active line is equal or above max track length
 	{
@@ -1735,11 +1812,11 @@ void CSong::InstrPaste(int special)
 
 		case 7: //vol+env insert to cursor
 			int sx = m_instrclipboard.parameters[PAR_ENV_LENGTH] + 1;
-			if (ai.editEnvelopeX + sx > ENVCOLS) sx = ENVCOLS - ai.editEnvelopeX;
-			for (x = ENVCOLS - 2; x >= ai.editEnvelopeX; x--) //offset
+			if (ai.editEnvelopeX + sx > ENVELOPE_MAX_COLUMNS) sx = ENVELOPE_MAX_COLUMNS - ai.editEnvelopeX;
+			for (x = ENVELOPE_MAX_COLUMNS - 2; x >= ai.editEnvelopeX; x--) //offset
 			{
 				int i = x + sx;
-				if (i >= ENVCOLS) continue;
+				if (i >= ENVELOPE_MAX_COLUMNS) continue;
 				for (y = 0; y < ENVROWS; y++) ai.envelope[i][y] = ai.envelope[x][y];
 			}
 			for (x = 0; x < sx; x++) //insertion
@@ -1748,16 +1825,16 @@ void CSong::InstrPaste(int special)
 				for (y = 0; y < ENVROWS; y++) ai.envelope[i][y] = m_instrclipboard.envelope[x][y];
 			}
 			int i = ai.parameters[PAR_ENV_LENGTH] + sx;
-			if (i >= ENVCOLS) i = ENVCOLS - 1;
+			if (i >= ENVELOPE_MAX_COLUMNS) i = ENVELOPE_MAX_COLUMNS - 1;
 			ai.parameters[PAR_ENV_LENGTH] = i;
 			if (ai.parameters[PAR_ENV_GOTO] > ai.editEnvelopeX)
 			{
 				i = ai.parameters[PAR_ENV_GOTO] + sx;
-				if (i >= ENVCOLS) i = ENVCOLS - 1;
+				if (i >= ENVELOPE_MAX_COLUMNS) i = ENVELOPE_MAX_COLUMNS - 1;
 				ai.parameters[PAR_ENV_GOTO] = i;
 			}
 			i = ai.editEnvelopeX + sx;
-			if (i >= ENVCOLS) i = ENVCOLS - 1;
+			if (i >= ENVELOPE_MAX_COLUMNS) i = ENVELOPE_MAX_COLUMNS - 1;
 			ai.editEnvelopeX = i;
 			break;
 
@@ -2268,7 +2345,7 @@ int CSong::GetEffectiveMaxtracklen()
 	for (so = 0; so < SONGLEN; so++)
 	{
 		if (m_songgo[so] >= 0) continue; //go to line is ignored
-		int min = g_Tracks.m_maxtracklen;
+		int min = g_Tracks.m_maxTrackLength;
 		int p = 0;
 		for (i = 0; i < g_tracks4_8; i++)
 		{
@@ -2289,7 +2366,7 @@ int CSong::GetSmallestMaxtracklen(int songline)
 	//calculate the smallest track length used in this songline
 	int so = songline;
 	int max = 256;
-	int min = g_Tracks.m_maxtracklen;
+	int min = g_Tracks.m_maxTrackLength;
 	int p = 0;
 
 	if (m_songgo[so] >= 0)	return 0; //go to line is ignored
@@ -2333,7 +2410,7 @@ void CSong::ChangeMaxtracklen(int maxtracklen)
 	}
 	if (m_trackactiveline >= maxtracklen) m_trackactiveline = maxtracklen - 1;
 	if (m_trackplayline >= maxtracklen) m_trackplayline = maxtracklen - 1;
-	g_Tracks.m_maxtracklen = maxtracklen;
+	g_Tracks.m_maxTrackLength = maxtracklen;
 }
 
 void CSong::TracksAllBuildLoops(int& tracksmodified, int& beatsreduced)
@@ -2382,7 +2459,7 @@ void CSong::SongClearUnusedTracksAndParts(int& clearedtracks, int& truncatedtrac
 	{
 		if (m_songgo[sline] >= 0) continue;	//goto line is ignored
 
-		int nejkratsi = g_Tracks.m_maxtracklen;
+		int nejkratsi = g_Tracks.m_maxTrackLength;
 		for (ch = 0; ch < g_tracks4_8; ch++)
 		{
 			int n = m_song[sline][ch];
@@ -2828,7 +2905,7 @@ void CSong::RenumberAllInstruments(int type)
 BOOL CSong::SetBookmark()
 {
 	if (m_songactiveline >= 0 && m_songactiveline < SONGLEN
-		&& m_trackactiveline >= 0 && m_trackactiveline < g_Tracks.m_maxtracklen
+		&& m_trackactiveline >= 0 && m_trackactiveline < g_Tracks.m_maxTrackLength
 		&& m_speed >= 0)
 	{
 		m_bookmark.songline = m_songactiveline;
@@ -2860,7 +2937,7 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 			Atari_InitRMTRoutine();
 			m_songplayline = 0;
 			m_trackplayline = 0;
-			m_speed = m_mainspeed;
+			m_speed = m_mainSpeed;
 			break;
 		case MPLAY_FROM: //song from the current position
 			if (m_play && m_followplay) //is playing with follow play
@@ -3111,7 +3188,7 @@ BOOL CSong::PlayVBI()
 	if (m_play == MPLAY_BLOCK && m_trackplayline > m_trackplayblockend) m_trackplayline = m_trackplayblockstart;
 
 	//if none of the tracks end with "end", then it will end when reaching m_maxtracklen
-	if (m_trackplayline >= g_Tracks.m_maxtracklen)
+	if (m_trackplayline >= g_Tracks.m_maxTrackLength)
 		SongPlayNextLine();
 
 	PlayBeat();	//1 pattern track line play
@@ -3162,7 +3239,7 @@ void CSong::TimerRoutine()
 	PlayPressedTones();
 
 	//--- Rendered Sound ---//
-	g_Pokey.RenderSound1_50(m_instrspeed);		//rendering of a piece of sample (1 / 50s = 20ms), instrspeed
+	g_Pokey.RenderSound1_50(m_instrumentSpeed);		//rendering of a piece of sample (1 / 50s = 20ms), instrspeed
 
 	if (m_play) g_playtime++;					//if the song is currently playing, increment the timer
 
@@ -3193,118 +3270,3 @@ void CSong::TimerRoutine()
 	}
 	g_timerroutineprocessed = 1;	//TimerRoutine took place
 }
-
-BOOL CInstruments::AtaV0ToInstr(unsigned char* ata, int instr)
-{
-	//OLD INSTRUMENT VERSION
-	TInstrument& ai = m_instr[instr];
-	int i, j;
-	//0-7 table
-	for (i = 0; i <= 7; i++) ai.noteTable[i] = ata[i];
-	//8 ;instr len  0-31 *8, table len  0-7  (iiii ittt)
-	int* par = ai.parameters;
-	int len = par[PAR_ENV_LENGTH] = ata[8] >> 3;
-	par[PAR_TBL_LENGTH] = ata[8] & 0x07;
-	par[PAR_ENV_GOTO] = ata[9] >> 3;
-	par[PAR_TBL_GOTO] = ata[9] & 0x07;
-	par[PAR_TBL_TYPE] = ata[10] >> 7;
-	par[PAR_TBL_MODE] = (ata[10] >> 6) & 0x01;
-	par[PAR_TBL_SPEED] = ata[10] & 0x3f;
-	par[PAR_VOL_FADEOUT] = ata[11];
-	par[PAR_VOL_MIN] = ata[12] >> 4;
-	//par[PAR_POLY9]	= (ata[12]>>1) & 0x01;
-	//par[PAR_15KHZ]	= ata[12] & 0x01;
-	par[PAR_AUDCTL_15KHZ] = ata[12] & 0x01;
-	par[PAR_AUDCTL_HPF_CH2] = 0;
-	par[PAR_AUDCTL_HPF_CH1] = 0;
-	par[PAR_AUDCTL_JOIN_3_4] = 0;
-	par[PAR_AUDCTL_JOIN_1_2] = 0;
-	par[PAR_AUDCTL_179_CH3] = 0;
-	par[PAR_AUDCTL_179_CH1] = 0;
-	par[PAR_AUDCTL_POLY9] = (ata[12] >> 1) & 0x01;
-	//
-	par[PAR_DELAY] = ata[13];
-	par[PAR_VIBRATO] = ata[14] & 0x03;
-	par[PAR_FREQ_SHIFT] = ata[15];
-	//
-	BOOL stereo = (g_tracks4_8 > 4);
-	for (i = 0, j = 16; i <= len; i++, j += 3)
-	{
-		int* env = (int*)&ai.envelope[i];
-		env[ENV_VOLUMER] = (stereo) ? (ata[j] >> 4) : (ata[j] & 0x0f); //if mono, then VOLUME R = VOLUME L
-		env[ENV_VOLUMEL] = ata[j] & 0x0f;
-		env[ENV_FILTER] = ata[j + 1] >> 7;
-		env[ENV_COMMAND] = (ata[j + 1] >> 4) & 0x07;
-		env[ENV_DISTORTION] = ata[j + 1] & 0x0e;	//even numbers 0,2,4, .., 14
-		env[ENV_PORTAMENTO] = ata[j + 1] & 0x01;
-		env[ENV_X] = ata[j + 2] >> 4;
-		env[ENV_Y] = ata[j + 2] & 0x0f;
-	}
-	return 1;
-}
-
-BOOL CInstruments::AtaToInstr(unsigned char* ata, int instr)
-{
-	TInstrument& ai = m_instr[instr];
-	int i, j;
-
-	int tablen, tabgo, envlen, envgo;
-	tablen = ata[0] - 12;
-	tabgo = ata[1] - 12;
-	envlen = (ata[2] - (ata[0] + 1)) / 3;
-	envgo = (ata[3] - (ata[0] + 1)) / 3;
-
-	//check the scope of the tables and envelope
-	if (tablen >= TABLEN || tabgo > tablen || envlen >= ENVCOLS || envgo > envlen)
-	{
-		//tables exceeds boundary or table go exceeds tables or envelope length ...
-		return 0;
-	}
-
-	//only if the ranges are ok, they change the content of the instrument
-	int* par = ai.parameters;
-	par[PAR_TBL_LENGTH] = tablen;
-	par[PAR_TBL_GOTO] = tabgo;
-	par[PAR_ENV_LENGTH] = envlen;
-	par[PAR_ENV_GOTO] = envgo;
-	//
-	par[PAR_TBL_TYPE] = ata[4] >> 7;
-	par[PAR_TBL_MODE] = (ata[4] >> 6) & 0x01;
-	par[PAR_TBL_SPEED] = ata[4] & 0x3f;
-	//
-	par[PAR_AUDCTL_15KHZ] = ata[5] & 0x01;
-	par[PAR_AUDCTL_HPF_CH2] = (ata[5] >> 1) & 0x01;
-	par[PAR_AUDCTL_HPF_CH1] = (ata[5] >> 2) & 0x01;
-	par[PAR_AUDCTL_JOIN_3_4] = (ata[5] >> 3) & 0x01;
-	par[PAR_AUDCTL_JOIN_1_2] = (ata[5] >> 4) & 0x01;
-	par[PAR_AUDCTL_179_CH3] = (ata[5] >> 5) & 0x01;
-	par[PAR_AUDCTL_179_CH1] = (ata[5] >> 6) & 0x01;
-	par[PAR_AUDCTL_POLY9] = (ata[5] >> 7) & 0x01;
-	//
-	par[PAR_VOL_FADEOUT] = ata[6];
-	par[PAR_VOL_MIN] = ata[7] >> 4;
-	par[PAR_DELAY] = ata[8];
-	par[PAR_VIBRATO] = ata[9] & 0x03;
-	par[PAR_FREQ_SHIFT] = ata[10];
-
-	//0-31 table
-	for (i = 0; i <= par[PAR_TBL_LENGTH]; i++) ai.noteTable[i] = ata[12 + i];
-
-	//envelope
-	BOOL stereo = (g_tracks4_8 > 4);
-	for (i = 0, j = ata[0] + 1; i <= par[PAR_ENV_LENGTH]; i++, j += 3)
-	{
-		int* env = (int*)&ai.envelope[i];
-		env[ENV_VOLUMER] = (stereo) ? (ata[j] >> 4) : (ata[j] & 0x0f); //if mono, then VOLUME R = VOLUME L
-		env[ENV_VOLUMEL] = ata[j] & 0x0f;
-		env[ENV_FILTER] = ata[j + 1] >> 7;
-		env[ENV_COMMAND] = (ata[j + 1] >> 4) & 0x07;
-		env[ENV_DISTORTION] = ata[j + 1] & 0x0e;	//even numbers 0,2,4,...E
-		env[ENV_PORTAMENTO] = ata[j + 1] & 0x01;
-		env[ENV_X] = ata[j + 2] >> 4;
-		env[ENV_Y] = ata[j + 2] & 0x0f;
-	}
-	return 1;
-}
-
-

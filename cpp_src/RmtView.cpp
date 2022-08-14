@@ -256,8 +256,8 @@ CRmtView::CRmtView()
 
 CRmtView::~CRmtView()
 {
-	g_mem_dc->SelectObject(m_penorig);		//The return of the original Pen
-	delete m_pen1;							//unloaded m_pen1
+	if (g_mem_dc) g_mem_dc->SelectObject(m_penorig);		//The return of the original Pen
+	if (m_pen1) delete m_pen1;							//unloaded m_pen1
 }
 
 void CRmtView::OnDestroy() 
@@ -881,7 +881,7 @@ void CRmtView::OnInitialUpdate()
 
 	//command line
 	CString cmdl = GetCommandLine();
-	CString commandlinefilename="";
+	CString commandLineFilename = "";
 	g_prgpath = "";
 	g_lastloadpath_songs = g_lastloadpath_instruments = g_lastloadpath_tracks = "";
 	if (cmdl!="")
@@ -902,7 +902,7 @@ void CRmtView::OnInitialUpdate()
 		GetCommandLineItem(cmdl,i1,i2);	//parameter
 		if (i1!=i2)
 		{
-			commandlinefilename=cmdl.Mid(i1,i2-i1);
+			commandLineFilename = cmdl.Mid(i1, i2 - i1);
 		}
 	}
 	CDC *dc=GetDC();
@@ -990,12 +990,12 @@ void CRmtView::OnInitialUpdate()
 	g_Song.ChangeTimer((g_ntsc)? 17 : 20);
 
 	//If the tracker was started with an argument, it attempts to load the file, and will return an error if the extention isn't .rmt. 
-	//When not argument is passed, the initialisation continues like normal.
-	if (commandlinefilename != "")
+	//When no argument is passed, the initialisation continues like normal.
+	if (commandLineFilename != "")
 	{
-		if (commandlinefilename.Right(4) == ".rmt")
+		if (commandLineFilename.Right(4) == ".rmt")
 		{
-			g_Song.FileOpen((LPCTSTR)commandlinefilename);
+			g_Song.FileOpen((LPCTSTR)commandLineFilename, FALSE);
 		}
 		else
 		{
@@ -1150,7 +1150,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	{
 		//track line highlights
 		BOOL r = 0;
-		int ma = (g_Tracks.m_maxtracklen) / 2;
+		int ma = (g_Tracks.m_maxTrackLength) / 2;
 		int px = (point.x - 432 - 4) / 8;
 		SetCursor(m_cursorGoto);
 		if (mousebutt & MK_LBUTTON)
@@ -2940,7 +2940,7 @@ void CRmtView::OnSongSongchangemaximallengthoftracks()
 	int ma=g_Song.GetEffectiveMaxtracklen();
 
 	CChangeMaxtracklenDlg dlg;
-	dlg.m_info.Format("Current value: %i\nComputed effective value for current song: %i",g_Tracks.m_maxtracklen,ma);
+	dlg.m_info.Format("Current value: %i\nComputed effective value for current song: %i",g_Tracks.m_maxTrackLength,ma);
 	dlg.m_maxtracklen=ma;
 	if (dlg.DoModal()==IDOK)
 	{
@@ -3007,7 +3007,7 @@ void CRmtView::OnSongSizeoptimization()
 	int tracksmodified=0,loopsexpanded=0;
 	g_Song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
 	//find the effective length of maxtracklen and shorten it if necessary
-	int maxtracklen = g_Tracks.m_maxtracklen;
+	int maxtracklen = g_Tracks.m_maxTrackLength;
 	int effemaxtracklen = g_Song.GetEffectiveMaxtracklen();
 	if (effemaxtracklen<maxtracklen)
 	{

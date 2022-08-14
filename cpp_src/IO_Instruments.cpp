@@ -59,19 +59,19 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 			//instrument name
 			ou.write((char*)ai.name, sizeof(ai.name));
 
-			char bfpar[PARCOUNT], bfenv[ENVCOLS][ENVROWS], bftab[TABLEN];
+			char bfpar[PARCOUNT], bfenv[ENVELOPE_MAX_COLUMNS][ENVROWS], bftab[NOTE_TABLE_MAX_LEN];
 			//
 			for (j = 0; j < PARCOUNT; j++) bfpar[j] = ai.parameters[j];
 			ou.write(bfpar, sizeof(bfpar));
 			//
 			for (k = 0; k < ENVROWS; k++)
 			{
-				for (j = 0; j < ENVCOLS; j++)
+				for (j = 0; j < ENVELOPE_MAX_COLUMNS; j++)
 					bfenv[j][k] = ai.envelope[j][k];
 			}
 			ou.write((char*)bfenv, sizeof(bfenv));
 			//
-			for (j = 0; j < TABLEN; j++) bftab[j] = ai.noteTable[j];
+			for (j = 0; j < NOTE_TABLE_MAX_LEN; j++) bftab[j] = ai.noteTable[j];
 			ou.write(bftab, sizeof(bftab));
 			//
 			//+editing options:
@@ -110,7 +110,7 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 			//envelope
 			for (k = 0; k < ENVROWS; k++)
 			{
-				char bf[ENVCOLS + 1];
+				char bf[ENVELOPE_MAX_COLUMNS + 1];
 				for (j = 0; j <= ai.parameters[PAR_ENV_LENGTH]; j++)
 				{
 					bf[j] = CharL4(ai.envelope[j][k]);
@@ -169,21 +169,21 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 			//instrument name
 			in.read((char*)ai.name, sizeof(ai.name));
 
-			char bfpar[PARCOUNT], bfenv[ENVCOLS][ENVROWS], bftab[TABLEN];
+			char bfpar[PARCOUNT], bfenv[ENVELOPE_MAX_COLUMNS][ENVROWS], bftab[NOTE_TABLE_MAX_LEN];
 			int j, k;
 			//
 			in.read(bfpar, sizeof(bfpar));
 			for (j = 0; j < PARCOUNT; j++) ai.parameters[j] = bfpar[j];
 			//
 			in.read((char*)bfenv, sizeof(bfenv));
-			for (j = 0; j < ENVCOLS; j++)
+			for (j = 0; j < ENVELOPE_MAX_COLUMNS; j++)
 			{
 				for (k = 0; k < ENVROWS; k++)
 					ai.envelope[j][k] = bfenv[j][k];
 			}
 			//
 			in.read((char*)bftab, sizeof(bftab));
-			for (j = 0; j < TABLEN; j++) ai.noteTable[j] = bftab[j];
+			for (j = 0; j < NOTE_TABLE_MAX_LEN; j++) ai.noteTable[j] = bftab[j];
 			//
 			WasModified(instr);	//writes to Atari mem
 			//
@@ -272,7 +272,7 @@ int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
 				{
 					if (strcmp(line, shenv[j].fieldName) == 0)
 					{
-						for (k = 0; (a = value[k]) && k < ENVCOLS; k++)
+						for (k = 0; (a = value[k]) && k < ENVELOPE_MAX_COLUMNS; k++)
 						{
 							v = Hexstr(&a, 1);
 							if (v < 0) goto NextInstrLine;
@@ -455,4 +455,128 @@ void CInstruments::WasModified(int instr)
 	g_rmtroutine = 1;			//RMT routines are turned on
 
 	RecalculateFlag(instr);
+}
+
+
+BOOL CInstruments::AtaV0ToInstr(unsigned char* ata, int instr)
+{
+	//OLD INSTRUMENT VERSION
+	TInstrument& ai = m_instr[instr];
+	int i, j;
+	//0-7 table
+	for (i = 0; i <= 7; i++) ai.noteTable[i] = ata[i];
+	//8 ;instr len  0-31 *8, table len  0-7  (iiii ittt)
+	int* par = ai.parameters;
+	int len = par[PAR_ENV_LENGTH] = ata[8] >> 3;
+	par[PAR_TBL_LENGTH] = ata[8] & 0x07;
+	par[PAR_ENV_GOTO] = ata[9] >> 3;
+	par[PAR_TBL_GOTO] = ata[9] & 0x07;
+	par[PAR_TBL_TYPE] = ata[10] >> 7;
+	par[PAR_TBL_MODE] = (ata[10] >> 6) & 0x01;
+	par[PAR_TBL_SPEED] = ata[10] & 0x3f;
+	par[PAR_VOL_FADEOUT] = ata[11];
+	par[PAR_VOL_MIN] = ata[12] >> 4;
+	//par[PAR_POLY9]	= (ata[12]>>1) & 0x01;
+	//par[PAR_15KHZ]	= ata[12] & 0x01;
+	par[PAR_AUDCTL_15KHZ] = ata[12] & 0x01;
+	par[PAR_AUDCTL_HPF_CH2] = 0;
+	par[PAR_AUDCTL_HPF_CH1] = 0;
+	par[PAR_AUDCTL_JOIN_3_4] = 0;
+	par[PAR_AUDCTL_JOIN_1_2] = 0;
+	par[PAR_AUDCTL_179_CH3] = 0;
+	par[PAR_AUDCTL_179_CH1] = 0;
+	par[PAR_AUDCTL_POLY9] = (ata[12] >> 1) & 0x01;
+	//
+	par[PAR_DELAY] = ata[13];
+	par[PAR_VIBRATO] = ata[14] & 0x03;
+	par[PAR_FREQ_SHIFT] = ata[15];
+	//
+	BOOL stereo = (g_tracks4_8 > 4);
+	for (i = 0, j = 16; i <= len; i++, j += 3)
+	{
+		int* env = (int*)&ai.envelope[i];
+		env[ENV_VOLUMER] = (stereo) ? (ata[j] >> 4) : (ata[j] & 0x0f); //if mono, then VOLUME R = VOLUME L
+		env[ENV_VOLUMEL] = ata[j] & 0x0f;
+		env[ENV_FILTER] = ata[j + 1] >> 7;
+		env[ENV_COMMAND] = (ata[j + 1] >> 4) & 0x07;
+		env[ENV_DISTORTION] = ata[j + 1] & 0x0e;	//even numbers 0,2,4, .., 14
+		env[ENV_PORTAMENTO] = ata[j + 1] & 0x01;
+		env[ENV_X] = ata[j + 2] >> 4;
+		env[ENV_Y] = ata[j + 2] & 0x0f;
+	}
+	return 1;
+}
+
+/// <summary>
+/// Load an instrument from a binary location and parse the data.
+/// </summary>
+/// <param name="mem">Start of the instrument definition structure</param>
+/// <param name="instrumentNr">Which instrument # is this</param>
+/// <returns></returns>
+BOOL CInstruments::AtaToInstr(unsigned char* mem, int instrumentNr)
+{
+	TInstrument& ai = m_instr[instrumentNr];
+
+	int noteTableLength = mem[0] - 12;
+	int noteTableGoto = mem[1] - 12;
+	int envelopeLength = (mem[2] - (mem[0] + 1)) / 3;
+	int envelopeGoto = (mem[3] - (mem[0] + 1)) / 3;
+
+	// Check the scope of the tables and envelope
+	if (noteTableLength >= NOTE_TABLE_MAX_LEN || noteTableGoto > noteTableLength ||
+		envelopeLength >= ENVELOPE_MAX_COLUMNS || envelopeGoto > envelopeLength)
+	{
+		// Note table and evelope parameters are out of bounds
+		return 0;
+	}
+
+	// Transfer the Atari memory data into the instrument C-structures
+	int* par = ai.parameters;
+	par[PAR_TBL_LENGTH] = noteTableLength;
+	par[PAR_TBL_GOTO] = noteTableGoto;
+	par[PAR_ENV_LENGTH] = envelopeLength;
+	par[PAR_ENV_GOTO] = envelopeGoto;
+	// Set the Note table speed, type and mode. 0 <= speed <= 63, type
+	par[PAR_TBL_TYPE] = mem[4] >> 7;			// 0 = notes, 1 = frequencies
+	par[PAR_TBL_MODE] = (mem[4] >> 6) & 0x01;	// 0 = set, 1 = add
+	par[PAR_TBL_SPEED] = mem[4] & 0x3f;			// play speed
+	// Set the AUDCTL register
+	par[PAR_AUDCTL_15KHZ] = mem[5] & 0x01;
+	par[PAR_AUDCTL_HPF_CH2] = (mem[5] >> 1) & 0x01;
+	par[PAR_AUDCTL_HPF_CH1] = (mem[5] >> 2) & 0x01;
+	par[PAR_AUDCTL_JOIN_3_4] = (mem[5] >> 3) & 0x01;
+	par[PAR_AUDCTL_JOIN_1_2] = (mem[5] >> 4) & 0x01;
+	par[PAR_AUDCTL_179_CH3] = (mem[5] >> 5) & 0x01;
+	par[PAR_AUDCTL_179_CH1] = (mem[5] >> 6) & 0x01;
+	par[PAR_AUDCTL_POLY9] = (mem[5] >> 7) & 0x01;
+	//
+	par[PAR_VOL_FADEOUT] = mem[6];
+	par[PAR_VOL_MIN] = mem[7] >> 4;
+	par[PAR_DELAY] = mem[8];
+	par[PAR_VIBRATO] = mem[9] & 0x03;
+	par[PAR_FREQ_SHIFT] = mem[10];
+
+	// 0-31 table
+	for (int i = 0; i <= par[PAR_TBL_LENGTH]; i++) ai.noteTable[i] = mem[12 + i];
+
+	// Envelope
+	BOOL stereo = (g_tracks4_8 > 4);
+	int ptrEnvelopeEntry = mem[0] + 1;			// location in Atari memory where envelope data is parsed from
+
+	for (int i = 0; i <= par[PAR_ENV_LENGTH]; i++, ptrEnvelopeEntry += 3)
+	{
+		// Take the 3 bytes of envelope data and parse them into the 8 data fields
+		int* env = (int*)&ai.envelope[i];
+		env[ENV_VOLUMER] = (stereo) ? (mem[ptrEnvelopeEntry] >> 4) : (mem[ptrEnvelopeEntry] & 0x0f); //if mono, then VOLUME R = VOLUME L
+		env[ENV_VOLUMEL] = mem[ptrEnvelopeEntry] & 0x0f;
+
+		env[ENV_FILTER] = mem[ptrEnvelopeEntry + 1] >> 7;
+		env[ENV_COMMAND] = (mem[ptrEnvelopeEntry + 1] >> 4) & 0x07;
+		env[ENV_DISTORTION] = mem[ptrEnvelopeEntry + 1] & 0x0e;	//even numbers 0,2,4,...E
+		env[ENV_PORTAMENTO] = mem[ptrEnvelopeEntry + 1] & 0x01;
+
+		env[ENV_X] = mem[ptrEnvelopeEntry + 2] >> 4;
+		env[ENV_Y] = mem[ptrEnvelopeEntry + 2] & 0x0f;
+	}
+	return 1;
 }
