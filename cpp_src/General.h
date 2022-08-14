@@ -51,6 +51,10 @@
 #define PROVE_POKEY_EXPLORER_MODE	4		// Ctrl + Shift + F5
 #define PROVE_MODE_MAX				4		// <-- Adjust as you add/remove modes
 
+// ----------------------------------------------------------------------------
+// Keyboard layouts that may be used with RMT for Notes input
+#define KEYBOARD_QWERTY	0
+#define KEYBOARD_AZERTY	1
 
 // ----------------------------------------------------------------------------
 // TODO: add more keys definition to simplify things

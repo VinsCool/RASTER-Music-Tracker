@@ -163,6 +163,7 @@ UINT g_mousebutt = 0;			//mouse button
 int g_mouselastbutt = 0;
 int g_mouse_px = 0;
 int g_mouse_py = 0;
+int g_lastKeyPressed = 0;		//for debugging vk input
 
 CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
 CString g_lastloadpath_songs;		//the path of the last song loaded
@@ -173,7 +174,7 @@ CString g_path_songs;		//default path for songs
 CString g_path_instruments;	//default path for instruments
 CString g_path_tracks;		//default path for tracks
 
-int g_keyboard_layout = 0;	//1 yes, 0 no, not be useful anymore... should be deleted
+int g_keyboard_layout = 1;	//Keyboard layout is used by RMT. eg: QWERTY, AZERTY, etc
 BOOL g_keyboard_swapenter = 0;	//1 yes, 0 no, probably not needed anymore but will be kept for now
 BOOL g_keyboard_playautofollow = 1;	//1 yes, 0 no
 BOOL g_keyboard_updowncontinue = 1;	//1 yes, 0 no

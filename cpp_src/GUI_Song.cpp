@@ -1135,6 +1135,10 @@ void CSong::DrawTracks()
 	TextXY(s, TRACKS_X + 112 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
 	sprintf(s, "OL = %02d", g_tracklines / 2);
 	TextXY(s, TRACKS_X + 128 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+
+	//debugging the way vk is processed for keyboard layout configuration
+	sprintf(s, "VK = %02X", g_lastKeyPressed);
+	TextXY(s, TRACKS_X + 144 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
 }
 
 void CSong::DrawInstrument()

@@ -498,10 +498,10 @@ void CRmtView::ReadConfig()
 		//keyboard
 		if (NAME("KEYBOARD_LAYOUT")) g_keyboard_layout = atoi(value);
 		else
-		if (NAME("KEYBOARD_PLAYAUTOFOLLOW")) g_keyboard_playautofollow = atoi(value);
-		else
-		if (NAME("KEYBOARD_SWAPENTER")) g_keyboard_swapenter = atoi(value);
-		else
+		//if (NAME("KEYBOARD_PLAYAUTOFOLLOW")) g_keyboard_playautofollow = atoi(value);
+		//else
+		//if (NAME("KEYBOARD_SWAPENTER")) g_keyboard_swapenter = atoi(value);
+		//else
 		if (NAME("KEYBOARD_UPDOWNCONTINUE")) g_keyboard_updowncontinue = atoi(value);
 		else
 		if (NAME("KEYBOARD_REMEMBEROCTAVESANDVOLUMES")) g_keyboard_RememberOctavesAndVolumes = atoi(value);
@@ -606,8 +606,8 @@ void CRmtView::WriteConfig()
 	ou << "NOHWSOUNDBUFFER=" << g_nohwsoundbuffer << endl;
 	//keyboard
 	ou << "KEYBOARD_LAYOUT=" << g_keyboard_layout << endl;
-	ou << "KEYBOARD_PLAYAUTOFOLLOW=" << g_keyboard_playautofollow << endl;
-	ou << "KEYBOARD_SWAPENTER=" << g_keyboard_swapenter << endl;
+	//ou << "KEYBOARD_PLAYAUTOFOLLOW=" << g_keyboard_playautofollow << endl;
+	//ou << "KEYBOARD_SWAPENTER=" << g_keyboard_swapenter << endl;
 	ou << "KEYBOARD_UPDOWNCONTINUE=" << g_keyboard_updowncontinue << endl;
 	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES=" << g_keyboard_RememberOctavesAndVolumes << endl;
 	ou << "KEYBOARD_ESCRESETATARISOUND=" << g_keyboard_escresetatarisound << endl;
@@ -655,7 +655,7 @@ void CRmtView::OnViewConfiguration()
 	CConfigDlg dlg;
 	//general
 	dlg.m_scaling_percentage = g_scaling_percentage;
-	dlg.m_tuning = g_basetuning;
+	//dlg.m_tuning = g_basetuning;
 	dlg.m_tracklinehighlight = g_trackLinePrimaryHighlight;
 	dlg.m_tracklinealtnumbering = g_tracklinealtnumbering;
 	dlg.m_displayflatnotes = g_displayflatnotes;
@@ -667,8 +667,8 @@ void CRmtView::OnViewConfiguration()
 	//keyboard
 	dlg.m_keyboard_layout = g_keyboard_layout;
 	dlg.m_keyboard_escresetatarisound = g_keyboard_escresetatarisound;
-	dlg.m_keyboard_playautofollow = g_keyboard_playautofollow;
-	dlg.m_keyboard_swapenter = g_keyboard_swapenter;
+	//dlg.m_keyboard_playautofollow = g_keyboard_playautofollow;
+	//dlg.m_keyboard_swapenter = g_keyboard_swapenter;
 	dlg.m_keyboard_updowncontinue = g_keyboard_updowncontinue;
 	dlg.m_keyboard_rememberoctavesandvolumes = g_keyboard_RememberOctavesAndVolumes;
 	dlg.m_keyboard_askwhencontrol_s = g_keyboard_askwhencontrol_s;
@@ -721,8 +721,8 @@ void CRmtView::OnViewConfiguration()
 		//keyboard
 		g_keyboard_layout = dlg.m_keyboard_layout;
 		g_keyboard_escresetatarisound = dlg.m_keyboard_escresetatarisound;
-		g_keyboard_playautofollow = dlg.m_keyboard_playautofollow;
-		g_keyboard_swapenter = dlg.m_keyboard_swapenter;
+		//g_keyboard_playautofollow = dlg.m_keyboard_playautofollow;
+		//g_keyboard_swapenter = dlg.m_keyboard_swapenter;
 		g_keyboard_updowncontinue=dlg.m_keyboard_updowncontinue;
 		g_keyboard_RememberOctavesAndVolumes = dlg.m_keyboard_rememberoctavesandvolumes;
 		g_keyboard_askwhencontrol_s = dlg.m_keyboard_askwhencontrol_s;
@@ -1558,6 +1558,8 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			vk=FlaToCha[nfb-71];
 		}
 	}
+
+	g_lastKeyPressed = vk;	//debug key reading for setting up keyboard layouts withought having to guess which key is where
 
 	switch(vk)
 	{

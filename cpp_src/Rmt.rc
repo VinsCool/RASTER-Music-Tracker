@@ -216,14 +216,9 @@ BEGIN
     CONTROL         "Don't use hardware soundbuffer",IDC_NOHWSOUNDBUFFER,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,122,51,122,10
     CONTROL         "Smooth scroll during playback",IDC_SMOOTH_SCROLL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,64,110,10
-    LTEXT           "A-4 tuning (Hz)",IDC_STATIC,14,77,48,8
     DEFPUSHBUTTON   "OK",IDOK,139,255,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,194,255,50,14
     COMBOBOX        IDC_KEYBOARD_LAYOUT,92,105,146,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    CONTROL         "*Hotkeys play with autofollow (SHIFT key for no autofollow)",IDC_KEYBOARD_PLAYAUTOFOLLOW,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,120,202,10
-    CONTROL         "*Swap replay note/all notes function (Enter/Control+Enter hotkeys)",IDC_KEYBOARD_SWAPENTER,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,131,229,10
     CONTROL         "Move to previous/next song line while track boundaries are crossed",IDC_KEYBOARD_UPDOWNCONTINUE,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,142,229,10
     CONTROL         "Remember octaves and volumes separately for each instrument",IDC_KEYBOARD_REMEMBEROCTAVESANDVOLUMES,
@@ -241,11 +236,8 @@ BEGIN
     LTEXT           "MIDI IN device",IDC_STATIC,13,212,52,8
     GROUPBOX        "Keyboard",IDC_STATIC,7,97,237,100
     GROUPBOX        "General",IDC_STATIC,7,7,237,88
-    LTEXT           "F1-F8 keyboard layout:",IDC_STATIC,13,107,76,8
+    LTEXT           "Keyboard layout:",IDC_STATIC,13,107,76,8
     PUSHBUTTON      "Paths...",IDC_PATHS,7,255,29,14
-    LTEXT           "*This option will be changed or removed in an upcoming update",IDC_STATIC,13,186,204,8
-    EDITTEXT        IDC_TUNING,63,75,70,12,WS_DISABLED
-    LTEXT           "eg: 440, 440.83751645933, 432,\n443.9, 444.895778867913, etc",IDC_STATIC,136,74,104,16
 END
 
 IDD_EFFECTS DIALOG 0, 0, 280, 156
