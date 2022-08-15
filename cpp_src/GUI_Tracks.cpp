@@ -119,7 +119,7 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 		if (line == aline && isactive) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//blue or red
 		else if (line == pline) color = TEXT_COLOR_YELLOW;	//yellow
 		else color = TEXT_COLOR_GRAY;	//gray
-		if (oob) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
+		if (oob) color = TEXT_COLOR_DARK_GRAY;	//darker gray, out of bounds
 			TextXY(" \x8\x8\x8 \x8\x8 \x8\x8 \x8\x8\x8", x, y, color);	//empty track line
 		return 0;
 	}
@@ -192,10 +192,9 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 	else if (line == pline) color = TEXT_COLOR_YELLOW;	//yellow
 	else if (line >= len) color = TEXT_COLOR_GRAY;	//gray
 	else if ((line % g_trackLinePrimaryHighlight) == 0 || (line % g_trackLineSecondaryHighlight) == 0)
-		color = ((line % g_trackLinePrimaryHighlight) == 0) ? TEXT_COLOR_CYAN : TEXT_COLOR_PURPLE;	//cyan or purple
-	//else if ((line % g_trackLinePrimaryHighlight) == 0) color = TEXT_COLOR_CYAN;	//cyan
+		color = ((line % g_trackLinePrimaryHighlight) == 0) ? TEXT_COLOR_CYAN : TEXT_COLOR_GREEN;	//cyan or green
 	else color = TEXT_COLOR_WHITE;	//white
-	if (oob) color = TEXT_COLOR_TURQUOISE;
+	if (oob) color = TEXT_COLOR_DARK_GRAY;
 
 	if (g_activepart == PART_TRACKS && line < len && (line == aline && isactive) && !oob)
 	{
@@ -206,7 +205,7 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 
 	if (endline)
 	{
-		TextXY("\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B", x + 7, y + 13, (oob) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+		TextXY("\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B", x + 7, y + 13, (oob) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_WHITE);
 	}
 
 	return 1;
