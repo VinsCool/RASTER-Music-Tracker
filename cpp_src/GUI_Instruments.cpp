@@ -250,7 +250,7 @@ void CInstruments::DrawName(int instrNr)
 {
 	char* ptrName = GetName(instrNr);
 	int cursorPos = -1;
-	int color = TEXT_COLOR_LIGHT_GRAY;
+	int color = TEXT_COLOR_TURQUOISE;
 
 	if (g_activepart == PART_INSTRUMENTS && m_instr[instrNr].activeEditSection == INSTRUMENT_SECTION_NAME)  //is an active change of instrument name
 	{

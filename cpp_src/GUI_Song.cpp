@@ -752,11 +752,11 @@ void CSong::DrawSong()
 		if ((j = m_songgo[line]) >= 0)	//there is a GO to line
 		{
 			// Draw: "Go to line"
-			color = (isOutOfBounds) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_LIGHT_GRAY;	//turquoise text, blank tiles to mask text if needed, else gray if out of bounds
+			color = (isOutOfBounds) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_TURQUOISE;	//turquoise text, blank tiles to mask text if needed, else gray if out of bounds
 			TextXY("Go\x1fto\x1fline", SONG_OFFSET + 16, y, color);
 
 			// Draw: "XX"
-			color = (isOutOfBounds) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE;	//white, for the number used, or gray if out of bounds
+			color = (isOutOfBounds) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_WHITE;	//white, for the number used, or gray if out of bounds
 			if (line == m_songactiveline)
 			{
 				if (g_prove) color = (g_activepart == PART_SONG) ? COLOR_SELECTED_PROVE : TEXT_COLOR_BLUE;
@@ -775,7 +775,7 @@ void CSong::DrawSong()
 			szBuffer[2] = ':';
 			szBuffer[3] = 0;
 			color = (line == m_songplayline) ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
-			if (isOutOfBounds) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
+			if (isOutOfBounds) color = TEXT_COLOR_DARK_GRAY;	//darker gray, out of bounds
 			TextXY(szBuffer, SONG_OFFSET + 16, y, color);
 
 			// For each track that is part of the song draw its number
@@ -795,7 +795,7 @@ void CSong::DrawSong()
 					else color = (g_activepart == PART_SONG) ? COLOR_SELECTED : TEXT_COLOR_RED;
 				}
 				else color = (line == m_songplayline) ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
-				if (isOutOfBounds) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
+				if (isOutOfBounds) color = TEXT_COLOR_DARK_GRAY;	//darker gray, out of bounds
 				TextXY(szBuffer, SONG_OFFSET + 16 + k, y, color);
 			}
 		}
@@ -877,7 +877,7 @@ void CSong::DrawTracks()
 	if (SongGetGo() >= 0)		//it's a GOTO line, it won't draw tracks
 	{
 		int TRACKS_OFFSET = (g_tracks4_8 == 8) ? 62 : 30;
-		TextXY("Go to line ", TRACKS_X + TRACKS_OFFSET * 8, TRACKS_Y + 8 * 16, TEXT_COLOR_LIGHT_GRAY);
+		TextXY("Go to line ", TRACKS_X + TRACKS_OFFSET * 8, TRACKS_Y + 8 * 16, TEXT_COLOR_TURQUOISE);
 		if (g_prove) color = (g_activepart == PART_TRACKS) ? COLOR_SELECTED_PROVE : TEXT_COLOR_BLUE;
 		else color = (g_activepart == PART_TRACKS) ? COLOR_SELECTED : TEXT_COLOR_RED;
 		sprintf(s, "%02X", SongGetGo());
@@ -968,19 +968,18 @@ void CSong::DrawTracks()
 			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
 
 			//if the line is 2 patterns or more away, it must also be gray
-			TextXY("GO TO LINE ", TRACKS_X + 6 * 8, y, (oob - 1) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_LIGHT_GRAY);
+			TextXY("GO TO LINE ", TRACKS_X + 6 * 8, y, (oob - 1) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_TURQUOISE);
 			sprintf(s, "%02X", m_songgo[sl]);
-			TextXY(s, TRACKS_X + 17 * 8, y, (oob - 1) ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+			TextXY(s, TRACKS_X + 17 * 8, y, (oob - 1) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_WHITE);
 			break;
 		}
 
 		if (line == m_trackactiveline) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//red or blue
 		else if (line == m_trackplayline) color = TEXT_COLOR_YELLOW;	//yellow
 		else if ((line % g_trackLinePrimaryHighlight) == 0 || (line % g_trackLineSecondaryHighlight) == 0) 
-			color = ((line % g_trackLinePrimaryHighlight) == 0) ? TEXT_COLOR_CYAN : TEXT_COLOR_PURPLE;	//cyan or purple
-		//else if ((line % g_trackLinePrimaryHighlight) == 0) color = TEXT_COLOR_CYAN;	//blue
+			color = ((line % g_trackLinePrimaryHighlight) == 0) ? TEXT_COLOR_CYAN : TEXT_COLOR_GREEN;	//cyan or green
 		else color = TEXT_COLOR_WHITE;	//white
-		if (oob) color = TEXT_COLOR_TURQUOISE;	//lighter gray, out of bounds
+		if (oob) color = TEXT_COLOR_DARK_GRAY;	//darker gray, out of bounds
 		TextXY(s, TRACKS_X, y, color);
 
 		for (int j = 0; j < g_tracks4_8; j++, x += 16 * 8)
@@ -1119,29 +1118,29 @@ void CSong::DrawTracks()
 
 	//debugging the "jumpy line" 
 	sprintf(s, "Y = %02d", last_y);
-	TextXY(s, TRACKS_X, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 
 	//debugging the sudden breakdown of mouse clicks on tracklines directly related to the changes done for the smooth scrolling
 	sprintf(s, "PX = %02d", g_mouse_px);
-	TextXY(s, TRACKS_X + 16 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 16 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 	sprintf(s, "PY = %02d", g_mouse_py);
-	TextXY(s, TRACKS_X + 32 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 32 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 	sprintf(s, "MB = %02d", g_mouselastbutt);
-	TextXY(s, TRACKS_X + 48 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 48 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 	sprintf(s, "CA = %02d", g_cursoractview);
-	TextXY(s, TRACKS_X + 64 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 64 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 	sprintf(s, "TA = %02d", m_trackactiveline);
-	TextXY(s, TRACKS_X + 80 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 80 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 	sprintf(s, "DY = %02d", g_mouse_py / 16);
-	TextXY(s, TRACKS_X + 96 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 96 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 	sprintf(s, "GTL = %02d", g_tracklines);
-	TextXY(s, TRACKS_X + 112 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 112 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 	sprintf(s, "OL = %02d", g_tracklines / 2);
-	TextXY(s, TRACKS_X + 128 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 128 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 
 	//debugging the way vk is processed for keyboard layout configuration
 	sprintf(s, "VK = %02X", g_lastKeyPressed);
-	TextXY(s, TRACKS_X + 144 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(s, TRACKS_X + 144 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 }
 
 void CSong::DrawInstrument()
@@ -1166,7 +1165,7 @@ void CSong::DrawInfo()
 	is_editing_infos = 0;
 
 	// Line 1: Time  BPM  PAL/NTSC  Hightlight (XX/XX)  FPS
-	TextXY((g_ntsc) ? "NTSC" : "PAL", INFO_X + 33 * 8, INFO_Y_LINE_1, TEXT_COLOR_LIGHT_GRAY);
+	TextXY((g_ntsc) ? "NTSC" : "PAL", INFO_X + 33 * 8, INFO_Y_LINE_1, TEXT_COLOR_TURQUOISE);
 
 	// 2x Line highlights XX/XX (go and override --)
 	TextXY("HIGHLIGHT: --/--", 344, INFO_Y_LINE_1, TEXT_COLOR_WHITE);
@@ -1174,15 +1173,15 @@ void CSong::DrawInfo()
 
 	sprintf(szBuffer, "%02X", g_trackLinePrimaryHighlight);
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_1ST_HIGHLIGHT) ? TRUE : FALSE;
-	TextXY(szBuffer, 344 + 11 * 8, INFO_Y_LINE_1, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer, 344 + 11 * 8, INFO_Y_LINE_1, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
 	sprintf(szBuffer, "%02X", g_trackLineSecondaryHighlight);
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_2ND_HIGHLIGHT) ? TRUE : FALSE;
-	TextXY(szBuffer, 344 + 14 * 8, INFO_Y_LINE_1, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer, 344 + 14 * 8, INFO_Y_LINE_1, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
 	// A poor attempt at an FPS counter
 	snprintf(szBuffer, 16, "%1.2f FPS", last_fps);
-	TextXY(szBuffer, 560 - 9 * 8, INFO_Y_LINE_1, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer, 560 - 9 * 8, INFO_Y_LINE_1, TEXT_COLOR_TURQUOISE);
 
 	// Line 2: Name
 	if (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_NAME) //info? && edit name?
@@ -1194,7 +1193,7 @@ void CSong::DrawInfo()
 	else
 	{
 		i = -1;
-		color = TEXT_COLOR_LIGHT_GRAY;
+		color = TEXT_COLOR_TURQUOISE;
 	}
 	TextXY("NAME:", INFO_X, INFO_Y_LINE_2, TEXT_COLOR_WHITE);
 	TextXYSelN(m_songname, i, INFO_X + 6 * 8, INFO_Y_LINE_2, color);
@@ -1207,30 +1206,30 @@ void CSong::DrawInfo()
 
 	sprintf(szBuffer, "%02X", m_speed);
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_SPEED) ? TRUE : FALSE;
-	TextXY(szBuffer, INFO_X + 13 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer, INFO_X + 13 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
 	sprintf(szBuffer, "%02X", m_mainSpeed);
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_MAIN_SPEED) ? TRUE : FALSE;
-	TextXY(szBuffer, INFO_X + 16 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer, INFO_X + 16 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
 	sprintf(szBuffer, "%X", m_instrumentSpeed);
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_INSTR_SPEED) ? TRUE : FALSE;
-	TextXY(szBuffer, INFO_X + 19 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer, INFO_X + 19 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
 	// Max Track Length @ 40 chars
 	sprintf(szBuffer, "%02X", g_Tracks.m_maxTrackLength);
-	TextXY(szBuffer, INFO_X + 40 * 8, INFO_Y_LINE_3, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer, INFO_X + 40 * 8, INFO_Y_LINE_3, TEXT_COLOR_TURQUOISE);
 
 	// Mono or Stereo @ 46 chars
-	TextXY((g_tracks4_8 == 4) ? "MONO-4-TRACKS" : "STEREO-8-TRACKS", INFO_X + 46 * 8, INFO_Y_LINE_3, TEXT_COLOR_LIGHT_GRAY);
+	TextXY((g_tracks4_8 == 4) ? "MONO-4-TRACKS" : "STEREO-8-TRACKS", INFO_X + 46 * 8, INFO_Y_LINE_3, TEXT_COLOR_TURQUOISE);
 
 	// Line 4: (Mode)  Octive (X-X)
 	int xpos = INFO_X;
 	int ypos = INFO_Y_LINE_4;
 	if (g_prove == PROVE_POKEY_EXPLORER_MODE)	// test mode exclusive to keyboard input for sound debugging, this cannot be set by accident unless I did something stupid
-		TextXY("EXPLORER MODE (PITCH CALCULATIONS)", xpos, ypos, TEXT_COLOR_LIGHT_GRAY);
+		TextXY("EXPLORER MODE (PITCH CALCULATIONS)", xpos, ypos, TEXT_COLOR_TURQUOISE);
 	else if (g_prove == PROVE_MIDI_CH15_MODE)	// test mode exclusive from MIDI CH15 inputs, this cannot be set by accident unless I did something stupid
-		TextXY("EXPLORER MODE (MIDI CH15)", xpos, ypos, TEXT_COLOR_LIGHT_GRAY);
+		TextXY("EXPLORER MODE (MIDI CH15)", xpos, ypos, TEXT_COLOR_TURQUOISE);
 	else if (g_prove > PROVE_EDIT_MODE)
 		TextXY((g_prove == PROVE_JAM_MONO_MODE) ? "JAM MODE (MONO)" : "JAM MODE (STEREO)", xpos, ypos, TEXT_COLOR_BLUE);
 	else
@@ -1239,7 +1238,7 @@ void CSong::DrawInfo()
 	sprintf(szBuffer, "OCTAVE %i-%i", m_octave + 1, m_octave + 2);
 	szBuffer[6] = 0;
 	TextXY(szBuffer, INFO_X + 55 * 8, INFO_Y_LINE_4, TEXT_COLOR_WHITE);
-	TextXY(szBuffer + 7, INFO_X + 62 * 8, INFO_Y_LINE_4, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer + 7, INFO_X + 62 * 8, INFO_Y_LINE_4, TEXT_COLOR_TURQUOISE);
 
 	// Line 5: Instrument (XX): (name)
 	TextXY("INSTRUMENT", INFO_X, INFO_Y_LINE_5, TEXT_COLOR_WHITE);
@@ -1247,12 +1246,12 @@ void CSong::DrawInfo()
 	szBuffer[3] = 0;
 	TextXY(szBuffer, INFO_X + 11 * 8, INFO_Y_LINE_5, TEXT_COLOR_WHITE);
 	szBuffer[40] = 0;
-	TextXY(szBuffer + 4, INFO_X + 15 * 8, INFO_Y_LINE_5, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer + 4, INFO_X + 15 * 8, INFO_Y_LINE_5, TEXT_COLOR_TURQUOISE);
 
 	sprintf(szBuffer, "%cVOLUME %X", g_respectvolume ? '*' : ' ', m_volume);	// Put a * infront of Volume if the RESPECT volume mode is on
 	szBuffer[7] = 0;
 	TextXY(szBuffer, INFO_X + 56 * 8, INFO_Y_LINE_5, TEXT_COLOR_WHITE);
-	TextXY(szBuffer + 8, INFO_X + 64 * 8, INFO_Y_LINE_5, TEXT_COLOR_LIGHT_GRAY);
+	TextXY(szBuffer + 8, INFO_X + 64 * 8, INFO_Y_LINE_5, TEXT_COLOR_TURQUOISE);
 
 	// Line 6: Under the instrument line draw small text indicating the instrument flags
 	BYTE flag = g_Instruments.GetFlag(m_activeinstr);
@@ -1349,7 +1348,7 @@ void CSong::DrawPlayTimeCounter(CDC* pDC)
 	bpm = ((60.0 * fps) / g_trackLinePrimaryHighlight) / speed;	//average BPM 
 
 	snprintf(timstr, 16, !(timesec & 1) ? "%2d:%02d.%02d" : "%2d %02d.%02d", timemin, timesec, timemilisec);
-	snprintf(bpmstr, 8, (m_play) ? "%1.2f" : "---.--", bpm);
+	snprintf(bpmstr, 8, (m_play) ? "%1.2f" : "0.00", bpm);
 
 	TextXY("TIME:             BPM:", PLAYTC_X, PLAYTC_Y, TEXT_COLOR_WHITE);
 	TextXY(timstr, PLAYTC_X + 8 * 6, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
