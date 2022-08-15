@@ -50,7 +50,7 @@ void CInstruments::DrawInstrument(int instrNr)
 	TextDownXY("\x0e\x0e\x0e\x0e", INSTRS_ENV_X + 11 * 8 - 1, INSTRS_ENV_Y + 3 * 16, TEXT_COLOR_GRAY);
 	//delimitation of space for Envelope VOLUME
 	g_mem_dc->MoveTo(SCALE(INSTRS_ENV_X + 12 * 8 - 1), SCALE(INSTRS_ENV_Y + 7 * 16 - 1));
-	g_mem_dc->LineTo(SCALE(INSTRS_ENV_X + 12 * 8 + ENVCOLS * 8), SCALE(INSTRS_ENV_Y + 7 * 16 - 1));
+	g_mem_dc->LineTo(SCALE(INSTRS_ENV_X + 12 * 8 + ENVELOPE_MAX_COLUMNS * 8), SCALE(INSTRS_ENV_Y + 7 * 16 - 1));
 
 	if (t.activeEditSection == INSTRUMENT_SECTION_ENVELOPE)
 	{
@@ -72,7 +72,7 @@ void CInstruments::DrawInstrument(int instrNr)
 		TextXY(shenv[0].name, shenv[0].xpos, shenv[0].ypos, TEXT_COLOR_WHITE); //"VOLUME R:"
 		TextDownXY("\x0e\x0e\x0e\x0e", INSTRS_ENV_X + 11 * 8 - 1, INSTRS_ENV_Y - 2 * 16, TEXT_COLOR_GRAY);
 		g_mem_dc->MoveTo(SCALE(INSTRS_ENV_X + 12 * 8 - 1), SCALE(INSTRS_ENV_Y + 2 * 16 - 1));
-		g_mem_dc->LineTo(SCALE(INSTRS_ENV_X + 12 * 8 + ENVCOLS * 8), SCALE(INSTRS_ENV_Y + 2 * 16 - 1));
+		g_mem_dc->LineTo(SCALE(INSTRS_ENV_X + 12 * 8 + ENVELOPE_MAX_COLUMNS * 8), SCALE(INSTRS_ENV_Y + 2 * 16 - 1));
 	}
 
 	for (i = 0; i < NUMBER_OF_PARAMS; i++) DrawParameter(i, instrNr);
@@ -379,7 +379,7 @@ BOOL CInstruments::CursorGoto(int instrNr, CPoint point, int pzone)
 			//left mouse button
 			//changes GO and moves LEN if necessary
 			x = point.x / 8;
-			if (x < 0) x = 0; else if (x >= ENVCOLS) x = ENVCOLS - 1;
+			if (x < 0) x = 0; else if (x >= ENVELOPE_MAX_COLUMNS) x = ENVELOPE_MAX_COLUMNS - 1;
 			tt.parameters[PAR_ENV_GOTO] = x;
 			if (tt.parameters[PAR_ENV_LENGTH] < x) tt.parameters[PAR_ENV_LENGTH] = x;
 		CG_InstrumentParametersChanged:
@@ -395,7 +395,7 @@ BOOL CInstruments::CursorGoto(int instrNr, CPoint point, int pzone)
 			//right mouse button
 			//changes LEN and moves GO if necessary
 			x = point.x / 8;
-			if (x < 0) x = 0; else if (x >= ENVCOLS) x = ENVCOLS - 1;
+			if (x < 0) x = 0; else if (x >= ENVELOPE_MAX_COLUMNS) x = ENVELOPE_MAX_COLUMNS - 1;
 			tt.parameters[PAR_ENV_LENGTH] = x;
 			if (tt.parameters[PAR_ENV_GOTO] > x) tt.parameters[PAR_ENV_GOTO] = x;
 			goto CG_InstrumentParametersChanged;
@@ -404,7 +404,7 @@ BOOL CInstruments::CursorGoto(int instrNr, CPoint point, int pzone)
 			//left mouse button
 			//changes GO and moves LEN if necessary
 			x = (point.x + 4) / (3 * 8);
-			if (x < 0) x = 0; else if (x >= TABLEN) x = TABLEN - 1;
+			if (x < 0) x = 0; else if (x >= NOTE_TABLE_MAX_LEN) x = NOTE_TABLE_MAX_LEN - 1;
 			tt.parameters[PAR_TBL_GOTO] = x;
 			if (tt.parameters[PAR_TBL_LENGTH] < x) tt.parameters[PAR_TBL_LENGTH] = x;
 			goto CG_InstrumentParametersChanged;
@@ -413,7 +413,7 @@ BOOL CInstruments::CursorGoto(int instrNr, CPoint point, int pzone)
 			//right mouse button
 			//changes LEN and moves GO if necessary
 			x = (point.x + 4) / (3 * 8);
-			if (x < 0) x = 0; else if (x >= TABLEN) x = TABLEN - 1;
+			if (x < 0) x = 0; else if (x >= NOTE_TABLE_MAX_LEN) x = NOTE_TABLE_MAX_LEN - 1;
 			tt.parameters[PAR_TBL_LENGTH] = x;
 			if (tt.parameters[PAR_TBL_GOTO] > x) tt.parameters[PAR_TBL_GOTO] = x;
 			goto CG_InstrumentParametersChanged;
@@ -479,11 +479,11 @@ BOOL CInstruments::GetGUIArea(int instrNr, int zone, CRect& rect)
 
 		case 8:
 			//envelope area under the left (lower) volume curve
-			rect.SetRect(INSTRS_ENV_X + 12 * 8, INSTRS_ENV_Y + 3 * 16 + 0 + 4 * 16, INSTRS_ENV_X + 12 * 8 + ENVCOLS * 8, INSTRS_ENV_Y + 3 * 16 + 0 + 4 * 16 + 16);
+			rect.SetRect(INSTRS_ENV_X + 12 * 8, INSTRS_ENV_Y + 3 * 16 + 0 + 4 * 16, INSTRS_ENV_X + 12 * 8 + ENVELOPE_MAX_COLUMNS * 8, INSTRS_ENV_Y + 3 * 16 + 0 + 4 * 16 + 16);
 			return 1;
 		case 9:
 			//instrument table + 1 line below parameter table 
-			rect.SetRect(INSTRS_TABLE_X, INSTRS_TABLE_Y + 8 + 1 * 16, INSTRS_TABLE_X + TABLEN * 24 - 8, INSTRS_TABLE_Y + 8 + 2 * 16);
+			rect.SetRect(INSTRS_TABLE_X, INSTRS_TABLE_Y + 8 + 1 * 16, INSTRS_TABLE_X + NOTE_TABLE_MAX_LEN * 24 - 8, INSTRS_TABLE_Y + 8 + 2 * 16);
 			return 1;
 	}
 	return 0;

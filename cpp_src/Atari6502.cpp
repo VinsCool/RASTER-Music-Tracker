@@ -211,19 +211,32 @@ bool LoadWord(ifstream& in, WORD& w)
 	return true;
 }
 
-//Return number of bytes read. (0 if there was some error).
-int LoadBinaryBlock(ifstream& in, unsigned char* memory, WORD& fromadr, WORD& toadr)
+/// <summary>
+/// Load an Atari binary block. Max [4-6] byte header + the indicated number of bytes
+/// HEADER, FROM, TO
+/// HEADER is optional.
+/// </summary>
+/// <param name="in">Input stream</param>
+/// <param name="memory">Buffer that will act as Atari memory</param>
+/// <param name="fromAddr">Returns the address where the binary block was loaded (FROM)</param>
+/// <param name="toAddr">Returns the end address, (first byte after the loaded block)</param>
+/// <returns>Return number of bytes read. (0 if there was some error).</returns>
+int LoadBinaryBlock(ifstream& in, unsigned char* memory, WORD& fromAddr, WORD& toAddr)
 {
-	if (!LoadWord(in, fromadr)) return 0;
-	if (fromadr == 0xffff)
+	if (!LoadWord(in, fromAddr)) return 0;
+	if (fromAddr == 0xffff)
 	{
-		if (!LoadWord(in, fromadr)) return 0;
+		// Skip the binary block header (0xFFFF)
+		if (!LoadWord(in, fromAddr)) return 0;
 	}
-	if (!LoadWord(in, toadr)) return 0;
+	if (!LoadWord(in, toAddr)) return 0;
 
-	if (toadr<fromadr) return 0;
-	in.read((char*)memory + fromadr, toadr - fromadr + 1);
-	return toadr-fromadr+1;
+	// Sanity check that the end is not before the start.
+	if (toAddr < fromAddr) return 0;
+
+	// Load the indicated number of bytes into the specified memory area
+	in.read((char*)memory + fromAddr, toAddr - fromAddr + 1);
+	return toAddr-fromAddr+1;
 }
 
 int LoadBinaryFile(char *fname, unsigned char *memory,WORD& minadr,WORD& maxadr)
@@ -274,19 +287,31 @@ int LoadDataAsBinaryFile(unsigned char *data, WORD size, unsigned char *memory,W
 	return akp;
 }
 
-int SaveBinaryBlock(ofstream& out,unsigned char* memory,WORD fromadr,WORD toadr,BOOL ffffhead)
+/// <summary>
+/// Save binary data to an output stream.
+/// This is done in Atari file format.
+/// 4-6 byte header with FFFF as the binary block indicator
+/// followed by the START and the END addresses of the memory area.
+/// </summary>
+/// <param name="out">stream where data is written to</param>
+/// <param name="memory">64K of memory</param>
+/// <param name="fromAddr">Start address</param>
+/// <param name="toAddr">End address (last byte of the data)</param>
+/// <param name="withBinaryBlockHeader">True then the FROM,TO header will start with FFFF. Only required on the first block</param>
+/// <returns>Total number of bytes output</returns>
+int SaveBinaryBlock(ofstream& out, unsigned char* memory, WORD fromAddr, WORD toAddr, BOOL withBinaryBlockHeader)
 {
 	//from "fromadr" to "toadr" inclusive
-	if (fromadr>toadr) return 0;
-	if (ffffhead)
+	if (fromAddr > toAddr) return 0;
+	if (withBinaryBlockHeader)
 	{
 		out.put((char)0xff);
 		out.put((char)0xff);
 	}
-	out.put((unsigned char)(fromadr & 0xff));
-	out.put((unsigned char)(fromadr >> 8));
-	out.put((unsigned char)(toadr & 0xff));
-	out.put((unsigned char)(toadr >> 8));
-	out.write((char*)memory + fromadr, toadr - fromadr + 1);
-	return toadr-fromadr+1;
+	out.put((unsigned char)(fromAddr & 0xff));
+	out.put((unsigned char)(fromAddr >> 8));
+	out.put((unsigned char)(toAddr & 0xff));
+	out.put((unsigned char)(toAddr >> 8));
+	out.write((char*)memory + fromAddr, toAddr - fromAddr + 1);
+	return toAddr - fromAddr + 1;
 }

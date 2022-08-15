@@ -54,7 +54,13 @@ void Trimstr(char* txt)
 	}
 }
 
-
+/// <summary>
+/// Parse an X character long HEX string into an integer.
+/// If the first character is not 0-9A-F then the return value is 01
+/// </summary>
+/// <param name="txt">HEX string</param>
+/// <param name="len">Length of string</param>
+/// <returns>Parsed HEX or -1 on failure</returns>
 int Hexstr(char* txt, int len)
 {
 	int r = 0;
@@ -64,14 +70,13 @@ int Hexstr(char* txt, int len)
 	{
 		if (a >= '0' && a <= '9')
 			r = (r << 4) + (a - '0');
+		else if (a >= 'A' && a <= 'F')
+			r = (r << 4) + (a - 'A' + 10);
 		else
-			if (a >= 'A' && a <= 'F')
-				r = (r << 4) + (a - 'A' + 10);
-			else
-			{
-				if (i == 0) r = -1; //nothing
-				return r;
-			}
+		{
+			if (i == 0) r = -1; //nothing
+			return r;
+		}
 	}
 	if (i == 0) r = -1; //nothing
 	return r;

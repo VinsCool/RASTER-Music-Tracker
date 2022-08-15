@@ -31,6 +31,18 @@ struct TSongTrackAndTrackData
 };
 */
 
+typedef struct
+{
+	unsigned char mem[65536];				// default RAM size for most 800xl/xe machines
+
+	int targetAddrOfModule;					// Start of RMT module in memory [$4000]
+	int firstByteAfterModule;				// Hmm, 1st byte after the RMT module
+
+	BYTE instrumentSavedFlags[INSTRSNUM];
+	BYTE trackSavedFlags[TRACKSNUM];
+
+} tExportDescription;
+
 class CSong
 {
 public:
@@ -141,7 +153,7 @@ public:
 	BOOL VolumeDown() { if (m_volume > 0) { m_volume--; return 1; } else return 0; };
 
 	void ClearBookmark() { m_bookmark.songline = m_bookmark.trackline = m_bookmark.speed = -1; };
-	BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.m_maxtracklen); };
+	BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.m_maxTrackLength); };
 	BOOL SetBookmark();
 
 	BOOL Play(int mode, BOOL follow, int special = 0);
@@ -164,7 +176,7 @@ public:
 
 	void SetRMTTitle();
 
-	void FileOpen(const char* filename = NULL, BOOL warnunsavedchanges = 1);
+	void FileOpen(const char* filename = NULL, BOOL warnOfUnsavedChanges = TRUE);
 	void FileReload();
 	BOOL FileCanBeReloaded() { return (m_filename != "") /*&& (!m_fileunsaved)*/ /*&& g_changes*/; };
 	int WarnUnsavedChanges();
@@ -183,26 +195,36 @@ public:
 	int SongToAta(unsigned char* dest, int max, int adr);
 	BOOL AtaToSong(unsigned char* sour, int len, int adr);
 
-	int Save(std::ofstream& ou, int iotype);
+	int SaveTxt(std::ofstream& ou);
+	int SaveRMW(std::ofstream& ou);
+
 	int LoadRMT(std::ifstream& in);
 	int LoadTxt(std::ifstream& in);
 	int LoadRMW(std::ifstream& in);
 
 	int ImportTMC(std::ifstream& in);
 	int ImportMOD(std::ifstream& in);
+
+	int Export2(std::ofstream& ou, int iotype, char* filename = NULL);
 	int Export(std::ofstream& ou, int iotype, char* filename = NULL);
+	int ExportAsRMT(std::ofstream& ou, tExportDescription* exportDesc);
+	int ExportAsStrippedRMT(std::ofstream& ou, tExportDescription* exportDesc);
 
 	int TestBeforeFileSave();
 	int GetSubsongParts(CString& resultstr);
 
-	BOOL ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrsaved, BYTE* tracksaved, BOOL sfx, BOOL gvf, BOOL nos);
+	BOOL ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags, BOOL sfx, BOOL gvf, BOOL nos);
 
 	void MarkTF_USED(BYTE* arrayTRACKSNUM);
 	void MarkTF_NOEMPTY(BYTE* arrayTRACKSNUM);
 
-	int MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved, BYTE* tracksaved);
-	int MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tracksaved);
-	int DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instrloaded, BYTE* trackloaded);
+	int MakeTuningBlock(unsigned char* mem, int addr);
+	int DecodeTuningBlock(unsigned char* mem, int fromAddr, int endAddr);
+	void ResetTuningVariables();
+
+	int MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags);
+	int MakeRMFModule(unsigned char* mem, int adr, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags);
+	int DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instrumentLoadedFlags, BYTE* trackLoadedFlags);
 
 	void TrackCopy();
 	void TrackPaste();
@@ -250,8 +272,8 @@ public:
 
 	int GetPlayMode() { return m_play; };
 
-	void GetSongInfoPars(TInfo* info) { memcpy(info->songname, m_songname, SONG_NAME_MAX_LEN); info->speed = m_speed; info->mainspeed = m_mainspeed; info->instrspeed = m_instrspeed; info->songnamecur = m_songnamecur; };
-	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONG_NAME_MAX_LEN); m_speed = info->speed; m_mainspeed = info->mainspeed; m_instrspeed = info->instrspeed; m_songnamecur = info->songnamecur; };
+	void GetSongInfoPars(TInfo* info) { memcpy(info->songname, m_songname, SONG_NAME_MAX_LEN); info->speed = m_speed; info->mainspeed = m_mainSpeed; info->instrspeed = m_instrumentSpeed; info->songnamecur = m_songnamecur; };
+	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONG_NAME_MAX_LEN); m_speed = info->speed; m_mainSpeed = info->mainspeed; m_instrumentSpeed = info->instrspeed; m_songnamecur = info->songnamecur; };
 
 	BOOL volatile m_followplay;
 	int volatile m_play;
@@ -301,11 +323,11 @@ private:
 
 	double m_avgspeed[8] = { 0 };		//use for calculating average BPM
 
-	int volatile m_mainspeed;
+	int volatile m_mainSpeed;
 	int volatile m_speed;
 	int volatile m_speeda;
 
-	int volatile m_instrspeed;
+	int volatile m_instrumentSpeed;
 
 	int volatile m_quantization_note;
 	int volatile m_quantization_instr;

@@ -118,9 +118,9 @@
 #define NOTESNUM	61			//notes 0-60 inclusive
 #define MAXVOLUME	15			//maximum volume
 #define PARCOUNT	24			//24 instrument parameters
-#define ENVCOLS		48			//48 columns in envelope (drive 32) (48 from version 1.25)
+#define ENVELOPE_MAX_COLUMNS	48			// 48 columns in envelope (drive 32) (48 from version 1.25)
 #define ENVROWS		8			//8 line (parameter) in the envelope
-#define TABLEN		32			//maximum 32 steps in the table
+#define NOTE_TABLE_MAX_LEN		32		// maximum 32 steps in the note table
 
 #define INSTRUMENT_NAME_MAX_LEN	32		// maximum length of instrument name
 #define SONG_NAME_MAX_LEN		64		// maximum length of song name

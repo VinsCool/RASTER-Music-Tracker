@@ -60,12 +60,12 @@ typedef struct TInstrument
 	int editParameterNr;					// which parameter is being edited
 
 	// Envelope section
-	int envelope[ENVCOLS][ENVROWS];			//[32][8]
+	int envelope[ENVELOPE_MAX_COLUMNS][ENVROWS];			//[32][8]
 	int editEnvelopeX;
 	int editEnvelopeY;
 
 	// Note table section
-	int noteTable[TABLEN];
+	int noteTable[NOTE_TABLE_MAX_LEN];
 	int editNoteTableCursorPos;				// Which note table entry is being edited
 
 	int octave;								// Last used Octave and Volume

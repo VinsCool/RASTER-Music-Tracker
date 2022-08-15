@@ -187,7 +187,7 @@ int CSong::ImportTMC(ifstream& in)
 
 	//delete the current song
 	g_tracks4_8 = 8;					//standard TMC is 8 tracks
-	g_Tracks.m_maxtracklen = 64;	//track length is 64
+	g_Tracks.m_maxTrackLength = 64;	//track length is 64
 	ClearSong(g_tracks4_8);			//clear everything
 
 	unsigned char mem[65536];
@@ -235,15 +235,15 @@ int CSong::ImportTMC(ifstream& in)
 	int speco = 0;			//speedcorrection
 
 	//speeds
-	m_mainspeed = m_speed = mem[bfrom + 30] + 1;
-	m_instrspeed = mem[bfrom + 31];
-	if (m_instrspeed > 4)
+	m_mainSpeed = m_speed = mem[bfrom + 30] + 1;
+	m_instrumentSpeed = mem[bfrom + 31];
+	if (m_instrumentSpeed > 4)
 	{
-		speco = m_instrspeed - 4;
-		m_instrspeed = 4;		//4x instrspeed maximum
+		speco = m_instrumentSpeed - 4;
+		m_instrumentSpeed = 4;		//4x instrspeed maximum
 	}
 	else
-		if (m_instrspeed < 1) m_instrspeed = 1;		//1x instrspeed minimum
+		if (m_instrumentSpeed < 1) m_instrumentSpeed = 1;		//1x instrspeed minimum
 
 		//instrument vectors
 	for (i = 0; i < 64; i++)
@@ -643,7 +643,7 @@ int CSong::ImportTMC(ifstream& in)
 			{
 				if (hn == 1 && (dn > 2 || vibspe > 0))							//(dn>=4 || vibspe>0) )
 				{
-					if (posuntable > TABLEN - 4) posuntable = TABLEN - 4; //did not give what is possible according to the delay
+					if (posuntable > NOTE_TABLE_MAX_LEN - 4) posuntable = NOTE_TABLE_MAX_LEN - 4; //did not give what is possible according to the delay
 					ai.noteTable[posuntable] = 0;
 					ai.noteTable[posuntable + 1] = (pvib8) ? (BYTE)(256 - dn) : dn;
 					ai.noteTable[posuntable + 2] = 0;
@@ -657,7 +657,7 @@ int CSong::ImportTMC(ifstream& in)
 				else
 					if (hn == 2 && (dn > 2 || vibspe > 0))							//(dn>=4 || vibspe>0))
 					{
-						if (posuntable > TABLEN - 4) posuntable = TABLEN - 4; //did not give what is possible according to the delay
+						if (posuntable > NOTE_TABLE_MAX_LEN - 4) posuntable = NOTE_TABLE_MAX_LEN - 4; //did not give what is possible according to the delay
 						ai.noteTable[posuntable] = (pvib8) ? (BYTE)(256 - dn) : dn;
 						ai.noteTable[posuntable + 1] = 0;
 						ai.noteTable[posuntable + 2] = (pvib8) ? dn : (BYTE)(256 - dn);
@@ -673,7 +673,7 @@ int CSong::ImportTMC(ifstream& in)
 					else
 						if (hn == 3 && (dn > 2 || vibspe > 0))							//(dn>=4 || vibspe>0))
 						{
-							if (posuntable > TABLEN - 4) posuntable = TABLEN - 4; //did not give what is possible according to the delay
+							if (posuntable > NOTE_TABLE_MAX_LEN - 4) posuntable = NOTE_TABLE_MAX_LEN - 4; //did not give what is possible according to the delay
 							ai.noteTable[posuntable] = (pvib8) ? (BYTE)(dn * 4) : (BYTE)(256 - (dn * 4)); //for notes it is the other way around (add note = read frequency
 							ai.noteTable[posuntable + 1] = 0;
 							ai.noteTable[posuntable + 2] = (pvib8) ? (BYTE)(256 - (dn * 4)) : (BYTE)(dn * 4); //it is the other way around
@@ -698,7 +698,7 @@ int CSong::ImportTMC(ifstream& in)
 				//and now find out if it wouldn't do it through the table
 				if (!nobytable && !tableu && vibspe > 0)
 				{
-					if (posuntable > TABLEN - 2) posuntable = TABLEN - 2; //he didn't give up
+					if (posuntable > NOTE_TABLE_MAX_LEN - 2) posuntable = NOTE_TABLE_MAX_LEN - 2; //he didn't give up
 					ai.noteTable[posuntable] = fshift;
 					ai.noteTable[posuntable + 1] = fshift;
 					ai.parameters[PAR_TBL_LENGTH] = posuntable + 1;
@@ -720,7 +720,7 @@ int CSong::ImportTMC(ifstream& in)
 
 					if (!nobytable && !tableu)				// && vibspe>0)
 					{
-						if (posuntable > TABLEN - 2) posuntable = TABLEN - 2; //it didn't give up
+						if (posuntable > NOTE_TABLE_MAX_LEN - 2) posuntable = NOTE_TABLE_MAX_LEN - 2; //it didn't give up
 						int nshift = pvib - 0x50;
 						if (!pvib8) nshift = (BYTE)(256 - nshift);		//for notes it is the opposite (5x is <- down, Dx is up ->)
 						ai.noteTable[posuntable] = nshift;
@@ -933,7 +933,7 @@ int CSong::ImportMOD(ifstream& in)
 	//deletes the current song
 	int originalg_tracks4_8 = g_tracks4_8;	//keeps the original value for Abort
 	g_tracks4_8 = 8;					//prepares 8 channels
-	g_Tracks.m_maxtracklen = 64;	//track length 64
+	g_Tracks.m_maxTrackLength = 64;	//track length 64
 	ClearSong(g_tracks4_8);			//clear existing data
 
 	int i, j;
@@ -1093,8 +1093,8 @@ int CSong::ImportMOD(ifstream& in)
 	for (j = 0; j < 20 && (a = mem[j]); j++) m_songname[j] = a;
 
 	//speeds
-	m_mainspeed = m_speed = 6;			//default speed
-	m_instrspeed = 1;
+	m_mainSpeed = m_speed = 6;			//default speed
+	m_instrumentSpeed = 1;
 
 	int maxsmplen = 0;			//maximum sample length
 
@@ -1202,7 +1202,7 @@ int CSong::ImportMOD(ifstream& in)
 		int tvol[8] = { 0,0,0,0,0,0,0,0 };	//volume of individual tracks (used for volume slide)
 		int tvolslidedebt[8] = { 0,0,0,0,0,0,0,0 };		//debt at volume slide
 		int tins[8] = { 0,0,0,0,0,0,0,0 };	//individual track instruments (used when the sample is == 0)
-		int ticks = m_mainspeed;		//songspeed (for volume slide), default 6
+		int ticks = m_mainSpeed;		//songspeed (for volume slide), default 6
 		int beats = 125;				//default beats/min speed
 
 		int LastRowTicks = ticks;

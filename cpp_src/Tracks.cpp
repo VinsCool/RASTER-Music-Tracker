@@ -109,32 +109,31 @@ BOOL ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, 
 
 CTracks::CTracks()
 {
-	m_maxtracklen = 64;			//default value
+	m_maxTrackLength = 64;			//default value
 	// g_cursoractview = m_maxtracklen / 2;
 	InitTracks();
 }
 
-BOOL CTracks::InitTracks()
+void CTracks::InitTracks()
 {
 	for (int i = 0; i < TRACKSNUM; i++)
 	{
 		ClearTrack(i);
 	}
-	return 1;
 }
 
 BOOL CTracks::ClearTrack(int t)
 {
 	if (t < 0 || t >= TRACKSNUM) return 0;
 
-	m_track[t].len = m_maxtracklen;	//32+(rand()&0x1f);		//0;
-	m_track[t].go = -1;	//-1+(rand()&0x01);			//-1;
+	m_track[t].len = m_maxTrackLength;	//32+(rand()&0x1f);		//0;
+	m_track[t].go = -1;					//-1+(rand()&0x01);			//-1;
 	for (int i = 0; i < TRACKLEN; i++)
 	{
-		m_track[t].note[i] = -1;	//(rand()&0xff)-192;		//-1;
-		m_track[t].instr[i] = -1;	//rand()&0xff;	//-1;
-		m_track[t].volume[i] = -1;//rand()&0x0f;	//-1;
-		m_track[t].speed[i] = -1; //rand()&0xff;	//-1;
+		m_track[t].note[i] = -1;		//(rand()&0xff)-192;		//-1;
+		m_track[t].instr[i] = -1;		//rand()&0xff;	//-1;
+		m_track[t].volume[i] = -1;		//rand()&0x0f;	//-1;
+		m_track[t].speed[i] = -1;		//rand()&0xff;	//-1;
 	}
 	return 1;
 }
@@ -143,11 +142,11 @@ BOOL CTracks::IsEmptyTrack(int track)
 {
 	if (track < 0 || track >= TRACKSNUM) return 0;
 
-	if (m_track[track].len != m_maxtracklen) return 0;
+	if (m_track[track].len != m_maxTrackLength) return 0;
 	int* tvolumes = (int*)&m_track[track].volume;
 	int* tspeeds = (int*)&m_track[track].speed;
 
-	for (int i = 0; i < m_maxtracklen; i++)
+	for (int i = 0; i < m_maxTrackLength; i++)
 	{
 		if (*(tvolumes + i) >= 0 || *(tspeeds + i) >= 0) return 0;
 	}
@@ -216,7 +215,7 @@ BOOL CTracks::SetEnd(int track, int line)
 {
 	if (track < 0 || track >= TRACKSNUM) return 0;
 	g_Undo.ChangeTrack(track, line, UETYPE_LENGO, 1);
-	m_track[track].len = (line > 0 && m_track[track].len != line) ? line : m_maxtracklen;
+	m_track[track].len = (line > 0 && m_track[track].len != line) ? line : m_maxTrackLength;
 	if (m_track[track].go >= m_track[track].len) m_track[track].go = -1;
 	return 1;
 }
@@ -229,7 +228,7 @@ int CTracks::GetLastLine(int track)
 int CTracks::GetLength(int track)
 {
 	if (track < 0 || track >= TRACKSNUM) return -1;
-	if (m_track[track].go >= 0) return m_maxtracklen;
+	if (m_track[track].go >= 0) return m_maxTrackLength;
 	return m_track[track].len;
 }
 
@@ -280,26 +279,35 @@ BOOL CTracks::DeleteLine(int track, int line)
 	return 1;
 }
 
-BOOL CTracks::CalculateNoEmpty(int track)
+/// <summary>
+/// Check if a specific track has any valid information set.
+/// Check for track length, notes, and volume and speed changes
+/// </summary>
+/// <param name="track">Which track is being checked</param>
+/// <returns>TRUE if the track is NOT empty, FALSE is there is nothing set on it</returns>
+BOOL CTracks::CalculateNotEmpty(int trackNr)
 {
-	//check if the track is empty
-	if (track < 0 || track >= TRACKSNUM) return 0;
-	TTrack& t = m_track[track];
-	if (t.len != m_maxtracklen)	//has a length other than the maximum
-		return 1;				//not empty
-	else
+	// Check if the track is empty
+	if (trackNr < 0 || trackNr >= TRACKSNUM) return FALSE;
+
+	// Get the track data
+	TTrack& t = m_track[trackNr];
+
+	// Check if anything has been set
+	if (t.len != m_maxTrackLength)	// If the length anything but the maximum track length?
+		return TRUE;					// Yes, the its NOT EMPTY
+
+	// Check if the any note, volume or speed changes have been set
+	for (int i = 0; i < t.len; i++)
 	{
-		for (int i = 0; i < t.len; i++)
+		if (   t.note[i] >= 0			// any note, volume or speed?
+			|| t.volume[i] >= 0
+			|| t.speed[i] >= 0)
 		{
-			if (t.note[i] >= 0			//any note, volume or speed?
-				|| t.volume[i] >= 0
-				|| t.speed[i] >= 0)
-			{
-				return 1;	//not empty
-			}
+			return TRUE;	//not empty
 		}
 	}
-	return 0;	//is empty
+	return FALSE;	//is empty
 }
 
 BOOL CTracks::CompareTracks(int track1, int track2)
@@ -364,7 +372,7 @@ int CTracks::TrackBuildLoop(int track)
 	TTrack& tr = m_track[track];
 	if (IsEmptyTrack(track)) return 0;	//empty track
 	if (tr.go >= 0) return 0;		//there is a loop
-	if (tr.len != m_maxtracklen) return 0;	//it is not full length => it cannot make a loop there
+	if (tr.len != m_maxTrackLength) return 0;	//it is not full length => it cannot make a loop there
 
 	int i, j, k, m;
 	for (i = 1; i < tr.len; i++)
@@ -426,7 +434,7 @@ int CTracks::TrackExpandLoop(TTrack* ttrack)
 	if (tr.go < 0) return 0;		//there is no loop
 
 	int i, j, k;
-	for (i = 0; tr.len + i < m_maxtracklen; i++)
+	for (i = 0; tr.len + i < m_maxTrackLength; i++)
 	{
 		j = tr.len + i;
 		k = tr.go + i;
@@ -435,7 +443,7 @@ int CTracks::TrackExpandLoop(TTrack* ttrack)
 		tr.volume[j] = tr.volume[k];
 		tr.speed[j] = tr.speed[k];
 	}
-	tr.len = m_maxtracklen;	//full length
+	tr.len = m_maxTrackLength;	//full length
 	tr.go = -1;				//no loop
 
 	return i;	//length of the expanded loop
@@ -443,12 +451,12 @@ int CTracks::TrackExpandLoop(TTrack* ttrack)
 
 void CTracks::GetTracksAll(TTracksAll* dest_ta)
 {
-	dest_ta->maxtracklength = m_maxtracklen;
+	dest_ta->maxtracklength = m_maxTrackLength;
 	memcpy(dest_ta->tracks, &m_track, sizeof(m_track));
 }
 
 void CTracks::SetTracksAll(TTracksAll* src_ta)
 {
-	m_maxtracklen = src_ta->maxtracklength;
+	m_maxTrackLength = src_ta->maxtracklength;
 	memcpy(&m_track, src_ta->tracks, sizeof(m_track));
 }

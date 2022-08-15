@@ -136,26 +136,29 @@ BOOL CSong::AtaToSong(unsigned char* sour, int len, int adr)
 	return 1;
 }
 
-
+/// <summary>
+/// Reload the currently loaded file
+/// </summary>
 void CSong::FileReload()
 {
 	if (!FileCanBeReloaded()) return;
 	Stop();
-	int r = MessageBox(g_hwnd, "Discard all changes since your last save?\n\nWarning: Undo operation won't be possible!!!", "Reload", MB_YESNOCANCEL | MB_ICONQUESTION);
-	if (r == IDYES)
+	int answer = MessageBox(g_hwnd, "Discard all changes since your last save?\n\nWarning: Undo operation won't be possible!!!", "Reload", MB_YESNOCANCEL | MB_ICONQUESTION);
+	if (answer == IDYES)
 	{
 		CString filename = m_filename;
 		FileOpen((LPCTSTR)filename, 0); //without Warning for changes
 	}
 }
 
-void CSong::FileOpen(const char* filename, BOOL warnunsavedchanges)
+void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 {
 	//stop the music first
 	Stop();
 
-	if (warnunsavedchanges && WarnUnsavedChanges()) return;
+	if (warnOfUnsavedChanges && WarnUnsavedChanges()) return;
 
+	// Open the file open dialog with *.rmt, *.txt and *.rmw options
 	CFileDialog fid(TRUE,
 		NULL,
 		NULL,
@@ -172,17 +175,17 @@ void CSong::FileOpen(const char* filename, BOOL warnunsavedchanges)
 	if (m_filetype == IOTYPE_RMW) fid.m_ofn.nFilterIndex = 3;
 
 	CString fn = "";
-	int type = 0;
+	int formatChoiceIndexFromDialog = 0;
 	if (filename)
 	{
 		fn = filename;
 		CString ext = fn.Right(4);
 		ext.MakeLower();
-		if (ext == ".rmt") type = IOTYPE_RMT;
+		if (ext == ".rmt") formatChoiceIndexFromDialog = 1;
 		else
-			if (ext == ".txt") type = IOTYPE_TXT;
-			else
-				if (ext == ".rmw") type = IOTYPE_RMW;
+		if (ext == ".txt") formatChoiceIndexFromDialog = 2;
+		else
+		if (ext == ".rmw") formatChoiceIndexFromDialog = 3;
 	}
 	else
 	{
@@ -190,53 +193,48 @@ void CSong::FileOpen(const char* filename, BOOL warnunsavedchanges)
 		if (fid.DoModal() == IDOK)
 		{
 			fn = fid.GetPathName();
-			type = fid.m_ofn.nFilterIndex;
+			formatChoiceIndexFromDialog = fid.m_ofn.nFilterIndex;
 		}
 	}
 
-	if ((fn != "") && type) //only when a file was selected in the FileDialog or specified at startup
+	if ((fn != "") && formatChoiceIndexFromDialog) //only when a file was selected in the FileDialog or specified at startup
 	{
 		//uses fn what was selected in the FileDialog or what was specified when running //fid.GetPathName();
 		g_lastloadpath_songs = GetFilePath(fn); //direct way
 
-		if (type < 1 || type>3) return;
+		// Make sure .rmt, .txt or .rmw file was selected
+		if (formatChoiceIndexFromDialog < 1 || formatChoiceIndexFromDialog > 3) return;
 
+		// Open the input file in binary format (even the text file)
 		ifstream in(fn, ios::binary);
 		if (!in)
 		{
 			MessageBox(g_hwnd, "Can't open this file: " + fn, "Open error", MB_ICONERROR);
 			return;
 		}
-		//
-		/*
-		if (type == 2)
-		{
-			MessageBox(g_hwnd, "Can't open this file: " + fn, "Open error", MB_ICONERROR);
-			MessageBox(g_hwnd, "TXT format is currently broken, this will be fixed in a future RMT version.\nSorry for the inconvenience...", "Open error", MB_ICONERROR);
-			return;
-		}
-		*/
-		//
-		//deletes the current song
+
+		// deletes the current song
 		ClearSong(g_tracks4_8);
 
-		int result;
-		switch (type)
+		int loadResult;
+		switch (formatChoiceIndexFromDialog)
 		{
 			case 1: //first choice in Dialog (RMT)
-				result = LoadRMT(in);
+				loadResult = LoadRMT(in);
 				m_filetype = IOTYPE_RMT;
 				break;
 			case 2: //second choice in Dialog (TXT)
-				result = LoadTxt(in);
+				loadResult = LoadTxt(in);
 				m_filetype = IOTYPE_TXT;
 				break;
 			case 3: //third choice in Dialog (RMW)
-				result = LoadRMW(in);
+				loadResult = LoadRMW(in);
 				m_filetype = IOTYPE_RMW;
 				break;
+			default:
+				loadResult = 0;
 		}
-		if (!result)
+		if (!loadResult)
 		{
 			//something in the Load function failed
 			//MessageBoxA(g_hwnd,"Failed to open file", "ERROR",MB_ICONERROR);
@@ -250,7 +248,7 @@ void CSong::FileOpen(const char* filename, BOOL warnunsavedchanges)
 		m_filename = fn;
 
 		//init speed
-		m_speed = m_mainspeed;
+		m_speed = m_mainSpeed;
 
 		//window name
 		SetRMTTitle();
@@ -258,14 +256,14 @@ void CSong::FileOpen(const char* filename, BOOL warnunsavedchanges)
 		//all channels ON (unmute all)
 		SetChannelOnOff(-1, 1);		//-1 = all, 1 = on
 
-		if (m_instrspeed > 0x04)
+		if (m_instrumentSpeed > 0x04)
 		{
 			//Allow RMT to support instrument speed up to 8, but warn when it's above 4. Pressing "No" resets the value to 1.
 			int r = MessageBox(g_hwnd, "Instrument speed values above 4 are not officially supported by RMT.\nThis may cause compatibility issues.\nDo you want keep this nonstandard speed anyway?", "Warning", MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION);
 			if (r != IDYES)
 			{
 				MessageBox(g_hwnd, "Instrument speed has been reset to the value of 1.", "Warning", MB_ICONEXCLAMATION);
-				m_instrspeed = 0x01;
+				m_instrumentSpeed = 0x01;
 			}
 		}
 
@@ -294,7 +292,7 @@ void CSong::FileSave()
 	}
 
 	//Allow saving files with speed values above 4, up to 8, which will also trigger a warning message, but it will save with no problem.
-	if (m_instrspeed > 0x04)
+	if (m_instrumentSpeed > 0x04)
 	{
 		int r = MessageBox(g_hwnd, "Instrument speed values above 4 are not officially supported by RMT.\nThis may cause compatibility issues.\nDo you want to save anyway?", "Warning", MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION);
 		if (r != IDYES)
@@ -319,15 +317,17 @@ void CSong::FileSave()
 		case IOTYPE_RMT: //RMT
 			r = Export(out, IOTYPE_RMT);
 			break;
+
 		case IOTYPE_TXT: //TXT
-			r = Save(out, IOTYPE_TXT);
+			r = SaveTxt(out);
 			break;
+
 		case IOTYPE_RMW: //RMW
 			//remembers the current octave and volume for the active instrument (for saving to RMW) 
 			//because it is only saved when the instrument is changed and could change the octave or volume before saving without subsequently changing the current instrument
 			g_Instruments.MemorizeOctaveAndVolume(m_activeinstr, m_octave, m_volume);
 			//and now saves:
-			r = Save(out, IOTYPE_RMW);
+			r = SaveRMW(out);
 			break;
 	}
 
@@ -390,7 +390,7 @@ void CSong::FileSaveAs()
 	if (fod.DoModal() == IDOK)
 	{
 		int type = fod.m_ofn.nFilterIndex;
-		if (type < 1 || type>3) return;
+		if (type < 1 || type > 3) return;
 
 		m_filename = fod.GetPathName();
 		const char* exttype[] = { ".rmt",".txt",".rmw" };
@@ -412,15 +412,18 @@ void CSong::FileSaveAs()
 
 		switch (type)
 		{
-			case 1: //first choice
+			case 1: // First choice
 				m_filetype = IOTYPE_RMT;
 				break;
-			case 2: //second choice
+
+			case 2: // Second choice
 				m_filetype = IOTYPE_TXT;
 				break;
-			case 3: //third choice
+
+			case 3: // Third choice
 				m_filetype = IOTYPE_RMW;
 				break;
+
 			default:
 				return;	//nothing will be saved if neither option was chosen
 		}
@@ -441,7 +444,7 @@ void CSong::FileNew()
 	CFileNewDlg dlg;
 	if (dlg.DoModal() == IDOK)
 	{
-		g_Tracks.m_maxtracklen = dlg.m_maxtracklen;
+		g_Tracks.m_maxTrackLength = dlg.m_maxtracklen;
 		//g_cursoractview = g_Tracks.m_maxtracklen / 2;
 
 		int i = dlg.m_combotype;
@@ -535,7 +538,7 @@ void CSong::FileImport()
 		else
 		{
 			//init speed
-			m_speed = m_mainspeed;
+			m_speed = m_mainSpeed;
 
 			//window name
 			AfxGetApp()->GetMainWnd()->SetWindowText("Imported " + fn);
@@ -891,7 +894,7 @@ void CSong::FileTrackLoad()
 #define RMWMAINPARAMSCOUNT		31		//
 #define DEFINE_MAINPARAMS int* mainparams[RMWMAINPARAMSCOUNT]= {		\
 	&g_tracks4_8,												\
-	(int*)&m_speed,(int*)&m_mainspeed,(int*)&m_instrspeed,		\
+	(int*)&m_speed,(int*)&m_mainSpeed,(int*)&m_instrumentSpeed,		\
 	(int*)&m_songactiveline,(int*)&m_songplayline,				\
 	(int*)&m_trackactiveline,(int*)&m_trackplayline,			\
 	(int*)&g_activepart,(int*)&g_active_ti,						\
@@ -913,93 +916,95 @@ void CSong::FileTrackLoad()
 	&m_infoact,&m_songnamecur									\
 }
 
-int CSong::Save(ofstream& ou, int iotype)
+int CSong::SaveTxt(ofstream& ou)
 {
-	switch (iotype)
+	CString s, nambf;
+	char bf[16];
+	nambf = m_songname;
+	nambf.TrimRight();
+	s.Format("[MODULE]\nRMT: %X\nNAME: %s\nMAXTRACKLEN: %02X\nMAINSPEED: %02X\nINSTRSPEED: %X\nVERSION: %02X\n", g_tracks4_8, (LPCTSTR)nambf, g_Tracks.m_maxTrackLength, m_mainSpeed, m_instrumentSpeed, RMTFORMATVERSION);
+	ou << s << "\n"; //gap
+	ou << "[SONG]\n";
+	int i, j;
+	//looking for the length of the song
+	int lens = -1;
+	for (i = 0; i < SONGLEN; i++)
 	{
-		case IOTYPE_RMW:
+		if (m_songgo[i] >= 0) { lens = i; continue; }
+		for (j = 0; j < g_tracks4_8; j++)
 		{
-			CString version;
-			version.LoadString(IDS_RMTVERSION);
-			ou << (unsigned char*)(LPCSTR)version << endl;
-			//
-			ou.write((char*)m_songname, sizeof(m_songname));
-			//
-			DEFINE_MAINPARAMS;
-
-			int p = RMWMAINPARAMSCOUNT; //number of stored parameters
-			ou.write((char*)&p, sizeof(p));		//write the number of main parameters
-			for (int i = 0; i < p; i++)
-				ou.write((char*)mainparams[i], sizeof(mainparams[0]));
-
-			//write a complete song and songgo
-			ou.write((char*)m_song, sizeof(m_song));
-			ou.write((char*)m_songgo, sizeof(m_songgo));
+			if (m_song[i][j] >= 0 && m_song[i][j] < TRACKSNUM) { lens = i; break; }
 		}
-		break;
-
-		case IOTYPE_TXT:
-		{
-			CString s, nambf;
-			char bf[16];
-			nambf = m_songname;
-			nambf.TrimRight();
-			s.Format("[MODULE]\nRMT: %X\nNAME: %s\nMAXTRACKLEN: %02X\nMAINSPEED: %02X\nINSTRSPEED: %X\nVERSION: %02X\n", g_tracks4_8, (LPCTSTR)nambf, g_Tracks.m_maxtracklen, m_mainspeed, m_instrspeed, RMTFORMATVERSION);
-			ou << s << "\n"; //gap
-			ou << "[SONG]\n";
-			int i, j;
-			//looking for the length of the song
-			int lens = -1;
-			for (i = 0; i < SONGLEN; i++)
-			{
-				if (m_songgo[i] >= 0) { lens = i; continue; }
-				for (j = 0; j < g_tracks4_8; j++)
-				{
-					if (m_song[i][j] >= 0 && m_song[i][j] < TRACKSNUM) { lens = i; break; }
-				}
-			}
-
-			//write the song
-			for (i = 0; i <= lens; i++)
-			{
-				if (m_songgo[i] >= 0)
-				{
-					s.Format("Go to line %02X\n", m_songgo[i]);
-					ou << s;
-					continue;
-				}
-				for (j = 0; j < g_tracks4_8; j++)
-				{
-					int t = m_song[i][j];
-					if (t >= 0 && t < TRACKSNUM)
-					{
-						bf[0] = CharH4(t);
-						bf[1] = CharL4(t);
-					}
-					else
-					{
-						bf[0] = bf[1] = '-';
-					}
-					bf[2] = 0;
-					ou << bf;
-					if (j + 1 == g_tracks4_8)
-						ou << "\n";			//for the last end of the line
-					else
-						ou << " ";			//between them
-				}
-			}
-
-			ou << "\n"; //gap
-		}
-		break;
 	}
 
-	g_Instruments.SaveAll(ou, iotype);
-	g_Tracks.SaveAll(ou, iotype);
+	//write the song
+	for (i = 0; i <= lens; i++)
+	{
+		if (m_songgo[i] >= 0)
+		{
+			s.Format("Go to line %02X\n", m_songgo[i]);
+			ou << s;
+			continue;
+		}
+		for (j = 0; j < g_tracks4_8; j++)
+		{
+			int t = m_song[i][j];
+			if (t >= 0 && t < TRACKSNUM)
+			{
+				bf[0] = CharH4(t);
+				bf[1] = CharL4(t);
+			}
+			else
+			{
+				bf[0] = bf[1] = '-';
+			}
+			bf[2] = 0;
+			ou << bf;
+			if (j + 1 == g_tracks4_8)
+				ou << "\n";			//for the last end of the line
+			else
+				ou << " ";			//between them
+		}
+	}
+
+	ou << "\n"; //gap
+
+	g_Instruments.SaveAll(ou, IOTYPE_TXT);
+	g_Tracks.SaveAll(ou, IOTYPE_TXT);
 
 	return 1;
 }
 
+int CSong::SaveRMW(ofstream& ou)
+{
+	CString version;
+	version.LoadString(IDS_RMTVERSION);
+	ou << (unsigned char*)(LPCSTR)version << endl;
+	//
+	ou.write((char*)m_songname, sizeof(m_songname));
+	//
+	DEFINE_MAINPARAMS;
+
+	int p = RMWMAINPARAMSCOUNT; //number of stored parameters
+	ou.write((char*)&p, sizeof(p));		//write the number of main parameters
+	for (int i = 0; i < p; i++)
+		ou.write((char*)mainparams[i], sizeof(mainparams[0]));
+
+	//write a complete song and songgo
+	ou.write((char*)m_song, sizeof(m_song));
+	ou.write((char*)m_songgo, sizeof(m_songgo));
+
+	g_Instruments.SaveAll(ou, IOTYPE_RMW);
+	g_Tracks.SaveAll(ou, IOTYPE_RMW);
+
+	return 1;
+}
+
+/// <summary>
+/// Load a text RMT file
+/// </summary>
+/// <param name="in">Input stream</param>
+/// <returns>Returns 1 if the file was loaded, does not mean the resultant data is valid</returns>
 int CSong::LoadTxt(ifstream& in)
 {
 	ClearSong(8);	//always clear 8 tracks 
@@ -1009,33 +1014,40 @@ int CSong::LoadTxt(ifstream& in)
 
 	char b;
 	char line[1025];
-	//read after the first "[" (inclusive)
+	// Read until the first "[" is found. This indicates a segment [.....]
 	NextSegment(in);
 
 	while (!in.eof())
 	{
-		in.getline(line, 1024);
-		Trimstr(line);
+		in.getline(line, 1024);			// Read the rest of the line
+		Trimstr(line);					// Get rid of /r/n at the end
+
 		if (strcmp(line, "MODULE]") == 0)
 		{
-			//MODULE
+			// [MODULE]
 			while (!in.eof())
 			{
+				// Check for next segment start '['
 				in.read((char*)&b, 1);
 				if (b == '[') break;
+				// Not a segment start so save the read character and get the rest of the line
 				line[0] = b;
 				in.getline(line + 1, 1024);
+
+				// Split on the ": " (COLON + SPACE) point
 				char* value = strstr(line, ": ");
 				if (value)
 				{
-					value[1] = 0;	//gap
-					value += 2;	//move to the first character after the space
+					value[1] = 0;	// Zero terminate the string on the left
+					value += 2;		// move to the first character after the space
 				}
 				else
 					continue;
 
+				// Process each of the possible commands in a [MODULE]
 				if (strcmp(line, "RMT:") == 0)
 				{
+					// RMT version indicator: 4 or 8
 					int v = Hexstr(value, 2);
 					if (v <= 4)
 						v = 4;
@@ -1046,6 +1058,7 @@ int CSong::LoadTxt(ifstream& in)
 				else
 				if (strcmp(line, "NAME:") == 0)
 				{
+					// Set the name of the song.
 					Trimstr(value);
 					memset(m_songname, ' ', SONG_NAME_MAX_LEN);
 					int lname = SONG_NAME_MAX_LEN;
@@ -1055,44 +1068,50 @@ int CSong::LoadTxt(ifstream& in)
 				else
 				if (strcmp(line, "MAXTRACKLEN:") == 0)
 				{
+					// Set how long a track is: MAXTRACKLEN: 00-FF
 					int v = Hexstr(value, 2);
 					if (v == 0) v = 256;
-					g_Tracks.m_maxtracklen = v;
-					//g_cursoractview = g_Tracks.m_maxtracklen / 2;
-					g_Tracks.InitTracks();	//reinitialise
+					g_Tracks.m_maxTrackLength = v;
+					g_Tracks.InitTracks();		// Reinitialise
 				}
 				else
 				if (strcmp(line, "MAINSPEED:") == 0)
 				{
+					// Set the play speed: MAINSPEED: 01-FF
 					int v = Hexstr(value, 2);
-					if (v > 0) m_mainspeed = v;
+					if (v > 0) m_mainSpeed = v;
 				}
 				else
 				if (strcmp(line, "INSTRSPEED:") == 0)
 				{
+					// Set the instrument speed: INSTRSPEED: 01-FF
 					int v = Hexstr(value, 1);
-					if (v > 0) m_instrspeed = v;
+					if (v > 0) m_instrumentSpeed = v;
 				}
 				else
 				if (strcmp(line, "VERSION:") == 0)
 				{
-					//int v = Hexstr(value,2);
-					//the version number is not needed for TXT yet, because it only selects the parameters it knows
+					// The version number is not needed for TXT yet, because it only selects the parameters it knows
 				}
 			}
 		}
 		else
 		if (strcmp(line, "SONG]") == 0)
 		{
-			//SONG 
+			// [SONG]
 			int idx, i;
 			for (idx = 0; !in.eof() && idx < SONGLEN; idx++)
 			{
+				// Read the song line. Dump out if its the next section
 				memset(line, 0, 32);
 				in.read((char*)&b, 1);
 				if (b == '[') break;
 				line[0] = b;
 				in.getline(line + 1, 1024);
+
+				// The line go be one of two types
+				// "Go to line XX"
+				// "-- -- -- --" or "-- -- -- -- -- -- -- --"
 				if (strncmp(line, "Go to line ", 11) == 0)
 				{
 					int go = Hexstr(line + 11, 2);
@@ -1101,6 +1120,7 @@ int CSong::LoadTxt(ifstream& in)
 				}
 				for (i = 0; i < g_tracks4_8; i++)
 				{
+					// Parse the track
 					int track = Hexstr(line + i * 3, 2);
 					if (track >= 0 && track < TRACKSNUM) m_song[idx][i] = track;
 				}
@@ -1109,15 +1129,19 @@ int CSong::LoadTxt(ifstream& in)
 		else
 		if (strcmp(line, "INSTRUMENT]") == 0)
 		{
+			// [INSTRUMNENT]
+			// Pass the instrument loading to the CInstruments class
 			g_Instruments.LoadInstrument(-1, in, IOTYPE_TXT); //-1 => retrieve the instrument number from the TXT source
 		}
 		else
 		if (strcmp(line, "TRACK]") == 0)
 		{
+			// [TRACK]
+			// Pass the track loading to the CTracks class
 			g_Tracks.LoadTrack(-1, in, IOTYPE_TXT);	//-1 => retrieve the track number from TXT source
 		}
 		else
-			NextSegment(in); //will therefore look for the beginning of the next segment
+			NextSegment(in); // Look for the beginning of the next segment
 	}
 
 	return 1;
@@ -1157,6 +1181,17 @@ int CSong::LoadRMW(ifstream& in)
 	return 1;
 }
 
+/// <summary>
+/// Validate the song data to make sure that
+/// - a RMT module could be created [Error]
+/// - the song is not empty [Error]
+/// - a goto statement does not go past the end of the song [Error]
+/// - there is no recursive goto [Error]
+/// - a goto follows another goto (which would be a waste) [Warning]
+/// - Check that there is not more then one continuous blank song line [Warning]
+/// - there is a goto at the end of the song, goto 0 is used by default [Warning]
+/// </summary>
+/// <returns></returns>
 int CSong::TestBeforeFileSave()
 {
 	//it is performed on Export (everything except RMW) before the target file is overwritten
@@ -1165,13 +1200,12 @@ int CSong::TestBeforeFileSave()
 	//try to create a module
 	unsigned char mem[65536];
 	int adr_module = 0x4000;
-	BYTE instrsaved[INSTRSNUM];
-	BYTE tracksaved[TRACKSNUM];
-	int maxadr;
+	BYTE instrumentSavedFlags[INSTRSNUM];
+	BYTE trackSavedFlags[TRACKSNUM];
 
-	//try to make a blank RMT module
-	maxadr = MakeModule(mem, adr_module, IOTYPE_RMT, instrsaved, tracksaved);
-	if (maxadr < 0) return 0;	//if the module could not be created
+	// try to make a blank RMT module
+	if (MakeModule(mem, adr_module, IOTYPE_RMT, instrumentSavedFlags, trackSavedFlags) < 0)
+		return 0;	// Dump out if the module could not be created
 
 	//and now it will be checked whether the song ends with GOTO line and if there is no GOTO on GOTO line
 	CString errmsg, wrnmsg, s;
@@ -1274,6 +1308,71 @@ int CSong::TestBeforeFileSave()
 	return 1;
 }
 
+
+
+
+int CSong::Export2(ofstream& ou, int iotype, char* filename)
+{
+	// Init the export data container
+	tExportDescription exportDesc;
+	memset(&exportDesc, 0, sizeof(tExportDescription));
+	exportDesc.targetAddrOfModule = 0x4000;		// Standard RMT modules are set to start @ $4000
+
+	// Create a module, if it fails stop the export
+	int maxAddr = MakeModule(exportDesc.mem, exportDesc.targetAddrOfModule, iotype, exportDesc.instrumentSavedFlags, exportDesc.trackSavedFlags);
+	if (maxAddr < 0) 
+		return 0;								// If the module could not be created, the export process is immediately aborted
+	exportDesc.firstByteAfterModule = maxAddr;
+
+	switch (iotype)
+	{
+		case IOTYPE_RMT: return ExportAsRMT(ou, &exportDesc);
+		case IOTYPE_RMTSTRIPPED: return ExportAsStrippedRMT(ou, &exportDesc);
+	}
+
+	return 0;
+}
+
+int CSong::ExportAsRMT(ofstream& ou, tExportDescription *exportDesc)
+{
+	// Save the 1st RMT module block: Song, Tracks & Instruments
+	SaveBinaryBlock(ou, exportDesc->mem, exportDesc->targetAddrOfModule, exportDesc->firstByteAfterModule - 1, TRUE);
+
+	// Save the 2nd RMT module block: Song and Instrument Names
+	// The individual names are truncated by spaces and terminated by a zero
+	// Song name (0 terminated)
+	CString name;
+	int addrOfSongName = exportDesc->firstByteAfterModule;
+	name = m_songname;
+	name.TrimRight();
+	int len = name.GetLength() + 1;	// including 0 after the string
+	strncpy((char*)(exportDesc->mem + addrOfSongName), (LPCSTR)name, len);
+
+	// Each saved instrument's name is written to the second module
+	int addrInstrumentNames = addrOfSongName + len;
+	for (int i = 0; i < INSTRSNUM; i++)
+	{
+		if (exportDesc->instrumentSavedFlags[i])
+		{
+			name = g_Instruments.GetName(i);
+			name.TrimRight();
+			len = name.GetLength() + 1;	//including 0 after the string
+			strncpy((char*)(exportDesc->mem + addrInstrumentNames), name, len);
+			addrInstrumentNames += len;
+		}
+	}
+	// and now, save the 2nd block
+	SaveBinaryBlock(ou, exportDesc->mem, addrOfSongName, addrInstrumentNames - 1, FALSE);
+
+	return 0;
+}
+
+int CSong::ExportAsStrippedRMT(ofstream& ou, tExportDescription* exportDesc)
+{
+	return 0;
+
+}
+
 int CSong::Export(ofstream& ou, int iotype, char* filename)
 {
 	//TODO: manage memory in a more dynamic way 
@@ -1299,18 +1398,16 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 	int lzss_offset, lzss_end;
 
 	//RMT module addresses
-	int adr_module = 0x4000;					//standard RMT modules are set to $4000
-	int maxadr = adr_module;
+	int targetAddrOfModule = 0x4000;			// Standard RMT modules are set to start @ $4000
 
 	WORD adrfrom, adrto;
-	BYTE instrsaved[INSTRSNUM];
-	BYTE tracksaved[TRACKSNUM];
-	BOOL head_ffff = 1;							//FFFF header at the beginning of the file, it only needs to be defined once
+	BYTE instrumentSavedFlags[INSTRSNUM];
+	BYTE trackSavedFlags[TRACKSNUM];
 
-	//create a module
+	// Create a module, if it fails stop the export
 	memset(mem, 0, 65536);
-	maxadr = MakeModule(mem, adr_module, iotype, instrsaved, tracksaved);
-	if (maxadr < 0) return 0;						//if the module could not be created, the export process is immediately aborted
+	int maxadr = MakeModule(mem, targetAddrOfModule, iotype, instrumentSavedFlags, trackSavedFlags);
+	if (maxadr < 0) return 0;					// If the module could not be created, the export process is immediately aborted
 	CString s;
 
 	//first, we must dump the current module as SAP-R before LZSS conversion
@@ -1360,29 +1457,31 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 	{
 		case IOTYPE_RMT:
 		{
-			//save the first RMT module block
-			SaveBinaryBlock(ou, mem, adr_module, maxadr - 1, head_ffff);
+			// Save the first RMT module block: Song, Track and Instrument data
+			SaveBinaryBlock(ou, mem, targetAddrOfModule, maxadr - 1, TRUE);
 
-			//the individual names are truncated by spaces and terminated by a zero
-			int adrsongname = maxadr;
+			// Build the 2nd block (song and instrument names)
+			// The individual names are truncated by spaces and terminated by a zero
+			int addrSongName = maxadr;
 			s = m_songname;
 			s.TrimRight();
-			int lens = s.GetLength() + 1;	//including 0 after the string
-			strncpy((char*)(mem + adrsongname), (LPCSTR)s, lens);
-			int adrinstrnames = adrsongname + lens;
+			int len = s.GetLength() + 1;	//including 0 after the string
+			strncpy((char*)(mem + addrSongName), (LPCSTR)s, len);
+
+			int addrInstrNames = addrSongName + len;
 			for (int i = 0; i < INSTRSNUM; i++)
 			{
-				if (instrsaved[i])
+				if (instrumentSavedFlags[i])
 				{
 					s = g_Instruments.GetName(i);
 					s.TrimRight();
-					lens = s.GetLength() + 1;	//including 0 after the string
-					strncpy((char*)(mem + adrinstrnames), s, lens);
-					adrinstrnames += lens;
+					len = s.GetLength() + 1;	//including 0 after the string
+					strncpy((char*)(mem + addrInstrNames), s, len);
+					addrInstrNames += len;
 				}
 			}
-			//and now, save the 2nd block
-			SaveBinaryBlock(ou, mem, adrsongname, adrinstrnames - 1, 0);
+			// and now, save the 2nd block
+			SaveBinaryBlock(ou, mem, addrSongName, addrInstrNames - 1, 0);
 		}
 		break;
 
@@ -1391,26 +1490,26 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			//create a variant for SFX (ie. including unused instruments and tracks)
 			BYTE instrsaved2[INSTRSNUM];
 			BYTE tracksaved2[TRACKSNUM];
-			int maxadr2 = MakeModule(mem, adr_module, IOTYPE_RMT, instrsaved2, tracksaved2);
+			int maxadr2 = MakeModule(mem, targetAddrOfModule, IOTYPE_RMT, instrsaved2, tracksaved2);
 			if (maxadr2 < 0) return 0;	//if the module could not be created
 
 			//Dialog for specifying the address of the RMT module in memory
 			CExpRMTDlg dlg;
-			dlg.m_len = maxadr - adr_module;
-			dlg.m_len2 = maxadr2 - adr_module;
+			dlg.m_len = maxadr - targetAddrOfModule;
+			dlg.m_len2 = maxadr2 - targetAddrOfModule;
 			dlg.m_adr = g_rmtstripped_adr_module;	//global, so that it remains the same on repeated export
 			dlg.m_sfx = g_rmtstripped_sfx;
 			dlg.m_gvf = g_rmtstripped_gvf;
 			dlg.m_nos = g_rmtstripped_nos;
 			dlg.m_song = this;
 			dlg.m_filename = filename;
-			dlg.m_instrsaved = instrsaved;
+			dlg.m_instrsaved = instrumentSavedFlags;
 			dlg.m_instrsaved2 = instrsaved2;
-			dlg.m_tracksaved = tracksaved;
+			dlg.m_tracksaved = trackSavedFlags;
 			dlg.m_tracksaved2 = tracksaved2;
 			if (dlg.DoModal() != IDOK) return 0;
 
-			g_rmtstripped_adr_module = adr_module = dlg.m_adr;
+			g_rmtstripped_adr_module = targetAddrOfModule = dlg.m_adr;
 			g_rmtstripped_sfx = dlg.m_sfx;
 			g_rmtstripped_gvf = dlg.m_gvf;
 			g_rmtstripped_nos = dlg.m_nos;
@@ -1418,12 +1517,12 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			//regenerates the module according to the entered address "adr"
 			memset(mem, 0, 65536);
 			if (!g_rmtstripped_sfx) //either without unused instruments and tracks
-				maxadr = MakeModule(mem, adr_module, iotype, instrsaved, tracksaved);
+				maxadr = MakeModule(mem, targetAddrOfModule, iotype, instrumentSavedFlags, trackSavedFlags);
 			else					//or with them
-				maxadr = MakeModule(mem, adr_module, IOTYPE_RMT, instrsaved, tracksaved);
+				maxadr = MakeModule(mem, targetAddrOfModule, IOTYPE_RMT, instrumentSavedFlags, trackSavedFlags);
 			if (maxadr < 0) return 0; //if the module could not be created
 			//and now save the RMT module block
-			SaveBinaryBlock(ou, mem, adr_module, maxadr - 1, head_ffff);
+			SaveBinaryBlock(ou, mem, targetAddrOfModule, maxadr - 1, TRUE);
 		}
 		break;
 
@@ -1551,7 +1650,7 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 								ou << s;
 								continue;
 							}
-							int trackslen = g_Tracks.m_maxtracklen;
+							int trackslen = g_Tracks.m_maxTrackLength;
 							for (int i = 0; i < g_tracks4_8; i++)
 							{
 								int at = m_song[sline][i];
@@ -1729,10 +1828,10 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 				ou << "NTSC" << EOL;
 			}
 
-			if (m_instrspeed > 1)
+			if (m_instrumentSpeed > 1)
 			{
 				ou << "FASTPLAY ";
-				switch (m_instrspeed)
+				switch (m_instrumentSpeed)
 				{
 					case 2:
 						ou << ((g_ntsc) ? "131" : "156");
@@ -1844,8 +1943,8 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			g_Pokey.DoneSAPR();	//clear the SAP-R dumper memory and reset RMT routines
 
 			//some additional variables that will be used below
-			adr_module = 0x3100;												//all the LZSS data will be written starting from this address
-			lzss_offset = (intro) ? adr_module + intro : adr_module + full;		//calculate the offset for the export process between the subtune parts, at the moment only 1 tune at the time can be exported
+			targetAddrOfModule = 0x3100;												//all the LZSS data will be written starting from this address
+			lzss_offset = (intro) ? targetAddrOfModule + intro : targetAddrOfModule + full;		//calculate the offset for the export process between the subtune parts, at the moment only 1 tune at the time can be exported
 			lzss_end = lzss_offset + loop;										//this sets the address that defines where the data stream has reached its end
 
 			//if the size is too big, abort the process and show an error message
@@ -1947,10 +2046,10 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 				ou << "NTSC" << EOL;
 			}
 
-			if (m_instrspeed > 1)
+			if (m_instrumentSpeed > 1)
 			{
 				ou << "FASTPLAY ";
-				switch (m_instrspeed)
+				switch (m_instrumentSpeed)
 				{
 					case 2:
 						ou << ((g_ntsc) ? "131" : "156");
@@ -1992,7 +2091,7 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			};
 			for (int i = 0; i < 14; i++) mem[adr_init_sap + i] = sapbytes[i];
 
-			mem[adr_song_speed] = m_instrspeed;							//song speed
+			mem[adr_song_speed] = m_instrumentSpeed;							//song speed
 			mem[adr_stereo_flag] = (g_tracks4_8 > 4) ? 0xFF : 0x00;		//is the song stereo?
 
 			//reconstruct the export binary 
@@ -2000,9 +2099,9 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			SaveBinaryBlock(ou, mem, 0x2000, 0x27FF, 0);	//VUPlayer only
 
 			//songstart pointers
-			mem[0x3000] = adr_module >> 8;
+			mem[0x3000] = targetAddrOfModule >> 8;
 			mem[0x3001] = lzss_offset >> 8;
-			mem[0x3002] = adr_module & 0xFF;
+			mem[0x3002] = targetAddrOfModule & 0xFF;
 			mem[0x3003] = lzss_offset & 0xFF;
 
 			//songend pointers
@@ -2012,9 +2111,9 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			mem[0x3007] = lzss_end & 0xFF;
 
 			if (intro)
-				for (int i = 0; i < intro; i++) { mem[adr_module + i] = buff2[i]; }
+				for (int i = 0; i < intro; i++) { mem[targetAddrOfModule + i] = buff2[i]; }
 			else
-				for (int i = 0; i < full; i++) { mem[adr_module + i] = buff1[i]; }
+				for (int i = 0; i < full; i++) { mem[targetAddrOfModule + i] = buff1[i]; }
 			for (int i = 0; i < loop; i++) { mem[lzss_offset + i] = buff3[i]; }
 
 			//overwrite the LZSS data region with both the pointers for subtunes index, and the actual LZSS streams until the end of file
@@ -2075,8 +2174,8 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			g_Pokey.DoneSAPR();	//clear the SAP-R dumper memory and reset RMT routines
 
 			//some additional variables that will be used below
-			adr_module = 0x3100;												//all the LZSS data will be written starting from this address
-			lzss_offset = (intro) ? adr_module + intro : adr_module + full;		//calculate the offset for the export process between the subtune parts, at the moment only 1 tune at the time can be exported
+			targetAddrOfModule = 0x3100;												//all the LZSS data will be written starting from this address
+			lzss_offset = (intro) ? targetAddrOfModule + intro : targetAddrOfModule + full;		//calculate the offset for the export process between the subtune parts, at the moment only 1 tune at the time can be exported
 			lzss_end = lzss_offset + loop;										//this sets the address that defines where the data stream has reached its end
 
 			//if the size is too big, abort the process and show an error message
@@ -2169,7 +2268,7 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			}
 
 			//additional patches from the Export Dialog...
-			mem[adr_song_speed] = m_instrspeed;										//song speed
+			mem[adr_song_speed] = m_instrumentSpeed;										//song speed
 			mem[adr_rasterbar] = (dlg.m_meter) ? 0x80 : 0x00;						//display the rasterbar for CPU level
 			mem[adr_colour] = dlg.m_metercolor;										//rasterbar colour 
 			mem[adr_shuffle] = 0x00;	// = (dlg.m_msx_shuffle) ? 0x10 : 0x00;		//rasterbar colour shuffle, incomplete feature so it is disabled
@@ -2187,9 +2286,9 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			SaveBinaryBlock(ou, mem, 0x2e0, 0x2e1, 0);
 
 			//songstart pointers
-			mem[0x3000] = adr_module >> 8;
+			mem[0x3000] = targetAddrOfModule >> 8;
 			mem[0x3001] = lzss_offset >> 8;
-			mem[0x3002] = adr_module & 0xFF;
+			mem[0x3002] = targetAddrOfModule & 0xFF;
 			mem[0x3003] = lzss_offset & 0xFF;
 
 			//songend pointers
@@ -2199,9 +2298,9 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			mem[0x3007] = lzss_end & 0xFF;
 
 			if (intro)
-				for (int i = 0; i < intro; i++) { mem[adr_module + i] = buff2[i]; }
+				for (int i = 0; i < intro; i++) { mem[targetAddrOfModule + i] = buff2[i]; }
 			else
-				for (int i = 0; i < full; i++) { mem[adr_module + i] = buff1[i]; }
+				for (int i = 0; i < full; i++) { mem[targetAddrOfModule + i] = buff1[i]; }
 			for (int i = 0; i < loop; i++) { mem[lzss_offset + i] = buff3[i]; }
 
 			//overwrite the LZSS data region with both the pointers for subtunes index, and the actual LZSS streams until the end of file
@@ -2220,29 +2319,32 @@ int CSong::LoadRMT(ifstream& in)
 {
 	unsigned char mem[65536];
 	memset(mem, 0, 65536);
-	WORD bfrom, bto;
+	WORD fromAddr, toAddr;
 	WORD bto_mainblock;
 
-	BYTE instrloaded[INSTRSNUM];
-	BYTE trackloaded[TRACKSNUM];
+	BYTE instrumentLoadedFlags[INSTRSNUM];
+	BYTE trackLoadedFlags[TRACKSNUM];
 
-	int len, i, j, k;
+	int len, i, idx, k;
+	int loadResult;
 
-	//RMT header is the first main block of an RMT song
-
-	len = LoadBinaryBlock(in, mem, bfrom, bto);
+	// RMT header+song data is the first main block of an RMT song
+	// There has to be 1 binary block with the header, song, instrument and track data
+	// Optional block with instrument and song name information
+	// In RMT V2 there is a tuning block
+	len = LoadBinaryBlock(in, mem, fromAddr, toAddr);
 
 	if (len > 0)
 	{
-		int r = DecodeModule(mem, bfrom, bto + 1, instrloaded, trackloaded);
-		if (!r)
+		loadResult = DecodeModule(mem, fromAddr, toAddr + 1, instrumentLoadedFlags, trackLoadedFlags);
+		if (loadResult == 0)
 		{
 			MessageBox(g_hwnd, "Bad RMT data format or old tracker version.", "Open error", MB_ICONERROR);
 			return 0;
 		}
-		//the main block of the module is OK => take its boot address
-		g_rmtstripped_adr_module = bfrom;
-		bto_mainblock = bto;
+		// The main block of the module is OK => take its boot address
+		g_rmtstripped_adr_module = fromAddr;
+		bto_mainblock = toAddr;
 	}
 	else
 	{
@@ -2250,34 +2352,40 @@ int CSong::LoadRMT(ifstream& in)
 		return 0;	//did not retrieve any data in the first block
 	}
 
-	//RMT - now read the second block with names)
-	len = LoadBinaryBlock(in, mem, bfrom, bto);
+	// RMT - now read the second block with names
+	len = LoadBinaryBlock(in, mem, fromAddr, toAddr);
 	if (len < 1)
 	{
-		CString s;
-		s.Format("This file appears to be a stripped RMT module.\nThe song and instruments names are missing.\n\nMemory addresses: $%04X - $%04X.", g_rmtstripped_adr_module, bto_mainblock);
-		MessageBox(g_hwnd, (LPCTSTR)s, "Info", MB_ICONINFORMATION);
+		CString msg;
+		msg.Format("This file appears to be a stripped RMT module.\nThe song and instruments names are missing.\n\nMemory addresses: $%04X - $%04X.", g_rmtstripped_adr_module, bto_mainblock);
+		MessageBox(g_hwnd, (LPCTSTR)msg, "Info", MB_ICONINFORMATION);
 		return 1;
 	}
 
-	char a;
-	for (j = 0; j < SONG_NAME_MAX_LEN && (a = mem[bfrom + j]); j++)
-		m_songname[j] = a;
+	char ch;
+	// Parse the song name (until we hit the terminating zero)
+	for (idx = 0; idx < SONG_NAME_MAX_LEN && (ch = mem[fromAddr + idx]); idx++)
+		m_songname[idx] = ch;
 
-	for (k = j; k < SONG_NAME_MAX_LEN; k++) m_songname[k] = ' '; //fill in the gaps
+	for (k = idx; k < SONG_NAME_MAX_LEN; k++) m_songname[k] = ' '; //fill in the gaps
 
-	int adrinames = bfrom + j + 1; //+1 that's the zero behind the name
+	int addrInstrumentNames = fromAddr + idx + 1; //+1 that's the zero behind the name
 	for (i = 0; i < INSTRSNUM; i++)
 	{
-		if (instrloaded[i])
+		// Check if this instrument has been loaded
+		if (instrumentLoadedFlags[i])
 		{
-			for (j = 0; j < INSTRUMENT_NAME_MAX_LEN && (a = mem[adrinames + j]); j++)
-				g_Instruments.m_instr[i].name[j] = a;
+			// Yes its loaded, parse its name
+			for (idx = 0; idx < INSTRUMENT_NAME_MAX_LEN && (ch = mem[addrInstrumentNames + idx]); idx++)
+				g_Instruments.m_instr[i].name[idx] = ch;
 
-			for (k = j; k < INSTRUMENT_NAME_MAX_LEN; k++) g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
-			adrinames += j + 1; //+1 is zero behind the name
+			for (k = idx; k < INSTRUMENT_NAME_MAX_LEN; k++) g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
+
+			// Move to source of the next instrument's name
+			addrInstrumentNames += idx + 1; //+1 is zero behind the name
 		}
 	}
+
 	return 1;
 }
 
@@ -2403,9 +2511,9 @@ BOOL CSong::ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrsaved
 
 	s.Format("FEAT_NOSTARTINGSONGLINE\tequ %u\n", nos); dest += s;
 
-	s.Format("FEAT_INSTRSPEED\t\tequ %i\n", m_instrspeed); dest += s;
+	s.Format("FEAT_INSTRSPEED\t\tequ %i\n", m_instrumentSpeed); dest += s;
 
-	s.Format("FEAT_CONSTANTSPEED\t\tequ %i\t\t;(%i times)\n", (speedchanges == 0) ? m_mainspeed : 0, speedchanges); dest += s;
+	s.Format("FEAT_CONSTANTSPEED\t\tequ %i\t\t;(%i times)\n", (speedchanges == 0) ? m_mainSpeed : 0, speedchanges); dest += s;
 
 	//commands 1-6
 	for (i = 1; i <= 6; i++)

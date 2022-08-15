@@ -723,7 +723,7 @@ void CSong::DrawSong()
 		// y_offset = line * 16 / track_length
 		
 		pattern_len = GetSmallestMaxtracklen(m_songplayline);
-		if (!pattern_len) pattern_len = g_Tracks.m_maxtracklen;	//fallback to whatever is in memory instead if the value returned is invalid
+		if (!pattern_len) pattern_len = g_Tracks.m_maxTrackLength;	//fallback to whatever is in memory instead if the value returned is invalid
 		smooth_y = (active_smooth) ? (m_trackplayline * 16 / pattern_len) - 8 : 0;
 		// TRACE("y offset = %d\n", smooth_y);
 	}
@@ -937,7 +937,7 @@ void CSong::DrawTracks()
 			if (!ln)
 			{
 				is_goto = 1;
-				ln = g_Tracks.m_maxtracklen;
+				ln = g_Tracks.m_maxTrackLength;
 			}
 
 			if (line >= ln) goto plusline;
@@ -1205,16 +1205,16 @@ void CSong::DrawInfo()
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_SPEED) ? TRUE : FALSE;
 	TextXY(szBuffer, INFO_X + 13 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
-	sprintf(szBuffer, "%02X", m_mainspeed);
+	sprintf(szBuffer, "%02X", m_mainSpeed);
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_MAIN_SPEED) ? TRUE : FALSE;
 	TextXY(szBuffer, INFO_X + 16 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
-	sprintf(szBuffer, "%X", m_instrspeed);
+	sprintf(szBuffer, "%X", m_instrumentSpeed);
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_INSTR_SPEED) ? TRUE : FALSE;
 	TextXY(szBuffer, INFO_X + 19 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
 	// Max Track Length @ 40 chars
-	sprintf(szBuffer, "%02X", g_Tracks.m_maxtracklen);
+	sprintf(szBuffer, "%02X", g_Tracks.m_maxTrackLength);
 	TextXY(szBuffer, INFO_X + 40 * 8, INFO_Y_LINE_3, TEXT_COLOR_TURQUOISE);
 
 	// Mono or Stereo @ 46 chars
@@ -1373,8 +1373,8 @@ BOOL CSong::InfoKey(int vk, int shift, int control)
 	}
 
 	int i, num;
-	int volatile* infptab[] = { &m_speed, &m_mainspeed, &m_instrspeed, &g_trackLinePrimaryHighlight, &g_trackLineSecondaryHighlight };
-	int infandtab[] = { 0xFF, 0xFF, 0x08, g_Tracks.m_maxtracklen / 2, g_Tracks.m_maxtracklen / 2 };	//maximum current speed, main speed, instrument speed, primary and secondary line highlights
+	int volatile* infptab[] = { &m_speed, &m_mainSpeed, &m_instrumentSpeed, &g_trackLinePrimaryHighlight, &g_trackLineSecondaryHighlight };
+	int infandtab[] = { 0xFF, 0xFF, 0x08, g_Tracks.m_maxTrackLength / 2, g_Tracks.m_maxTrackLength / 2 };	//maximum current speed, main speed, instrument speed, primary and secondary line highlights
 	int volatile& infp = *infptab[m_infoact - 1];
 	int infand = infandtab[m_infoact - 1];
 
@@ -1897,7 +1897,7 @@ ChangeInstrumentPar:
 				{
 					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
 					if (ai.editEnvelopeX == ai.parameters[PAR_ENV_LENGTH])	//sets ENVLEN to this column or to the end
-						ai.parameters[PAR_ENV_LENGTH] = ENVCOLS - 1;
+						ai.parameters[PAR_ENV_LENGTH] = ENVELOPE_MAX_COLUMNS - 1;
 					else
 						ai.parameters[PAR_ENV_LENGTH] = ai.editEnvelopeX;
 					goto ChangeInstrumentPar;	//yes, changed PAR from envelope
@@ -1931,9 +1931,9 @@ ChangeInstrumentPar:
 					int i, j;
 					int ele = ai.parameters[PAR_ENV_LENGTH];
 					int ego = ai.parameters[PAR_ENV_GOTO];
-					if (ele < ENVCOLS - 1) ele++;
-					if (ai.editEnvelopeX < ego && ego < ENVCOLS - 1) ego++;
-					for (i = ENVCOLS - 2; i >= ai.editEnvelopeX; i--)
+					if (ele < ENVELOPE_MAX_COLUMNS - 1) ele++;
+					if (ai.editEnvelopeX < ego && ego < ENVELOPE_MAX_COLUMNS - 1) ego++;
+					for (i = ENVELOPE_MAX_COLUMNS - 2; i >= ai.editEnvelopeX; i--)
 					{
 						for (j = 0; j < ENVROWS; j++) ai.envelope[i + 1][j] = ai.envelope[i][j];
 					}
@@ -1955,11 +1955,11 @@ ChangeInstrumentPar:
 					if (ele > 0)
 					{
 						ele--;
-						for (i = ai.editEnvelopeX; i < ENVCOLS - 1; i++)
+						for (i = ai.editEnvelopeX; i < ENVELOPE_MAX_COLUMNS - 1; i++)
 						{
 							for (j = 0; j < ENVROWS; j++) ai.envelope[i][j] = ai.envelope[i + 1][j];
 						}
-						for (j = 0; j < ENVROWS; j++) ai.envelope[ENVCOLS - 1][j] = 0;
+						for (j = 0; j < ENVROWS; j++) ai.envelope[ENVELOPE_MAX_COLUMNS - 1][j] = 0;
 					}
 					else
 					{
@@ -2009,7 +2009,7 @@ ChangeInstrumentPar:
 				{	//set TABLE only by location
 					g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA);
 					if (ai.editNoteTableCursorPos == ai.parameters[PAR_TBL_LENGTH])
-						ai.parameters[PAR_TBL_LENGTH] = TABLEN - 1;
+						ai.parameters[PAR_TBL_LENGTH] = NOTE_TABLE_MAX_LEN - 1;
 					else
 						ai.parameters[PAR_TBL_LENGTH] = ai.editNoteTableCursorPos;
 					goto ChangeInstrumentPar;
@@ -2080,9 +2080,9 @@ ChangeInstrumentPar:
 					int i;
 					int tle = ai.parameters[PAR_TBL_LENGTH];
 					int tgo = ai.parameters[PAR_TBL_GOTO];
-					if (tle < TABLEN - 1) tle++;
-					if (ai.editNoteTableCursorPos < tgo && tgo < TABLEN - 1) tgo++;
-					for (i = TABLEN - 2; i >= ai.editNoteTableCursorPos; i--) ai.noteTable[i + 1] = ai.noteTable[i];
+					if (tle < NOTE_TABLE_MAX_LEN - 1) tle++;
+					if (ai.editNoteTableCursorPos < tgo && tgo < NOTE_TABLE_MAX_LEN - 1) tgo++;
+					for (i = NOTE_TABLE_MAX_LEN - 2; i >= ai.editNoteTableCursorPos; i--) ai.noteTable[i + 1] = ai.noteTable[i];
 					if (!shift) ai.noteTable[ai.editNoteTableCursorPos] = 0; //with the shift it will leave there
 					ai.parameters[PAR_TBL_LENGTH] = tle;
 					ai.parameters[PAR_TBL_GOTO] = tgo;
@@ -2101,8 +2101,8 @@ ChangeInstrumentPar:
 					if (tle > 0)
 					{
 						tle--;
-						for (i = ai.editNoteTableCursorPos; i < TABLEN - 1; i++) ai.noteTable[i] = ai.noteTable[i + 1];
-						ai.noteTable[TABLEN - 1] = 0;
+						for (i = ai.editNoteTableCursorPos; i < NOTE_TABLE_MAX_LEN - 1; i++) ai.noteTable[i] = ai.noteTable[i + 1];
+						ai.noteTable[NOTE_TABLE_MAX_LEN - 1] = 0;
 					}
 					else
 						ai.noteTable[0] = 0;
@@ -2431,7 +2431,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 		}
 		if (!control && (vk == VK_DOWN || vk == VK_PAGE_DOWN)) //GO - key down
 		{
-			m_trackactiveline = g_Tracks.m_maxtracklen - 1;
+			m_trackactiveline = g_Tracks.m_maxTrackLength - 1;
 			TrackDown(1, 0);
 			return 1;
 		}
@@ -2602,10 +2602,10 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 			if (g_activepart == 1)	//tracks
 			{
 				if (TrackGetGoLine() >= 0)
-					m_trackactiveline = g_Tracks.m_maxtracklen - 1; //last line
+					m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //last line
 				else
 					m_trackactiveline = TrackGetLastLine();	//end line
-				if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.m_maxtracklen - 1; //failsafe in case the active line is out of bounds
+				if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //failsafe in case the active line is out of bounds
 			}
 			else if (g_activepart == 3)	//song lines
 			{
@@ -2693,7 +2693,7 @@ BOOL CSong::TrackKey(int vk, int shift, int control)
 		}
 		if (!control && (vk == VK_DOWN || vk == VK_PAGE_DOWN)) //GO - key down
 		{
-			m_trackactiveline = g_Tracks.m_maxtracklen - 1;	//always reset to line 0
+			m_trackactiveline = g_Tracks.m_maxTrackLength - 1;	//always reset to line 0
 			TrackDown(1, 0);
 			return 1;
 		}
@@ -3185,13 +3185,13 @@ TrackKeyOk:
 				{
 					BLOCKSETBEGIN;
 					if (TrackGetGoLine() >= 0)
-						m_trackactiveline = g_Tracks.m_maxtracklen - 1; //last line
+						m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //last line
 					else
 						m_trackactiveline = TrackGetLastLine();	//end line
 					BLOCKSETEND;
 					if (m_trackactiveline < 0)
 					{
-						m_trackactiveline = g_Tracks.m_maxtracklen - 1; //failsafe in case the active line is out of bounds
+						m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //failsafe in case the active line is out of bounds
 						BLOCKDESELECT;	//prevents selecting invalid data
 					}
 				}
@@ -3210,9 +3210,9 @@ TrackKeyOk:
 						if (i != m_trackactiveline)
 						{
 							m_trackactiveline = i;	//at the end of the GO loop or end line
-							if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.m_maxtracklen - 1; //failsafe in case the active line is out of bounds
+							if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //failsafe in case the active line is out of bounds
 						}
-						else m_trackactiveline = g_Tracks.m_maxtracklen - 1; //last line
+						else m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //last line
 						BLOCKDESELECT;
 					}
 				}

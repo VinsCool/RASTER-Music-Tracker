@@ -33,7 +33,7 @@ class CTracks
 {
 public:
 	CTracks();
-	BOOL InitTracks();
+	void InitTracks();
 	BOOL ClearTrack(int t);
 	BOOL IsEmptyTrack(int track);
 	BOOL DrawTrackHeader(int col, int x, int y, int tr);	//, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu);
@@ -71,7 +71,7 @@ public:
 	int SaveTrack(int track, std::ofstream& ou, int iotype);
 	int LoadTrack(int track, std::ifstream& in, int iotype);
 
-	BOOL CalculateNoEmpty(int track);
+	BOOL CalculateNotEmpty(int track);
 	BOOL CompareTracks(int track1, int track2);
 
 	int TrackOptimizeVol0(int track);
@@ -79,7 +79,7 @@ public:
 	int TrackExpandLoop(int track);
 	int TrackExpandLoop(TTrack* ttrack);
 
-	int m_maxtracklen;
+	int m_maxTrackLength;
 
 private:
 	TTrack m_track[TRACKSNUM];

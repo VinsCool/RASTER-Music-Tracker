@@ -87,6 +87,8 @@ BOOL CRmtApp::InitInstance()
 		RUNTIME_CLASS(CRmtView));
 	AddDocTemplate(pDocTemplate);
 
+	g_Song.ClearSong(8);
+
 	// Parse command line for standard shell commands, DDE, file open
 	CCommandLineInfo cmdInfo;
 	ParseCommandLine(cmdInfo);
@@ -101,8 +103,6 @@ BOOL CRmtApp::InitInstance()
 
 	// Initialization of a random number
 	srand( (unsigned)time( NULL ) );
-
-	g_Song.ClearSong(8);
 
 	//PostMessage(m_pMainWnd->m_hWnd,WM_COMMAND,ID_APP_ABOUT,0); //so that the dialogue can be triggered first
 
