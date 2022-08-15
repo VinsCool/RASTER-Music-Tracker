@@ -281,6 +281,8 @@ void CSong::MarkTF_NOEMPTY(BYTE* arrayTRACKSNUM)
 	}
 }
 
+/*
+//Experimental v2 module format, forget this idea, it's too early and done the wrong way after reconsideration...
 int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved, BYTE* tracksaved)
 {
 	//returns maxadr (points to the first free address after the module) and sets the instrsaved and tracksaved fields
@@ -456,6 +458,146 @@ int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved,
 	//
 	mem[adr + 0x56] = adrsong & 0xff;			//dbyte
 	mem[adr + 0x57] = adrsong >> 8;				//hbyte
+
+	return endofmodule;
+}
+*/
+
+int CSong::MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrsaved, BYTE* tracksaved)
+{
+	//returns maxadr (points to the first free address after the module) and sets the instrsaved and tracksaved fields
+	if (iotype == IOTYPE_RMF) return MakeRMFModule(mem, adr, instrsaved, tracksaved);
+
+	BYTE* instrsave = instrsaved;
+	BYTE* tracksave = tracksaved;
+	memset(instrsave, 0, INSTRSNUM);	//init
+	memset(tracksave, 0, TRACKSNUM); //init
+
+	strncpy((char*)(mem + adr), "RMT", 3);
+	mem[adr + 3] = g_tracks4_8 + '0';	//4 or 8
+	mem[adr + 4] = g_Tracks.m_maxtracklen & 0xff;
+	mem[adr + 5] = m_mainspeed & 0xff;
+	mem[adr + 6] = m_instrspeed;		//instr speed 1-4
+	mem[adr + 7] = RMTFORMATVERSION;	//RMT format version number
+
+	//in RMT all non-empty tracks and non-empty instruments will be stored in others only non-empty used tracks and used instruments in them
+	int i, j;
+
+	//all tracks used in the song
+	MarkTF_USED(tracksave);
+
+	if (iotype == IOTYPE_RMT)
+	{
+		//In addition to the used ones, all non-empty tracks are added to the RMT, all non-empty tracks
+		MarkTF_NOEMPTY(tracksave);
+	}
+
+	//all instruments in the tracks that will be saved
+	for (i = 0; i < TRACKSNUM; i++)
+	{
+		if (tracksave[i] > 0)
+		{
+			TTrack& tr = *g_Tracks.GetTrack(i);
+			for (j = 0; j < tr.len; j++)
+			{
+				int ins = tr.instr[j];
+				if (ins >= 0 && ins < INSTRSNUM) instrsave[ins] = IF_USED;
+			}
+		}
+	}
+
+	if (iotype == IOTYPE_RMT)
+	{
+		//in addition to the instruments used in the tracks that are in the song, all non-empty instruments are stored in the RMT
+		for (i = 0; i < INSTRSNUM; i++)
+		{
+			if (g_Instruments.CalculateNotEmpty(i)) instrsave[i] |= IF_NOEMPTY;
+		}
+	}
+
+	//---
+
+	int numtracks = 0;
+	for (i = TRACKSNUM - 1; i >= 0; i--)
+	{
+		if (tracksave[i] > 0) { numtracks = i + 1; break; }
+	}
+
+	int numinstrs = 0;
+	for (i = INSTRSNUM - 1; i >= 0; i--)
+	{
+		if (instrsave[i] > 0) { numinstrs = i + 1; break; }
+	}
+
+	//and now save:
+	//instruments
+	//tracks
+	//songlines
+
+	int adrpinstruments = adr + 16;
+	int adrptrackslbs = adrpinstruments + numinstrs * 2;
+	int adrptrackshbs = adrptrackslbs + numtracks;
+
+	int adrinstrdata = adrptrackshbs + numtracks; //behind the track byte table
+	//saves instrument data and writes their beginnings to the table
+	for (i = 0; i < numinstrs; i++)
+	{
+		if (instrsave[i])
+		{
+			int leninstr = g_Instruments.InstrToAta(i, mem + adrinstrdata, MAXATAINSTRLEN);
+			mem[adrpinstruments + i * 2] = adrinstrdata & 0xff;	//dbyte
+			mem[adrpinstruments + i * 2 + 1] = adrinstrdata >> 8;	//hbyte
+			adrinstrdata += leninstr;
+		}
+		else
+		{
+			mem[adrpinstruments + i * 2] = mem[adrpinstruments + i * 2 + 1] = 0;
+		}
+	}
+
+	int adrtrackdata = adrinstrdata;	//for instrument data
+	//saves track data and writes their beginnings to the table
+	for (i = 0; i < numtracks; i++)
+	{
+		if (tracksave[i])
+		{
+			int lentrack = g_Tracks.TrackToAta(i, mem + adrtrackdata, MAXATATRACKLEN);
+			if (lentrack < 1)
+			{	//cannot be saved to RMT
+				CString msg;
+				msg.Format("Fatal error in track %02X.\n\nThis track contains too many events (notes and speed commands),\nthat's why it can't be coded to RMT internal code format.", i);
+				MessageBox(g_hwnd, msg, "Internal format problem.", MB_ICONERROR);
+				return -1;
+			}
+			mem[adrptrackslbs + i] = adrtrackdata & 0xff;	//dbyte
+			mem[adrptrackshbs + i] = adrtrackdata >> 8;	//hbyte
+			adrtrackdata += lentrack;
+		}
+		else
+		{
+			mem[adrptrackslbs + i] = mem[adrptrackshbs + i] = 0;
+		}
+	}
+
+	int adrsong = adrtrackdata;		//for track data
+
+	//save from adrsong data song
+	//int lensong = SongToAta(mem+adrsong,g_tracks4_8*SONGLEN,adrsong);  //<---COARSE WITH MAX BUFFER SIZE!
+	int lensong = SongToAta(mem + adrsong, 0x10000 - adrsong, adrsong);
+
+	int endofmodule = adrsong + lensong;
+
+	//writes computed pointers to the header
+	mem[adr + 8] = adrpinstruments & 0xff;	//dbyte
+	mem[adr + 9] = adrpinstruments >> 8;		//hbyte
+	//
+	mem[adr + 10] = adrptrackslbs & 0xff;		//dbyte
+	mem[adr + 11] = adrptrackslbs >> 8;		//hbyte
+	mem[adr + 12] = adrptrackshbs & 0xff;		//dbyte
+	mem[adr + 13] = adrptrackshbs >> 8;		//hbyte
+	//
+	mem[adr + 14] = adrsong & 0xff;		//dbyte
+	mem[adr + 15] = adrsong >> 8;			//hbyte
 
 	return endofmodule;
 }
@@ -662,7 +804,8 @@ int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tr
 	return endofmodule;
 }
 
-
+/*
+//Experimental v2 module format, forget this idea, it's too early and done the wrong way after reconsideration...
 int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instrloaded, BYTE* trackloaded)
 {
 	int adr = adrfrom;
@@ -776,6 +919,93 @@ int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instr
 		adrsong = mem[adr + 14] + (mem[adr + 15] << 8);
 		MessageBox(g_hwnd, "Old RMT module version detected.\n\nDefault parameters will be set.", "RMT", MB_ICONINFORMATION);
 	}
+
+	int numinstrs = (adrptrackslbs - adrpinstruments) / 2;
+	int numtracks = (adrptrackshbs - adrptrackslbs);
+	int lensong = adrend - adrsong;
+
+	//decoding of individual instruments
+	for (i = 0; i < numinstrs; i++)
+	{
+		int instrdata = mem[adrpinstruments + i * 2] + (mem[adrpinstruments + i * 2 + 1] << 8);
+		if (instrdata == 0) continue; //the omitted instruments have the pointer db, hb = 0
+		//othwewise it has a non-zero pointer
+		BOOL r;
+		if (version == 0)
+			r = g_Instruments.AtaV0ToInstr(mem + instrdata, i);
+		else
+			r = g_Instruments.AtaToInstr(mem + instrdata, i);
+		g_Instruments.WasModified(i);	//writes to Atari ram
+		if (!r) return 0; //some problem with the instrument => END
+		instrloaded[i] = 1;
+	}
+
+	//decoding individual tracks
+	for (i = 0; i < numtracks; i++)
+	{
+		int track = i;
+		int trackdata = mem[adrptrackslbs + i] + (mem[adrptrackshbs + i] << 8);
+		if (trackdata == 0) continue; //omitted tracks have pointer db, hb = 0
+
+		//identify the end of the track by the address of the next track and at the last by the address of the song that follows the data of the last track
+		int trackend = 0;
+		for (j = i; j < numtracks; j++)
+		{
+			trackend = (j + 1 == numtracks) ? adrsong : mem[adrptrackslbs + j + 1] + (mem[adrptrackshbs + j + 1] << 8);
+			if (trackend != 0) break;
+			i++;	//continue from the next and skip the omitted one
+		}
+		int tracklen = trackend - trackdata;
+		//
+		BOOL r;
+		r = g_Tracks.AtaToTrack(mem + trackdata, tracklen, track);
+		if (!r) return 0; //some problem with the track => END
+		trackloaded[track] = 1;
+	}
+
+	//decoded song
+	BOOL r;
+	r = AtaToSong(mem + adrsong, lensong, adrsong);
+	if (!r) return 0; //some problem with the song => END
+
+	return 1;
+}
+*/
+
+int CSong::DecodeModule(unsigned char* mem, int adrfrom, int adrend, BYTE* instrloaded, BYTE* trackloaded)
+{
+	int adr = adrfrom;
+
+	memset(instrloaded, 0, INSTRSNUM);
+	memset(trackloaded, 0, TRACKSNUM);
+
+	unsigned char b;
+	int i, j;
+
+	if (strncmp((char*)(mem + adr), "RMT", 3) != 0) return 0; //there is no RMT
+	b = mem[adr + 3];
+	if (b != '4' && b != '8') return 0;	//it is not RMT4 or RMT8
+	g_tracks4_8 = b & 0x0f;
+	b = mem[adr + 4];
+	g_Tracks.m_maxtracklen = (b > 0) ? b : 256;	//0 => 256
+	//g_cursoractview = g_Tracks.m_maxtracklen / 2;
+	b = mem[adr + 5];
+	m_mainspeed = b;
+	if (b < 1) return 0;		//there can be no zero speed
+	b = mem[adr + 6];
+	if (b < 1 || b>8) return 0;		//instrument speed is less than 1 or greater than 8 (note: should be max 4, but allows up to 8 and will only display a warning)
+	m_instrspeed = b;
+	int version = mem[adr + 7];
+	if (version > RMTFORMATVERSION)	return 0;	//the byte version is above the current one
+
+	//Now g_tracks.m_maxtracklen is set to the value according to the header from the RMT module, 
+	//so they have to re-initialize the Tracks so that this value is set to them all as the length
+	g_Tracks.InitTracks();
+
+	int adrpinstruments = mem[adr + 8] + (mem[adr + 9] << 8);
+	int adrptrackslbs = mem[adr + 10] + (mem[adr + 11] << 8);
+	int adrptrackshbs = mem[adr + 12] + (mem[adr + 13] << 8);
+	int adrsong = mem[adr + 14] + (mem[adr + 15] << 8);
 
 	int numinstrs = (adrptrackslbs - adrpinstruments) / 2;
 	int numtracks = (adrptrackshbs - adrptrackslbs);
