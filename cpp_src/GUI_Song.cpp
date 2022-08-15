@@ -116,9 +116,6 @@ void CSong::SetRMTTitle()
 		s = m_filename;
 		if (g_changes) s += " *";
 	}
-	// Add the RMT file format version number
-	s1.Format(" - File V%d", m_moduleVersion);
-	s += s1;
 	AfxGetApp()->GetMainWnd()->SetWindowText(s);
 }
 

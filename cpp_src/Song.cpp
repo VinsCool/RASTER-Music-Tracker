@@ -131,8 +131,6 @@ void CSong::ClearSong(int numOfTracks)
 	m_octave = 0;
 	m_volume = MAXVOLUME;
 
-	m_moduleVersion = RMTFORMATVERSION;
-
 	ClearBookmark();
 
 	m_infoact = INFO_ACTIVE_NAME;
@@ -447,7 +445,7 @@ int CSong::MakeModule(unsigned char* mem, int addr, int iotype, BYTE* instrument
 	mem[addr + 4] = g_Tracks.m_maxTrackLength & 0xff;
 	mem[addr + 5] = m_mainSpeed & 0xff;
 	mem[addr + 6] = m_instrumentSpeed;			// 1-4 player calls per frame
-	mem[addr + 7] = m_moduleVersion;			// RMT format version number
+	mem[addr + 7] = RMTFORMATVERSION;			// RMT format version number
 
 	// Note:
 	// When saving in RMT format ALL non-empty tracks and non-empty instruments will be stored

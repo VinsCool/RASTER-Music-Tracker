@@ -208,6 +208,7 @@ public:
 	int Export2(std::ofstream& ou, int iotype, char* filename = NULL);
 	int Export(std::ofstream& ou, int iotype, char* filename = NULL);
 	int ExportAsRMT(std::ofstream& ou, tExportDescription* exportDesc);
+	int ExportAsStrippedRMT(std::ofstream& ou, tExportDescription* exportDesc);
 
 	int TestBeforeFileSave();
 	int GetSubsongParts(CString& resultstr);
@@ -345,8 +346,6 @@ private:
 	CString m_filename;
 	int m_filetype;
 	int m_exporttype;
-
-	int m_moduleVersion;				// What version was the module loaded as?
 
 	int m_TracksOrderChange_songlinefrom; //is defined as a member variable to keep in use
 	int m_TracksOrderChange_songlineto;	  //the last values used remain

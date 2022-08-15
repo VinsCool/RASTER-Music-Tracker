@@ -357,7 +357,7 @@ void CSong::FileSaveAs()
 		NULL,
 		NULL,
 		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,
-		"RMT song file V1 (*.rmt)|*.rmt|RMT song file V2 (*.rmt)|*.rmt|TXT song files (*.txt)|*.txt|RMW song work file (*.rmw)|*.rmw||");
+		"RMT song file (*.rmt)|*.rmt|TXT song files (*.txt)|*.txt|RMW song work file (*.rmw)|*.rmw||");
 	fod.m_ofn.lpstrTitle = "Save song as...";
 
 	if (g_lastloadpath_songs != "")
@@ -382,21 +382,18 @@ void CSong::FileSaveAs()
 	}
 
 	//prefers the type according to the last saved
-	if (m_filetype == IOTYPE_RMT)
-	{
-		fod.m_ofn.nFilterIndex = m_moduleVersion == 1 ? 1 : 2;
-	}
-	if (m_filetype == IOTYPE_TXT) fod.m_ofn.nFilterIndex = 3;
-	if (m_filetype == IOTYPE_RMW) fod.m_ofn.nFilterIndex = 4;
+	if (m_filetype == IOTYPE_RMT) fod.m_ofn.nFilterIndex = 1;
+	if (m_filetype == IOTYPE_TXT) fod.m_ofn.nFilterIndex = 2;
+	if (m_filetype == IOTYPE_RMW) fod.m_ofn.nFilterIndex = 3;
 
 	//if not ok, nothing will be saved
 	if (fod.DoModal() == IDOK)
 	{
 		int type = fod.m_ofn.nFilterIndex;
-		if (type < 1 || type > 4) return;
+		if (type < 1 || type > 3) return;
 
 		m_filename = fod.GetPathName();
-		const char* exttype[] = { ".rmt",".rmt",".txt",".rmw" };
+		const char* exttype[] = { ".rmt",".txt",".rmw" };
 		CString ext = m_filename.Right(4);
 		ext.MakeLower();
 		if (ext != exttype[type - 1]) m_filename += exttype[type - 1];
@@ -417,18 +414,13 @@ void CSong::FileSaveAs()
 		{
 			case 1: // First choice
 				m_filetype = IOTYPE_RMT;
-				m_moduleVersion = 1;
-
-			case 2: // RMT latest
-				m_filetype = IOTYPE_RMT;
-				m_moduleVersion = RMTFORMATVERSION;
 				break;
 
-			case 3: // Third choice
+			case 2: // Second choice
 				m_filetype = IOTYPE_TXT;
 				break;
 
-			case 4: // Fourth choice
+			case 3: // Third choice
 				m_filetype = IOTYPE_RMW;
 				break;
 
@@ -1335,6 +1327,7 @@ int CSong::Export2(ofstream& ou, int iotype, char* filename)
 	switch (iotype)
 	{
 		case IOTYPE_RMT: return ExportAsRMT(ou, &exportDesc);
+		case IOTYPE_RMTSTRIPPED: return ExportAsStrippedRMT(ou, &exportDesc);
 	}
 
 	return 0;
@@ -1371,19 +1364,13 @@ int CSong::ExportAsRMT(ofstream& ou, tExportDescription *exportDesc)
 	// and now, save the 2nd block
 	SaveBinaryBlock(ou, exportDesc->mem, addrOfSongName, addrInstrumentNames - 1, FALSE);
 
-	// Save the tuning block
-	if (m_moduleVersion > 1)
-	{
-		int addrTuningBlock = addrInstrumentNames;
-		len = MakeTuningBlock(exportDesc->mem, addrTuningBlock);
-		if (len > 0)
-		{
-			SaveBinaryBlock(ou, exportDesc->mem, addrTuningBlock, addrTuningBlock + len - 1, FALSE);
-		}
-
-	}
-
 	return 0;
+}
+
+int CSong::ExportAsStrippedRMT(ofstream& ou, tExportDescription* exportDesc)
+{
+	return 0;
+
 }
 
 int CSong::Export(ofstream& ou, int iotype, char* filename)
@@ -1495,17 +1482,6 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 			}
 			// and now, save the 2nd block
 			SaveBinaryBlock(ou, mem, addrSongName, addrInstrNames - 1, 0);
-
-			// Save the tuning block
-			if (m_moduleVersion > 1) 
-			{
-				int addrTuningBlock = addrInstrNames;
-				len = MakeTuningBlock(mem, addrTuningBlock);
-				if (len > 0)
-				{
-					SaveBinaryBlock(ou, mem, addrTuningBlock, addrTuningBlock + len - 1, 0);
-				}
-			}
 		}
 		break;
 
@@ -2350,7 +2326,7 @@ int CSong::LoadRMT(ifstream& in)
 	BYTE trackLoadedFlags[TRACKSNUM];
 
 	int len, i, idx, k;
-	int moduleVersion;
+	int loadResult;
 
 	// RMT header+song data is the first main block of an RMT song
 	// There has to be 1 binary block with the header, song, instrument and track data
@@ -2360,8 +2336,8 @@ int CSong::LoadRMT(ifstream& in)
 
 	if (len > 0)
 	{
-		moduleVersion = DecodeModule(mem, fromAddr, toAddr + 1, instrumentLoadedFlags, trackLoadedFlags);
-		if (moduleVersion == 0)
+		loadResult = DecodeModule(mem, fromAddr, toAddr + 1, instrumentLoadedFlags, trackLoadedFlags);
+		if (loadResult == 0)
 		{
 			MessageBox(g_hwnd, "Bad RMT data format or old tracker version.", "Open error", MB_ICONERROR);
 			return 0;
@@ -2369,7 +2345,6 @@ int CSong::LoadRMT(ifstream& in)
 		// The main block of the module is OK => take its boot address
 		g_rmtstripped_adr_module = fromAddr;
 		bto_mainblock = toAddr;
-		m_moduleVersion = moduleVersion;
 	}
 	else
 	{
@@ -2387,51 +2362,27 @@ int CSong::LoadRMT(ifstream& in)
 		return 1;
 	}
 
-	// Is this a name block or maybe a the "third" block with extra RMT tuning data
-	// If the first character is zero or a printable char, then this is name information
-	if (mem[fromAddr] < 0xF3)
+	char ch;
+	// Parse the song name (until we hit the terminating zero)
+	for (idx = 0; idx < SONG_NAME_MAX_LEN && (ch = mem[fromAddr + idx]); idx++)
+		m_songname[idx] = ch;
+
+	for (k = idx; k < SONG_NAME_MAX_LEN; k++) m_songname[k] = ' '; //fill in the gaps
+
+	int addrInstrumentNames = fromAddr + idx + 1; //+1 that's the zero behind the name
+	for (i = 0; i < INSTRSNUM; i++)
 	{
-		// This must be name data
-
-		char ch;
-		// Parse the song name (until we hit the terminating zero)
-		for (idx = 0; idx < SONG_NAME_MAX_LEN && (ch = mem[fromAddr + idx]); idx++)
-			m_songname[idx] = ch;
-
-		for (k = idx; k < SONG_NAME_MAX_LEN; k++) m_songname[k] = ' '; //fill in the gaps
-
-		int addrInstrumentNames = fromAddr + idx + 1; //+1 that's the zero behind the name
-		for (i = 0; i < INSTRSNUM; i++)
+		// Check if this instrument has been loaded
+		if (instrumentLoadedFlags[i])
 		{
-			// Check if this instrument has been loaded
-			if (instrumentLoadedFlags[i])
-			{
-				// Yes its loaded, parse its name
-				for (idx = 0; idx < INSTRUMENT_NAME_MAX_LEN && (ch = mem[addrInstrumentNames + idx]); idx++)
-					g_Instruments.m_instr[i].name[idx] = ch;
+			// Yes its loaded, parse its name
+			for (idx = 0; idx < INSTRUMENT_NAME_MAX_LEN && (ch = mem[addrInstrumentNames + idx]); idx++)
+				g_Instruments.m_instr[i].name[idx] = ch;
 
-				for (k = idx; k < INSTRUMENT_NAME_MAX_LEN; k++) g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
+			for (k = idx; k < INSTRUMENT_NAME_MAX_LEN; k++) g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
 
-				// Move to source of the next instrument's name
-				addrInstrumentNames += idx + 1; //+1 is zero behind the name
-			}
-		}
-
-		len = 0; // Indicate that there is nothing more to read from this block
-	}
-
-	if (moduleVersion > 1)
-	{
-		// Load the tuning data
-		if (len == 0)
-			len = LoadBinaryBlock(in, mem, fromAddr, toAddr);
-
-		if (mem[fromAddr] == 0xF3)
-		{
-			// First is the tuning parameter block (0xF3 block indentifier)
-			DecodeTuningBlock(mem, fromAddr, toAddr);
-
-			ChangeTimer((g_ntsc) ? 17 : 20);
+			// Move to source of the next instrument's name
+			addrInstrumentNames += idx + 1; //+1 is zero behind the name
 		}
 	}
 
