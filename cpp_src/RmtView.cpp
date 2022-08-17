@@ -379,7 +379,7 @@ void CRmtView::DrawAnalyzer()
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
-		// g_Song.DrawAnalyzer(pDC);
+		g_Song.DrawAnalyzer(pDC);
 		ReleaseDC(pDC);
 	}
 }
@@ -389,7 +389,7 @@ void CRmtView::DrawPlaytimecounter()
 	CDC* pDC = GetDC();
 	if (pDC)
 	{
-		// g_Song.DrawPlaytimecounter(pDC);
+		g_Song.DrawPlayTimeCounter(pDC);
 		ReleaseDC(pDC);
 	}
 }

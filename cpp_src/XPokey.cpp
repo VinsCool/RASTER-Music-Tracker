@@ -85,17 +85,19 @@ BOOL CXPokey::DeInitSound()
 	}
 	g_aboutpokey = "No Pokey sound emulation.";
 
-	if (m_SoundBuffer )
+	if (m_SoundBuffer)
 	{
 		m_SoundBuffer->Stop();
 		m_SoundBuffer->Release();
 	}
 	m_SoundBuffer = NULL;
 
-	if(g_lpdsbPrimary) g_lpdsbPrimary->Release();
-	g_lpdsbPrimary=NULL;
-	if(g_lpds) g_lpds->Release();
+	if (g_lpdsbPrimary) g_lpdsbPrimary->Release();
+	g_lpdsbPrimary = NULL;
+
+	//if (g_lpds) g_lpds->Release();	//this seems to work around creating additional buffers over and over
 	g_lpds = NULL;
+
 	return 1;
 }
 
@@ -214,85 +216,85 @@ BOOL CXPokey::InitSound()
 {
 	if (m_rendersound || m_pokey_dll) DeInitSound();	//just in case
 
-	int pokeytype=0;
+	int pokeytype = 0;
 	int CHUNK_SIZE = (g_ntsc) ? CHUNK_SIZE_NTSC : CHUNK_SIZE_PAL;
-	CString wrn="";
+	CString wrn = "";
 
-	m_pokey_dll=LoadLibrary("apokeysnd.dll");
+	m_pokey_dll = LoadLibrary("apokeysnd.dll");
 
 	if (m_pokey_dll)
 	{
 		//apokeysnd.dll
-		APokeySound_Initialize = (APokeySound_Initialize_PROC) GetProcAddress(m_pokey_dll,"APokeySound_Initialize");
-		if (!APokeySound_Initialize) wrn +="APokeySound_Initialize\n";
+		APokeySound_Initialize = (APokeySound_Initialize_PROC)GetProcAddress(m_pokey_dll, "APokeySound_Initialize");
+		if (!APokeySound_Initialize) wrn += "APokeySound_Initialize\n";
 
-		APokeySound_PutByte = (APokeySound_PutByte_PROC) GetProcAddress(m_pokey_dll,"APokeySound_PutByte");
-		if (!APokeySound_PutByte) wrn +="APokeySound_PutByte\n";
+		APokeySound_PutByte = (APokeySound_PutByte_PROC)GetProcAddress(m_pokey_dll, "APokeySound_PutByte");
+		if (!APokeySound_PutByte) wrn += "APokeySound_PutByte\n";
 
-		APokeySound_GetRandom = (APokeySound_GetRandom_PROC) GetProcAddress(m_pokey_dll,"APokeySound_GetRandom");
-		if (!APokeySound_GetRandom) wrn +="APokeySound_GetRandom\n";
+		APokeySound_GetRandom = (APokeySound_GetRandom_PROC)GetProcAddress(m_pokey_dll, "APokeySound_GetRandom");
+		if (!APokeySound_GetRandom) wrn += "APokeySound_GetRandom\n";
 
-		APokeySound_Generate = (APokeySound_Generate_PROC) GetProcAddress(m_pokey_dll,"APokeySound_Generate");
-		if (!APokeySound_Generate) wrn +="APokeySound_Generate\n";
+		APokeySound_Generate = (APokeySound_Generate_PROC)GetProcAddress(m_pokey_dll, "APokeySound_Generate");
+		if (!APokeySound_Generate) wrn += "APokeySound_Generate\n";
 
-		APokeySound_About = (APokeySound_About_PROC) GetProcAddress(m_pokey_dll,"APokeySound_About");
-		if (!APokeySound_About) wrn +="APokeySound_About\n";
+		APokeySound_About = (APokeySound_About_PROC)GetProcAddress(m_pokey_dll, "APokeySound_About");
+		if (!APokeySound_About) wrn += "APokeySound_About\n";
 
-		if (wrn!="")
+		if (wrn != "")
 		{
-			MessageBox(g_hwnd,"Error:\nNo compatible 'apokeysnd.dll',\ntherefore the Pokey sound can't be performed.\nIncompatibility with:" +wrn,"Pokey library error",MB_ICONEXCLAMATION);
+			MessageBox(g_hwnd, "Error:\nNo compatible 'apokeysnd.dll',\ntherefore the Pokey sound can't be performed.\nIncompatibility with:" + wrn, "Pokey library error", MB_ICONEXCLAMATION);
 			DeInitSound();
 			return 1;
 		}
 		//about apokeysnd
-		const char *name, *author, *description;
-		APokeySound_About(&name,&author,&description);
-		g_aboutpokey.Format("%s\n%s\n%s",name,author,description);
+		const char* name, * author, * description;
+		APokeySound_About(&name, &author, &description);
+		g_aboutpokey.Format("%s\n%s\n%s", name, author, description);
 		APokeySound_Initialize(1);	//STEREO enabled
-		pokeytype=1;	//apokeysnd
+		pokeytype = 1;	//apokeysnd
 	}
 	else //not apokeysnd.dll
 	{
-		m_pokey_dll=LoadLibrary("sa_pokey.dll");
-		if(!m_pokey_dll)
+		m_pokey_dll = LoadLibrary("sa_pokey.dll");
+		if (!m_pokey_dll)
 		{
 			//not sa_pokey.dll either
-			MessageBox(g_hwnd,"Warning:\nNone of 'apokeysnd.dll' or 'sa_pokey.dll' found,\ntherefore the Pokey sound can't be performed.","LoadLibrary error",MB_ICONEXCLAMATION);
+			MessageBox(g_hwnd, "Warning:\nNone of 'apokeysnd.dll' or 'sa_pokey.dll' found,\ntherefore the Pokey sound can't be performed.", "LoadLibrary error", MB_ICONEXCLAMATION);
 			DeInitSound();
 			return 1;
 		}
 
 		//sa_pokey.dll
-		Pokey_Initialise = (Pokey_Initialise_PROC) GetProcAddress(m_pokey_dll,"Pokey_Initialise");
-		if(!Pokey_Initialise) wrn +="Pokey_Initialise\n";
+		Pokey_Initialise = (Pokey_Initialise_PROC)GetProcAddress(m_pokey_dll, "Pokey_Initialise");
+		if (!Pokey_Initialise) wrn += "Pokey_Initialise\n";
 
-		Pokey_SoundInit = (Pokey_SoundInit_PROC) GetProcAddress(m_pokey_dll,"Pokey_SoundInit");
-		if(!Pokey_SoundInit) wrn +="Pokey_SoundInit\n";
+		Pokey_SoundInit = (Pokey_SoundInit_PROC)GetProcAddress(m_pokey_dll, "Pokey_SoundInit");
+		if (!Pokey_SoundInit) wrn += "Pokey_SoundInit\n";
 
-		Pokey_Process = (Pokey_Process_PROC) GetProcAddress(m_pokey_dll,"Pokey_Process");
-		if(!Pokey_Process) wrn +="Pokey_Process\n";
+		Pokey_Process = (Pokey_Process_PROC)GetProcAddress(m_pokey_dll, "Pokey_Process");
+		if (!Pokey_Process) wrn += "Pokey_Process\n";
 
-		Pokey_GetByte = (Pokey_GetByte_PROC) GetProcAddress(m_pokey_dll,"Pokey_GetByte");
-		if(!Pokey_GetByte) wrn +="Pokey_GetByte\n";
+		Pokey_GetByte = (Pokey_GetByte_PROC)GetProcAddress(m_pokey_dll, "Pokey_GetByte");
+		if (!Pokey_GetByte) wrn += "Pokey_GetByte\n";
 
-		Pokey_PutByte = (Pokey_PutByte_PROC) GetProcAddress(m_pokey_dll,"Pokey_PutByte");
-		if(!Pokey_PutByte) wrn +="Pokey_PutByte\n";
+		Pokey_PutByte = (Pokey_PutByte_PROC)GetProcAddress(m_pokey_dll, "Pokey_PutByte");
+		if (!Pokey_PutByte) wrn += "Pokey_PutByte\n";
 
-		Pokey_About = (Pokey_About_PROC) GetProcAddress(m_pokey_dll,"Pokey_About");
-		if(!Pokey_About) wrn +="Pokey_About\n";
+		Pokey_About = (Pokey_About_PROC)GetProcAddress(m_pokey_dll, "Pokey_About");
+		if (!Pokey_About) wrn += "Pokey_About\n";
 
-		if (wrn!="")
+		if (wrn != "")
 		{
-			MessageBox(g_hwnd,"Error:\nNo compatible 'sa_pokey.dll',\ntherefore the Pokey sound can't be performed.\nIncompatibility with:" +wrn,"Pokey library error",MB_ICONEXCLAMATION);
+			MessageBox(g_hwnd, "Error:\nNo compatible 'sa_pokey.dll',\ntherefore the Pokey sound can't be performed.\nIncompatibility with:" + wrn, "Pokey library error", MB_ICONEXCLAMATION);
 			DeInitSound();
 			return 1;
 		}
 
 		//about sa_pokey.dll
-		char *name, *author, *description;
-		Pokey_About(&name,&author,&description);
-		g_aboutpokey.Format("%s\n%s\n%s",name,author,description);
-		Pokey_Initialise(0,0);
+		char* name, * author, * description;
+		Pokey_About(&name, &author, &description);
+		g_aboutpokey.Format("%s\n%s\n%s", name, author, description);
+		Pokey_Initialise(0, 0);
 
 		//specify the machine region and if it uses Stereo or not.
 		//this was originally implemented specifically for Altirra's POKEY sound emulation plugins, which also had to be modified to respond to these parameters accordingly
@@ -303,64 +305,64 @@ BOOL CXPokey::InitSound()
 		//now send these value to the Pokey_SoundInit procedure, if the plugin code was updated accordingly, this should work exactly as expected, and could be changed at any time.
 		Pokey_SoundInit(FREQ_17, OUTPUTFREQ, WANT_STEREO);
 
-		pokeytype=2;	//sa_pokey
+		pokeytype = 2;	//sa_pokey
 	}
 
-    WAVEFORMATEX        wfm;
+	WAVEFORMATEX wfm;
 
-	if (DirectSoundCreate( NULL, &g_lpds, NULL ) != DS_OK)
+	if (DirectSoundCreate(NULL, &g_lpds, NULL) != DS_OK)
 	{
-		MessageBox(g_hwnd,"Error: DirectSoundCreate","DirectSound Error!",MB_OK|MB_ICONSTOP);
-		return FALSE;		
+		MessageBox(g_hwnd, "Error: DirectSoundCreate", "DirectSound Error!", MB_OK | MB_ICONSTOP);
+		return FALSE;
 	}
-	
+
 	//Set cooperative level.
-	if(g_lpds->SetCooperativeLevel( AfxGetApp()->GetMainWnd()->m_hWnd, DSSCL_PRIORITY) !=DS_OK)
+	if (g_lpds->SetCooperativeLevel(AfxGetApp()->GetMainWnd()->m_hWnd, DSSCL_PRIORITY) != DS_OK)
 	{
-		MessageBox(g_hwnd,"Error: SetCooperativeLevel","DirectSound Error!",MB_OK|MB_ICONSTOP);
+		MessageBox(g_hwnd, "Error: SetCooperativeLevel", "DirectSound Error!", MB_OK | MB_ICONSTOP);
 		return FALSE;
 	}
 
 	//Set primary buffer format.
-    ZeroMemory( &wfm, sizeof( WAVEFORMATEX ) ); 
-    wfm.wFormatTag      = WAVE_FORMAT_PCM; 
-    wfm.nChannels       = CHANNELS;			//2
-    wfm.nSamplesPerSec  = OUTPUTFREQ;		//44100
-    wfm.wBitsPerSample  = BITRESOLUTION;	//8 
-    wfm.nBlockAlign     = wfm.wBitsPerSample / 8 * wfm.nChannels;
-    wfm.nAvgBytesPerSec = wfm.nSamplesPerSec * wfm.nBlockAlign;
-	wfm.cbSize			= 0;
-	
-    //Create primary buffer.
-    ZeroMemory( &dsbdesc, sizeof( DSBUFFERDESC ) );
-    dsbdesc.dwSize  = sizeof( DSBUFFERDESC );
+	ZeroMemory(&wfm, sizeof(WAVEFORMATEX));
+	wfm.wFormatTag = WAVE_FORMAT_PCM;
+	wfm.nChannels = CHANNELS;			//2
+	wfm.nSamplesPerSec = OUTPUTFREQ;	//44100
+	wfm.wBitsPerSample = BITRESOLUTION;	//8 
+	wfm.nBlockAlign = wfm.wBitsPerSample / 8 * wfm.nChannels;
+	wfm.nAvgBytesPerSec = wfm.nSamplesPerSec * wfm.nBlockAlign;
+	wfm.cbSize = 0;
+
+	//Create primary buffer.
+	ZeroMemory(&dsbdesc, sizeof(DSBUFFERDESC));
+	dsbdesc.dwSize = sizeof(DSBUFFERDESC);
 	dsbdesc.dwFlags = DSBCAPS_PRIMARYBUFFER;
 
-	if (g_lpds->CreateSoundBuffer(&dsbdesc, &g_lpdsbPrimary, NULL) != DS_OK )
+	if (g_lpds->CreateSoundBuffer(&dsbdesc, &g_lpdsbPrimary, NULL) != DS_OK)
 	{
-		MessageBox(g_hwnd,"Error: CreatePrimarySoundBuffer","DirectSound Error!",MB_OK|MB_ICONSTOP);
+		MessageBox(g_hwnd, "Error: CreatePrimarySoundBuffer", "DirectSound Error!", MB_OK | MB_ICONSTOP);
 		return FALSE;
 	}
 
-	if (g_lpdsbPrimary->SetFormat( &wfm ) != DS_OK )
+	if (g_lpdsbPrimary->SetFormat(&wfm) != DS_OK)
 	{
-		MessageBox(g_hwnd,"Error: SetFormat","DirectSound Error!",MB_OK|MB_ICONSTOP);
+		MessageBox(g_hwnd, "Error: SetFormat", "DirectSound Error!", MB_OK | MB_ICONSTOP);
 		return FALSE;
 	}
 
-    ZeroMemory( &dsbdesc, sizeof( DSBUFFERDESC ) );
-    dsbdesc.dwSize  = sizeof( DSBUFFERDESC );
-	dsbdesc.dwFlags = DSBCAPS_GETCURRENTPOSITION2| DSBCAPS_LOCHARDWARE | DSBCAPS_GLOBALFOCUS | DSBCAPS_STICKYFOCUS;
-	dsbdesc.dwBufferBytes       = BUFFER_SIZE;
-    dsbdesc.lpwfxFormat         = &wfm;
+	ZeroMemory(&dsbdesc, sizeof(DSBUFFERDESC));
+	dsbdesc.dwSize = sizeof(DSBUFFERDESC);
+	dsbdesc.dwFlags = DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_LOCHARDWARE | DSBCAPS_GLOBALFOCUS | DSBCAPS_STICKYFOCUS;
+	dsbdesc.dwBufferBytes = BUFFER_SIZE;
+	dsbdesc.lpwfxFormat = &wfm;
 
-	if (	g_nohwsoundbuffer ||
-			g_lpds->CreateSoundBuffer(&dsbdesc, &m_SoundBuffer, NULL) != DS_OK )
+	if (g_nohwsoundbuffer ||
+		g_lpds->CreateSoundBuffer(&dsbdesc, &m_SoundBuffer, NULL) != DS_OK)
 	{
-		dsbdesc.dwFlags = DSBCAPS_GETCURRENTPOSITION2| DSBCAPS_LOCSOFTWARE | DSBCAPS_GLOBALFOCUS | DSBCAPS_STICKYFOCUS;
-		if (g_lpds->CreateSoundBuffer(&dsbdesc, &m_SoundBuffer, NULL) != DS_OK )
+		dsbdesc.dwFlags = DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_LOCSOFTWARE | DSBCAPS_GLOBALFOCUS | DSBCAPS_STICKYFOCUS;
+		if (g_lpds->CreateSoundBuffer(&dsbdesc, &m_SoundBuffer, NULL) != DS_OK)
 		{
-			MessageBox(g_hwnd,"Error: CreateSoundBuffer","DirectSound Error!",MB_OK|MB_ICONSTOP);
+			MessageBox(g_hwnd, "Error: CreateSoundBuffer", "DirectSound Error!", MB_OK | MB_ICONSTOP);
 			return FALSE;
 		}
 	}
@@ -369,17 +371,17 @@ BOOL CXPokey::InitSound()
 	bc.dwSize = sizeof(bc);
 	m_SoundBuffer->GetCaps(&bc);
 
-	int r = m_SoundBuffer->Lock(0, BUFFER_SIZE, &Data1, &dwSize1, &Data2, &dwSize2,DSBLOCK_FROMWRITECURSOR); 
-	if (r==DS_OK)
+	int r = m_SoundBuffer->Lock(0, BUFFER_SIZE, &Data1, &dwSize1, &Data2, &dwSize2, DSBLOCK_FROMWRITECURSOR);
+	if (r == DS_OK)
 	{
-		memset(Data1,0,dwSize1);
-		if (Data2) memset(Data2,0,dwSize2);
+		memset(Data1, 0, dwSize1);
+		if (Data2) memset(Data2, 0, dwSize2);
 		m_SoundBuffer->Unlock(Data1, dwSize1, Data2, dwSize2);
 	}
 
 	m_SoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
-	m_SoundBuffer->GetCurrentPosition(&m_PlayCursor,&m_WriteCursorStart);
-	m_LoadPos = (m_WriteCursorStart+LATENCY_SIZE) & (BUFFER_SIZE-1);  //initial latency (in hundredths of a second)
+	m_SoundBuffer->GetCurrentPosition(&m_PlayCursor, &m_WriteCursorStart);
+	m_LoadPos = (m_WriteCursorStart + LATENCY_SIZE) & (BUFFER_SIZE - 1);  //initial latency (in hundredths of a second)
 	m_rendersound = pokeytype;	//1 or 2
 
 	return 1;

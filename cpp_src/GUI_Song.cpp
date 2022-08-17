@@ -894,7 +894,7 @@ void CSong::DrawTracks()
 		g_cursoractview = last_activecur;
 	}
 
-	BOOL active_smooth = (smooth_scroll && m_play && m_followplay) ? 1 : 0;	//could also be used as an offset
+	BOOL active_smooth = (smooth_scroll && m_play && m_followplay && m_speed > 1) ? 1 : 0;	//could also be used as an offset
 	int smooth_y = (active_smooth) ? ((m_speeda * 16) / m_speed) - 8 : 0;
 	if (smooth_y > 8 || smooth_y < -8) active_smooth = smooth_y = 0;	//prevents going out of bounds
 	y = (TRACKS_Y + (3 - active_smooth) * 16) + smooth_y;
@@ -1318,6 +1318,7 @@ void CSong::DrawInfo()
 
 /// <summary>
 /// Draw the song play time and BPM
+/// TODO: Merge with DrawInfo(), both are displayed in the same area
 /// </summary>
 /// <param name="pDC"></param>
 void CSong::DrawPlayTimeCounter(CDC* pDC)

@@ -3242,7 +3242,7 @@ void CSong::TimerRoutine()
 	if (m_play) g_playtime++;					//if the song is currently playing, increment the timer
 
 	//--- NTSC timing hack during playback ---//
-	if (!SAPRDUMP && m_play && g_ntsc)
+	if (!SAPRDUMP && g_ntsc)
 	{
 		//the NTSC timing cannot be divided to an integer
 		//the optimal timing would be 16.666666667ms, which is typically rounded to 17
@@ -3250,8 +3250,11 @@ void CSong::TimerRoutine()
 		//a good enough compromise for now is to make use of a '17-17-16' miliseconds "groove"
 		//this isn't proper, but at least, this makes the timing much closer to the actual thing
 		//the only issue with this is that the sound will have very slight jitters during playback 
-		if (g_playtime % 3 == 0) ChangeTimer(17);
-		else if (g_playtime % 3 == 2) ChangeTimer(16);
+		
+		//if (g_playtime % 3 == 0) ChangeTimer(17);
+		//else if (g_playtime % 3 == 2) ChangeTimer(16);
+		if (g_playtime % 2 == 0) ChangeTimer(17);
+		else ChangeTimer(16);
 	}
 
 	//--- PICTURE DRAWING ---//
