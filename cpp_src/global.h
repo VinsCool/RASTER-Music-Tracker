@@ -10,6 +10,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "General.h"
+
 extern unsigned char g_atarimem[65536];
 extern char g_debugmem[65536];	//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
 

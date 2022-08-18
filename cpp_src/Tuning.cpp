@@ -4,67 +4,58 @@
 // Backported to RMT with additional improvements
 
 #include "tuning.h"
-using namespace std;
+#include "global.h"
 
-//RMT's own notes chars will be used instead
-const char* t_notes[] =
-{
-	"C-","C#","D-","D#","E-","F-","F#","G-","G#","A-","A#","B-"
-};
+//Tuning tables to generate...
+//this should be more than enough for all possible values...
+double ref_pitch[2200] = { 0 };
 
-//arrays of tuning tables to generate...
-//
 //PAGE_DISTORTION_2 => Address 0xB000
 int tab_64khz_2[64] = { 0 };
 int tab_179mhz_2[64] = { 0 };
 int tab_16bit_2[128] = { 0 };
-//
+
 //PAGE_DISTORTION_4 => Address 0xB100
 int tab_64khz_4_smooth[64] = { 0 };
 int tab_179mhz_4_smooth[64] = { 0 };
 int tab_16bit_4_smooth[128] = { 0 };
-//
 int tab_64khz_4_buzzy[64] = { 0 };
 int tab_179mhz_4_buzzy[64] = { 0 };
 int tab_16bit_4_buzzy[128] = { 0 };
-//
+
 //PAGE_DISTORTION_A => Address 0xB200
 int tab_64khz_a_pure[64] = { 0 };
 int tab_179mhz_a_pure[64] = { 0 };
 int tab_16bit_a_pure[128] = { 0 };
-//
+
 //PAGE_DISTORTION_C => Address 0xB300
 int tab_64khz_c_buzzy[64] = { 0 };
 int tab_179mhz_c_buzzy[64] = { 0 };
 int tab_16bit_c_buzzy[128] = { 0 };
-//
+
 //PAGE_DISTORTION_E => Address 0xB400
 int tab_64khz_c_gritty[64] = { 0 };
 int tab_179mhz_c_gritty[64] = { 0 };
 int tab_16bit_c_gritty[128] = { 0 };
-//
+
 //PAGE_EXTRA_0 => Address 0xB500, 0xB580 for 15khz Pure and 0xB5C0 for 15khz Buzzy
 //Croissant Sawtooth ch1	//no generator yet
 //Croissant Sawtooth ch3	//no generator yet
 int tab_15khz_a_pure[64] = { 0 };
 int tab_15khz_c_buzzy[64] = { 0 };
-//
+
 //PAGE_EXTRA_1 => Address 0xB600
 //Clarinet Lo	//no generator yet
 //Clarinet Hi	//no generator yet
 //unused
 //unused
-//
+
 //PAGE_EXTRA_2 => Address 0xB700
 int tab_64khz_c_unstable[64] = { 0 };
 int tab_179mhz_c_unstable[64] = { 0 };
 int tab_16bit_c_unstable[128] = { 0 };
-//
 
-int FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL; 
 
-//this should be more than enough for all possible values...
-double ref_pitch[2200] = { 0 };
 
 //AUDCTL bits
 bool CLOCK_15 = 0;				//0x01
@@ -95,506 +86,9 @@ bool IS_GRITTY_DIST_C = 0;		//Distortion C, neither MOD3 nor MOD5 AUDF
 bool IS_UNSTABLE_DIST_C = 0;	//Distortion C, MOD5 AUDF and not MOD3 AUDF
 bool IS_METALLIC_POLY9 = 0;		//AUDCTL 0x80, Distortion 0 and 8, MOD7 AUDF
 
-//Thomas Young 1799's Well Temperament no.1
-const double YOUNG1[13] =
-{
-	1,
-	1.055709,
-	1.119770,
-	1.187690,
-	1.253887,
-	1.334739,
-	1.407637,
-	1.496513,
-	1.583581,
-	1.675715,
-	1.781546,
-	1.878851,
-	2
-};
-
-//Thomas Young 1799's Well Temperament no.2 
-const double YOUNG2[13] =
-{
-	1,
-	1.055880,
-	1.119929,
-	1.187865,
-	1.254242,
-	1.334839,
-	1.407840,
-	1.496616,
-	1.583819,
-	1.676105,
-	1.781797,
-	1.879240,
-	2
-};
-
-//Thomas Young 1807's Well Temperament
-const double YOUNG3[13] =
-{
-	1,
-	1.053497,
-	1.119929,
-	1.185185,
-	1.254242,
-	1.333333,
-	1.404663,
-	1.496616,
-	1.580246,
-	1.676105,
-	1.777777,
-	1.877119,
-	2
-};
-
-//Andreas Werckmeister's temperament III (the most famous one, 1681)
-const double WERCK3[13] =
-{
-	1,
-	1.053497,
-	1.117403,
-	1.185185,
-	1.252827,
-	1.333333,
-	1.404663,
-	1.494927,
-	1.580246,
-	1.670436,
-	1.777777,
-	1.879240,
-	2
-};
-
-//Tempérament Égal à Quintes Justes 
-const double QUINTE[13] =
-{
-	1,
-	1.059634,
-	1.122824,
-	1.189782,
-	1.260734,
-	1.335916,
-	1.415582,
-	1.5,
-	1.589451,
-	1.684236,
-	1.784674,
-	1.891101,
-	2.003875
-};
-
-//d'Alembert and Rousseau tempérament ordinaire (1752/1767)
-const double TEMPORD[13] =
-{
-	1,
-	1.051120,
-	1.118034,
-	1.181176,
-	1.250000,
-	1.331828,
-	1.403077,
-	1.495348,
-	1.574901,
-	1.671850,
-	1.773766,
-	1.872883,
-	2
-};
-
-//Aron - Neidhardt equal beating well temperament
-const double ARONIED[13] =
-{
-	1,
-	1.053497,
-	1.118144,
-	1.185185,
-	1.250031,
-	1.333333,
-	1.404663,
-	1.496112,
-	1.580246,
-	1.672002,
-	1.777777,
-	1.872885,
-	2
-};
-
-//Atom Schisma Scale
-const double ATOMSCH[13] =
-{
-	1,
-	1.059459,
-	1.122463,
-	1.189204,
-	1.259924,
-	1.334838,
-	1.414207,
-	1.498308,
-	1.587396,
-	1.681796,
-	1.781794,
-	1.887755,
-	2
-};
-
-//12 - tET approximation with minimal order 17 beats
-const double APPRX12[13] =
-{
-	1,
-	1.058823,
-	1.125000,
-	1.187500,
-	1.250000,
-	1.333333,
-	1.416666,
-	1.500000,
-	1.588235,
-	1.666666,
-	1.777777,
-	1.888888,
-	2
-};
-
-//Paul Bailey's modern well temperament (2002)
-const double BAILEY1[13] =
-{
-	1,
-	1.054892,
-	1.119671,
-	1.186774,
-	1.254242,
-	1.335183,
-	1.406531,
-	1.498302,
-	1.582329,
-	1.676250,
-	1.780202,
-	1.881407,
-	2
-};
-
-//John Barnes' temperament (1977) made after analysis of Wohltemperierte Klavier, 1/6 P
-const double BARNES1[13] =
-{
-	1,
-	1.055880,
-	1.119929,
-	1.187865,
-	1.254242,
-	1.336348,
-	1.407840,
-	1.496616,
-	1.583819,
-	1.676105,
-	1.781797,
-	1.881364,
-	2
-};
-
-//Bethisy temperament ordinaire, see Pierre - Yves Asselin : Musique et temperament
-const double BETHISY[13] =
-{
-	1,
-	1.051418,
-	1.118034,
-	1.181509,
-	1.250000,
-	1.331953,
-	1.403475,
-	1.495348,
-	1.575346,
-	1.671850,
-	1.774101,
-	1.872884,
-	2,
-};
-
-//Big Gulp
-const double BIGGULP[13] =
-{
-	1,
-	1.031250,
-	1.125000,
-	1.166666,
-	1.250000,
-	1.312500,
-	1.375000,
-	1.500000,
-	1.546875,
-	1.687500,
-	1.750000,
-	1.875000,
-	2
-};
-
-//12 - tone scale by Bohlen generated from the 4:7 : 10 triad, Acustica 39 / 2, 1978
-const double BOHLEN12[13] =
-{
-	1,
-	1.100000,
-	1.200000,
-	1.304347,
-	1.428571,
-	1.571428,
-	1.750000,
-	1.909090,
-	2.100000,
-	2.300000,
-	2.500000,
-	2.750000,
-	3
-};
-
-//This scale may also be called the "Wedding Cake"
-const double WEDDING[13] =
-{
-	1,
-	1.125000,
-	1.171875,
-	1.250000,
-	1.333333,
-	1.406250,
-	1.500000,
-	1.562500,
-	1.666666,
-	1.687500,
-	1.777777,
-	1.875000,
-	2
-};
-
-//Upside - Down Wedding Cake(divorce cake)
-const double DIVORCE[13] =
-{
-	1,
-	1.066666,
-	1.125000,
-	1.200000,
-	1.280000,
-	1.333333,
-	1.500000,
-	1.600000,
-	1.687500,
-	1.777777,
-	1.800000,
-	1.920000,
-	2
-};
-
-//12 - tone Pythagorean scale
-const double PYTHAG1[13] =
-{
-	1,
-	1.067871,
-	1.125000,
-	1.185185,
-	1.265625,
-	1.333333,
-	1.423828,
-	1.500000,
-	1.601806,
-	1.687500,
-	1.777777,
-	1.898437,
-	2
-};
-
-//Robert Schneider, scale of log(4) ..log(16), 1 / 1 = 264Hz
-const double LOGSCALE[13] =
-{
-	1,
-	1.160964,
-	1.292481,
-	1.403677,
-	1.500000,
-	1.584962,
-	1.660964,
-	1.729715,
-	1.792481,
-	1.850219,
-	1.903677,
-	1.953445,
-	2
-};
-
-//Zarlino temperament extraordinaire, 1024 - tET mapping
-const double ZARLINO1[13] =
-{
-	1,
-	1.041450,
-	1.116652,
-	1.180385,
-	1.247756,
-	1.337855,
-	1.393309,
-	1.494930,
-	1.567469,
-	1.669316,
-	1.777781,
-	1.865308,
-	2
-};
-
-//Fokker's 7-limit 12-tone just scale
-const double FOKKER7[13] =
-{
-	1,
-	1.071428,
-	1.125000,
-	1.166666,
-	1.250000,
-	1.333333,
-	1.406250,
-	1.500000,
-	1.607142,
-	1.666666,
-	1.750000,
-	1.875000,
-	2
-};
-
-//Bach temperament, a'=400 Hz
-const double BACH400[13] =
-{
-	1,
-	1.052192,
-	1.118997,
-	1.183716,
-	1.250521,
-	1.334029,
-	1.402922,
-	1.498956,
-	1.578288,
-	1.670146,
-	1.776618,
-	1.874739,
-	2
-};
-
-//Vallotti& Young scale(Vallotti version) also known as Tartini - Vallotti(1754)
-const double VALYOUNG[13] =
-{
-	1,
-	1.055880,
-	1.119929,
-	1.187865,
-	1.254242,
-	1.336348,
-	1.407840,
-	1.496616,
-	1.583819,
-	1.676105,
-	1.781797,
-	1.877119,
-	2
-};
-
-//Vallotti - Young and Werckmeister III, 10 cents 5 - limit lesfip scale
-const double VALYOWER[13] =
-{
-	1,
-	1.051637,
-	1.117298,
-	1.187060,
-	1.248356,
-	1.336846,
-	1.399836,
-	1.495457,
-	1.580099,
-	1.669531,
-	1.783574,
-	1.867613,
-	2
-};
-
-
-///!!!\\\ Testing some non-12 octaves scales here
-
-//Optimally consonant major pentatonic, John deLaubenfels(2001)
-const double PENTAOPT[6] =
-{
-	1,
-	1.118042,
-	1.250019,
-	1.496879,
-	1.670166,
-	2
-};
-
-//Ancient Greek Aeolic, also tritriadic scale of the 54:64 : 81 triad
-const double AEOLIC[8] =
-{
-	1,
-	1.125000,
-	1.185185,
-	1.333333,
-	1.500000,
-	1.580246,
-	1.777777,
-	2
-};
-
-//African Bapare xylophone(idiophone; loose log)
-const double XYLO1[11] =
-{
-	1,
-	1.076737,
-	1.200942,
-	1.336382,
-	1.497441,
-	1.670175,
-	1.932988,
-	2.174725,
-	2.285484,
-	2.525670,
-	2.738400
-};
-
-//African Yaswa xylophones(idiophone; calbash resonators with membrane)
-const double XYLO2[11] =
-{
-	1,
-	1.128312,
-	1.271619,
-	1.486239,
-	1.707240,
-	1.936341,
-	2.015074,
-	2.215296,
-	2.419988,
-	2.871225,
-	3.220980
-};
-
-//19-EDO generated using Scale Workshop
-const double NINTENDO[20] =
-{
-	1,
-	1.037155,
-	1.075690,
-	1.115657,
-	1.157110,
-	1.200102,
-	1.244692,
-	1.290939,
-	1.338904,
-	1.388651,
-	1.440246,
-	1.493759,
-	1.549259,
-	1.606822,
-	1.666524,
-	1.728443,
-	1.792664,
-	1.859270,
-	1.928352,
-	2
-};
 
 //Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
-void real_freq()
+void CTuning::real_freq()
 {
 	double PITCH = 0;
 	double centnum = 0;
@@ -845,23 +339,21 @@ void real_freq()
 }
 
 //Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
-double generate_freq(int i_audc, int i_audf, int i_audctl, int i_ch_index)
+double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 {
 	//register variables
-	int i = i_ch_index;
-	int audctl = i_audctl;
-	int skctl = 0;
-	int audf = i_audf;
-	int audf16 = i_audf;		//a 16bit number is fed into it directly instead
-	int audc = i_audc;
-	int dist = audc & 0xf0;
-	int modoffset = 0;
+	int skctl = 0;						//not yet implemented in calculations
+	int distortion = audc & 0xf0;
 
 	//variables for pitch calculation
-	double PITCH = 0;
-	double divisor = 0;
-	int coarse_divisor = 0;
+	double divisor = 1;					//divisors must never be 0!
+	int coarse_divisor = 1;
+	int cycle = 1;
+	int modulo = 0;
 
+	IS_SMOOTH_DIST_4 = 0;
+	IS_BUZZY_DIST_4 = 0;
+	IS_UNSTABLE_DIST_4_1 = 0;
 	IS_UNSTABLE_DIST_4_2 = 0;
 
 	IS_BUZZY_DIST_C = 0;
@@ -881,8 +373,8 @@ double generate_freq(int i_audc, int i_audf, int i_audctl, int i_ch_index)
 	TWO_TONE = (skctl == 0x8B) ? 1 : 0;
 
 	//combined modes for some special output...
-	JOIN_16BIT = ((JOIN_12 && CH1_179 && (i == 1 || i == 5)) || (JOIN_34 && CH3_179 && (i == 3 || i == 7))) ? 1 : 0;
-	CLOCK_179 = ((CH1_179 && (i == 0 || i == 4)) || (CH3_179 && (i == 2 || i == 6))) ? 1 : 0;
+	JOIN_16BIT = ((JOIN_12 && CH1_179 && (channel == 1 || channel == 5)) || (JOIN_34 && CH3_179 && (channel == 3 || channel == 7))) ? 1 : 0;
+	CLOCK_179 = ((CH1_179 && (channel == 0 || channel == 4)) || (CH3_179 && (channel == 2 || channel == 6))) ? 1 : 0;
 	if (JOIN_16BIT || CLOCK_179) CLOCK_15 = 0;	//override, these 2 take priority over 15khz mode if they are enabled at the same time
 
 	/*
@@ -895,35 +387,29 @@ double generate_freq(int i_audc, int i_audf, int i_audctl, int i_ch_index)
 
 	//TODO: apply Two-Tone timer offset into calculations when channel 1+2 are linked in 1.79mhz mode
 	//This would help generating tables using patterns discovered by synthpopalooza
-	modoffset = 1;
-	coarse_divisor = 1;
-	divisor = 1;
-	int v_modulo = 0;
-	bool IS_VALID = 0;
-
-	if (JOIN_16BIT) modoffset = 7;
-	else if (CLOCK_179) modoffset = 4;
+	if (JOIN_16BIT) cycle = 7;
+	else if (CLOCK_179) cycle = 4;
 	else coarse_divisor = (CLOCK_15) ? 114 : 28;
 
-	switch (dist)
+	switch (distortion)
 	{
 	case 0x60:	//Duplicate of Distortion 2
 	case 0x20:
 		divisor = 31;
-		v_modulo = 31;
-		IS_VALID = ((audf + modoffset) % v_modulo == 0) ? 0 : 1;
+		modulo = 31;
+		if ((audf + cycle) % modulo == 0) return 0;
 		break;
 
 	case 0x40:
 		divisor = 232.5;		//Buzzy
-		v_modulo = (CLOCK_15) ? 5 : 15;
-		IS_UNSTABLE_DIST_4_1 = ((audf + modoffset) % 5 == 0) ? 1 : 0;
-		IS_SMOOTH_DIST_4 = ((audf + modoffset) % 3 == 0 || CLOCK_15) ? 1 : 0;
-		IS_UNSTABLE_DIST_4_2 = ((audf + modoffset) % 31 == 0) ? 1 : 0;
+		modulo = (CLOCK_15) ? 5 : 15;
+		IS_UNSTABLE_DIST_4_1 = ((audf + cycle) % 5 == 0) ? 1 : 0;
+		IS_SMOOTH_DIST_4 = ((audf + cycle) % 3 == 0 || CLOCK_15) ? 1 : 0;
+		IS_UNSTABLE_DIST_4_2 = ((audf + cycle) % 31 == 0) ? 1 : 0;
 		if (IS_UNSTABLE_DIST_4_1) divisor = 46.5;	//Unstable #1
 		if (IS_SMOOTH_DIST_4) divisor = 77.5;	//Smooth
-		if (IS_UNSTABLE_DIST_4_2) divisor = (IS_SMOOTH_DIST_4 || IS_UNSTABLE_DIST_4_1) ? 2.5 : 7.5;	//Unstable #2 and #3		
-		IS_VALID = ((audf + modoffset) % v_modulo == 0) ? 0 : 1;
+		if (IS_UNSTABLE_DIST_4_2) divisor = (IS_SMOOTH_DIST_4 || IS_UNSTABLE_DIST_4_1) ? 2.5 : 7.5;	//Unstable #2 and #3
+		if ((audf + cycle) % modulo == 0) return 0;
 		break;
 
 	case 0x00:
@@ -931,41 +417,34 @@ double generate_freq(int i_audc, int i_audf, int i_audctl, int i_ch_index)
 		if (POLY9)
 		{
 			divisor = 255.5;	//Metallic Buzzy
-			v_modulo = 73;
+			modulo = 73;
 			if (CLOCK_179 || JOIN_16BIT)
-				IS_METALLIC_POLY9 = ((audf + modoffset) % 7 == 0) ? 1 : 0;
+				IS_METALLIC_POLY9 = ((audf + cycle) % 7 == 0) ? 1 : 0;
 			else
 				IS_METALLIC_POLY9 = 1;
 
 			if (IS_METALLIC_POLY9) divisor = 36.5;
-			IS_VALID = ((audf + modoffset) % v_modulo == 0) ? 0 : 1;
-			if (dist == 0x00 && ((audf + modoffset) % 31 == 0)) IS_VALID = 0;
+			if ((audf + cycle) % modulo == 0) return 0;
+			if (distortion == 0x00 && ((audf + cycle) % 31 == 0)) return 0;	//MOD31 values are invalid with Distortion 0
 		}
-		else IS_VALID = 1;	//output is the same as Distortion A
-		break;
-
-	case 0xE0:	//Duplicate of Distortion A
-	case 0xA0:
-		IS_VALID = 1;
 		break;
 
 	case 0xC0:
 		divisor = 7.5;		//Gritty
-		v_modulo = (CLOCK_15) ? 5 : 15;
-		IS_UNSTABLE_DIST_C = ((audf + modoffset) % 5 == 0) ? 1 : 0;
-		IS_BUZZY_DIST_C = ((audf + modoffset) % 3 == 0 || CLOCK_15) ? 1 : 0;
+		modulo = (CLOCK_15) ? 5 : 15;
+		IS_UNSTABLE_DIST_C = ((audf + cycle) % 5 == 0) ? 1 : 0;
+		IS_BUZZY_DIST_C = ((audf + cycle) % 3 == 0 || CLOCK_15) ? 1 : 0;
 		if (IS_UNSTABLE_DIST_C) divisor = 1.5;	//Unstable
 		if (IS_BUZZY_DIST_C) divisor = 2.5;	//Buzzy
-		IS_VALID = ((audf + modoffset) % v_modulo == 0) ? 0 : 1;
+		if ((audf + cycle) % modulo == 0) return 0;
+		//IS_VALID = ((audf + cycle) % modulo == 0) ? 0 : 1;
 		break;
 	}
-	if (IS_VALID)
-		PITCH = get_pitch(audf, coarse_divisor, divisor, modoffset);
-	return PITCH;
+	return get_pitch(audf, coarse_divisor, divisor, cycle);
 }
 
 //this code was originally added in POKEY Frequencies Calculator, and adapted for RMT 1.31+
-void generate_table(int note, double freq, int distortion, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT)
+void CTuning::generate_table(int note, double freq, int distortion, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT)
 {
 	int audf = 0;
 	int modoffset = 1;
@@ -1115,23 +594,23 @@ void generate_table(int note, double freq, int distortion, bool IS_15KHZ, bool I
 }
 
 //code originally written for POKEY Frequencies Calculator
-double get_pitch(int audf, int coarse_divisor, double divisor, int modoffset)
+double CTuning::get_pitch(int audf, int coarse_divisor, double divisor, int modoffset)
 {
-	FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
+	int FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
 	double PITCH = ((FREQ_17 / (coarse_divisor * divisor)) / (audf + modoffset)) / 2;
 	return PITCH;
 }
 
 //code originally written for POKEY Frequencies Calculator
-int get_audf(double freq, int coarse_divisor, double divisor, int modoffset)
+int CTuning::get_audf(double freq, int coarse_divisor, double divisor, int modoffset)
 {
-	FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
+	int FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
 	int audf = (int)round(((FREQ_17 / (coarse_divisor * divisor)) / (2 * freq)) - modoffset);
 	return audf;
 }
 
 //code originally written for POKEY Frequencies Calculator
-int delta_audf(int audf, double freq, int coarse_divisor, double divisor, int modoffset, int distortion)
+int CTuning::delta_audf(int audf, double freq, int coarse_divisor, double divisor, int modoffset, int distortion)
 {
 	int tmp_audf_up = audf;		//begin from the currently invalid audf
 	int tmp_audf_down = audf;
@@ -1211,7 +690,7 @@ int delta_audf(int audf, double freq, int coarse_divisor, double divisor, int mo
 }
 
 //code originally written for POKEY Frequencies Calculator, changes have been done to adapt it for RMT 1.31+
-void macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT)
+void CTuning::macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT)
 {
 	//generate the array
 	for (int i = 0; i < 64; i++)
@@ -1222,7 +701,7 @@ void macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179
 	}
 }
 
-void init_tuning()
+void CTuning::init_tuning()
 {
 	//reset all the tables so no leftover will stay in memory...
 	memset(tab_64khz_2, 0, 64);

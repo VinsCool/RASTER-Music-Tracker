@@ -10,6 +10,7 @@ using namespace std;
 #include "Rmt.h"
 #include "TuningDlg.h"
 #include "Tuning.h"
+#include "global.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -187,8 +188,9 @@ void TuningDlg::OnClickedIdtestnow()
 	g_MAJ_7TH_R = MAJ_7TH_R;
 	g_OCTAVE_R = OCTAVE_R;
 
-	for (int i = 0; i < 0x500; i++) { g_atarimem[RMT_FRQTABLES + i] = 0x00; }	//clear all the tables from memory first 
-	init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
+	//for (int i = 0; i < 0x500; i++) { g_atarimem[RMT_FRQTABLES + i] = 0x00; }	//clear all the tables from memory first 
+	//init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
+	Atari_InitRMTRoutine();
 
 }
 
@@ -229,8 +231,9 @@ void TuningDlg::OnClickedIdreset()
 	g_MAJ_7TH_R = b_MAJ_7TH_R;
 	g_OCTAVE_R = b_OCTAVE_R;
 
-	for (int i = 0; i < 0x500; i++) { g_atarimem[RMT_FRQTABLES + i] = 0x00; }	//clear all the tables from memory first 
-	init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
+	//for (int i = 0; i < 0x500; i++) { g_atarimem[RMT_FRQTABLES + i] = 0x00; }	//clear all the tables from memory first 
+	//init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
+	Atari_InitRMTRoutine();
 }
 
 void TuningDlg::OnBnClickedCancel()

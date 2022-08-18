@@ -192,6 +192,7 @@ CXPokey			g_Pokey;			// The simulated Pokey chip
 CInstruments	g_Instruments;
 CTracks			g_Tracks;
 CTrackClipboard g_TrackClipboard;
+CTuning			g_Tuning;			// Tuning calculations and POKEY tuning lookup tables generation
 
 /*
 void UpdateShiftControlKeys()
