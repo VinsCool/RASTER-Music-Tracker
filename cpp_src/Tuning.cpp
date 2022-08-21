@@ -7,8 +7,7 @@
 #include "global.h"
 
 //Tuning tables to generate...
-//this should be more than enough for all possible values...
-double ref_pitch[2200] = { 0 };
+//double ref_pitch[2200] = { 0 };	//delete soon, this won't be useful anymore
 
 //PAGE_DISTORTION_2 => Address 0xB000
 int tab_64khz_2[64] = { 0 };
@@ -86,257 +85,6 @@ bool IS_GRITTY_DIST_C = 0;		//Distortion C, neither MOD3 nor MOD5 AUDF
 bool IS_UNSTABLE_DIST_C = 0;	//Distortion C, MOD5 AUDF and not MOD3 AUDF
 bool IS_METALLIC_POLY9 = 0;		//AUDCTL 0x80, Distortion 0 and 8, MOD7 AUDF
 
-
-//Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
-void CTuning::real_freq()
-{
-	double PITCH = 0;
-	double centnum = 0;
-	int notesnum = 12;	//unless specified otherwise
-	int offset = g_basenote; //offset base tuning note. eg: A- = 3, C- = 0, D# = 9 etc
-	int temperament = g_temperament;	//custom is always 0
-
-	if (temperament)	//tuning by ratio, eg: Just Intonation, Pythagorean, etc
-	{
-		//some variables for the calcualtions...
-		int interval = 0;	//keep track of the interval regardless of the basenote offset
-		double multi = 1.0;	//octave multiplyer for the ratio
-		double octave = 2;
-		double ratio[31] = { 1 };
-
-		for (int i = 0; i < 31; i++) 
-		{ 
-			//TODO: fix a bug with Distortion C, most likely caused by garbage data in memory when generating tables-- note from June 12th 2022: I don't remember if I actually have fixed this already, to confirm...
-			//TODO? fix non-12 notes octaves scales
-			//BUG: notes below C-0 still appear as octave 0 for some reason, meaning Octave 0 is displayed twice before becoming -1
-			//FIX: "div" and "multi" are pointless, and break things actually, but this was not so obvious at first
-
-			switch (temperament)
-			{
-			case 1:		//Thomas Young 1799's Well Temperament no.1
-				if (i > 12) break;
-				ratio[i] = YOUNG1[i]; 
-				octave = YOUNG1[12];
-				break;
-
-			case 2:		//Thomas Young 1799's Well Temperament no.2
-				if (i > 12) break;
-				ratio[i] = YOUNG2[i];
-				octave = YOUNG2[12];
-				break;
-
-			case 3:		//Thomas Young 1807's Well Temperament
-				if (i > 12) break;
-				ratio[i] = YOUNG3[i];
-				octave = YOUNG3[12];
-				break;
-
-			case 4:		//Andreas Werckmeister's temperament III (the most famous one, 1681)
-				if (i > 12) break;
-				ratio[i] = WERCK3[i];
-				octave = WERCK3[12];
-				break;
-
-			case 5:		//Tempérament Égal à Quintes Justes 
-				if (i > 12) break;
-				ratio[i] = QUINTE[i];
-				octave = QUINTE[12];
-				break;
-
-			case 6:		//d'Alembert and Rousseau tempérament ordinaire (1752/1767)
-				if (i > 12) break;
-				ratio[i] = TEMPORD[i];
-				octave = TEMPORD[12];
-				break;
-
-			case 7:		//Aron - Neidhardt equal beating well temperament
-				if (i > 12) break;
-				ratio[i] = ARONIED[i];
-				octave = ARONIED[12];
-				break;
-
-			case 8:		//Atom Schisma Scale
-				if (i > 12) break;
-				ratio[i] = ATOMSCH[i];
-				octave = ATOMSCH[12];
-				break;
-
-			case 9:		//12 - tET approximation with minimal order 17 beats
-				if (i > 12) break;
-				ratio[i] = APPRX12[i];
-				octave = APPRX12[12];
-				break;
-
-			case 10:	//Paul Bailey's modern well temperament (2002)
-				if (i > 12) break;
-				ratio[i] = BAILEY1[i];
-				octave = BAILEY1[12];
-				break;
-
-			case 11:	//John Barnes' temperament (1977) made after analysis of Wohltemperierte Klavier, 1/6 P
-				if (i > 12) break;
-				ratio[i] = BARNES1[i];
-				octave = BARNES1[12];
-				break;
-
-			case 12:	//Bethisy temperament ordinaire, see Pierre - Yves Asselin : Musique et temperament
-				if (i > 12) break;
-				ratio[i] = BETHISY[i];
-				octave = BETHISY[12];
-				break;
-
-			case 13:	//Big Gulp
-				if (i > 12) break;
-				ratio[i] = BIGGULP[i];
-				octave = BIGGULP[12];
-				break;
-
-			case 14:	//12 - tone scale by Bohlen generated from the 4:7 : 10 triad, Acustica 39 / 2, 1978
-				if (i > 12) break;
-				ratio[i] = BOHLEN12[i];
-				octave = BOHLEN12[12];
-				break;
-
-			case 15:	//This scale may also be called the "Wedding Cake"
-				if (i > 12) break;
-				ratio[i] = WEDDING[i];
-				octave = WEDDING[12];
-				break;
-
-			case 16:	//Upside - Down Wedding Cake(divorce cake)
-				if (i > 12) break;
-				ratio[i] = DIVORCE[i];
-				octave = DIVORCE[12];
-				break;
-
-			case 17:	//12 - tone Pythagorean scale
-				if (i > 12) break;
-				ratio[i] = PYTHAG1[i];
-				octave = PYTHAG1[12];
-				break;
-
-			case 18:	//Robert Schneider, scale of log(4) ..log(16), 1 / 1 = 264Hz
-				if (i > 12) break;
-				ratio[i] = LOGSCALE[i];
-				octave = LOGSCALE[12];
-				break;
-
-			case 19:	//Zarlino temperament extraordinaire, 1024 - tET mapping
-				if (i > 12) break;
-				ratio[i] = ZARLINO1[i];
-				octave = ZARLINO1[12];
-				break;
-
-			case 20:	//Fokker's 7-limit 12-tone just scale
-				if (i > 12) break;
-				ratio[i] = FOKKER7[i];
-				octave = FOKKER7[12];
-				break;
-
-			case 21:	//Bach temperament, a'=400 Hz
-				if (i > 12) break;
-				ratio[i] = BACH400[i];
-				octave = BACH400[12];
-				break;
-
-			case 22:	//Vallotti& Young scale(Vallotti version) also known as Tartini - Vallotti(1754)
-				if (i > 12) break;
-				ratio[i] = VALYOUNG[i];
-				octave = VALYOUNG[12];
-				break;
-
-			case 23:	//Vallotti - Young and Werckmeister III, 10 cents 5 - limit lesfip scale
-				if (i > 12) break;
-				ratio[i] = VALYOWER[i];
-				octave = VALYOWER[12];
-				break;
-
-//
-
-			case 24:	//Optimally consonant major pentatonic, John deLaubenfels(2001)
-				if (i > 5) break;
-				ratio[i] = PENTAOPT[i];
-				octave = PENTAOPT[5];
-				notesnum = 5;
-				//div = 16;
-				break;
-
-			case 25:	//Ancient Greek Aeolic, also tritriadic scale of the 54:64 : 81 triad
-				if (i > 7) break;
-				ratio[i] = AEOLIC[i];
-				octave = AEOLIC[7];
-				notesnum = 7;
-				//div = 4;
-				break;
-
-			case 26:	//African Bapare xylophone(idiophone; loose log)
-				if (i > 10) break;
-				ratio[i] = XYLO1[i];
-				octave = XYLO1[10];
-				notesnum = 10;
-				//div = 8;
-				break;
-
-			case 27:	//African Yaswa xylophones(idiophone; calbash resonators with membrane)
-				if (i > 10) break;
-				ratio[i] = XYLO2[i];
-				octave = XYLO2[10];
-				notesnum = 10;
-				//div = 8;
-				break;
-
-			case 28:	//19-EDO generated using Scale Workshop
-				if (i > 19) break;
-				ratio[i] = NINTENDO[i];
-				octave = NINTENDO[19];
-				notesnum = 19;
-				//div = 0.25;
-				break;
-//
-
-			default:	//custom, ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!!
-				if (i > 12) break;
-				ratio[0] = (double)g_UNISON_L / (double)g_UNISON_R;
-				ratio[1] = (double)g_MIN_2ND_L / (double)g_MIN_2ND_R;
-				ratio[2] = (double)g_MAJ_2ND_L / (double)g_MAJ_2ND_R;
-				ratio[3] = (double)g_MIN_3RD_L / (double)g_MIN_3RD_R;
-				ratio[4] = (double)g_MAJ_3RD_L / (double)g_MAJ_3RD_R;
-				ratio[5] = (double)g_PERF_4TH_L / (double)g_PERF_4TH_R;
-				ratio[6] = (double)g_TRITONE_L / (double)g_TRITONE_R;
-				ratio[7] = (double)g_PERF_5TH_L / (double)g_PERF_5TH_R;
-				ratio[8] = (double)g_MIN_6TH_L / (double)g_MIN_6TH_R;
-				ratio[9] = (double)g_MAJ_6TH_L / (double)g_MAJ_6TH_R;
-				ratio[10] = (double)g_MIN_7TH_L / (double)g_MIN_7TH_R;
-				ratio[11] = (double)g_MAJ_7TH_L / (double)g_MAJ_7TH_R;
-				octave = (double)g_OCTAVE_L / (double)g_OCTAVE_R;
-				break;
-			}
-
-		} 
-		for (int i = 0; i < 180; i++)
-		{
-			double tuning = g_basetuning / 64;
-			PITCH = (multi * ratio[interval]) * tuning;
-			ref_pitch[(i - offset) * 12] = PITCH;
-			interval++;
-			if (interval == notesnum)	//notes per octave, or whatever ratio at the so called octave interval
-			{
-				interval = 0;	//reset the interval count
-				multi = multi * octave;	//multiply by itself
-			}
-		}
-	}
-	else	//12TET
-	{
-		double ratio = pow(2.0, 1.0 / 12.0);
-		for (int i = 0; i < 180; i++)
-		{
-			double tuning = g_basetuning / 64;
-			double PITCH = tuning * pow(ratio, i + offset);
-			ref_pitch[i * 12] = PITCH;
-		}
-	}
-}
 
 //Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
 double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
@@ -593,20 +341,26 @@ void CTuning::generate_table(int note, double freq, int distortion, bool IS_15KH
 	}
 }
 
-//code originally written for POKEY Frequencies Calculator
-double CTuning::get_pitch(int audf, int coarse_divisor, double divisor, int modoffset)
+/// <summary> Calculate the POKEY audio pitch using the given parameters </summary>
+/// <param name = "audf"> POKEY Frequency, either 8-bit or 16-bit </param>
+/// <param name = "coarse_divisor"> Coarse division, 28 in 64kHz mode, 114 in 15kHz mode, 1 for no division </param>
+/// <param name = "divisor"> Fine division, variable relative to Distortion, Cycle, and frequency modulo, 1 for no division </param> 
+/// <param name = "cycle"> Offset added to AUDF, 4 for 1.79mHz mode, 7 for 16-bit+1.79mHz mode, 1 for neither </param>
+/// <returns> POKEY audio pitch (in Hertz) </returns> 
+double CTuning::get_pitch(int audf, int coarse_divisor, double divisor, int cycle)
 {
-	int FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
-	double PITCH = ((FREQ_17 / (coarse_divisor * divisor)) / (audf + modoffset)) / 2;
-	return PITCH;
+	return ((((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL) / (coarse_divisor * divisor)) / (audf + cycle)) / 2;
 }
 
-//code originally written for POKEY Frequencies Calculator
-int CTuning::get_audf(double freq, int coarse_divisor, double divisor, int modoffset)
+/// <summary> Find the nearest POKEY Frequency (AUDF) using the given parameters </summary>
+/// <param name = "pitch"> Source audio pitch (in Hertz) </param>
+/// <param name = "coarse_divisor"> Coarse division, 28 in 64kHz mode, 114 in 15kHz mode, 1 for no division </param>
+/// <param name = "divisor"> Fine division, variable relative to Distortion, Cycle, and frequency modulo, 1 for no division </param> 
+/// <param name = "cycle"> Offset added to AUDF, 4 for 1.79mHz mode, 7 for 16-bit+1.79mHz mode, 1 for neither </param>
+/// <returns> POKEY Frequency (AUDF) </returns> 
+int CTuning::get_audf(double pitch, int coarse_divisor, double divisor, int cycle)
 {
-	int FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
-	int audf = (int)round(((FREQ_17 / (coarse_divisor * divisor)) / (2 * freq)) - modoffset);
-	return audf;
+	return (int)round(((((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL) / (coarse_divisor * divisor)) / (2 * pitch)) - cycle);
 }
 
 //code originally written for POKEY Frequencies Calculator
@@ -696,9 +450,237 @@ void CTuning::macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bo
 	for (int i = 0; i < 64; i++)
 	{
 		int note = i + note_offset;
-		double freq = ref_pitch[note * 12];
+		double freq = GetTruePitch(g_basetuning, g_temperament, g_basenote, note);
 		generate_table(i, freq, distortion, IS_15KHZ, IS_179MHZ, IS_16BIT);
 	}
+}
+
+double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int semitone)
+{
+	int notesnum = 12;	//unless specified otherwise
+	int note = (semitone + basenote) % notesnum;	//current note
+	double ratio = 0;	//will be used for calculations
+	double octave = 2;	//an octave is usually the frequency of a note multiplied by 2
+	double multi = 1; //octave multiplyer for the ratio
+
+	//Equal temperament is generated using the 12th root of 2
+	if (!temperament)
+	{
+		ratio = pow(2.0, 1.0 / 12.0);
+		return (tuning / 64) * pow(ratio, semitone + basenote);
+	}
+
+	//Custom Ratio tuning is used if the temperament value is higher than the number of presets
+	if (temperament >= 29)
+	{
+		//ratio = GetCustomRatio(note);
+		//octave = g_OCTAVE;
+		//multi = pow(octave, trunc((semitone + basenote) / notesnum));
+		return (tuning / 64) * (pow(g_OCTAVE, trunc((semitone + basenote) / notesnum)) * GetCustomRatio(note));
+	}
+
+	switch (temperament)
+	{
+	case 1:		//Thomas Young 1799's Well Temperament no.1
+		octave = YOUNG1[notesnum];
+		ratio = YOUNG1[note];
+		break;
+
+	case 2:		//Thomas Young 1799's Well Temperament no.2
+		octave = YOUNG2[notesnum];
+		ratio = YOUNG2[note];
+		break;
+
+	case 3:		//Thomas Young 1807's Well Temperament
+		octave = YOUNG3[notesnum];
+		ratio = YOUNG3[note];
+		break;
+
+	case 4:		//Andreas Werckmeister's temperament III (the most famous one, 1681)
+		octave = WERCK3[notesnum];
+		ratio = WERCK3[note];
+		break;
+
+	case 5:		//Tempérament Égal à Quintes Justes 
+		octave = QUINTE[notesnum];
+		ratio = QUINTE[note];
+		break;
+
+	case 6:		//d'Alembert and Rousseau tempérament ordinaire (1752/1767)
+		octave = TEMPORD[notesnum];
+		ratio = TEMPORD[note];
+		break;
+
+	case 7:		//Aron - Neidhardt equal beating well temperament
+		octave = ARONIED[notesnum];
+		ratio = ARONIED[note];
+		break;
+
+	case 8:		//Atom Schisma Scale
+		octave = ATOMSCH[notesnum];
+		ratio = ATOMSCH[note];
+		break;
+
+	case 9:		//12 - tET approximation with minimal order 17 beats
+		octave = APPRX12[notesnum];
+		ratio = APPRX12[note];
+		break;
+
+	case 10:	//Paul Bailey's modern well temperament (2002)
+		octave = BAILEY1[notesnum];
+		ratio = BAILEY1[note];
+		break;
+
+	case 11:	//John Barnes' temperament (1977) made after analysis of Wohltemperierte Klavier, 1/6 P
+		octave = BARNES1[notesnum];
+		ratio = BARNES1[note];
+		break;
+
+	case 12:	//Bethisy temperament ordinaire, see Pierre - Yves Asselin : Musique et temperament
+		octave = BETHISY[notesnum];
+		ratio = BETHISY[note];
+		break;
+
+	case 13:	//Big Gulp
+		octave = BIGGULP[notesnum];
+		ratio = BIGGULP[note];
+		break;
+
+	case 14:	//12 - tone scale by Bohlen generated from the 4:7 : 10 triad, Acustica 39 / 2, 1978
+		octave = BOHLEN12[notesnum];
+		ratio = BOHLEN12[note];
+		break;
+
+	case 15:	//This scale may also be called the "Wedding Cake"
+		octave = WEDDING[notesnum];
+		ratio = WEDDING[note];
+		break;
+
+	case 16:	//Upside - Down Wedding Cake(divorce cake)
+		octave = DIVORCE[notesnum];
+		ratio = DIVORCE[note];
+		break;
+
+	case 17:	//12 - tone Pythagorean scale
+		octave = PYTHAG1[notesnum];
+		ratio = PYTHAG1[note];
+		break;
+
+	case 18:	//Robert Schneider, scale of log(4) ..log(16), 1 / 1 = 264Hz
+		octave = LOGSCALE[notesnum];
+		ratio = LOGSCALE[note];
+		break;
+
+	case 19:	//Zarlino temperament extraordinaire, 1024 - tET mapping
+		octave = ZARLINO1[notesnum];
+		ratio = ZARLINO1[note];
+		break;
+
+	case 20:	//Fokker's 7-limit 12-tone just scale
+		octave = FOKKER7[notesnum];
+		ratio = FOKKER7[note];
+		break;
+
+	case 21:	//Bach temperament, a'=400 Hz
+		octave = BACH400[notesnum];
+		ratio = BACH400[note];
+		break;
+
+	case 22:	//Vallotti& Young scale(Vallotti version) also known as Tartini - Vallotti(1754)
+		octave = VALYOUNG[notesnum];
+		ratio = VALYOUNG[note];
+		break;
+
+	case 23:	//Vallotti - Young and Werckmeister III, 10 cents 5 - limit lesfip scale
+		octave = VALYOWER[notesnum];
+		ratio = VALYOWER[note];
+		break;
+
+	case 24:	//Optimally consonant major pentatonic, John deLaubenfels(2001)
+		notesnum = 5;
+		octave = PENTAOPT[notesnum];
+		note = (semitone + basenote) % notesnum;
+		ratio = PENTAOPT[note];
+		break;
+
+	case 25:	//Ancient Greek Aeolic, also tritriadic scale of the 54:64 : 81 triad
+		notesnum = 7;
+		octave = AEOLIC[notesnum];
+		note = (semitone + basenote) % notesnum;
+		ratio = AEOLIC[note];
+		break;
+
+	case 26:	//African Bapare xylophone(idiophone; loose log)
+		notesnum = 10;
+		octave = XYLO1[notesnum];
+		note = (semitone + basenote) % notesnum;
+		ratio = XYLO1[note];
+		break;
+
+	case 27:	//African Yaswa xylophones(idiophone; calbash resonators with membrane)
+		notesnum = 10;
+		octave = XYLO2[notesnum];
+		note = (semitone + basenote) % notesnum;
+		ratio = XYLO2[note];
+		break;
+
+	case 28:	//19-EDO generated using Scale Workshop
+		notesnum = 19;
+		octave = NINTENDO[notesnum];
+		note = (semitone + basenote) % notesnum;
+		ratio = NINTENDO[note];
+		break;
+
+	default:	//custom, ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!!
+		return 0;
+	}
+
+	multi = pow(octave, trunc((semitone + basenote) / notesnum));
+	return (tuning / 64) * (multi * ratio);
+}
+
+//TODO: turn this shit into an array that could be loaded from the function above...
+double CTuning::GetCustomRatio(int note)
+{
+	switch (note)
+	{
+	case 0:
+		return g_UNISON;
+
+	case 1:
+		return g_MIN_2ND;
+
+	case 2:
+		return g_MAJ_2ND;
+
+	case 3:
+		return g_MIN_3RD;
+
+	case 4:
+		return g_MAJ_3RD;
+
+	case 5:
+		return g_PERF_4TH;
+
+	case 6:
+		return g_TRITONE;
+
+	case 7:
+		return g_PERF_5TH;
+
+	case 8:
+		return g_MIN_6TH;
+
+	case 9:
+		return g_MAJ_6TH;
+
+	case 10:
+		return g_MIN_7TH;
+
+	case 11:
+		return g_MAJ_7TH;
+	}
+	return 0;
 }
 
 void CTuning::init_tuning()
@@ -734,8 +716,21 @@ void CTuning::init_tuning()
 		MessageBox(g_hwnd, "An invalid tuning configuration has been detected!\n\nTuning has been reset to default parameters.", "Tuning error", MB_ICONERROR); 
 	}
 
-	real_freq();	//generate the tuning reference in memory first
-		
+	//calculate the custom ratio used for each semitone
+	g_UNISON = (double)g_UNISON_L / (double)g_UNISON_R;
+	g_MIN_2ND = (double)g_MIN_2ND_L / (double)g_MIN_2ND_R;
+	g_MAJ_2ND = (double)g_MAJ_2ND_L / (double)g_MAJ_2ND_R;
+	g_MIN_3RD = (double)g_MIN_3RD_L / (double)g_MIN_3RD_R;
+	g_MAJ_3RD = (double)g_MAJ_3RD_L / (double)g_MAJ_3RD_R;
+	g_PERF_4TH = (double)g_PERF_4TH_L / (double)g_PERF_4TH_R;
+	g_TRITONE = (double)g_TRITONE_L / (double)g_TRITONE_R;
+	g_PERF_5TH = (double)g_PERF_5TH_L / (double)g_PERF_5TH_R;
+	g_MIN_6TH = (double)g_MIN_6TH_L / (double)g_MIN_6TH_R;
+	g_MAJ_6TH = (double)g_MAJ_6TH_L / (double)g_MAJ_6TH_R;
+	g_MIN_7TH = (double)g_MIN_7TH_L / (double)g_MIN_7TH_R;
+	g_MAJ_7TH = (double)g_MAJ_7TH_L / (double)g_MAJ_7TH_R;
+	g_OCTAVE = (double)g_OCTAVE_L / (double)g_OCTAVE_R;
+	
 	//All the tables that could be calculated will be generated inside this entire block
 	for (int d = 0x00; d < 0xE0; d += 0x20)
 	{

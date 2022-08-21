@@ -106,13 +106,14 @@ const double NINTENDO[20] =
 class CTuning
 {
 public:
-	void init_tuning();
-	int get_audf(double freq, int coarse_divisor, double divisor, int modoffset);
-	double get_pitch(int audf, int coarse_divisor, double divisor, int modoffset);
+	int get_audf(double pitch, int coarse_divisor, double divisor, int cycle);
+	double get_pitch(int audf, int coarse_divisor, double divisor, int cycle);
 	double generate_freq(int audc, int audf, int audctl, int channel); 
+	double GetTruePitch(double tuning, int temperament, int basenote, int semitone);
+	void init_tuning();
 
 private:
-	void real_freq();
+	double GetCustomRatio(int note);
 	void macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT);
 	void generate_table(int note, double freq, int distortion, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT);
 	int delta_audf(int audf, double freq, int coarse_divisor, double divisor, int modoffset, int distortion);
