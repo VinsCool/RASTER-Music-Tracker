@@ -103,6 +103,9 @@ const double XYLO2[11] = { 1, 1.128312, 1.271619, 1.486239, 1.707240, 1.936341, 
 const double NINTENDO[20] =
 { 1, 1.037155, 1.075690, 1.115657, 1.157110, 1.200102, 1.244692, 1.290939, 1.338904, 1.388651, 1.440246, 1.493759, 1.549259, 1.606822, 1.666524, 1.728443, 1.792664, 1.859270, 1.928352, 2 };
 
+//Custom tuning ratio is generated in this array, so this is not a constant
+static double CUSTOM[13] = { 0 };
+
 class CTuning
 {
 public:
@@ -113,7 +116,6 @@ public:
 	void init_tuning();
 
 private:
-	double GetCustomRatio(int note);
 	void macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT);
 	void generate_table(int note, double freq, int distortion, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT);
 	int delta_audf(int audf, double freq, int coarse_divisor, double divisor, int modoffset, int distortion);

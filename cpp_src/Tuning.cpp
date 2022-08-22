@@ -89,26 +89,15 @@ bool IS_METALLIC_POLY9 = 0;		//AUDCTL 0x80, Distortion 0 and 8, MOD7 AUDF
 //Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
 double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 {
-	//register variables
-	int skctl = 0;						//not yet implemented in calculations
-	int distortion = audc & 0xf0;
-
-	//variables for pitch calculation
-	double divisor = 1;					//divisors must never be 0!
+	//variables for pitch calculation, divisors must never be 0!
+	double divisor = 1;	
 	int coarse_divisor = 1;
 	int cycle = 1;
-	int modulo = 0;
 
-	IS_SMOOTH_DIST_4 = 0;
-	IS_BUZZY_DIST_4 = 0;
-	IS_UNSTABLE_DIST_4_1 = 0;
-	IS_UNSTABLE_DIST_4_2 = 0;
-
-	IS_BUZZY_DIST_C = 0;
-	IS_GRITTY_DIST_C = 0;
-	IS_UNSTABLE_DIST_C = 0;
-	IS_METALLIC_POLY9 = 0;
-
+	//register variables 
+	int distortion = audc & 0xf0;
+	//int skctl = 0;	//not yet implemented in calculations
+	//TWO_TONE = (skctl == 0x8B) ? 1 : 0;
 	CLOCK_15 = audctl & 0x01;
 	HPF_CH24 = audctl & 0x02;
 	HPF_CH13 = audctl & 0x04;
@@ -117,8 +106,6 @@ double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 	CH3_179 = audctl & 0x20;
 	CH1_179 = audctl & 0x40;
 	POLY9 = audctl & 0x80;
-
-	TWO_TONE = (skctl == 0x8B) ? 1 : 0;
 
 	//combined modes for some special output...
 	JOIN_16BIT = ((JOIN_12 && CH1_179 && (channel == 1 || channel == 5)) || (JOIN_34 && CH3_179 && (channel == 3 || channel == 7))) ? 1 : 0;
@@ -139,54 +126,55 @@ double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 	else if (CLOCK_179) cycle = 4;
 	else coarse_divisor = (CLOCK_15) ? 114 : 28;
 
+	//Many combinations depend entirely on the Modulo of POKEY frequencies to generate different tones
+	//If a known value provide unstable results, it may be avoided on purpose 
+	bool MOD3 = ((audf + cycle) % 3 == 0);
+	bool MOD5 = ((audf + cycle) % 5 == 0);
+	bool MOD7 = ((audf + cycle) % 7 == 0);
+	bool MOD15 = ((audf + cycle) % 15 == 0);
+	bool MOD31 = ((audf + cycle) % 31 == 0);
+	bool MOD73 = ((audf + cycle) % 73 == 0);
+
 	switch (distortion)
 	{
-	case 0x60:	//Duplicate of Distortion 2
+	case 0x00:
+		if (POLY9)
+		{
+			divisor = 255.5;	//Metallic Buzzy
+			if (MOD7 || (!CLOCK_15 && !CLOCK_179 && !JOIN_16BIT)) divisor = 36.5;	//seems to only sound "uniform" in 64kHz mode for some reason 
+			if (MOD31 || MOD73) return 0;	//MOD31 and MOD73 values are invalid 
+		}
+		break;
+
 	case 0x20:
+	case 0x60:	//Duplicate of Distortion 2
 		divisor = 31;
-		modulo = 31;
-		if ((audf + cycle) % modulo == 0) return 0;
+		if (MOD31) return 0;
 		break;
 
 	case 0x40:
-		divisor = 232.5;		//Buzzy
-		modulo = (CLOCK_15) ? 5 : 15;
-		IS_UNSTABLE_DIST_4_1 = ((audf + cycle) % 5 == 0) ? 1 : 0;
-		IS_SMOOTH_DIST_4 = ((audf + cycle) % 3 == 0 || CLOCK_15) ? 1 : 0;
-		IS_UNSTABLE_DIST_4_2 = ((audf + cycle) % 31 == 0) ? 1 : 0;
-		if (IS_UNSTABLE_DIST_4_1) divisor = 46.5;	//Unstable #1
-		if (IS_SMOOTH_DIST_4) divisor = 77.5;	//Smooth
-		if (IS_UNSTABLE_DIST_4_2) divisor = (IS_SMOOTH_DIST_4 || IS_UNSTABLE_DIST_4_1) ? 2.5 : 7.5;	//Unstable #2 and #3
-		if ((audf + cycle) % modulo == 0) return 0;
+		divisor = 232.5;		//Buzzy tones, neither MOD3 or MOD5 or MOD31
+		if (MOD3 || CLOCK_15) divisor = 77.5;	//Smooth tones, MOD3 but not MOD5 or MOD31
+		if (MOD5) divisor = 46.5;	//Unstable tones #1, MOD5 but not MOD3 or MOD31
+		if (MOD31) divisor = (MOD3 || MOD5) ? 2.5 : 7.5;	//Unstables Tones #2 and #3, MOD31, with MOD3 or MOD5 
+		if (MOD15 || (MOD5 && CLOCK_15)) return 0;	//Both MOD3 and MOD5 at once are invalid 
 		break;
 
-	case 0x00:
 	case 0x80:
 		if (POLY9)
 		{
 			divisor = 255.5;	//Metallic Buzzy
-			modulo = 73;
-			if (CLOCK_179 || JOIN_16BIT)
-				IS_METALLIC_POLY9 = ((audf + cycle) % 7 == 0) ? 1 : 0;
-			else
-				IS_METALLIC_POLY9 = 1;
-
-			if (IS_METALLIC_POLY9) divisor = 36.5;
-			if ((audf + cycle) % modulo == 0) return 0;
-			if (distortion == 0x00 && ((audf + cycle) % 31 == 0)) return 0;	//MOD31 values are invalid with Distortion 0
+			if (MOD7 || (!CLOCK_15 && !CLOCK_179 && !JOIN_16BIT)) divisor = 36.5;	//seems to only sound "uniform" in 64kHz mode for some reason 
+			if (MOD73) return 0;	//MOD73 values are invalid
 		}
 		break;
 
 	case 0xC0:
-		divisor = 7.5;		//Gritty
-		modulo = (CLOCK_15) ? 5 : 15;
-		IS_UNSTABLE_DIST_C = ((audf + cycle) % 5 == 0) ? 1 : 0;
-		IS_BUZZY_DIST_C = ((audf + cycle) % 3 == 0 || CLOCK_15) ? 1 : 0;
-		if (IS_UNSTABLE_DIST_C) divisor = 1.5;	//Unstable
-		if (IS_BUZZY_DIST_C) divisor = 2.5;	//Buzzy
-		if ((audf + cycle) % modulo == 0) return 0;
-		//IS_VALID = ((audf + cycle) % modulo == 0) ? 0 : 1;
-		break;
+		divisor = 7.5;	//Gritty tones, neither MOD3 or MOD5
+		if (MOD3 || CLOCK_15) divisor = 2.5;	//Buzzy tones, MOD3 but not MOD5
+		if (MOD5) divisor = 1.5;	//Unstable Buzzy tones, MOD5 but not MOD3
+		if (MOD15 || (MOD5 && CLOCK_15)) return 0;	//Both MOD3 and MOD5 at once are invalid 
+		break;		
 	}
 	return get_pitch(audf, coarse_divisor, divisor, cycle);
 }
@@ -455,6 +443,7 @@ void CTuning::macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bo
 	}
 }
 
+//TODO: optimise further, the method in place for loading temperaments is terrible
 double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int semitone)
 {
 	int notesnum = 12;	//unless specified otherwise
@@ -468,15 +457,6 @@ double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int s
 	{
 		ratio = pow(2.0, 1.0 / 12.0);
 		return (tuning / 64) * pow(ratio, semitone + basenote);
-	}
-
-	//Custom Ratio tuning is used if the temperament value is higher than the number of presets
-	if (temperament >= 29)
-	{
-		//ratio = GetCustomRatio(note);
-		//octave = g_OCTAVE;
-		//multi = pow(octave, trunc((semitone + basenote) / notesnum));
-		return (tuning / 64) * (pow(g_OCTAVE, trunc((semitone + basenote) / notesnum)) * GetCustomRatio(note));
 	}
 
 	switch (temperament)
@@ -631,57 +611,16 @@ double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int s
 		ratio = NINTENDO[note];
 		break;
 
-	default:	//custom, ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!!
-		return 0;
+	default:	//Custom ratio, anything can go!
+		octave = CUSTOM[notesnum];
+		ratio = CUSTOM[note];
+		break;
 	}
 
 	multi = pow(octave, trunc((semitone + basenote) / notesnum));
 	return (tuning / 64) * (multi * ratio);
 }
 
-//TODO: turn this shit into an array that could be loaded from the function above...
-double CTuning::GetCustomRatio(int note)
-{
-	switch (note)
-	{
-	case 0:
-		return g_UNISON;
-
-	case 1:
-		return g_MIN_2ND;
-
-	case 2:
-		return g_MAJ_2ND;
-
-	case 3:
-		return g_MIN_3RD;
-
-	case 4:
-		return g_MAJ_3RD;
-
-	case 5:
-		return g_PERF_4TH;
-
-	case 6:
-		return g_TRITONE;
-
-	case 7:
-		return g_PERF_5TH;
-
-	case 8:
-		return g_MIN_6TH;
-
-	case 9:
-		return g_MAJ_6TH;
-
-	case 10:
-		return g_MIN_7TH;
-
-	case 11:
-		return g_MAJ_7TH;
-	}
-	return 0;
-}
 
 void CTuning::init_tuning()
 {
@@ -717,20 +656,21 @@ void CTuning::init_tuning()
 	}
 
 	//calculate the custom ratio used for each semitone
-	g_UNISON = (double)g_UNISON_L / (double)g_UNISON_R;
-	g_MIN_2ND = (double)g_MIN_2ND_L / (double)g_MIN_2ND_R;
-	g_MAJ_2ND = (double)g_MAJ_2ND_L / (double)g_MAJ_2ND_R;
-	g_MIN_3RD = (double)g_MIN_3RD_L / (double)g_MIN_3RD_R;
-	g_MAJ_3RD = (double)g_MAJ_3RD_L / (double)g_MAJ_3RD_R;
-	g_PERF_4TH = (double)g_PERF_4TH_L / (double)g_PERF_4TH_R;
-	g_TRITONE = (double)g_TRITONE_L / (double)g_TRITONE_R;
-	g_PERF_5TH = (double)g_PERF_5TH_L / (double)g_PERF_5TH_R;
-	g_MIN_6TH = (double)g_MIN_6TH_L / (double)g_MIN_6TH_R;
-	g_MAJ_6TH = (double)g_MAJ_6TH_L / (double)g_MAJ_6TH_R;
-	g_MIN_7TH = (double)g_MIN_7TH_L / (double)g_MIN_7TH_R;
-	g_MAJ_7TH = (double)g_MAJ_7TH_L / (double)g_MAJ_7TH_R;
-	g_OCTAVE = (double)g_OCTAVE_L / (double)g_OCTAVE_R;
-	
+	CUSTOM[0] = (double)g_UNISON_L / (double)g_UNISON_R;
+	CUSTOM[1] = (double)g_MIN_2ND_L / (double)g_MIN_2ND_R;
+	CUSTOM[2] = (double)g_MAJ_2ND_L / (double)g_MAJ_2ND_R;
+	CUSTOM[3] = (double)g_MIN_3RD_L / (double)g_MIN_3RD_R;
+	CUSTOM[4] = (double)g_MAJ_3RD_L / (double)g_MAJ_3RD_R;
+	CUSTOM[5] = (double)g_PERF_4TH_L / (double)g_PERF_4TH_R;
+	CUSTOM[6] = (double)g_TRITONE_L / (double)g_TRITONE_R;
+	CUSTOM[7] = (double)g_PERF_5TH_L / (double)g_PERF_5TH_R;
+	CUSTOM[8] = (double)g_MIN_6TH_L / (double)g_MIN_6TH_R;
+	CUSTOM[9] = (double)g_MAJ_6TH_L / (double)g_MAJ_6TH_R;
+	CUSTOM[10] = (double)g_MIN_7TH_L / (double)g_MIN_7TH_R;
+	CUSTOM[11] = (double)g_MAJ_7TH_L / (double)g_MAJ_7TH_R;
+	CUSTOM[12] = (double)g_OCTAVE_L / (double)g_OCTAVE_R;
+
+
 	//All the tables that could be calculated will be generated inside this entire block
 	for (int d = 0x00; d < 0xE0; d += 0x20)
 	{

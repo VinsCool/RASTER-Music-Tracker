@@ -637,7 +637,9 @@ void CSong::DrawAnalyzer(CDC* pDC)
 						double centnum = 1200 * log2(PITCH / tuning);
 						int notenum = (int)round(centnum * 0.01) + 60;
 						int note = ((notenum + 96) - basenote) % 12;
-						int octave = (notenum - basenote) / 12;
+
+						int octave = (((notenum + 96) - basenote) / 12) - 8;
+						
 						int cents = (int)round(centnum - (notenum - 60) * 100);
 
 						snprintf(szBuffer, 4, "%03d", cents);
@@ -647,6 +649,9 @@ void CSong::DrawAnalyzer(CDC* pDC)
 							TextMiniXY("+", ANALYZER3_X + 8 * 49, ANALYZER3_Y + a, TEXT_MINI_COLOR_GRAY);
 						else
 							TextMiniXY("-", ANALYZER3_X + 8 * 49, ANALYZER3_Y + a, TEXT_MINI_COLOR_GRAY);
+
+						if (note < 0)
+							note *= -1;	//invert the negative to prevent going out of bounds
 
 						n[0] = notes[note][0];
 						n[1] = notes[note][1];
