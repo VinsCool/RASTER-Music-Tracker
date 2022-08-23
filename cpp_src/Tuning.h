@@ -106,6 +106,15 @@ const double NINTENDO[20] =
 //Custom tuning ratio is generated in this array, so this is not a constant
 static double CUSTOM[13] = { 0 };
 
+//Table construction structure
+struct TTuning
+{
+	int table_64khz;
+	int table_15khz;
+	int table_179mhz;
+	int table_16bit;
+};
+
 class CTuning
 {
 public:
@@ -116,9 +125,11 @@ public:
 	void init_tuning();
 
 private:
-	void macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT);
-	void generate_table(int note, double freq, int distortion, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT);
-	int delta_audf(int audf, double freq, int coarse_divisor, double divisor, int modoffset, int distortion);
+	void generate_table(unsigned char* table, int length, int semitone, int timbre, int audctl);
+	int delta_audf(double pitch, int audf, int coarse_divisor, double divisor, int cycle, int timbre);
+	//void macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT);
+	//void generate_table(int note, double freq, int distortion, int audctl, int timbre);
+	//int delta_audf(int audf, double freq, int coarse_divisor, double divisor, int modoffset, int distortion);
 };
 
 extern CTuning g_Tuning;

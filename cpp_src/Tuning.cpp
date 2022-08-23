@@ -6,6 +6,7 @@
 #include "tuning.h"
 #include "global.h"
 
+/*
 //Tuning tables to generate...
 //double ref_pitch[2200] = { 0 };	//delete soon, this won't be useful anymore
 
@@ -54,8 +55,6 @@ int tab_64khz_c_unstable[64] = { 0 };
 int tab_179mhz_c_unstable[64] = { 0 };
 int tab_16bit_c_unstable[128] = { 0 };
 
-
-
 //AUDCTL bits
 bool CLOCK_15 = 0;				//0x01
 bool HPF_CH24 = 0;				//0x02
@@ -75,6 +74,7 @@ bool SAWTOOTH_INVERTED = 0;		//valid Sawtooth mode (inverted)
 //SKCTL bits
 bool TWO_TONE = 0;				//0x8B, Two-Tone Filter
 
+
 //combined AUDC and AUDF bits for special cases
 bool IS_SMOOTH_DIST_4 = 0;
 bool IS_BUZZY_DIST_4 = 0;
@@ -84,6 +84,7 @@ bool IS_BUZZY_DIST_C = 0;		//Distortion C, MOD3 AUDF and not MOD5 AUDF
 bool IS_GRITTY_DIST_C = 0;		//Distortion C, neither MOD3 nor MOD5 AUDF
 bool IS_UNSTABLE_DIST_C = 0;	//Distortion C, MOD5 AUDF and not MOD3 AUDF
 bool IS_METALLIC_POLY9 = 0;		//AUDCTL 0x80, Distortion 0 and 8, MOD7 AUDF
+*/
 
 
 //Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
@@ -97,19 +98,19 @@ double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 	//register variables 
 	int distortion = audc & 0xf0;
 	//int skctl = 0;	//not yet implemented in calculations
-	//TWO_TONE = (skctl == 0x8B) ? 1 : 0;
-	CLOCK_15 = audctl & 0x01;
-	HPF_CH24 = audctl & 0x02;
-	HPF_CH13 = audctl & 0x04;
-	JOIN_34 = audctl & 0x08;
-	JOIN_12 = audctl & 0x10;
-	CH3_179 = audctl & 0x20;
-	CH1_179 = audctl & 0x40;
-	POLY9 = audctl & 0x80;
+	//bool TWO_TONE = (skctl == 0x8B) ? 1 : 0;
+	bool CLOCK_15 = audctl & 0x01;
+	bool HPF_CH24 = audctl & 0x02;
+	bool HPF_CH13 = audctl & 0x04;
+	bool JOIN_34 = audctl & 0x08;
+	bool JOIN_12 = audctl & 0x10;
+	bool CH3_179 = audctl & 0x20;
+	bool CH1_179 = audctl & 0x40;
+	bool POLY9 = audctl & 0x80;
 
 	//combined modes for some special output...
-	JOIN_16BIT = ((JOIN_12 && CH1_179 && (channel == 1 || channel == 5)) || (JOIN_34 && CH3_179 && (channel == 3 || channel == 7))) ? 1 : 0;
-	CLOCK_179 = ((CH1_179 && (channel == 0 || channel == 4)) || (CH3_179 && (channel == 2 || channel == 6))) ? 1 : 0;
+	bool JOIN_16BIT = ((JOIN_12 && CH1_179 && (channel == 1 || channel == 5)) || (JOIN_34 && CH3_179 && (channel == 3 || channel == 7))) ? 1 : 0;
+	bool CLOCK_179 = ((CH1_179 && (channel == 0 || channel == 4)) || (CH3_179 && (channel == 2 || channel == 6))) ? 1 : 0;
 	if (JOIN_16BIT || CLOCK_179) CLOCK_15 = 0;	//override, these 2 take priority over 15khz mode if they are enabled at the same time
 
 	/*
@@ -180,153 +181,161 @@ double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 }
 
 //this code was originally added in POKEY Frequencies Calculator, and adapted for RMT 1.31+
-void CTuning::generate_table(int note, double freq, int distortion, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT)
+void CTuning::generate_table(unsigned char* table, int length, int semitone, int timbre, int audctl)
 {
-	int audf = 0;
-	int modoffset = 1;
-	int coarse_divisor = 1;
-	int v_modulo = 0;
+	//variables for pitch calculation, divisors must never be 0!
 	double divisor = 1;
-	double PITCH = 0;
+	int coarse_divisor = 1;
+	int cycle = 1;
 
-	//since globals are specifically wanted, the parameters are used to define these flags here
-	CLOCK_15 = IS_15KHZ;
-	CLOCK_179 = IS_179MHZ;
-	JOIN_16BIT = IS_16BIT;
+	//register variables 
+	//int distortion = timbre & 0xF0;
+	//int skctl = 0;	//not yet implemented in calculations
+	//bool TWO_TONE = (skctl == 0x8B) ? 1 : 0;
+	bool CLOCK_15 = audctl & 0x01;
+	bool HPF_CH24 = audctl & 0x02;
+	bool HPF_CH13 = audctl & 0x04;
+	bool JOIN_34 = audctl & 0x08;
+	bool JOIN_12 = audctl & 0x10;
+	bool CH3_179 = audctl & 0x20;
+	bool CH1_179 = audctl & 0x40;
+	bool POLY9 = audctl & 0x80;
+
+	//combined modes for some special output... 
+	//the channel number doesn't actually matter for creating tables, so the parameter is omitted
+	bool JOIN_16BIT = ((JOIN_12 && CH1_179) || (JOIN_34 && CH3_179)) ? 1 : 0;
+	bool CLOCK_179 = (CH1_179 || CH3_179) ? 1 : 0;
+	if (JOIN_16BIT || CLOCK_179) CLOCK_15 = 0;	//override, these 2 take priority over 15khz mode if they are enabled at the same time
 
 	//TODO: apply Two-Tone timer offset into calculations when channel 1+2 are linked in 1.79mhz mode
 	//This would help generating tables using patterns discovered by synthpopalooza
-	if (JOIN_16BIT) modoffset = 7;
-	else if (CLOCK_179) modoffset = 4;
+	if (JOIN_16BIT) cycle = 7;
+	else if (CLOCK_179) cycle = 4;
 	else coarse_divisor = (CLOCK_15) ? 114 : 28;
 
-	switch (distortion)
+	//Many combinations depend entirely on the Modulo of POKEY frequencies to generate different tones
+	//If a known value provide unstable results, it may be avoided on purpose 
+	bool MOD3 = 0;
+	bool MOD5 = 0;
+	bool MOD7 = 0;
+	bool MOD15 = 0;
+	bool MOD31 = 0;
+	bool MOD73 = 0;
+
+	//Use the modulo flags to make sure the correct timbre will be output
+	switch (timbre)
 	{
-	case 0x20:
-		divisor = 31;
-		v_modulo = 31;
-		audf = get_audf(freq, coarse_divisor, divisor, modoffset);
-		if ((audf + modoffset) % v_modulo == 0)	//invalid values
-			audf = delta_audf(audf, freq, coarse_divisor, divisor, modoffset, distortion);
-		if (!JOIN_16BIT)	//not 16-bit mode
-		{
-			if (audf > 0xFF) audf = 0xFF;	//lowest possible pitch
-			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
-		}
-		else
-		{
-			if (audf > 0xFFFF) audf = 0xFFFF;	//lowest possible pitch
-			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
-		}
-		if (JOIN_16BIT) tab_16bit_2[note * 2] = audf;
-		else if (CLOCK_179) tab_179mhz_2[note] = audf;
-		else tab_64khz_2[note] = audf;
+	case TIMBRE_PINK_NOISE:
 		break;
 
-	case 0x40:
-		divisor = (IS_SMOOTH_DIST_4 || CLOCK_15) ? 77.5 : 232.5;		//Smooth
-		v_modulo = (CLOCK_15) ? 5 : 15;
-		audf = get_audf(freq, coarse_divisor, divisor, modoffset);
-		if ((CLOCK_15 && (audf + modoffset) % v_modulo == 0) ||
-			(IS_SMOOTH_DIST_4 && ((audf + modoffset) % 3 != 0 || (audf + modoffset) % 5 == 0 || (audf + modoffset) % 31 == 0)) ||
-			(IS_BUZZY_DIST_4 && ((audf + modoffset) % 3 == 0 || (audf + modoffset) % 5 == 0 || (audf + modoffset) % 31 == 0))) 
-		{
-			audf = delta_audf(audf, freq, coarse_divisor, divisor, modoffset, distortion); 
-		}
-		if (!JOIN_16BIT)	//not 16-bit mode
-		{
-			if (audf > 0xFF) audf = 0xFF;	//lowest possible pitch
-			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
-		}
-		else
-		{
-			if (audf > 0xFFFF) audf = 0xFFFF;	//lowest possible pitch
-			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
-		}
-		if (JOIN_16BIT)
-		{
-			if (IS_SMOOTH_DIST_4) tab_16bit_4_smooth[note * 2] = audf;
-			else if (IS_BUZZY_DIST_4) tab_16bit_4_buzzy[note * 2] = audf;
-			else break;	//invalid parameter
-		}
-		else if (CLOCK_179)
-		{
-			if (IS_SMOOTH_DIST_4) tab_179mhz_4_smooth[note] = audf;
-			else if (IS_BUZZY_DIST_4) tab_179mhz_4_buzzy[note] = audf;
-			else break;	//invalid parameter
-		}
-		else	//64khz mode
-		{
-			if (IS_SMOOTH_DIST_4) tab_64khz_4_smooth[note] = audf;
-			else if (IS_BUZZY_DIST_4) tab_64khz_4_buzzy[note] = audf;
-			else break;	//invalid parameter
-		}
+	case TIMBRE_BROWNIAN_NOISE:
+		divisor = 36.5;	//Brownian noise, not MOD31 and not MOD73
 		break;
 
-	case 0xA0:
-		audf = get_audf(freq, coarse_divisor, divisor, modoffset);
-		if (!JOIN_16BIT)	//not 16-bit mode
-		{
-			if (audf > 0xFF) audf = 0xFF;	//lowest possible pitch
-			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
-		}
-		else
-		{
-			if (audf > 0xFFFF) audf = 0xFFFF;	//lowest possible pitch
-			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
-		}
-		if (JOIN_16BIT) tab_16bit_a_pure[note * 2] = audf;
-		else if (CLOCK_179) tab_179mhz_a_pure[note] = audf;
-		else if (CLOCK_15) tab_15khz_a_pure[note] = audf;
-		else tab_64khz_a_pure[note] = audf;
+	case TIMBRE_FUZZY_NOISE:
+		divisor = 255.5;	//Fuzzy noise, not MOD7, not MOD31 and not MOD73
 		break;
 
-	case 0xC0:
-		divisor = (IS_BUZZY_DIST_C || CLOCK_15) ? 2.5 : 7.5;
-		v_modulo = (CLOCK_15) ? 5 : 15;
-		if (IS_UNSTABLE_DIST_C) divisor = 1.5;
-		audf = get_audf(freq, coarse_divisor, divisor, modoffset);
-		if ((CLOCK_15 && (audf + modoffset) % v_modulo == 0) ||
-			(IS_BUZZY_DIST_C && ((audf + modoffset) % 3 != 0 || (audf + modoffset) % 5 == 0)) ||
-			(IS_GRITTY_DIST_C && ((audf + modoffset) % 3 == 0 || (audf + modoffset) % 5 == 0)) ||
-			(IS_UNSTABLE_DIST_C && ((audf + modoffset) % 3 == 0 || (audf + modoffset) % 5 != 0)))
-		{
-			audf = delta_audf(audf, freq, coarse_divisor, divisor, modoffset, distortion); //aaaaaa
-		}
-		if (!JOIN_16BIT)	//not 16-bit mode
-		{
-			if (audf > 0xFF) audf = 0xFF;	//lowest possible pitch
-			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
-		}
-		else
-		{
-			if (audf > 0xFFFF) audf = 0xFFFF;	//lowest possible pitch
-			else if (audf < 0x00) audf = 0x00;	//highest possible pitch
-		}
-		if (JOIN_16BIT)
-		{
-			if (IS_BUZZY_DIST_C) tab_16bit_c_buzzy[note * 2] = audf;
-			else if (IS_GRITTY_DIST_C) tab_16bit_c_gritty[note * 2] = audf;
-			else if (IS_UNSTABLE_DIST_C) tab_16bit_c_unstable[note * 2] = audf;
-			else break;	//invalid parameter
-		}
-		else if (CLOCK_179)
-		{
-			if (IS_BUZZY_DIST_C) tab_179mhz_c_buzzy[note] = audf;
-			else if (IS_GRITTY_DIST_C) tab_179mhz_c_gritty[note] = audf;
-			else if (IS_UNSTABLE_DIST_C) tab_179mhz_c_unstable[note] = audf;
-			else break;	//invalid parameter
-		}
-		else if (CLOCK_15) tab_15khz_c_buzzy[note] = audf;
-		else	//64khz mode
-		{
-			if (IS_BUZZY_DIST_C) tab_64khz_c_buzzy[note] = audf;
-			else if (IS_GRITTY_DIST_C) tab_64khz_c_gritty[note] = audf;
-			else if (IS_UNSTABLE_DIST_C) tab_64khz_c_unstable[note] = audf;
-			else break;	//invalid parameter
-		}
+	case TIMBRE_BELL:
+		divisor = 31;	//Bell tones, not MOD31
 		break;
+
+	case TIMBRE_BUZZY_4:
+		divisor = 232.5;	//Buzzy tones, neither MOD3 or MOD5 or MOD31
+		break;
+
+	case TIMBRE_SMOOTH_4:
+		divisor = 77.5;	//Smooth tones, MOD3 but not MOD5 or MOD31
+		break;
+
+	case TIMBRE_WHITE_NOISE:
+		break;
+
+	case TIMBRE_METALLIC_NOISE:
+		divisor = 36.5;	//Metallic noise, not MOD73
+		break;
+
+	case TIMBRE_BUZZY_NOISE:
+		divisor = 255.5;	//Buzzy noise, not MOD7 and not MOD73
+		break;
+
+	case TIMBRE_PURE:
+		break;
+
+	case TIMBRE_GRITTY_C:
+		divisor = 7.5;	//Gritty tones, neither MOD3 or MOD5
+		break;
+
+	case TIMBRE_BUZZY_C:
+		divisor = 2.5;	//Buzzy tones, MOD3 but not MOD5
+		break;
+
+	case TIMBRE_UNSTABLE_C:
+		divisor = 1.5;	//Unstable Buzzy tones, MOD5 but not MOD3
+		break;
+
+	default:
+		//Distortion A is assumed if no valid parameter is supplied 
+		break;
+
 	}
+
+	//generate the table using all the initialised parameters 
+	for (int i = 0; i < length; i++)
+	{
+		//get the current semitone 
+		int note = i + semitone;
+
+		//calculate the reference pitch using the semitone as an offset
+		double pitch = GetTruePitch(g_basetuning, g_temperament, g_basenote, note);
+
+		//get the nearest POKEY frequency using the reference pitch
+		int audf = get_audf(pitch, coarse_divisor, divisor, cycle);
+
+		//TODO: insert whatever delta method that could be suitable here... 
+		MOD3 = ((audf + cycle) % 3 == 0);
+		MOD5 = ((audf + cycle) % 5 == 0);
+		MOD7 = ((audf + cycle) % 7 == 0);
+		MOD15 = ((audf + cycle) % 15 == 0);
+		MOD31 = ((audf + cycle) % 31 == 0);
+		MOD73 = ((audf + cycle) % 73 == 0);
+
+		switch (timbre)
+		{
+		case TIMBRE_BELL:
+			if (MOD31) audf = delta_audf(pitch, audf, coarse_divisor, divisor, cycle, timbre);
+			break;
+
+		case TIMBRE_GRITTY_C:
+			if (MOD3 || MOD5) audf = delta_audf(pitch, audf, coarse_divisor, divisor, cycle, timbre);
+			break;
+
+		case TIMBRE_BUZZY_C:
+			if (!(MOD3 || CLOCK_15) || MOD5) audf = delta_audf(pitch, audf, coarse_divisor, divisor, cycle, timbre);
+			if (!JOIN_16BIT && audf > 0xFF)
+			{	//use the gritty timbre on the lower range instead
+				audf = get_audf(pitch, coarse_divisor, 7.5, cycle);
+				MOD3 = ((audf + cycle) % 3 == 0);
+				MOD5 = ((audf + cycle) % 5 == 0);
+				if (MOD3 || MOD5) audf = delta_audf(pitch, audf, coarse_divisor, 7.5, cycle, TIMBRE_GRITTY_C); 
+			}
+			break;
+		}
+
+		if (audf < 0) audf = 0;
+		if (!JOIN_16BIT && audf > 0xFF) audf = 0xFF;
+		if (JOIN_16BIT && audf > 0xFFFF) audf = 0xFFFF;
+
+		//write the POKEY frequency to the table
+		if (JOIN_16BIT)
+		{	//in 16-bit tables, 2 bytes have to be written contiguously
+			table[i * 2] = audf & 0x0FF;	//LSB
+			table[i * 2 + 1] = audf >> 8;	//MSB
+			continue;
+		}
+		table[i] = audf; 
+	}
+
 }
 
 /// <summary> Calculate the POKEY audio pitch using the given parameters </summary>
@@ -351,9 +360,12 @@ int CTuning::get_audf(double pitch, int coarse_divisor, double divisor, int cycl
 	return (int)round(((((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL) / (coarse_divisor * divisor)) / (2 * pitch)) - cycle);
 }
 
+//TODO: much better than that
 //code originally written for POKEY Frequencies Calculator
-int CTuning::delta_audf(int audf, double freq, int coarse_divisor, double divisor, int modoffset, int distortion)
+int CTuning::delta_audf(double pitch, int audf, int coarse_divisor, double divisor, int cycle, int timbre)
 {
+	int distortion = timbre & 0xF0;
+
 	int tmp_audf_up = audf;		//begin from the currently invalid audf
 	int tmp_audf_down = audf;
 	double tmp_freq_up = 0;
@@ -364,20 +376,20 @@ int CTuning::delta_audf(int audf, double freq, int coarse_divisor, double diviso
 
 	else if (distortion == 0x40)
 	{
-		if (IS_SMOOTH_DIST_4)	//verify MOD3 integrity
+		if (timbre == TIMBRE_SMOOTH_4)	//verify MOD3 integrity
 		{
 			for (int o = 0; o < 6; o++)
 			{
-				if ((tmp_audf_up + modoffset) % 3 != 0 || (tmp_audf_up + modoffset) % 5 == 0 || (tmp_audf_up + modoffset) % 31 == 0) tmp_audf_up++;
-				if ((tmp_audf_down + modoffset) % 3 != 0 || (tmp_audf_down + modoffset) % 5 == 0 || (tmp_audf_down + modoffset) % 31 == 0) tmp_audf_down--;
+				if ((tmp_audf_up + cycle) % 3 != 0 || (tmp_audf_up + cycle) % 5 == 0 || (tmp_audf_up + cycle) % 31 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + cycle) % 3 != 0 || (tmp_audf_down + cycle) % 5 == 0 || (tmp_audf_down + cycle) % 31 == 0) tmp_audf_down--;
 			}
 		}
-		else if (IS_BUZZY_DIST_4)
+		else if (timbre == TIMBRE_BUZZY_4)
 		{
 			for (int o = 0; o < 6; o++) 
 			{
-				if ((tmp_audf_up + modoffset) % 3 == 0 || (tmp_audf_up + modoffset) % 5 == 0 || (tmp_audf_up + modoffset) % 31 == 0) tmp_audf_up++;
-				if ((tmp_audf_down + modoffset) % 3 == 0 || (tmp_audf_down + modoffset) % 5 == 0 || (tmp_audf_down + modoffset) % 31 == 0) tmp_audf_down--;
+				if ((tmp_audf_up + cycle) % 3 == 0 || (tmp_audf_up + cycle) % 5 == 0 || (tmp_audf_up + cycle) % 31 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + cycle) % 3 == 0 || (tmp_audf_down + cycle) % 5 == 0 || (tmp_audf_down + cycle) % 31 == 0) tmp_audf_down--;
 			}
 		}
 		else return 0;	//invalid parameter most likely 
@@ -385,52 +397,55 @@ int CTuning::delta_audf(int audf, double freq, int coarse_divisor, double diviso
 
 	else if (distortion == 0xC0)
 	{
-		if (CLOCK_15)
+		//if (CLOCK_15)
+		if (coarse_divisor == 114)	//15kHz mode
 		{
 			for (int o = 0; o < 3; o++)	//MOD5 must be avoided!
 			{
-				if ((tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
-				if ((tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+				if ((tmp_audf_up + cycle) % 5 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + cycle) % 5 == 0) tmp_audf_down--;
 			}
 		}
-		else if (IS_BUZZY_DIST_C)	//verify MOD3 integrity
+		else if (timbre == TIMBRE_BUZZY_C)	//verify MOD3 integrity
 		{
 			for (int o = 0; o < 6; o++)
 			{
-				if ((tmp_audf_up + modoffset) % 3 != 0 || (tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
-				if ((tmp_audf_down + modoffset) % 3 != 0 || (tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+				if ((tmp_audf_up + cycle) % 3 != 0 || (tmp_audf_up + cycle) % 5 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + cycle) % 3 != 0 || (tmp_audf_down + cycle) % 5 == 0) tmp_audf_down--;
 			}
 		}
-		else if (IS_GRITTY_DIST_C)	//verify neither MOD3 or MOD5 is used
+		else if (timbre == TIMBRE_GRITTY_C)	//verify neither MOD3 or MOD5 is used
 		{
 			for (int o = 0; o < 6; o++)	//get the closest compromise up and down first
 			{
-				if ((tmp_audf_up + modoffset) % 3 == 0 || (tmp_audf_up + modoffset) % 5 == 0) tmp_audf_up++;
-				if ((tmp_audf_down + modoffset) % 3 == 0 || (tmp_audf_down + modoffset) % 5 == 0) tmp_audf_down--;
+				if ((tmp_audf_up + cycle) % 3 == 0 || (tmp_audf_up + cycle) % 5 == 0) tmp_audf_up++;
+				if ((tmp_audf_down + cycle) % 3 == 0 || (tmp_audf_down + cycle) % 5 == 0) tmp_audf_down--;
 			}
 		}
-		else if (IS_UNSTABLE_DIST_C)	//verify MOD5 integrity
+		else if (timbre == TIMBRE_UNSTABLE_C)	//verify MOD5 integrity
 		{
 			for (int o = 0; o < 6; o++)	//get the closest compromise up and down first
 			{
-				if ((tmp_audf_up + modoffset) % 3 == 0 || (tmp_audf_up + modoffset) % 5 != 0) tmp_audf_up++;
-				if ((tmp_audf_down + modoffset) % 3 == 0 || (tmp_audf_down + modoffset) % 5 != 0) tmp_audf_down--;
+				if ((tmp_audf_up + cycle) % 3 == 0 || (tmp_audf_up + cycle) % 5 != 0) tmp_audf_up++;
+				if ((tmp_audf_down + cycle) % 3 == 0 || (tmp_audf_down + cycle) % 5 != 0) tmp_audf_down--;
 			}
 		}
 		else return 0;	//invalid parameter most likely
 	}
 
-	PITCH = get_pitch(tmp_audf_up, coarse_divisor, divisor, modoffset);
-	tmp_freq_up = freq - PITCH;	//first delta, up
-	PITCH = get_pitch(tmp_audf_down, coarse_divisor, divisor, modoffset);
-	tmp_freq_down = PITCH - freq;	//second delta, down
+	PITCH = get_pitch(tmp_audf_up, coarse_divisor, divisor, cycle);
+	tmp_freq_up = pitch - PITCH;	//first delta, up
+	PITCH = get_pitch(tmp_audf_down, coarse_divisor, divisor, cycle);
+	tmp_freq_down = PITCH - pitch;	//second delta, down
 	PITCH = tmp_freq_down - tmp_freq_up;
 
 	if (PITCH > 0) audf = tmp_audf_up; //positive, meaning delta up is closer than delta down
 	else audf = tmp_audf_down; //negative, meaning delta down is closer than delta up
 	return audf;
 }
+//
 
+/*
 //code originally written for POKEY Frequencies Calculator, changes have been done to adapt it for RMT 1.31+
 void CTuning::macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT)
 {
@@ -442,6 +457,8 @@ void CTuning::macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bo
 		generate_table(i, freq, distortion, IS_15KHZ, IS_179MHZ, IS_16BIT);
 	}
 }
+*/
+
 
 //TODO: optimise further, the method in place for loading temperaments is terrible
 double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int semitone)
@@ -624,28 +641,6 @@ double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int s
 
 void CTuning::init_tuning()
 {
-	//reset all the tables so no leftover will stay in memory...
-	memset(tab_64khz_2, 0, 64);
-	memset(tab_179mhz_2, 0, 64);
-	memset(tab_16bit_2, 0, 128);
-	memset(tab_64khz_4_smooth, 0, 64);
-	memset(tab_179mhz_4_smooth, 0, 64);
-	memset(tab_16bit_4_smooth, 0, 128);
-	memset(tab_64khz_4_buzzy, 0, 64);
-	memset(tab_179mhz_4_buzzy, 0, 64);
-	memset(tab_16bit_4_buzzy, 0, 128);
-	memset(tab_64khz_a_pure, 0, 64);
-	memset(tab_179mhz_a_pure, 0, 64);
-	memset(tab_16bit_a_pure, 0, 128);
-	memset(tab_64khz_c_buzzy, 0, 64);
-	memset(tab_179mhz_c_buzzy, 0, 64);
-	memset(tab_16bit_c_buzzy, 0, 128);
-	memset(tab_64khz_c_gritty, 0, 64);
-	memset(tab_179mhz_c_gritty, 0, 64);
-	memset(tab_16bit_c_gritty, 0, 128);
-	memset(tab_15khz_a_pure, 0, 64);
-	memset(tab_15khz_c_buzzy, 0, 64);
-
 	//if base tuning is null, make sure to reset it, else the program could crash!
 	if (!g_basetuning)
 	{
@@ -670,7 +665,24 @@ void CTuning::init_tuning()
 	CUSTOM[11] = (double)g_MAJ_7TH_L / (double)g_MAJ_7TH_R;
 	CUSTOM[12] = (double)g_OCTAVE_L / (double)g_OCTAVE_R;
 
+	TTuning distortion_a{ 48, 24, 108, 24 };
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x200, 64, distortion_a.table_64khz, TIMBRE_PURE, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x240, 64, distortion_a.table_179mhz, TIMBRE_PURE, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x280, 64, distortion_a.table_16bit, TIMBRE_PURE, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x580, 64, distortion_a.table_15khz, TIMBRE_PURE, 0x01);
 
+	TTuning distortion_c{ 24, 12, 84, 24 };
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x300, 64, distortion_c.table_64khz, TIMBRE_BUZZY_C, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x340, 64, distortion_c.table_179mhz, TIMBRE_BUZZY_C, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x380, 64, distortion_c.table_16bit, TIMBRE_BUZZY_C, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x5C0, 64, distortion_c.table_15khz, TIMBRE_BUZZY_C, 0x01);
+
+	TTuning distortion_2{ 12, 0, 48, 24 };
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x000, 64, distortion_2.table_64khz, TIMBRE_BELL, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x040, 64, distortion_2.table_179mhz, TIMBRE_BELL, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x080, 64, distortion_2.table_16bit, TIMBRE_BELL, 0x50);
+
+/*
 	//All the tables that could be calculated will be generated inside this entire block
 	for (int d = 0x00; d < 0xE0; d += 0x20)
 	{
@@ -756,6 +768,9 @@ repeat_dist:
 			else IS_UNSTABLE_DIST_C = 0;	//done all Distortion C modes
 		}
 	}
+*/	
+	
+/*
 	for (int i = 0; i < 64; i++) //8-bit tables 
 	{
 		g_atarimem[RMT_FRQTABLES + 0x000 + i] = tab_64khz_2[i];
@@ -804,4 +819,6 @@ repeat_dist:
 		g_atarimem[RMT_FRQTABLES + 0x380 + (i * 2) + 1] = tab_16bit_c_buzzy[i * 2] >> 8;
 		g_atarimem[RMT_FRQTABLES + 0x480 + (i * 2) + 1] = tab_16bit_c_gritty[i * 2] >> 8;
 	}
+*/
+
 }
