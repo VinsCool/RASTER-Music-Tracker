@@ -6,86 +6,6 @@
 #include "tuning.h"
 #include "global.h"
 
-/*
-//Tuning tables to generate...
-//double ref_pitch[2200] = { 0 };	//delete soon, this won't be useful anymore
-
-//PAGE_DISTORTION_2 => Address 0xB000
-int tab_64khz_2[64] = { 0 };
-int tab_179mhz_2[64] = { 0 };
-int tab_16bit_2[128] = { 0 };
-
-//PAGE_DISTORTION_4 => Address 0xB100
-int tab_64khz_4_smooth[64] = { 0 };
-int tab_179mhz_4_smooth[64] = { 0 };
-int tab_16bit_4_smooth[128] = { 0 };
-int tab_64khz_4_buzzy[64] = { 0 };
-int tab_179mhz_4_buzzy[64] = { 0 };
-int tab_16bit_4_buzzy[128] = { 0 };
-
-//PAGE_DISTORTION_A => Address 0xB200
-int tab_64khz_a_pure[64] = { 0 };
-int tab_179mhz_a_pure[64] = { 0 };
-int tab_16bit_a_pure[128] = { 0 };
-
-//PAGE_DISTORTION_C => Address 0xB300
-int tab_64khz_c_buzzy[64] = { 0 };
-int tab_179mhz_c_buzzy[64] = { 0 };
-int tab_16bit_c_buzzy[128] = { 0 };
-
-//PAGE_DISTORTION_E => Address 0xB400
-int tab_64khz_c_gritty[64] = { 0 };
-int tab_179mhz_c_gritty[64] = { 0 };
-int tab_16bit_c_gritty[128] = { 0 };
-
-//PAGE_EXTRA_0 => Address 0xB500, 0xB580 for 15khz Pure and 0xB5C0 for 15khz Buzzy
-//Croissant Sawtooth ch1	//no generator yet
-//Croissant Sawtooth ch3	//no generator yet
-int tab_15khz_a_pure[64] = { 0 };
-int tab_15khz_c_buzzy[64] = { 0 };
-
-//PAGE_EXTRA_1 => Address 0xB600
-//Clarinet Lo	//no generator yet
-//Clarinet Hi	//no generator yet
-//unused
-//unused
-
-//PAGE_EXTRA_2 => Address 0xB700
-int tab_64khz_c_unstable[64] = { 0 };
-int tab_179mhz_c_unstable[64] = { 0 };
-int tab_16bit_c_unstable[128] = { 0 };
-
-//AUDCTL bits
-bool CLOCK_15 = 0;				//0x01
-bool HPF_CH24 = 0;				//0x02
-bool HPF_CH13 = 0;				//0x04
-bool JOIN_34 = 0;				//0x08
-bool JOIN_12 = 0;				//0x10
-bool CH3_179 = 0;				//0x20
-bool CH1_179 = 0;				//0x40
-bool POLY9 = 0;					//0x80
-
-//combined AUDCTL bits for special cases
-bool JOIN_16BIT = 0;			//valid 16-bit mode
-bool CLOCK_179 = 0;				//valid 1.79mhz mode
-bool SAWTOOTH = 0;				//valid Sawtooth mode
-bool SAWTOOTH_INVERTED = 0;		//valid Sawtooth mode (inverted)
-
-//SKCTL bits
-bool TWO_TONE = 0;				//0x8B, Two-Tone Filter
-
-
-//combined AUDC and AUDF bits for special cases
-bool IS_SMOOTH_DIST_4 = 0;
-bool IS_BUZZY_DIST_4 = 0;
-bool IS_UNSTABLE_DIST_4_1 = 0;
-bool IS_UNSTABLE_DIST_4_2 = 0;
-bool IS_BUZZY_DIST_C = 0;		//Distortion C, MOD3 AUDF and not MOD5 AUDF
-bool IS_GRITTY_DIST_C = 0;		//Distortion C, neither MOD3 nor MOD5 AUDF
-bool IS_UNSTABLE_DIST_C = 0;	//Distortion C, MOD5 AUDF and not MOD3 AUDF
-bool IS_METALLIC_POLY9 = 0;		//AUDCTL 0x80, Distortion 0 and 8, MOD7 AUDF
-*/
-
 
 //Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
 double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
@@ -179,6 +99,7 @@ double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 	}
 	return get_pitch(audf, coarse_divisor, divisor, cycle);
 }
+
 
 //this code was originally added in POKEY Frequencies Calculator, and adapted for RMT 1.31+
 void CTuning::generate_table(unsigned char* table, int length, int semitone, int timbre, int audctl)
@@ -306,6 +227,21 @@ void CTuning::generate_table(unsigned char* table, int length, int semitone, int
 			if (MOD31) audf = delta_audf(pitch, audf, coarse_divisor, divisor, cycle, timbre);
 			break;
 
+		case TIMBRE_BUZZY_4:
+			if (MOD3 || MOD5 || MOD31) audf = delta_audf(pitch, audf, coarse_divisor, divisor, cycle, timbre);
+			break;
+
+		case TIMBRE_SMOOTH_4:
+			if (!(MOD3 || CLOCK_15) || MOD5) audf = delta_audf(pitch, audf, coarse_divisor, divisor, cycle, timbre);
+			if (!JOIN_16BIT && audf > 0xFF)
+			{	//use the buzzy timbre on the lower range instead
+				audf = get_audf(pitch, coarse_divisor, 232.5, cycle);
+				MOD3 = ((audf + cycle) % 3 == 0);
+				MOD5 = ((audf + cycle) % 5 == 0);
+				if (MOD3 || MOD5) audf = delta_audf(pitch, audf, coarse_divisor, 232.5, cycle, TIMBRE_BUZZY_4);
+			}
+			break;
+
 		case TIMBRE_GRITTY_C:
 			if (MOD3 || MOD5) audf = delta_audf(pitch, audf, coarse_divisor, divisor, cycle, timbre);
 			break;
@@ -338,6 +274,7 @@ void CTuning::generate_table(unsigned char* table, int length, int semitone, int
 
 }
 
+
 /// <summary> Calculate the POKEY audio pitch using the given parameters </summary>
 /// <param name = "audf"> POKEY Frequency, either 8-bit or 16-bit </param>
 /// <param name = "coarse_divisor"> Coarse division, 28 in 64kHz mode, 114 in 15kHz mode, 1 for no division </param>
@@ -349,6 +286,7 @@ double CTuning::get_pitch(int audf, int coarse_divisor, double divisor, int cycl
 	return ((((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL) / (coarse_divisor * divisor)) / (audf + cycle)) / 2;
 }
 
+
 /// <summary> Find the nearest POKEY Frequency (AUDF) using the given parameters </summary>
 /// <param name = "pitch"> Source audio pitch (in Hertz) </param>
 /// <param name = "coarse_divisor"> Coarse division, 28 in 64kHz mode, 114 in 15kHz mode, 1 for no division </param>
@@ -359,6 +297,7 @@ int CTuning::get_audf(double pitch, int coarse_divisor, double divisor, int cycl
 {
 	return (int)round(((((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL) / (coarse_divisor * divisor)) / (2 * pitch)) - cycle);
 }
+
 
 //TODO: much better than that
 //code originally written for POKEY Frequencies Calculator
@@ -443,21 +382,6 @@ int CTuning::delta_audf(double pitch, int audf, int coarse_divisor, double divis
 	else audf = tmp_audf_down; //negative, meaning delta down is closer than delta up
 	return audf;
 }
-//
-
-/*
-//code originally written for POKEY Frequencies Calculator, changes have been done to adapt it for RMT 1.31+
-void CTuning::macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT)
-{
-	//generate the array
-	for (int i = 0; i < 64; i++)
-	{
-		int note = i + note_offset;
-		double freq = GetTruePitch(g_basetuning, g_temperament, g_basenote, note);
-		generate_table(i, freq, distortion, IS_15KHZ, IS_179MHZ, IS_16BIT);
-	}
-}
-*/
 
 
 //TODO: optimise further, the method in place for loading temperaments is terrible
@@ -665,160 +589,35 @@ void CTuning::init_tuning()
 	CUSTOM[11] = (double)g_MAJ_7TH_L / (double)g_MAJ_7TH_R;
 	CUSTOM[12] = (double)g_OCTAVE_L / (double)g_OCTAVE_R;
 
-	TTuning distortion_a{ 48, 24, 108, 24 };
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x200, 64, distortion_a.table_64khz, TIMBRE_PURE, 0x00);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x240, 64, distortion_a.table_179mhz, TIMBRE_PURE, 0x40);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x280, 64, distortion_a.table_16bit, TIMBRE_PURE, 0x50);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x580, 64, distortion_a.table_15khz, TIMBRE_PURE, 0x01);
 
-	TTuning distortion_c{ 24, 12, 84, 24 };
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x300, 64, distortion_c.table_64khz, TIMBRE_BUZZY_C, 0x00);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x340, 64, distortion_c.table_179mhz, TIMBRE_BUZZY_C, 0x40);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x380, 64, distortion_c.table_16bit, TIMBRE_BUZZY_C, 0x50);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x5C0, 64, distortion_c.table_15khz, TIMBRE_BUZZY_C, 0x01);
+	//Distortion 2, at 0xB000
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x000, 64, dist_2_bell.table_64khz, TIMBRE_BELL, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x040, 64, dist_2_bell.table_179mhz, TIMBRE_BELL, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x080, 64, dist_2_bell.table_16bit, TIMBRE_BELL, 0x50);
+	//no 15kHz table...
 
-	TTuning distortion_2{ 12, 0, 48, 24 };
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x000, 64, distortion_2.table_64khz, TIMBRE_BELL, 0x00);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x040, 64, distortion_2.table_179mhz, TIMBRE_BELL, 0x40);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x080, 64, distortion_2.table_16bit, TIMBRE_BELL, 0x50);
+	//Distortion 4 (Smooth), at 0xB100
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x100, 64, dist_4_smooth.table_64khz, TIMBRE_SMOOTH_4, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x140, 64, dist_4_smooth.table_179mhz, TIMBRE_SMOOTH_4, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x180, 64, dist_4_smooth.table_16bit, TIMBRE_SMOOTH_4, 0x50);
+	//no 15kHz table...
 
-/*
-	//All the tables that could be calculated will be generated inside this entire block
-	for (int d = 0x00; d < 0xE0; d += 0x20)
-	{
-		if (d == 0x00 || d == 0x60 || d == 0x80) continue;	//no good use yet
-		
-		int note_offset[4] = { 0 };
-		int dist_2_offset[4] = { 12, 0, 48, 24 };
-		int dist_4_smooth_offset[4] = { 12, 0, 24, 24 };
-		int dist_4_buzzy_offset[4] = { 12, 0, 12, 24 };
-		int dist_a_offset[4] = { 48, 24, 108, 24 };
-		int dist_c_buzzy_offset[4] = { 24, 12, 84, 24 };
-		int dist_c_gritty_offset[4] = { 12, 0, 72, 24 };
-		int dist_c_unstable_offset[4] = { 36, 0, 96, 24 };
+	//Distortion A (Pure), at 0xB200
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x200, 64, dist_a_pure.table_64khz, TIMBRE_PURE, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x240, 64, dist_a_pure.table_179mhz, TIMBRE_PURE, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x280, 64, dist_a_pure.table_16bit, TIMBRE_PURE, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x580, 64, dist_a_pure.table_15khz, TIMBRE_PURE, 0x01);
 
-		bool IS_15KHZ = 0;
-		bool IS_179MHZ = 0;
-		bool IS_16BIT = 0;
-		int dist_counter = 0;	//a shitty hack but who will call the police really?
+	//Distortion C (Buzzy), at 0xB300
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x300, 64, dist_c_buzzy.table_64khz, TIMBRE_BUZZY_C, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x340, 64, dist_c_buzzy.table_179mhz, TIMBRE_BUZZY_C, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x380, 64, dist_c_buzzy.table_16bit, TIMBRE_BUZZY_C, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x5C0, 64, dist_c_buzzy.table_15khz, TIMBRE_BUZZY_C, 0x01);
 
-		if (d == 0x40)
-		{
-			IS_SMOOTH_DIST_4 = 1;	//iteration 1: Smooth 
-			IS_BUZZY_DIST_4 = 0;
-			IS_UNSTABLE_DIST_4_1 = 0;
-			IS_UNSTABLE_DIST_4_2 = 0;
-		}
-		if (d == 0xC0)
-		{
-			IS_BUZZY_DIST_C = 1;	//iteration 1: Buzzy
-			IS_GRITTY_DIST_C = 0;
-			IS_UNSTABLE_DIST_C = 0;
-		}
-
-repeat_dist:
-		for (int c = 0; c < 4; c++)
-		{
-			if (d == 0x20) note_offset[c] = dist_2_offset[c];
-			else if (d == 0x40) 
-			{
-				if (IS_SMOOTH_DIST_4) note_offset[c] = dist_4_smooth_offset[c];
-				else if (IS_BUZZY_DIST_4) note_offset[c] = dist_4_buzzy_offset[c];
-			}
-			else if (d == 0xA0) note_offset[c] = dist_a_offset[c];
-			else if (d == 0xC0)
-			{
-				if (IS_BUZZY_DIST_C) note_offset[c] = dist_c_buzzy_offset[c];
-				else if (IS_GRITTY_DIST_C) note_offset[c] = dist_c_gritty_offset[c];
-				else if (IS_UNSTABLE_DIST_C) note_offset[c] = dist_c_unstable_offset[c];
-			}
-			if (!note_offset[c]) continue;	//if no offset, no table should be created
-			if (c == 0) { IS_15KHZ = 0; IS_179MHZ = 0; IS_16BIT = 0; }
-			if (c == 1) { IS_15KHZ = 1; IS_179MHZ = 0; IS_16BIT = 0; }
-			if (c == 2) { IS_15KHZ = 0; IS_179MHZ = 1; IS_16BIT = 0; }
-			if (c == 3) { IS_15KHZ = 0; IS_179MHZ = 0; IS_16BIT = 1; }
-			macro_table_gen(d, note_offset[c], IS_15KHZ, IS_179MHZ, IS_16BIT);
-		}
-		if (d == 0x40)
-		{
-			dist_counter++;	//the number of times the counter was used in the Distortion 4 case
-			if (dist_counter == 1)
-			{
-				IS_SMOOTH_DIST_4 = 0;
-				IS_BUZZY_DIST_4 = 1;		//iteration 2: Buzzy
-				goto repeat_dist;
-			}
-			else IS_BUZZY_DIST_4 = 0;	//done all Distortion 4 modes
-		} 
-		if (d == 0xC0)
-		{
-			dist_counter++;	//the number of times the counter was used in the Distortion C case
-			if (dist_counter == 1)
-			{
-				IS_BUZZY_DIST_C = 0;
-				IS_GRITTY_DIST_C = 1;		//iteration 2: Gritty
-				goto repeat_dist;
-			}
-			else if (dist_counter == 2)
-			{
-				IS_GRITTY_DIST_C = 0;
-				IS_UNSTABLE_DIST_C = 1;		//iteration 3: Unstable
-				goto repeat_dist;
-			}
-			else IS_UNSTABLE_DIST_C = 0;	//done all Distortion C modes
-		}
-	}
-*/	
-	
-/*
-	for (int i = 0; i < 64; i++) //8-bit tables 
-	{
-		g_atarimem[RMT_FRQTABLES + 0x000 + i] = tab_64khz_2[i];
-		g_atarimem[RMT_FRQTABLES + 0x040 + i] = tab_179mhz_2[i];
-		g_atarimem[RMT_FRQTABLES + 0x200 + i] = tab_64khz_a_pure[i];
-		g_atarimem[RMT_FRQTABLES + 0x240 + i] = tab_179mhz_a_pure[i];
-		g_atarimem[RMT_FRQTABLES + 0x400 + i] = tab_64khz_c_gritty[i];
-		g_atarimem[RMT_FRQTABLES + 0x440 + i] = tab_179mhz_c_gritty[i];
-		g_atarimem[RMT_FRQTABLES + 0x580 + i] = tab_15khz_a_pure[i];
-		g_atarimem[RMT_FRQTABLES + 0x5C0 + i] = tab_15khz_c_buzzy[i];
-	}
-	for (int i = 0; i < 52; i++) //8-bit tables (fill only the bytes that actually have valid pitches for each combinations) 
-	{
-		g_atarimem[RMT_FRQTABLES + 0x140 + i] = tab_179mhz_4_buzzy[i + 12];
-		g_atarimem[RMT_FRQTABLES + 0x300 + i] = tab_64khz_c_gritty[i + 12];
-		g_atarimem[RMT_FRQTABLES + 0x340 + i] = tab_179mhz_c_gritty[i + 12];
-	}
-	for (int i = 0; i < 64; i++) //8-bit tables (Distortion 4 1.79mhz Smooths)
-	{
-		if (tab_179mhz_4_smooth[i] == 0xFF) continue;	//no useful pitch
-		g_atarimem[RMT_FRQTABLES + 0x140 + i] = tab_179mhz_4_smooth[i];
-	}
-	for (int i = 0; i < 64; i++) //8-bit tables (Distortion C 64khz Buzzies)
-	{
-		if (tab_64khz_c_buzzy[i] == 0xFF) continue;		//no useful pitch
-		g_atarimem[RMT_FRQTABLES + 0x300 + i] = tab_64khz_c_buzzy[i];
-	}
-	for (int i = 0; i < 64; i++) //8-bit tables (Distortion C 1.79mhz Buzzies)
-	{
-		if (tab_179mhz_c_buzzy[i] == 0xFF) continue;	//no useful pitch
-		g_atarimem[RMT_FRQTABLES + 0x340 + i] = tab_179mhz_c_buzzy[i];
-	}
-	for (int i = 0; i < 64; i++) //16-bit tables LSB
-	{
-		g_atarimem[RMT_FRQTABLES + 0x080 + (i * 2)] = tab_16bit_2[i * 2] & 0x00FF;
-		g_atarimem[RMT_FRQTABLES + 0x180 + (i * 2)] = tab_16bit_4_smooth[i * 2] & 0x00FF;
-		g_atarimem[RMT_FRQTABLES + 0x280 + (i * 2)] = tab_16bit_a_pure[i * 2] & 0x00FF;
-		g_atarimem[RMT_FRQTABLES + 0x380 + (i * 2)] = tab_16bit_c_buzzy[i * 2] & 0x00FF;
-		g_atarimem[RMT_FRQTABLES + 0x480 + (i * 2)] = tab_16bit_c_gritty[i * 2] & 0x00FF;
-	}
-	for (int i = 0; i < 64; i++) //16-bit tables MSB
-	{
-		g_atarimem[RMT_FRQTABLES + 0x080 + (i * 2) + 1] = tab_16bit_2[i * 2] >> 8;
-		g_atarimem[RMT_FRQTABLES + 0x180 + (i * 2) + 1] = tab_16bit_4_smooth[i * 2] >> 8;
-		g_atarimem[RMT_FRQTABLES + 0x280 + (i * 2) + 1] = tab_16bit_a_pure[i * 2] >> 8;
-		g_atarimem[RMT_FRQTABLES + 0x380 + (i * 2) + 1] = tab_16bit_c_buzzy[i * 2] >> 8;
-		g_atarimem[RMT_FRQTABLES + 0x480 + (i * 2) + 1] = tab_16bit_c_gritty[i * 2] >> 8;
-	}
-*/
+	//Distortion C (Buzzy), at 0xB300
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x400, 64, dist_c_gritty.table_64khz, TIMBRE_GRITTY_C, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x440, 64, dist_c_gritty.table_179mhz, TIMBRE_GRITTY_C, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x480, 64, dist_c_gritty.table_16bit, TIMBRE_GRITTY_C, 0x50);
+	//no 15kHz table...
 
 }

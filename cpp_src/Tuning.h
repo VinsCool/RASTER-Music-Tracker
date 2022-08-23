@@ -127,9 +127,16 @@ public:
 private:
 	void generate_table(unsigned char* table, int length, int semitone, int timbre, int audctl);
 	int delta_audf(double pitch, int audf, int coarse_divisor, double divisor, int cycle, int timbre);
-	//void macro_table_gen(int distortion, int note_offset, bool IS_15KHZ, bool IS_179MHZ, bool IS_16BIT);
-	//void generate_table(int note, double freq, int distortion, int audctl, int timbre);
-	//int delta_audf(int audf, double freq, int coarse_divisor, double divisor, int modoffset, int distortion);
+
+	//Stack of lookup tables to generate so far...
+	const TTuning dist_2_bell{ 12, 0, 48, 24 };
+	const TTuning dist_4_smooth{ 12, 0, 24, 24 };
+	const TTuning dist_4_buzzy{ 12, 0, 12, 24 };
+	const TTuning dist_a_pure{ 48, 24, 108, 24 };
+	const TTuning dist_c_buzzy{ 24, 12, 84, 24 };
+	const TTuning dist_c_gritty{ 12, 0, 72, 24 };
+	const TTuning dist_c_unstable{ 36, 0, 96, 24 };
+
 };
 
 extern CTuning g_Tuning;
