@@ -61,7 +61,7 @@ void TuningDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	DDX_Text(pDX, IDC_BASETUNING, m_basetuning);
-	DDV_MinMaxDouble(pDX, m_basetuning, 55, 1760);	//should be more than enough...
+	DDV_MinMaxDouble(pDX, m_basetuning, 6.875, 7040);	//should be more than enough...
 	DDX_CBIndex(pDX, IDC_BASENOTE, m_basenote);
 	DDX_CBIndex(pDX, IDC_TEMPERAMENT, m_temperament);
 	//ratio left values
@@ -190,7 +190,9 @@ void TuningDlg::OnClickedIdtestnow()
 
 	//for (int i = 0; i < 0x500; i++) { g_atarimem[RMT_FRQTABLES + i] = 0x00; }	//clear all the tables from memory first 
 	//init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
-	Atari_InitRMTRoutine();
+	//Atari_InitRMTRoutine();
+
+	g_Tuning.init_tuning();
 
 }
 
@@ -233,7 +235,9 @@ void TuningDlg::OnClickedIdreset()
 
 	//for (int i = 0; i < 0x500; i++) { g_atarimem[RMT_FRQTABLES + i] = 0x00; }	//clear all the tables from memory first 
 	//init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
-	Atari_InitRMTRoutine();
+	//Atari_InitRMTRoutine();
+
+	g_Tuning.init_tuning();
 }
 
 void TuningDlg::OnBnClickedCancel()

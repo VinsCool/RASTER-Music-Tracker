@@ -1143,6 +1143,7 @@ void CSong::DrawTracks()
 	//debugging the way vk is processed for keyboard layout configuration
 	sprintf(s, "VK = %02X", g_lastKeyPressed);
 	TextXY(s, TRACKS_X + 144 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+
 }
 
 void CSong::DrawInstrument()

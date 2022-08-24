@@ -2,6 +2,8 @@
 // by VinsCool
 // Based on the code originally used for the Pitch Calculations in Raster Music Tracker 1.31+
 // Backported to RMT with additional improvements
+//
+// TODO: further cleanup, better documentation, better structure, fix any bug I may have missed so far
 
 #include "tuning.h"
 #include "global.h"
@@ -384,7 +386,7 @@ int CTuning::delta_audf(double pitch, int audf, int coarse_divisor, double divis
 }
 
 
-//TODO: optimise further, the method in place for loading temperaments is terrible
+//TODO: optimise further 
 double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int semitone)
 {
 	int notesnum = 12;	//unless specified otherwise
@@ -394,170 +396,28 @@ double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int s
 	double multi = 1; //octave multiplyer for the ratio
 
 	//Equal temperament is generated using the 12th root of 2
-	if (!temperament)
+	if (temperament == NO_TEMPERAMENT)
 	{
 		ratio = pow(2.0, 1.0 / 12.0);
 		return (tuning / 64) * pow(ratio, semitone + basenote);
 	}
-
-	switch (temperament)
+	if (temperament >= TUNING_CUSTOM)	//custom temperament will be used using ratio
 	{
-	case 1:		//Thomas Young 1799's Well Temperament no.1
-		octave = YOUNG1[notesnum];
-		ratio = YOUNG1[note];
-		break;
-
-	case 2:		//Thomas Young 1799's Well Temperament no.2
-		octave = YOUNG2[notesnum];
-		ratio = YOUNG2[note];
-		break;
-
-	case 3:		//Thomas Young 1807's Well Temperament
-		octave = YOUNG3[notesnum];
-		ratio = YOUNG3[note];
-		break;
-
-	case 4:		//Andreas Werckmeister's temperament III (the most famous one, 1681)
-		octave = WERCK3[notesnum];
-		ratio = WERCK3[note];
-		break;
-
-	case 5:		//Tempérament Égal à Quintes Justes 
-		octave = QUINTE[notesnum];
-		ratio = QUINTE[note];
-		break;
-
-	case 6:		//d'Alembert and Rousseau tempérament ordinaire (1752/1767)
-		octave = TEMPORD[notesnum];
-		ratio = TEMPORD[note];
-		break;
-
-	case 7:		//Aron - Neidhardt equal beating well temperament
-		octave = ARONIED[notesnum];
-		ratio = ARONIED[note];
-		break;
-
-	case 8:		//Atom Schisma Scale
-		octave = ATOMSCH[notesnum];
-		ratio = ATOMSCH[note];
-		break;
-
-	case 9:		//12 - tET approximation with minimal order 17 beats
-		octave = APPRX12[notesnum];
-		ratio = APPRX12[note];
-		break;
-
-	case 10:	//Paul Bailey's modern well temperament (2002)
-		octave = BAILEY1[notesnum];
-		ratio = BAILEY1[note];
-		break;
-
-	case 11:	//John Barnes' temperament (1977) made after analysis of Wohltemperierte Klavier, 1/6 P
-		octave = BARNES1[notesnum];
-		ratio = BARNES1[note];
-		break;
-
-	case 12:	//Bethisy temperament ordinaire, see Pierre - Yves Asselin : Musique et temperament
-		octave = BETHISY[notesnum];
-		ratio = BETHISY[note];
-		break;
-
-	case 13:	//Big Gulp
-		octave = BIGGULP[notesnum];
-		ratio = BIGGULP[note];
-		break;
-
-	case 14:	//12 - tone scale by Bohlen generated from the 4:7 : 10 triad, Acustica 39 / 2, 1978
-		octave = BOHLEN12[notesnum];
-		ratio = BOHLEN12[note];
-		break;
-
-	case 15:	//This scale may also be called the "Wedding Cake"
-		octave = WEDDING[notesnum];
-		ratio = WEDDING[note];
-		break;
-
-	case 16:	//Upside - Down Wedding Cake(divorce cake)
-		octave = DIVORCE[notesnum];
-		ratio = DIVORCE[note];
-		break;
-
-	case 17:	//12 - tone Pythagorean scale
-		octave = PYTHAG1[notesnum];
-		ratio = PYTHAG1[note];
-		break;
-
-	case 18:	//Robert Schneider, scale of log(4) ..log(16), 1 / 1 = 264Hz
-		octave = LOGSCALE[notesnum];
-		ratio = LOGSCALE[note];
-		break;
-
-	case 19:	//Zarlino temperament extraordinaire, 1024 - tET mapping
-		octave = ZARLINO1[notesnum];
-		ratio = ZARLINO1[note];
-		break;
-
-	case 20:	//Fokker's 7-limit 12-tone just scale
-		octave = FOKKER7[notesnum];
-		ratio = FOKKER7[note];
-		break;
-
-	case 21:	//Bach temperament, a'=400 Hz
-		octave = BACH400[notesnum];
-		ratio = BACH400[note];
-		break;
-
-	case 22:	//Vallotti& Young scale(Vallotti version) also known as Tartini - Vallotti(1754)
-		octave = VALYOUNG[notesnum];
-		ratio = VALYOUNG[note];
-		break;
-
-	case 23:	//Vallotti - Young and Werckmeister III, 10 cents 5 - limit lesfip scale
-		octave = VALYOWER[notesnum];
-		ratio = VALYOWER[note];
-		break;
-
-	case 24:	//Optimally consonant major pentatonic, John deLaubenfels(2001)
-		notesnum = 5;
-		octave = PENTAOPT[notesnum];
-		note = (semitone + basenote) % notesnum;
-		ratio = PENTAOPT[note];
-		break;
-
-	case 25:	//Ancient Greek Aeolic, also tritriadic scale of the 54:64 : 81 triad
-		notesnum = 7;
-		octave = AEOLIC[notesnum];
-		note = (semitone + basenote) % notesnum;
-		ratio = AEOLIC[note];
-		break;
-
-	case 26:	//African Bapare xylophone(idiophone; loose log)
-		notesnum = 10;
-		octave = XYLO1[notesnum];
-		note = (semitone + basenote) % notesnum;
-		ratio = XYLO1[note];
-		break;
-
-	case 27:	//African Yaswa xylophones(idiophone; calbash resonators with membrane)
-		notesnum = 10;
-		octave = XYLO2[notesnum];
-		note = (semitone + basenote) % notesnum;
-		ratio = XYLO2[note];
-		break;
-
-	case 28:	//19-EDO generated using Scale Workshop
-		notesnum = 19;
-		octave = NINTENDO[notesnum];
-		note = (semitone + basenote) % notesnum;
-		ratio = NINTENDO[note];
-		break;
-
-	default:	//Custom ratio, anything can go!
 		octave = CUSTOM[notesnum];
 		ratio = CUSTOM[note];
-		break;
 	}
-
+	else	//any temperament preset will be used
+	{
+		for (int i = 0; i < PRESETS_LENGTH; i++)
+		{
+			if (temperament_preset[temperament][i]) continue;
+			notesnum = i - 1;
+			break;
+		}
+		octave = temperament_preset[temperament][notesnum];
+		note = (semitone + basenote) % notesnum;
+		ratio = temperament_preset[temperament][note];
+	}
 	multi = pow(octave, trunc((semitone + basenote) / notesnum));
 	return (tuning / 64) * (multi * ratio);
 }
@@ -568,13 +428,14 @@ void CTuning::init_tuning()
 	//if base tuning is null, make sure to reset it, else the program could crash!
 	if (!g_basetuning)
 	{
-		g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
-		g_basenote = 3;	//3 = A-
-		g_temperament = 0;	//no temperament 
+		g_Song.ResetTuningVariables();	//TODO(?): move this function here instead
 		MessageBox(g_hwnd, "An invalid tuning configuration has been detected!\n\nTuning has been reset to default parameters.", "Tuning error", MB_ICONERROR); 
+		return;	//without initialisation, the function must be called at an ulterior time
 	}
 
 	//calculate the custom ratio used for each semitone
+	//TODO: restructure this to something much better, and flexible
+	//these individual variables are just too uncomfortable to use that way 
 	CUSTOM[0] = (double)g_UNISON_L / (double)g_UNISON_R;
 	CUSTOM[1] = (double)g_MIN_2ND_L / (double)g_MIN_2ND_R;
 	CUSTOM[2] = (double)g_MAJ_2ND_L / (double)g_MAJ_2ND_R;
@@ -589,6 +450,9 @@ void CTuning::init_tuning()
 	CUSTOM[11] = (double)g_MAJ_7TH_L / (double)g_MAJ_7TH_R;
 	CUSTOM[12] = (double)g_OCTAVE_L / (double)g_OCTAVE_R;
 
+
+	//Generate all lookup tables used by the RMT driver for tuning purposes
+	//TODO: optimise this procedure, even if right now this is much better than what it used to be
 
 	//Distortion 2, at 0xB000
 	generate_table(g_atarimem + RMT_FRQTABLES + 0x000, 64, dist_2_bell.table_64khz, TIMBRE_BELL, 0x00);
