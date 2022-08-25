@@ -92,7 +92,6 @@ int Atari_InitRMTRoutine()
 {
 	if (!g_is6502) return 0;
 
-	for (int i = 0; i < 0x1000; i++) { g_atarimem[RMT_FRQTABLES + i] = 0x00; }	//clear all the tables from memory first 
 	g_Tuning.init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
 
 	WORD adr=RMT_INIT;

@@ -422,7 +422,6 @@ double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int s
 	return (tuning / 64) * (multi * ratio);
 }
 
-
 void CTuning::init_tuning()
 {
 	//if base tuning is null, make sure to reset it, else the program could crash!
@@ -431,6 +430,18 @@ void CTuning::init_tuning()
 		g_Song.ResetTuningVariables();	//TODO(?): move this function here instead
 		MessageBox(g_hwnd, "An invalid tuning configuration has been detected!\n\nTuning has been reset to default parameters.", "Tuning error", MB_ICONERROR); 
 		return;	//without initialisation, the function must be called at an ulterior time
+	}
+
+	g_notesperoctave = 12;
+
+	if (g_temperament > NO_TEMPERAMENT && g_temperament < TUNING_CUSTOM)
+	{
+		for (int i = 0; i < PRESETS_LENGTH; i++)
+		{
+			if (temperament_preset[g_temperament][i]) continue;
+			g_notesperoctave = i - 1;
+			break;
+		}
 	}
 
 	//calculate the custom ratio used for each semitone
@@ -450,38 +461,36 @@ void CTuning::init_tuning()
 	CUSTOM[11] = (double)g_MAJ_7TH_L / (double)g_MAJ_7TH_R;
 	CUSTOM[12] = (double)g_OCTAVE_L / (double)g_OCTAVE_R;
 
-
 	//Generate all lookup tables used by the RMT driver for tuning purposes
 	//TODO: optimise this procedure, even if right now this is much better than what it used to be
 
 	//Distortion 2, at 0xB000
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x000, 64, dist_2_bell.table_64khz, TIMBRE_BELL, 0x00);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x040, 64, dist_2_bell.table_179mhz, TIMBRE_BELL, 0x40);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x080, 64, dist_2_bell.table_16bit, TIMBRE_BELL, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x000, 64, dist_2_bell.table_64khz * g_notesperoctave, TIMBRE_BELL, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x040, 64, dist_2_bell.table_179mhz * g_notesperoctave, TIMBRE_BELL, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x080, 64, dist_2_bell.table_16bit * g_notesperoctave, TIMBRE_BELL, 0x50);
 	//no 15kHz table...
 
 	//Distortion 4 (Smooth), at 0xB100
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x100, 64, dist_4_smooth.table_64khz, TIMBRE_SMOOTH_4, 0x00);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x140, 64, dist_4_smooth.table_179mhz, TIMBRE_SMOOTH_4, 0x40);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x180, 64, dist_4_smooth.table_16bit, TIMBRE_SMOOTH_4, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x100, 64, dist_4_smooth.table_64khz * g_notesperoctave, TIMBRE_SMOOTH_4, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x140, 64, dist_4_smooth.table_179mhz * g_notesperoctave, TIMBRE_SMOOTH_4, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x180, 64, dist_4_smooth.table_16bit * g_notesperoctave, TIMBRE_SMOOTH_4, 0x50);
 	//no 15kHz table...
 
 	//Distortion A (Pure), at 0xB200
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x200, 64, dist_a_pure.table_64khz, TIMBRE_PURE, 0x00);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x240, 64, dist_a_pure.table_179mhz, TIMBRE_PURE, 0x40);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x280, 64, dist_a_pure.table_16bit, TIMBRE_PURE, 0x50);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x580, 64, dist_a_pure.table_15khz, TIMBRE_PURE, 0x01);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x200, 64, dist_a_pure.table_64khz * g_notesperoctave, TIMBRE_PURE, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x240, 64, dist_a_pure.table_179mhz * g_notesperoctave, TIMBRE_PURE, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x280, 64, dist_a_pure.table_16bit * g_notesperoctave, TIMBRE_PURE, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x580, 64, dist_a_pure.table_15khz * g_notesperoctave, TIMBRE_PURE, 0x01);
 
 	//Distortion C (Buzzy), at 0xB300
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x300, 64, dist_c_buzzy.table_64khz, TIMBRE_BUZZY_C, 0x00);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x340, 64, dist_c_buzzy.table_179mhz, TIMBRE_BUZZY_C, 0x40);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x380, 64, dist_c_buzzy.table_16bit, TIMBRE_BUZZY_C, 0x50);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x5C0, 64, dist_c_buzzy.table_15khz, TIMBRE_BUZZY_C, 0x01);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x300, 64, dist_c_buzzy.table_64khz * g_notesperoctave, TIMBRE_BUZZY_C, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x340, 64, dist_c_buzzy.table_179mhz * g_notesperoctave, TIMBRE_BUZZY_C, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x380, 64, dist_c_buzzy.table_16bit * g_notesperoctave, TIMBRE_BUZZY_C, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x5C0, 64, dist_c_buzzy.table_15khz * g_notesperoctave, TIMBRE_BUZZY_C, 0x01);
 
 	//Distortion C (Buzzy), at 0xB300
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x400, 64, dist_c_gritty.table_64khz, TIMBRE_GRITTY_C, 0x00);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x440, 64, dist_c_gritty.table_179mhz, TIMBRE_GRITTY_C, 0x40);
-	generate_table(g_atarimem + RMT_FRQTABLES + 0x480, 64, dist_c_gritty.table_16bit, TIMBRE_GRITTY_C, 0x50);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x400, 64, dist_c_gritty.table_64khz * g_notesperoctave, TIMBRE_GRITTY_C, 0x00);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x440, 64, dist_c_gritty.table_179mhz * g_notesperoctave, TIMBRE_GRITTY_C, 0x40);
+	generate_table(g_atarimem + RMT_FRQTABLES + 0x480, 64, dist_c_gritty.table_16bit * g_notesperoctave, TIMBRE_GRITTY_C, 0x50);
 	//no 15kHz table...
-
 }

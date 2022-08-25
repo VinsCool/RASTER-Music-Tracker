@@ -31,6 +31,8 @@ int g_scaling_percentage = 100;
 //best known compromise for both regions, they produce identical tables
 double g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
 int g_basenote = 3;	//3 = A-
+int g_temperament = 0;	//each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
+int g_notesperoctave = 12;	//by default there are 12 notes per octave
 
 //ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!!
 double g_UNISON = 1;
@@ -76,11 +78,6 @@ int g_MAJ_6TH_R = 3;
 int g_MIN_7TH_R = 17;
 int g_MAJ_7TH_R = 8;
 int g_OCTAVE_R = 1;
-
-//each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
-int g_temperament = 0;
-
-
 
 
 HWND g_hwnd = NULL;

@@ -819,7 +819,8 @@ void CRmtView::OnViewTuning()
 		g_basenote = dlg.m_basenote;
 		g_temperament = dlg.m_temperament;
 		WriteConfig();
-		Atari_InitRMTRoutine(); //reset RMT routines
+		//Atari_InitRMTRoutine(); //reset RMT routines
+		g_Tuning.init_tuning();
 		g_screenupdate = 1;
 	}
 }

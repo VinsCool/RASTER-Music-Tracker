@@ -133,31 +133,17 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 		if ((n = tt->note[xline]) >= 0)
 		{
 			//notes
-			//TODO: optimise this to not have redundant data
-			if (g_displayflatnotes && g_usegermannotation)
-			{
-				s[1] = notesgermanflat[n][0];		// B
-				s[2] = notesgermanflat[n][1];		// -
-				s[3] = notesgermanflat[n][2];		// 1
-			}
-			else if (g_displayflatnotes && !g_usegermannotation)
-			{
-				s[1] = notesflat[n][0];		// D
-				s[2] = notesflat[n][1];		// b
-				s[3] = notesflat[n][2];		// 1
-			}
-			else if (!g_displayflatnotes && g_usegermannotation)
-			{
-				s[1] = notesgerman[n][0];		// H
-				s[2] = notesgerman[n][1];		// -
-				s[3] = notesgerman[n][2];		// 1
-			}
-			else
-			{
-				s[1] = notes[n][0];		// C
-				s[2] = notes[n][1];		// #
-				s[3] = notes[n][2];		// 1
-			}
+			int octave = (n / g_notesperoctave) + 1 + 0x30;	//due to ASCII characters
+			int note = n % g_notesperoctave;
+			int index = 0;	//standard notation
+
+			if (g_displayflatnotes) index += 1;
+			if (g_usegermannotation) index += 2;
+			if (g_notesperoctave != 12) index = 4;	//non-12 scales don't yet have proper display
+
+			s[1] = notesandscales[index][note][0];	// B
+			s[2] = notesandscales[index][note][1];	// -
+			s[3] = octave;							// 1
 		}
 		if ((n = tt->instr[xline]) >= 0)
 		{

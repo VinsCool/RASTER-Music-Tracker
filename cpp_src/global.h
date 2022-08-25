@@ -31,7 +31,9 @@ extern int g_scaling_percentage;
 
 //best known compromise for both regions, they produce identical tables
 extern double g_basetuning;
-extern int g_basenote;
+extern int g_basenote;	//3 = A-
+extern int g_temperament;	//each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
+extern int g_notesperoctave;	//by default there are 12 notes per octave
 
 //ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!!
 extern double g_UNISON;
@@ -78,8 +80,6 @@ extern int g_MIN_7TH_R;
 extern int g_MAJ_7TH_R;
 extern int g_OCTAVE_R;
 
-//each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
-extern int g_temperament;
 
 extern HWND g_hwnd;
 extern HWND g_viewhwnd;

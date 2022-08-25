@@ -22,10 +22,7 @@ struct TTracksAll	//for undo
 };
 
 extern const char* notes[];
-extern const char* notesflat[];
-extern const char* notesgerman[];
-extern const char* notesgermanflat[];
-
+extern const char* notesandscales[5][40];
 
 extern BOOL ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, int instradd, int volumep);
 
