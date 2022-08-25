@@ -9,7 +9,12 @@
 #include "global.h"
 
 
-//Parts of this code was rewritten for POKEY Frequencies Calculator, then backported to RMT 1.31+
+/// <summary> Generate the POKEY audio pitch using the given parameters </summary>
+/// <param name = "audc"> POKEY Distortion and Volume output mode </param>
+/// <param name = "audf"> POKEY Frequency, either 8-bit or 16-bit </param>
+/// <param name = "audctl"> POKEY modes used to generate the frequencies, typically, 15Khz/64Khz clock, 1.79mHz clock, 16-bit mode, etc </param>
+/// <param name = "channel"> POKEY channel number, multiple parameters might give different results </param>
+/// <returns> POKEY audio pitch (in Hertz) </returns> 
 double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 {
 	//variables for pitch calculation, divisors must never be 0!
@@ -102,8 +107,12 @@ double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 	return get_pitch(audf, coarse_divisor, divisor, cycle);
 }
 
-
-//this code was originally added in POKEY Frequencies Calculator, and adapted for RMT 1.31+
+/// <summary> Generate a POKEY Frequencies lookup table using the given parameters </summary>
+/// <param name = "table"> Memory address the table will be written to, typically the emulated Atari memory </param>
+/// <param name = "length"> Length of the table in number of semitones, 16-bit tables will use twice number of bytes </param>
+/// <param name = "semitone"> Number of semitones above base note, useful for transposing a table to a different key/octave </param> 
+/// <param name = "timbre"> POKEY sound timbre output using the Distortion as well as the modulo of the Frequency </param> 
+/// <param name = "audctl"> POKEY modes used to generate the frequencies, typically, 15Khz/64Khz clock, 1.79mHz clock, 16-bit mode, etc </param>
 void CTuning::generate_table(unsigned char* table, int length, int semitone, int timbre, int audctl)
 {
 	//variables for pitch calculation, divisors must never be 0!
@@ -276,7 +285,6 @@ void CTuning::generate_table(unsigned char* table, int length, int semitone, int
 
 }
 
-
 /// <summary> Calculate the POKEY audio pitch using the given parameters </summary>
 /// <param name = "audf"> POKEY Frequency, either 8-bit or 16-bit </param>
 /// <param name = "coarse_divisor"> Coarse division, 28 in 64kHz mode, 114 in 15kHz mode, 1 for no division </param>
@@ -287,7 +295,6 @@ double CTuning::get_pitch(int audf, int coarse_divisor, double divisor, int cycl
 {
 	return ((((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL) / (coarse_divisor * divisor)) / (audf + cycle)) / 2;
 }
-
 
 /// <summary> Find the nearest POKEY Frequency (AUDF) using the given parameters </summary>
 /// <param name = "pitch"> Source audio pitch (in Hertz) </param>
@@ -300,11 +307,17 @@ int CTuning::get_audf(double pitch, int coarse_divisor, double divisor, int cycl
 	return (int)round(((((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL) / (coarse_divisor * divisor)) / (2 * pitch)) - cycle);
 }
 
-
-//TODO: much better than that
-//code originally written for POKEY Frequencies Calculator
+/// <summary> Calculate the difference between 2 POKEY frequencies (AUDF) within the conditions intended for the timbre to be output </summary>
+/// <param name = "pitch"> Reference audio pitch (in Hertz) </param>
+/// <param name = "audf"> Invalid POKEY Frequency (AUDF) referenced to find the nearest compromised frequency </param>
+/// <param name = "coarse_divisor"> Coarse division, 28 in 64kHz mode, 114 in 15kHz mode, 1 for no division </param>
+/// <param name = "divisor"> Fine division, variable relative to Distortion, Cycle, and frequency modulo, 1 for no division </param> 
+/// <param name = "cycle"> Offset added to AUDF, 4 for 1.79mHz mode, 7 for 16-bit+1.79mHz mode, 1 for neither </param>
+/// <param name = "timbre"> POKEY sound timbre output using the Distortion as well as the modulo of the Frequency </param>
+/// <returns> Compromised POKEY Frequency (AUDF) which is now valid within the conditions established for the generated timbre </returns> 
 int CTuning::delta_audf(double pitch, int audf, int coarse_divisor, double divisor, int cycle, int timbre)
 {
+	//TODO: Optimise this procedure a lot more, this is poorly written, but it gets the job done for now 
 	int distortion = timbre & 0xF0;
 
 	int tmp_audf_up = audf;		//begin from the currently invalid audf
@@ -385,8 +398,12 @@ int CTuning::delta_audf(double pitch, int audf, int coarse_divisor, double divis
 	return audf;
 }
 
-
-//TODO: optimise further 
+/// <summary> Calculate the true audio pitch output using the given parameters </summary>
+/// <param name = "tuning"> Tuning base pitch (in Hertz), usually the A-4 note </param>
+/// <param name = "temperament"> Temperament used in calculations, 0 for Equal Temperament, 1 to 29 (inclusive) for Presets, otherwise Custom Ratio will be assumed </param>
+/// <param name = "basenote"> Base note/key from which the tuning is calculated, typically it is the key of A- or C- </param> 
+/// <param name = "semitone"> Semitones added to base note for calculating higher pitches </param>
+/// <returns> True audio pitch for a given note (in Hertz) </returns> 
 double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int semitone)
 {
 	int notesnum = 12;	//unless specified otherwise
@@ -422,20 +439,20 @@ double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int s
 	return (tuning / 64) * (multi * ratio);
 }
 
+/// <summary> Initialise the tuning variables, and generate the POKEY frequencies (AUDF) lookup tables into the emulated Atari memory </summary>
 void CTuning::init_tuning()
 {
-	//if base tuning is null, make sure to reset it, else the program could crash!
-	if (!g_basetuning)
-	{
+	if (!g_basetuning)	//if base tuning is null, make sure to reset it, else the program could crash!
+	{	
 		g_Song.ResetTuningVariables();	//TODO(?): move this function here instead
 		MessageBox(g_hwnd, "An invalid tuning configuration has been detected!\n\nTuning has been reset to default parameters.", "Tuning error", MB_ICONERROR); 
 		return;	//without initialisation, the function must be called at an ulterior time
 	}
 
-	g_notesperoctave = 12;
+	g_notesperoctave = 12;	//by default, an octave uses 12 semitones...
 
-	if (g_temperament > NO_TEMPERAMENT && g_temperament < TUNING_CUSTOM)
-	{
+	if (g_temperament > NO_TEMPERAMENT && g_temperament < TUNING_CUSTOM)	//...unless it is specified otherwise in the Temperament presets
+	{	
 		for (int i = 0; i < PRESETS_LENGTH; i++)
 		{
 			if (temperament_preset[g_temperament][i]) continue;
