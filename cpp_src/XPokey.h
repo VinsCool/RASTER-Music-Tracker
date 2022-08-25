@@ -26,7 +26,7 @@ extern int loops;
 #define CHUNK_SIZE_NTSC		BITRESOLUTION/8*CHANNELS*OUTPUTFREQ/60		//sixties (CHUNK_SIZE (tm) by VinsCool lol) 
 #define CHUNK_SIZE_PAL		BITRESOLUTION/8*CHANNELS*OUTPUTFREQ/50		//fifties (CHUNK_SIZE (tm) by JirkaS)
 
-#define LATENCY			1			//3/50sec
+#define LATENCY			3			//3/50sec
 #define LATENCY_SIZE	LATENCY*CHUNK_SIZE
 #define FREQ_17_NTSC	1789773		//The true clock frequency for the NTSC Atari 8-bit computer is 1.7897725 MHz
 #define FREQ_17_PAL		1773447		//The true clock frequency for the PAL Atari 8-bit computer is 1.7734470 MHz
