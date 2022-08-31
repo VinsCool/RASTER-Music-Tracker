@@ -114,7 +114,15 @@ extern BOOL g_rmtstripped_gvf;			//gvs GlobalVolumeFade for feat
 extern BOOL g_rmtstripped_nos;			//nos NoStartingSongline for feat
 
 extern CString g_rmtmsxtext;
-extern CString g_expasmlabelprefix;	//label prefix for export ASM simple notation
+extern CString g_PrefixForAllAsmLabels;		// Label prefix for export ASM simple notation
+extern CString g_AsmLabelForStartOfSong;	// Label for relocatable ASM for RMTPlayer.asm
+extern BOOL g_AsmWantRelocatableInstruments;
+extern BOOL g_AsmWantRelocatableTracks;
+extern BOOL g_AsmWantRelocatableSongLines;
+extern CString g_AsmInstrumentsLabel;
+extern CString g_AsmTracksLabel;
+extern CString g_AsmSongLinesLabel;
+extern int g_AsmFormat;
 
 extern int last_active_ti;			//if equal to g_active_ti, no screen clear necessary
 extern int last_activepart;		//if equal to g_activepart, no block clear necessary

@@ -5,6 +5,8 @@ using namespace std;
 #include "GuiHelpers.h"
 
 // MFC interface code
+#include "Song.h"
+
 #include "FileNewDlg.h"
 #include "ExportDlgs.h"
 #include "importdlgs.h"

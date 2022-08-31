@@ -39,7 +39,7 @@
 #define IDD_RENUMBERINSTRUMENTS         155
 #define IDD_SONGINSERTCOPYORCLONEOFSONGLINES 156
 #define IDD_TRACKSLOAD                  157
-#define IDD_EXPASM                      158
+#define IDD_EXPORT_ASM                  158
 #define IDD_OCTAVESELECT                160
 #define IDD_INSTRUMENTSELECT            161
 #define IDD_VOLUMESELECT                162
@@ -49,6 +49,7 @@
 #define IDD_CHANNELSSELECT              165
 #define IDD_CHANGEMAXTRACKLEN           166
 #define IDD_TUNING                      167
+#define IDD_EXPORT_RMTPLAYER_ASM        168
 #define IDC_MAXTRACKLEN                 1002
 #define IDC_COMBOTYPE                   1003
 #define IDC_RMTVERSION                  1004
@@ -215,8 +216,19 @@
 #define IDC_MAJOR_7TH_R                 1150
 #define IDC_BASENOTE                    1151
 #define IDC_TEMPERAMENT                 1152
+#define IDC_RMT_BASE_ADDR               1152
 #define IDC_OCTAVE_L                    1153
+#define IDC_RMT_MODULE_ASM_LABEL        1153
 #define IDC_OCTAVE_R                    1154
+#define IDC_RASM_SFX                    1154
+#define IDC_CHK_RELOCATE_TRACKS         1155
+#define IDC_CHK_RELOCATE_TRACKS2        1156
+#define IDC_CHK_RELOCATE_SONG           1156
+#define IDC_EDIT_TRACKS_LABEL           1157
+#define IDC_EDIT_SONG_LINES_LABEL       1158
+#define IDC_CHK_RELOCATE_INSTRUMENTS    1159
+#define IDC_EDIT_INSTRUMENTS_LABEL      1160
+#define IDC_COMBO_ASM_FORMAT            1161
 #define IDC_COMBO_LINESAFTER            9999
 #define ID_INSTR_SAVE                   32771
 #define ID_INSTR_LOAD                   32772
@@ -346,9 +358,9 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        170
+#define _APS_NEXT_RESOURCE_VALUE        171
 #define _APS_NEXT_COMMAND_VALUE         32908
-#define _APS_NEXT_CONTROL_VALUE         1152
+#define _APS_NEXT_CONTROL_VALUE         1162
 #define _APS_NEXT_SYMED_VALUE           105
 #endif
 #endif

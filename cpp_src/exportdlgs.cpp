@@ -3,10 +3,10 @@
 
 #include "stdafx.h"
 #include "Rmt.h"
+#include "Song.h"
 #include "ExportDlgs.h"
 #include "General.h"
 
-#include "Song.h"
 
 extern CSong			g_Song;
 
@@ -52,6 +52,7 @@ END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
 // CExpSAPDlg message handlers
+
 /////////////////////////////////////////////////////////////////////////////
 // CExpRMTDlg dialog
 
@@ -63,7 +64,6 @@ CExpRMTDlg::CExpRMTDlg(CWnd* pParent /*=NULL*/)
 	//}}AFX_DATA_INIT
 }
 
-
 void CExpRMTDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
@@ -71,9 +71,9 @@ void CExpRMTDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_GLOBALVOLUMEFADE, m_c_gvf);
 	DDX_Control(pDX, IDC_NOSTARTINGSONGLINE, m_c_nos);
 	DDX_Control(pDX, IDC_WARNING, m_c_warning);
-	DDX_Control(pDX, IDC_SFX, m_c_sfx);
+	DDX_Control(pDX, IDC_SFX, m_ctrlWithSfx);
 	DDX_Control(pDX, IDC_RMTFEAT, m_c_rmtfeat);
-	DDX_Control(pDX, IDC_ADDR, m_c_addr);
+	DDX_Control(pDX, IDC_ADDR, m_ctrlExportAddress);
 	DDX_Control(pDX, IDC_INFO, m_c_info);
 	//}}AFX_DATA_MAP
 }
@@ -96,14 +96,14 @@ BOOL CExpRMTDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 	
-	// TODO: Add extra initialization here
-	m_c_sfx.SetCheck(m_sfx);
-	m_c_gvf.SetCheck(m_gvf);
-	m_c_nos.SetCheck(m_nos);
+	// Transfer the starting values to the MFC controls
+	m_ctrlWithSfx.SetCheck(m_sfxSupport);
+	m_c_gvf.SetCheck(m_globalVolumeFade);
+	m_c_nos.SetCheck(m_noStartingSongLine);
 	
 	CString s;
-	s.Format("%04X",m_adr);
-	m_c_addr.SetWindowText(s);
+	s.Format("%04X", m_exportAddr);
+	m_ctrlExportAddress.SetWindowText(s);
 
 	ChangeParams();
 	
@@ -113,36 +113,38 @@ BOOL CExpRMTDlg::OnInitDialog()
 
 void CExpRMTDlg::ChangeParams()
 {
-	CString s;
-	char *ch;
-	m_c_addr.GetWindowText(s);
-	int adr = strtoul(s,&ch,16);
+	// Transfer all the variables from MFC
 
-	m_sfx=m_c_sfx.GetCheck();
-	if (!m_sfx)
+	CString s;
+	char *ptrToEndInString;
+	m_ctrlExportAddress.GetWindowText(s);
+	int adr = strtoul(s, &ptrToEndInString, 16);		// Parse the HEX address
+
+	m_sfxSupport = m_ctrlWithSfx.GetCheck();
+	if (!m_sfxSupport)
 	{
 		//m_c_rmtfeat.SetWindowText(m_rmtfeat);
-		if (adr>0x10000-m_len) adr = 0x10000-m_len;
-		m_adr = adr;
-		s.Format("=>  $%04X - $%04X , length $%04X (%u bytes)",m_adr,m_adr+m_len-1,m_len,m_len);
+		if (adr>0x10000-m_moduleLengthForStrippedRMT) adr = 0x10000-m_moduleLengthForStrippedRMT;
+		m_exportAddr = adr;
+		s.Format("=>  $%04X - $%04X , length $%04X (%u bytes)",m_exportAddr,m_exportAddr+m_moduleLengthForStrippedRMT-1,m_moduleLengthForStrippedRMT,m_moduleLengthForStrippedRMT);
 		m_c_warning.SetWindowText("Warning:\nThis output file doesn't contain any unused or empty tracks and instruments, song name and names of all instruments.");
 	}
 	else
 	{
 		//m_c_rmtfeat.SetWindowText(m_rmtfeat2);
-		if (adr>0x10000-m_len2) adr = 0x10000-m_len2;
-		m_adr = adr;
-		s.Format("=>  $%04X - $%04X , length $%04X (%u bytes)",m_adr,m_adr+m_len2-1,m_len2,m_len2);
+		if (adr>0x10000-m_moduleLengthForSFX) adr = 0x10000-m_moduleLengthForSFX;
+		m_exportAddr = adr;
+		s.Format("=>  $%04X - $%04X , length $%04X (%u bytes)",m_exportAddr,m_exportAddr+m_moduleLengthForSFX-1,m_moduleLengthForSFX,m_moduleLengthForSFX);
 		m_c_warning.SetWindowText("Warning:\nThis output file doesn't contain song name and names of all instruments.");
 	}
 	m_c_info.SetWindowText(s);
 
-	m_gvf=m_c_gvf.GetCheck();
-	m_nos=m_c_nos.GetCheck();
+	m_globalVolumeFade=m_c_gvf.GetCheck();
+	m_noStartingSongLine=m_c_nos.GetCheck();
 
-	BYTE *instrsav = (m_sfx)? m_instrsaved2 : m_instrsaved;
-	BYTE *tracksav = (m_sfx)? m_tracksaved2 : m_tracksaved;
-	m_song->ComposeRMTFEATstring(s,m_filename,instrsav,tracksav,m_sfx,m_gvf,m_nos);
+	BYTE *instrsav = (m_sfxSupport)? m_savedInstrFlagsForSFX : m_savedInstrFlagsForStrippedRMT;
+	BYTE *tracksav = (m_sfxSupport)? m_savedTracksFlagsForSFX : m_savedTracksFlagsForStrippedRMT;
+	m_song->ComposeRMTFEATstring(s, m_filename, instrsav, tracksav, m_sfxSupport, m_globalVolumeFade, m_noStartingSongLine, ASSEMBLER_FORMAT_XASM);
 	m_c_rmtfeat.SetWindowText(s);
 }
 
@@ -368,30 +370,29 @@ void CExpMSXDlg::OnRasterline()
 	ChangeParams();	
 }
 /////////////////////////////////////////////////////////////////////////////
-// CExpASMDlg dialog
+// CExportAsmDlg dialog
 
 
-CExpASMDlg::CExpASMDlg(CWnd* pParent /*=NULL*/)
-	: CDialog(CExpASMDlg::IDD, pParent)
+CExportAsmDlg::CExportAsmDlg(CWnd* pParent /*=NULL*/)
+	: CDialog(CExportAsmDlg::IDD, pParent)
 {
-	//{{AFX_DATA_INIT(CExpASMDlg)
-	m_labelsprefix = _T("");
+	//{{AFX_DATA_INIT(CExportAsmDlg)
+	m_prefixForAllAsmLabels = _T("");
 	//}}AFX_DATA_INIT
 }
 
-
-void CExpASMDlg::DoDataExchange(CDataExchange* pDX)
+void CExportAsmDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	//{{AFX_DATA_MAP(CExpASMDlg)
-	DDX_Text(pDX, IDC_LABELSPREFIX, m_labelsprefix);
-	DDV_MaxChars(pDX, m_labelsprefix, 32);
+	//{{AFX_DATA_MAP(CExportAsmDlg)
+	DDX_Text(pDX, IDC_LABELSPREFIX, m_prefixForAllAsmLabels);
+	DDV_MaxChars(pDX, m_prefixForAllAsmLabels, 32);
 	//}}AFX_DATA_MAP
 }
 
 
-BEGIN_MESSAGE_MAP(CExpASMDlg, CDialog)
-	//{{AFX_MSG_MAP(CExpASMDlg)
+BEGIN_MESSAGE_MAP(CExportAsmDlg, CDialog)
+	//{{AFX_MSG_MAP(CExportAsmDlg)
 	ON_BN_CLICKED(IDC_RADIO1, OnRadio)
 	ON_BN_CLICKED(IDC_RADIO2, OnRadio)
 	ON_BN_CLICKED(IDC_RADIO3, OnRadio)
@@ -403,9 +404,9 @@ BEGIN_MESSAGE_MAP(CExpASMDlg, CDialog)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
-// CExpASMDlg message handlers
+// CExportAsmDlg message handlers
 
-BOOL CExpASMDlg::OnInitDialog() 
+BOOL CExportAsmDlg::OnInitDialog() 
 {
 	CDialog::OnInitDialog();
 	
@@ -424,20 +425,200 @@ BOOL CExpASMDlg::OnInitDialog()
 	              // EXCEPTION: OCX Property Pages should return FALSE
 }
 
-void CExpASMDlg::OnOK() 
+void CExportAsmDlg::OnOK() 
 {
-	// TODO: Add extra validation here
-	int i,r[8];
-	for(i=1; i<=7; i++) r[i]=((CButton*)GetDlgItem(IDC_RADIO1-1+i))->GetCheck();
-	m_type=r[1]+r[2]*2;
-	m_notes=r[3]+r[4]*2;
-	m_durations=r[5]+r[6]*2+r[7]*3;	
+	int radioState[8];
+	for (int i = 1; i <= 7; i++)
+	{
+		radioState[i] = ((CButton*)GetDlgItem(IDC_RADIO1 - 1 + i))->GetCheck();
+	}
+	m_exportType = radioState[1] + radioState[2] * 2;
+	m_notesIndexOrFreq = radioState[3] + radioState[4] * 2;
+	m_durationsType = radioState[5] + radioState[6] * 2 + radioState[7] * 3;
 	CDialog::OnOK();
 }
 
-void CExpASMDlg::OnRadio() 
+void CExportAsmDlg::OnRadio() 
 {
 	//int i,r[8];
 	//for(i=1; i<=7; i++) r[i]=((CButton*)GetDlgItem(IDC_RADIO1-1+i))->GetCheck();
 	//m_check_merge.EnableWindow(r[2] && (r[6] || r[7]));
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
+// CExportRelocatableAsmForRmtPlayer dialog
+
+CExportRelocatableAsmForRmtPlayer::CExportRelocatableAsmForRmtPlayer(CWnd* pParent /*=NULL*/)
+	: CDialog(CExportRelocatableAsmForRmtPlayer::IDD, pParent)
+{
+	//{{AFX_DATA_INIT(CExportRelocatableAsmForRmtPlayer)
+	//}}AFX_DATA_INIT
+}
+
+void CExportRelocatableAsmForRmtPlayer::DoDataExchange(CDataExchange* pDX)
+{
+	CDialog::DoDataExchange(pDX);
+	//{{AFX_DATA_MAP(CExportRelocatableAsmForRmtPlayer)S
+	DDX_Control(pDX, IDC_RMT_MODULE_ASM_LABEL, m_editRmtModuleAsmLabel);
+	DDX_Control(pDX, IDC_CHK_RELOCATE_TRACKS, m_chkWantRelocatableTracks);
+	DDX_Control(pDX, IDC_EDIT_TRACKS_LABEL, m_editTracksLabel);
+	DDX_Control(pDX, IDC_CHK_RELOCATE_SONG, m_chkWantRelocatableSongLines);
+	DDX_Control(pDX, IDC_EDIT_SONG_LINES_LABEL, m_editSongLinesLabel);
+	DDX_Control(pDX, IDC_CHK_RELOCATE_INSTRUMENTS, m_chkWantRelocatableInstruments);
+	DDX_Control(pDX, IDC_EDIT_INSTRUMENTS_LABEL, m_editInstrumentsLabel);
+
+	DDX_Control(pDX, IDC_GLOBALVOLUMEFADE, m_c_gvf);
+	DDX_Control(pDX, IDC_NOSTARTINGSONGLINE, m_c_nos);
+	DDX_Control(pDX, IDC_RASM_SFX, m_ctrlWithSfx);
+	DDX_Control(pDX, IDC_RMTFEAT, m_c_rmtfeat);
+	DDX_Control(pDX, IDC_INFO, m_c_info);
+	DDX_Control(pDX, IDC_COMBO_ASM_FORMAT, m_cmbAsmFormat);
+	//}}AFX_DATA_MAP
+}
+
+
+BEGIN_MESSAGE_MAP(CExportRelocatableAsmForRmtPlayer, CDialog)
+	//{{AFX_MSG_MAP(CExportRelocatableAsmForRmtPlayer)
+	ON_BN_CLICKED(IDC_CHK_RELOCATE_TRACKS, OnChangeCheckbox)
+	ON_BN_CLICKED(IDC_CHK_RELOCATE_SONG, OnChangeCheckbox)
+	ON_BN_CLICKED(IDC_CHK_RELOCATE_INSTRUMENTS, OnChangeCheckbox)
+	ON_EN_CHANGE(IDC_EDIT_TRACKS_LABEL, OnChangeLabel)
+	ON_EN_CHANGE(IDC_EDIT_SONG_LINES_LABEL, OnChangeLabel)
+	ON_EN_CHANGE(IDC_EDIT_INSTRUMENTS_LABEL, OnChangeLabel)
+	ON_BN_CLICKED(IDC_RASM_SFX, OnChangeCheckbox)
+	ON_BN_CLICKED(IDC_NOSTARTINGSONGLINE, OnChangeCheckbox)
+	ON_BN_CLICKED(IDC_GLOBALVOLUMEFADE, OnChangeCheckbox)
+	ON_CBN_SELCHANGE(IDC_COMBO_ASM_FORMAT, OnCbnSelchange)
+	//}}AFX_MSG_MAP
+END_MESSAGE_MAP()
+
+/////////////////////////////////////////////////////////////////////////////
+// CExportRelocatableAsmForRmtPlayer message handlers
+
+BOOL CExportRelocatableAsmForRmtPlayer::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	m_InitPhase = 1;			// Tell the DDX handler to ignore all changes until everything is setup
+
+	// Transfer the starting values to the MFC controls
+	CString str;
+
+	// Set the default song labels
+	if (m_strAsmLabelForStartOfSong.IsEmpty())
+		m_strAsmLabelForStartOfSong = "RMT_SONG_DATA";
+	m_editRmtModuleAsmLabel.SetWindowText(m_strAsmLabelForStartOfSong);
+
+	if (m_strAsmTracksLabel.IsEmpty())
+		m_strAsmTracksLabel = "RMT_SONG_TRACKS";
+	m_editTracksLabel.SetWindowText(m_strAsmTracksLabel);
+	m_chkWantRelocatableTracks.SetCheck(m_wantRelocatableTracks);
+
+	if (m_strAsmSongLinesLabel.IsEmpty())
+		m_strAsmSongLinesLabel = "RMT_SONG_LINES";
+	m_editSongLinesLabel.SetWindowText(m_strAsmSongLinesLabel);
+	m_chkWantRelocatableSongLines.SetCheck(m_wantRelocatableSongLines);
+
+	if (m_strAsmInstrumentsLabel.IsEmpty())
+		m_strAsmInstrumentsLabel = "RMT_INSTRUMENT_DATA";
+	m_editInstrumentsLabel.SetWindowText(m_strAsmInstrumentsLabel);
+	m_chkWantRelocatableInstruments.SetCheck(m_wantRelocatableInstruments);
+
+	// Setup the assembler formats
+	int idx = m_cmbAsmFormat.AddString("Atasm");
+	m_cmbAsmFormat.SetItemData(idx, ASSEMBLER_FORMAT_ATASM);
+
+	idx = m_cmbAsmFormat.AddString("Xasm");
+	m_cmbAsmFormat.SetItemData(idx, ASSEMBLER_FORMAT_XASM);
+
+	if (m_assemblerFormat < 0) m_assemblerFormat = 0;
+	if (m_assemblerFormat > 1) m_assemblerFormat = 1;
+	m_cmbAsmFormat.SetCurSel(m_assemblerFormat);
+
+	//
+	m_ctrlWithSfx.SetCheck(m_sfxSupport);
+	m_c_gvf.SetCheck(m_globalVolumeFade);
+	m_c_nos.SetCheck(m_noStartingSongLine);
+
+	m_InitPhase = 0;
+
+	ChangeParams();
+
+	return TRUE;  // return TRUE unless you set the focus to a control
+	// EXCEPTION: OCX Property Pages should return FALSE
+}
+
+void CExportRelocatableAsmForRmtPlayer::ChangeParams()
+{
+	if (m_InitPhase)
+		return;
+
+	CString s;
+	m_wantRelocatableTracks = m_chkWantRelocatableTracks.GetCheck();
+	m_wantRelocatableSongLines = m_chkWantRelocatableSongLines.GetCheck();
+	m_wantRelocatableInstruments = m_chkWantRelocatableInstruments.GetCheck();
+
+	m_editTracksLabel.EnableWindow(m_wantRelocatableTracks);
+	m_editSongLinesLabel.EnableWindow(m_wantRelocatableSongLines);
+	m_editInstrumentsLabel.EnableWindow(m_wantRelocatableInstruments);
+
+	m_editRmtModuleAsmLabel.GetWindowText(s);
+	m_strAsmLabelForStartOfSong = s;
+
+	m_editTracksLabel.GetWindowText(s);
+	m_strAsmTracksLabel = s;
+
+	m_editSongLinesLabel.GetWindowText(s);
+	m_strAsmSongLinesLabel = s;
+
+	m_editInstrumentsLabel.GetWindowText(s);
+	m_strAsmInstrumentsLabel = s;
+
+	// With or without SFX and unused tracks
+	m_sfxSupport = m_ctrlWithSfx.GetCheck();
+	int len = m_sfxSupport
+		? (m_exportDescWithSFX->firstByteAfterModule - m_exportDescWithSFX->targetAddrOfModule) 
+		: (m_exportDescStripped->firstByteAfterModule - m_exportDescStripped->targetAddrOfModule);
+	s.Format("Length $%04X (%u bytes)", len, len);
+	m_c_info.SetWindowText(s);
+
+	int idx = m_cmbAsmFormat.GetCurSel();
+	m_assemblerFormat = m_cmbAsmFormat.GetItemData(idx);
+
+	m_globalVolumeFade = m_c_gvf.GetCheck();
+	m_noStartingSongLine = m_c_nos.GetCheck();
+
+	BYTE* instrsav = (m_sfxSupport) ? m_exportDescWithSFX->instrumentSavedFlags : m_exportDescStripped->trackSavedFlags;
+	BYTE* tracksav = (m_sfxSupport) ? m_exportDescWithSFX->trackSavedFlags : m_exportDescStripped->trackSavedFlags;
+
+	m_song->BuildRelocatableAsm(
+		s,
+		m_sfxSupport ? m_exportDescWithSFX : m_exportDescStripped,
+		"",
+		m_wantRelocatableTracks ? m_strAsmTracksLabel : "",
+		m_wantRelocatableSongLines ? m_strAsmSongLinesLabel : "",
+		m_wantRelocatableInstruments ? m_strAsmInstrumentsLabel : "",
+		m_assemblerFormat,
+		m_sfxSupport,
+		false,
+		false,
+		true		// Just give me the size info
+	);
+	m_c_rmtfeat.SetWindowText(s);
+}
+
+void CExportRelocatableAsmForRmtPlayer::OnChangeCheckbox()
+{
+	ChangeParams();
+}
+
+void CExportRelocatableAsmForRmtPlayer::OnChangeLabel()
+{
+	ChangeParams();
+}
+
+void CExportRelocatableAsmForRmtPlayer::OnCbnSelchange()
+{
+	ChangeParams();
 }

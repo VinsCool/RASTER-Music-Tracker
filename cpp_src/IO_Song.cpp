@@ -1,8 +1,10 @@
 #include "StdAfx.h"
 #include <fstream>
+#include <memory.h>
 using namespace std;
 
 #include "GuiHelpers.h"
+#include "Song.h"
 
 // MFC interface code
 #include "FileNewDlg.h"
@@ -17,7 +19,6 @@ using namespace std;
 #include "IOHelpers.h"
 
 #include "Instruments.h"
-#include "Song.h"
 #include "Clipboard.h"
 
 
@@ -315,7 +316,7 @@ void CSong::FileSave()
 	switch (m_filetype)
 	{
 		case IOTYPE_RMT: //RMT
-			r = Export(out, IOTYPE_RMT);
+			r = ExportV2(out, IOTYPE_RMT);
 			break;
 
 		case IOTYPE_TXT: //TXT
@@ -554,10 +555,10 @@ void CSong::FileImport()
 
 void CSong::FileExportAs()
 {
-	//stop the music first
+	// Stop the music first
 	Stop();
 
-	//verify the integrity of the .rmt module to save first, so it won't be saved if it's not meeting the conditions for it
+	// Verify the integrity of the .rmt module to save first, so it won't be saved if it's not meeting the conditions for it
 	if (!TestBeforeFileSave())
 	{
 		MessageBox(g_hwnd, "Warning!\nNo data has been saved!", "Warning", MB_ICONEXCLAMATION);
@@ -573,7 +574,9 @@ void CSong::FileExportAs()
 		"SAP-R data stream (*.sapr)|*.sapr|"
 		"Compressed SAP-R data stream (*.lzss)|*.lzss|"
 		"SAP file + LZSS driver (*.sap)|*.sap|"
-		"XEX Atari executable + LZSS driver (*.xex)|*.xex|");
+		"XEX Atari executable + LZSS driver (*.xex)|*.xex|"
+		"Relocatable ASM for RMTPlayer (*.asm)|*.asm|"
+	);
 
 	fod.m_ofn.lpstrTitle = "Export song as...";
 
@@ -582,12 +585,13 @@ void CSong::FileExportAs()
 	else
 		if (g_path_songs != "") fod.m_ofn.lpstrInitialDir = g_path_songs;
 
-	if (m_exporttype == IOTYPE_RMTSTRIPPED) fod.m_ofn.nFilterIndex = 1;
-	if (m_exporttype == IOTYPE_ASM) fod.m_ofn.nFilterIndex = 2;
-	if (m_exporttype == IOTYPE_SAPR) fod.m_ofn.nFilterIndex = 3;
-	if (m_exporttype == IOTYPE_LZSS) fod.m_ofn.nFilterIndex = 4;
-	if (m_exporttype == IOTYPE_LZSS_SAP) fod.m_ofn.nFilterIndex = 5;
-	if (m_exporttype == IOTYPE_LZSS_XEX) fod.m_ofn.nFilterIndex = 6;
+	if (m_lastExportType == IOTYPE_RMTSTRIPPED) fod.m_ofn.nFilterIndex = 1;
+	if (m_lastExportType == IOTYPE_ASM) fod.m_ofn.nFilterIndex = 2;
+	if (m_lastExportType == IOTYPE_SAPR) fod.m_ofn.nFilterIndex = 3;
+	if (m_lastExportType == IOTYPE_LZSS) fod.m_ofn.nFilterIndex = 4;
+	if (m_lastExportType == IOTYPE_LZSS_SAP) fod.m_ofn.nFilterIndex = 5;
+	if (m_lastExportType == IOTYPE_LZSS_XEX) fod.m_ofn.nFilterIndex = 6;
+	if (m_lastExportType == IOTYPE_ASM_RMTPLAYER) fod.m_ofn.nFilterIndex = 7;
 
 	//if not ok, nothing will be saved
 	if (fod.DoModal() == IDOK)
@@ -596,9 +600,9 @@ void CSong::FileExportAs()
 		fn = fod.GetPathName();
 		int type = fod.m_ofn.nFilterIndex;
 
-		if (type < 1 || type > 6) return;
+		if (type < 1 || type > 7) return;
 
-		const char* exttype[] = { ".rmt",".asm",".sapr",".lzss",".sap",".xex" };
+		const char* exttype[] = { ".rmt",".asm",".sapr",".lzss",".sap",".xex",".asm" };
 		int extoff = (type - 1 == 2 || type - 1 == 3) ? 5 : 4;	//fixes the "duplicate extention" bug for 4 characters extention
 
 		CString ext = fn.Right(extoff);
@@ -614,37 +618,42 @@ void CSong::FileExportAs()
 			return;
 		}
 
-		int r;
+		int exportState = 0;
 		switch (type)
 		{
 			case 1: //RMT Stripped
-				r = Export(out, IOTYPE_RMTSTRIPPED, (char*)(LPCTSTR)fn);
-				m_exporttype = IOTYPE_RMTSTRIPPED;
+				m_lastExportType = IOTYPE_RMTSTRIPPED;
+				exportState = ExportV2(out, m_lastExportType, (LPCTSTR)fn);
 				break;
 
 			case 2: //ASM
-				r = Export(out, IOTYPE_ASM, (char*)(LPCTSTR)fn);
-				m_exporttype = IOTYPE_ASM;
+				m_lastExportType = IOTYPE_ASM;
+				exportState = ExportV2(out, m_lastExportType, (LPCTSTR)fn);
 				break;
 
 			case 3:	//SAP-R
-				r = Export(out, IOTYPE_SAPR, (char*)(LPCTSTR)fn);
-				m_exporttype = IOTYPE_SAPR;
+				m_lastExportType = IOTYPE_SAPR;
+				exportState = Export(out, m_lastExportType, (char*)(LPCTSTR)fn);
 				break;
 
 			case 4:	//LZSS
-				r = Export(out, IOTYPE_LZSS, (char*)(LPCTSTR)fn);
-				m_exporttype = IOTYPE_LZSS;
+				m_lastExportType = IOTYPE_LZSS;
+				exportState = Export(out, m_lastExportType, (char*)(LPCTSTR)fn);
 				break;
 
 			case 5:	//LZSS SAP
-				r = Export(out, IOTYPE_LZSS_SAP, (char*)(LPCTSTR)fn);
-				m_exporttype = IOTYPE_LZSS_SAP;
+				m_lastExportType = IOTYPE_LZSS_SAP;
+				exportState = Export(out, m_lastExportType, (char*)(LPCTSTR)fn);
 				break;
 
 			case 6:	//LZSS XEX
-				r = Export(out, IOTYPE_LZSS_XEX, (char*)(LPCTSTR)fn);
-				m_exporttype = IOTYPE_LZSS_XEX;
+				m_lastExportType = IOTYPE_LZSS_XEX;
+				exportState = Export(out, m_lastExportType, (char*)(LPCTSTR)fn);
+				break;
+
+			case 7: // Relocatable ASM for RMTPlayer
+				m_lastExportType = IOTYPE_ASM_RMTPLAYER;
+				exportState = ExportV2(out, m_lastExportType, (LPCTSTR)fn);
 				break;
 		}
 
@@ -652,12 +661,11 @@ void CSong::FileExportAs()
 		out.close();
 
 		//TODO: add a method to prevent accidental deletion of valid files
-		if (!r)
+		if (!exportState)
 		{
 			DeleteFile(fn);
 			MessageBox(g_hwnd, "Export aborted.\nFile was deleted, beware of data loss!", "Export aborted", MB_ICONEXCLAMATION);
 		}
-
 	}
 }
 
@@ -1310,8 +1318,16 @@ int CSong::TestBeforeFileSave()
 
 
 
-
-int CSong::Export2(ofstream& ou, int iotype, char* filename)
+/// <summary>
+/// Export dispatcher.
+/// First build a module to make sure the data is consistent.
+/// Then dispatch to the appropriate export handler
+/// </summary>
+/// <param name="ou">output fream</param>
+/// <param name="iotype">requested output format</param>
+/// <param name="filename">filename of the output</param>
+/// <returns>= if the export failed, 1 if the export is ok</returns>
+int CSong::ExportV2(ofstream& ou, int iotype, LPCTSTR filename)
 {
 	// Init the export data container
 	tExportDescription exportDesc;
@@ -1327,12 +1343,21 @@ int CSong::Export2(ofstream& ou, int iotype, char* filename)
 	switch (iotype)
 	{
 		case IOTYPE_RMT: return ExportAsRMT(ou, &exportDesc);
-		case IOTYPE_RMTSTRIPPED: return ExportAsStrippedRMT(ou, &exportDesc);
+		case IOTYPE_RMTSTRIPPED: return ExportAsStrippedRMT(ou, &exportDesc, filename);
+		case IOTYPE_ASM: return ExportAsAsm(ou, &exportDesc);
+		case IOTYPE_ASM_RMTPLAYER: return ExportAsRelocatableAsmForRmtPlayer(ou, &exportDesc);
 	}
 
-	return 0;
+	return 0;	// Failed
 }
 
+/// <summary>
+/// Export the song data as an RMT module with full instrument and song names.
+/// Writes two data blocks.
+/// </summary>
+/// <param name="ou">Output stream</param>
+/// <param name="exportDesc">Data about the packed RMT module</param>
+/// <returns>0 = failure, 1 = saved ok</returns>
 int CSong::ExportAsRMT(ofstream& ou, tExportDescription *exportDesc)
 {
 	// Save the 1st RMT module block: Song, Tracks & Instruments
@@ -1364,13 +1389,407 @@ int CSong::ExportAsRMT(ofstream& ou, tExportDescription *exportDesc)
 	// and now, save the 2nd block
 	SaveBinaryBlock(ou, exportDesc->mem, addrOfSongName, addrInstrumentNames - 1, FALSE);
 
-	return 0;
+	return 1;
 }
 
-int CSong::ExportAsStrippedRMT(ofstream& ou, tExportDescription* exportDesc)
+/// <summary>
+/// Export the song data as assembler source code.
+/// </summary>
+/// <param name="ou"></param>
+/// <param name="exportStrippedDesc"></param>
+/// <param name="filename"></param>
+/// <returns></returns>
+int CSong::ExportAsStrippedRMT(ofstream& ou, tExportDescription* exportStrippedDesc, LPCTSTR filename)
 {
-	return 0;
+	tExportDescription exportTempDescription;
+	memset(&exportTempDescription, 0, sizeof(tExportDescription));
+	exportTempDescription.targetAddrOfModule = 0x4000;		// Standard RMT modules are set to start @ $4000
 
+	// Create a variant for SFX (ie. including unused instruments and tracks)
+	exportTempDescription.firstByteAfterModule = MakeModule(exportTempDescription.mem, exportTempDescription.targetAddrOfModule, IOTYPE_RMT, exportTempDescription.instrumentSavedFlags, exportTempDescription.trackSavedFlags);
+	if (exportTempDescription.firstByteAfterModule < 0) return 0;	// if the module could not be created
+
+	// Show the dialog to control the stripped output parameters
+	CExpRMTDlg dlg;
+	// Common data
+	dlg.m_exportAddr = g_rmtstripped_adr_module;	//global, so that it remains the same on repeated export
+	dlg.m_globalVolumeFade = g_rmtstripped_gvf;
+	dlg.m_noStartingSongLine = g_rmtstripped_nos;
+	dlg.m_song = this;
+	dlg.m_filename = (char*)filename;
+	dlg.m_sfxSupport = g_rmtstripped_sfx;
+
+	// Stripped RMT data
+	dlg.m_moduleLengthForStrippedRMT = exportStrippedDesc->firstByteAfterModule - exportStrippedDesc->targetAddrOfModule;
+	dlg.m_savedInstrFlagsForStrippedRMT = exportStrippedDesc->instrumentSavedFlags;
+	dlg.m_savedTracksFlagsForStrippedRMT = exportStrippedDesc->trackSavedFlags;
+
+	// Full RMT/SFX data
+	dlg.m_moduleLengthForSFX = exportTempDescription.firstByteAfterModule - exportTempDescription.targetAddrOfModule;
+	dlg.m_savedInstrFlagsForSFX = exportTempDescription.instrumentSavedFlags;
+	dlg.m_savedTracksFlagsForSFX = exportTempDescription.trackSavedFlags;
+
+	// Show the dialog and get the stripped RMT configuration parameters
+	if (dlg.DoModal() != IDOK) return 0;
+
+	// Save the configurations for later reuse
+	int targetAddrOfModule = dlg.m_exportAddr;
+
+	g_rmtstripped_adr_module = dlg.m_exportAddr;
+	g_rmtstripped_sfx = dlg.m_sfxSupport;
+	g_rmtstripped_gvf = dlg.m_globalVolumeFade;
+	g_rmtstripped_nos = dlg.m_noStartingSongLine;
+
+	// Now we can regenerate the RMT module with the selected configuration
+	// - known start address
+	// - know if we want to strip out unused instruments and tracks => IOTYPE_RMTSTRIPPED : IOTYPE_RMT
+	memset(&exportTempDescription, 0, sizeof(tExportDescription));			// Clear it all again
+	exportTempDescription.targetAddrOfModule = g_rmtstripped_adr_module;	// Standard RMT modules are set to start @ $4000
+
+	exportTempDescription.firstByteAfterModule = 
+		MakeModule(
+			exportTempDescription.mem, 
+			exportTempDescription.targetAddrOfModule, 
+			g_rmtstripped_sfx ? IOTYPE_RMTSTRIPPED : IOTYPE_RMT,
+			exportTempDescription.instrumentSavedFlags, 
+			exportTempDescription.trackSavedFlags
+		);
+	if (exportTempDescription.firstByteAfterModule < 0) return 0;	// if the module could not be created
+
+	// And save the RMT module block
+	SaveBinaryBlock(ou, exportTempDescription.mem, exportTempDescription.targetAddrOfModule, exportTempDescription.firstByteAfterModule, TRUE);
+
+	return 1;		// Indicate that data was saved
+}
+
+/// <summary>
+/// Export the RMT module as assembler
+/// </summary>
+/// <param name="ou"></param>
+/// <param name="exportStrippedDesc"></param>
+/// <returns></returns>
+int CSong::ExportAsAsm(ofstream& ou, tExportDescription* exportStrippedDesc)
+{
+	// Setup the ASM export dialog
+	CExportAsmDlg dlg;
+	dlg.m_prefixForAllAsmLabels = g_PrefixForAllAsmLabels;
+
+	if (dlg.DoModal() != IDOK) return 0;
+
+	// Save for future ASM exports
+	g_PrefixForAllAsmLabels = dlg.m_prefixForAllAsmLabels;
+
+	CString s, snot;
+	int maxova = 16;				//maximal amount of data per line
+	//
+	BYTE tracksFlags[TRACKSNUM];
+	memset(tracksFlags, 0, TRACKSNUM); //init
+	MarkTF_USED(tracksFlags);
+
+	ou << ";ASM notation source";
+	ou << EOL << "XXX\tequ $FF\t;empty note value";
+	if (!g_PrefixForAllAsmLabels.IsEmpty())
+	{
+		s.Format("%s_data", g_PrefixForAllAsmLabels);
+		ou << EOL << s;
+	}
+	//
+	if (dlg.m_exportType == 1 /* Tracks only*/)
+	{
+		// Tracks
+		int j, note, dur, instrumentNr;
+		for (int trackNr = 0; trackNr < TRACKSNUM; trackNr++)
+		{
+			// Only process if the track is used
+			if (!(tracksFlags[trackNr] & TF_USED)) 
+				continue;
+
+			s.Format(";Track $%02X", trackNr);
+			ou << EOL << s;
+			if (!g_PrefixForAllAsmLabels.IsEmpty())
+			{
+				s.Format("%s_track%02X", g_PrefixForAllAsmLabels, trackNr);
+				ou << EOL << s;
+			}
+
+			TTrack& originalTrack = *g_Tracks.GetTrack(trackNr);
+			TTrack tempTrack;	// temporary track
+			memcpy((void*)&tempTrack, (void*)&originalTrack, sizeof(TTrack)); // make a copy of origtt to tt
+			g_Tracks.TrackExpandLoop(&tempTrack); //expands tt due to GO loops
+			int ova = maxova;
+
+			for (int idx = 0; idx < tempTrack.len; idx++)
+			{
+				if (ova >= maxova)
+				{
+					ou << EOL << "\tdta ";
+					ova = 0;
+				}
+				note = tempTrack.note[idx];
+				if (note >= 0)
+				{
+					instrumentNr = tempTrack.instr[idx];
+					if (dlg.m_notesIndexOrFreq == 1) //notes
+						note = g_Instruments.GetNote(instrumentNr, note);
+					else				//frequencies
+						note = g_Instruments.GetFrequency(instrumentNr, note);
+				}
+				if (note >= 0) snot.Format("$%02X", note); else snot = "XXX";
+				for (dur = 1; idx + dur < tempTrack.len && tempTrack.note[idx + dur] < 0; dur++);
+				if (dlg.m_durationsType == 1 /* Notes only */)
+				{
+					if (ova > 0) ou << ",";
+					ou << snot; ova++;
+					for (j = 1; j < dur; j++, ova++)
+					{
+						if (ova >= maxova)
+						{
+							ova = 0;
+							ou << EOL << "\tdta XXX";
+						}
+						else
+							ou << ",XXX";
+					}
+				}
+				else if (dlg.m_durationsType == 2 /* Note, duration */)
+				{
+					if (ova > 0) ou << ",";
+					ou << snot;
+					ou << "," << dur;
+					ova += 2;
+				}
+				else if (dlg.m_durationsType == 3 /* Duration, Note */)
+				{
+					if (ova > 0) ou << ",";
+					ou << dur << ",";
+					ou << snot;
+					ova += 2;
+				}
+				idx += dur - 1;
+			}
+		}
+	}
+	else if (dlg.m_exportType == 2 /* Whole song */)
+	{
+		// song columns
+		int clm;
+		for (clm = 0; clm < g_tracks4_8; clm++)
+		{
+			BYTE finished[SONGLEN];
+			memset(finished, 0, SONGLEN);
+			int sline = 0;
+			static char* cnames[] = { "L1","L2","L3","L4","R1","R2","R3","R4" };
+			s.Format(";Song column %s", cnames[clm]);
+			ou << EOL << s;
+			if (!g_PrefixForAllAsmLabels.IsEmpty())
+			{
+				s.Format("%s_column%s", g_PrefixForAllAsmLabels, cnames[clm]);
+				ou << EOL << s;
+			}
+			while (sline >= 0 && sline < SONGLEN && !finished[sline])
+			{
+				finished[sline] = 1;
+				s.Format(";Song line $%02X", sline);
+				ou << EOL << s;
+				if (m_songgo[sline] >= 0)
+				{
+					sline = m_songgo[sline]; //GOTO line
+					s.Format(" Go to line $%02X", sline);
+					ou << s;
+					continue;
+				}
+				int trackslen = g_Tracks.m_maxTrackLength;
+				for (int i = 0; i < g_tracks4_8; i++)
+				{
+					int at = m_song[sline][i];
+					if (at < 0 || at >= TRACKSNUM) continue;
+					if (g_Tracks.GetGoLine(at) >= 0) continue;
+					int al = g_Tracks.GetLastLine(at) + 1;
+					if (al < trackslen) trackslen = al;
+				}
+				int t, i, j, not, dur, ins;
+				int ova = maxova;
+				t = m_song[sline][clm];
+				if (t < 0)
+				{
+					ou << " Track --";
+					if (!g_PrefixForAllAsmLabels.IsEmpty())
+					{
+						s.Format("%s_column%s_line%02X", g_PrefixForAllAsmLabels, cnames[clm], sline);
+						ou << EOL << s;
+					}
+					if (dlg.m_durationsType == 1)
+					{
+						for (i = 0; i < trackslen; i++, ova++)
+						{
+							if (ova >= maxova)
+							{
+								ova = 0;
+								ou << EOL << "\tdta XXX";
+							}
+							else
+								ou << ",XXX";
+						}
+					}
+					else
+						if (dlg.m_durationsType == 2)
+						{
+							ou << EOL << "\tdta XXX,";
+							ou << trackslen;
+							ova += 2;
+						}
+						else
+							if (dlg.m_durationsType == 3)
+							{
+								ou << EOL << "\tdta ";
+								ou << trackslen << ",XXX";
+								ova += 2;
+							}
+					sline++;
+					continue;
+				}
+
+				s.Format(" Track $%02X", t);
+				ou << s;
+				if (!g_PrefixForAllAsmLabels.IsEmpty())
+				{
+					s.Format("%s_column%s_line%02X", g_PrefixForAllAsmLabels, cnames[clm], sline);
+					ou << EOL << s;
+				}
+
+				TTrack& origtt = *g_Tracks.GetTrack(t);
+				TTrack tt; //temporary track
+				memcpy((void*)&tt, (void*)&origtt, sizeof(TTrack)); //make a copy of origtt to tt
+				g_Tracks.TrackExpandLoop(&tt); //expands tt due to GO loops
+				for (i = 0; i < trackslen; i++)
+				{
+					if (ova >= maxova)
+					{
+						ova = 0;
+						ou << EOL << "\tdta ";
+					}
+
+					not= tt.note[i];
+					if (not>= 0)
+					{
+						ins = tt.instr[i];
+						if (dlg.m_notesIndexOrFreq == 1) //notes
+							not= g_Instruments.GetNote(ins, not);
+						else				//frequencies
+							not= g_Instruments.GetFrequency(ins, not);
+					}
+					if (not>= 0) snot.Format("$%02X", not); else snot = "XXX";
+					for (dur = 1; i + dur < trackslen && tt.note[i + dur] < 0; dur++);
+					if (dlg.m_durationsType == 1)
+					{
+						if (ova > 0) ou << ",";
+						ou << snot; ova++;
+						for (j = 1; j < dur; j++, ova++)
+						{
+							if (ova >= maxova)
+							{
+								ova = 0;
+								ou << EOL << "\tdta XXX";
+							}
+							else
+								ou << ",XXX";
+						}
+					}
+					else
+						if (dlg.m_durationsType == 2)
+						{
+							if (ova > 0) ou << ",";
+							ou << snot;
+							ou << "," << dur;
+							ova += 2;
+						}
+						else
+							if (dlg.m_durationsType == 3)
+							{
+								if (ova > 0) ou << ",";
+								ou << dur << ",";
+								ou << snot;
+								ova += 2;
+							}
+					i += dur - 1;
+				}
+				sline++;
+			}
+		}
+	}
+	ou << EOL;
+
+	return 1;
+}
+
+int CSong::ExportAsRelocatableAsmForRmtPlayer(std::ofstream& ou, tExportDescription* exportDescStripped)
+{
+	tExportDescription exportDescWithSFX;
+	memset(&exportDescWithSFX, 0, sizeof(tExportDescription));
+	exportDescWithSFX.targetAddrOfModule = 0x4000;		// Standard RMT modules are set to start @ $4000
+
+	// Create a variant for SFX (ie. including unused instruments and tracks)
+	exportDescWithSFX.firstByteAfterModule = MakeModule(exportDescWithSFX.mem, exportDescWithSFX.targetAddrOfModule, IOTYPE_RMT, exportDescWithSFX.instrumentSavedFlags, exportDescWithSFX.trackSavedFlags);
+	if (exportDescWithSFX.firstByteAfterModule < 0) return 0;	// if the module could not be created
+
+	CExportRelocatableAsmForRmtPlayer dlg;
+	dlg.m_exportDescStripped = exportDescStripped;
+	dlg.m_exportDescWithSFX = &exportDescWithSFX;
+
+	dlg.m_strAsmLabelForStartOfSong		= g_AsmLabelForStartOfSong;
+	dlg.m_wantRelocatableInstruments	= g_AsmWantRelocatableInstruments;
+	dlg.m_wantRelocatableTracks			= g_AsmWantRelocatableTracks;
+	dlg.m_wantRelocatableSongLines		= g_AsmWantRelocatableSongLines;
+	dlg.m_strAsmInstrumentsLabel		= g_AsmInstrumentsLabel;
+	dlg.m_strAsmTracksLabel				= g_AsmTracksLabel;
+	dlg.m_strAsmSongLinesLabel			= g_AsmSongLinesLabel;
+	dlg.m_assemblerFormat				= g_AsmFormat;
+
+	dlg.m_sfxSupport = g_rmtstripped_sfx;
+	dlg.m_globalVolumeFade = g_rmtstripped_gvf;
+	dlg.m_noStartingSongLine = g_rmtstripped_nos;
+	dlg.m_song = this;
+	dlg.m_filename = "";
+
+	if (dlg.DoModal() != IDOK) return 0;
+
+	// Save the dialog settings for future exports
+	g_AsmLabelForStartOfSong = dlg.m_strAsmLabelForStartOfSong;
+	g_AsmWantRelocatableInstruments = dlg.m_wantRelocatableInstruments;
+	g_AsmWantRelocatableTracks = dlg.m_wantRelocatableTracks;
+	g_AsmWantRelocatableSongLines = dlg.m_wantRelocatableSongLines;
+	g_AsmInstrumentsLabel = dlg.m_strAsmInstrumentsLabel;
+	g_AsmTracksLabel = dlg.m_strAsmTracksLabel;
+	g_AsmSongLinesLabel = dlg.m_strAsmSongLinesLabel;
+	g_AsmFormat = dlg.m_assemblerFormat;
+
+	g_rmtstripped_sfx = dlg.m_sfxSupport;
+	g_rmtstripped_gvf = dlg.m_globalVolumeFade;
+	g_rmtstripped_nos = dlg.m_noStartingSongLine;
+
+	// Which one is to be exported? Full or stripped down version (names are never exported)
+	CString strAsmForModule;
+
+	BOOL isGood = BuildRelocatableAsm(
+		strAsmForModule,
+		dlg.m_sfxSupport ? &exportDescWithSFX : exportDescStripped,
+		dlg.m_strAsmLabelForStartOfSong,
+		dlg.m_wantRelocatableTracks ? dlg.m_strAsmTracksLabel : "",
+		dlg.m_wantRelocatableSongLines ? dlg.m_strAsmSongLinesLabel : "",
+		dlg.m_wantRelocatableInstruments ? dlg.m_strAsmInstrumentsLabel : "",
+		dlg.m_assemblerFormat,
+		dlg.m_sfxSupport,
+		dlg.m_globalVolumeFade,
+		dlg.m_noStartingSongLine,
+		false
+	);
+
+	if (!isGood)
+		return 0;
+
+	ou << strAsmForModule << EOL;
+	
+	return 1;
 }
 
 int CSong::Export(ofstream& ou, int iotype, char* filename)
@@ -1455,324 +1874,6 @@ int CSong::Export(ofstream& ou, int iotype, char* filename)
 
 	switch (iotype)
 	{
-		case IOTYPE_RMT:
-		{
-			// Save the first RMT module block: Song, Track and Instrument data
-			SaveBinaryBlock(ou, mem, targetAddrOfModule, maxadr - 1, TRUE);
-
-			// Build the 2nd block (song and instrument names)
-			// The individual names are truncated by spaces and terminated by a zero
-			int addrSongName = maxadr;
-			s = m_songname;
-			s.TrimRight();
-			int len = s.GetLength() + 1;	//including 0 after the string
-			strncpy((char*)(mem + addrSongName), (LPCSTR)s, len);
-
-			int addrInstrNames = addrSongName + len;
-			for (int i = 0; i < INSTRSNUM; i++)
-			{
-				if (instrumentSavedFlags[i])
-				{
-					s = g_Instruments.GetName(i);
-					s.TrimRight();
-					len = s.GetLength() + 1;	//including 0 after the string
-					strncpy((char*)(mem + addrInstrNames), s, len);
-					addrInstrNames += len;
-				}
-			}
-			// and now, save the 2nd block
-			SaveBinaryBlock(ou, mem, addrSongName, addrInstrNames - 1, 0);
-		}
-		break;
-
-		case IOTYPE_RMTSTRIPPED:
-		{
-			//create a variant for SFX (ie. including unused instruments and tracks)
-			BYTE instrsaved2[INSTRSNUM];
-			BYTE tracksaved2[TRACKSNUM];
-			int maxadr2 = MakeModule(mem, targetAddrOfModule, IOTYPE_RMT, instrsaved2, tracksaved2);
-			if (maxadr2 < 0) return 0;	//if the module could not be created
-
-			//Dialog for specifying the address of the RMT module in memory
-			CExpRMTDlg dlg;
-			dlg.m_len = maxadr - targetAddrOfModule;
-			dlg.m_len2 = maxadr2 - targetAddrOfModule;
-			dlg.m_adr = g_rmtstripped_adr_module;	//global, so that it remains the same on repeated export
-			dlg.m_sfx = g_rmtstripped_sfx;
-			dlg.m_gvf = g_rmtstripped_gvf;
-			dlg.m_nos = g_rmtstripped_nos;
-			dlg.m_song = this;
-			dlg.m_filename = filename;
-			dlg.m_instrsaved = instrumentSavedFlags;
-			dlg.m_instrsaved2 = instrsaved2;
-			dlg.m_tracksaved = trackSavedFlags;
-			dlg.m_tracksaved2 = tracksaved2;
-			if (dlg.DoModal() != IDOK) return 0;
-
-			g_rmtstripped_adr_module = targetAddrOfModule = dlg.m_adr;
-			g_rmtstripped_sfx = dlg.m_sfx;
-			g_rmtstripped_gvf = dlg.m_gvf;
-			g_rmtstripped_nos = dlg.m_nos;
-
-			//regenerates the module according to the entered address "adr"
-			memset(mem, 0, 65536);
-			if (!g_rmtstripped_sfx) //either without unused instruments and tracks
-				maxadr = MakeModule(mem, targetAddrOfModule, iotype, instrumentSavedFlags, trackSavedFlags);
-			else					//or with them
-				maxadr = MakeModule(mem, targetAddrOfModule, IOTYPE_RMT, instrumentSavedFlags, trackSavedFlags);
-			if (maxadr < 0) return 0; //if the module could not be created
-			//and now save the RMT module block
-			SaveBinaryBlock(ou, mem, targetAddrOfModule, maxadr - 1, TRUE);
-		}
-		break;
-
-		//TODO: cleanup
-		case IOTYPE_ASM:
-		{
-			CExpASMDlg dlg;
-			CString s, snot;
-			int maxova = 16;				//maximal amount of data per line
-			dlg.m_labelsprefix = g_expasmlabelprefix;
-			if (dlg.DoModal() != IDOK) return 0;
-			//
-			g_expasmlabelprefix = dlg.m_labelsprefix;
-			CString lprefix = g_expasmlabelprefix;
-			BYTE tracks[TRACKSNUM];
-			memset(tracks, 0, TRACKSNUM); //init
-			MarkTF_USED(tracks);
-			ou << ";ASM notation source";
-			ou << EOL << "XXX\tequ $FF\t;empty note value";
-			if (!lprefix.IsEmpty())
-			{
-				s.Format("%s_data", lprefix);
-				ou << EOL << s;
-			}
-			//
-			if (dlg.m_type == 1)
-			{
-				//tracks
-				int t, i, j, not, dur, ins;
-				for (t = 0; t < TRACKSNUM; t++)
-				{
-					if (!(tracks[t] & TF_USED)) continue;
-					s.Format(";Track $%02X", t);
-					ou << EOL << s;
-					if (!lprefix.IsEmpty())
-					{
-						s.Format("%s_track%02X", lprefix, t);
-						ou << EOL << s;
-					}
-					TTrack& origtt = *g_Tracks.GetTrack(t);
-					TTrack tt;	//temporary track
-					memcpy((void*)&tt, (void*)&origtt, sizeof(TTrack)); //make a copy of origtt to tt
-					g_Tracks.TrackExpandLoop(&tt); //expands tt due to GO loops
-					int ova = maxova;
-					for (i = 0; i < tt.len; i++)
-					{
-						if (ova >= maxova)
-						{
-							ou << EOL << "\tdta ";
-							ova = 0;
-						}
-						not= tt.note[i];
-						if (not>= 0)
-						{
-							ins = tt.instr[i];
-							if (dlg.m_notes == 1) //notes
-								not= g_Instruments.GetNote(ins, not);
-							else				//frequencies
-								not= g_Instruments.GetFrequency(ins, not);
-						}
-						if (not>= 0) snot.Format("$%02X", not); else snot = "XXX";
-						for (dur = 1; i + dur < tt.len && tt.note[i + dur] < 0; dur++);
-						if (dlg.m_durations == 1)
-						{
-							if (ova > 0) ou << ",";
-							ou << snot; ova++;
-							for (j = 1; j < dur; j++, ova++)
-							{
-								if (ova >= maxova)
-								{
-									ova = 0;
-									ou << EOL << "\tdta XXX";
-								}
-								else
-									ou << ",XXX";
-							}
-						}
-						else
-							if (dlg.m_durations == 2)
-							{
-								if (ova > 0) ou << ",";
-								ou << snot;
-								ou << "," << dur;
-								ova += 2;
-							}
-							else
-								if (dlg.m_durations == 3)
-								{
-									if (ova > 0) ou << ",";
-									ou << dur << ",";
-									ou << snot;
-									ova += 2;
-								}
-						i += dur - 1;
-					}
-				}
-			}
-			else
-				if (dlg.m_type == 2)
-				{
-					//song columns
-					int clm;
-					for (clm = 0; clm < g_tracks4_8; clm++)
-					{
-						BYTE finished[SONGLEN];
-						memset(finished, 0, SONGLEN);
-						int sline = 0;
-						static char* cnames[] = { "L1","L2","L3","L4","R1","R2","R3","R4" };
-						s.Format(";Song column %s", cnames[clm]);
-						ou << EOL << s;
-						if (!lprefix.IsEmpty())
-						{
-							s.Format("%s_column%s", lprefix, cnames[clm]);
-							ou << EOL << s;
-						}
-						while (sline >= 0 && sline < SONGLEN && !finished[sline])
-						{
-							finished[sline] = 1;
-							s.Format(";Song line $%02X", sline);
-							ou << EOL << s;
-							if (m_songgo[sline] >= 0)
-							{
-								sline = m_songgo[sline]; //GOTO line
-								s.Format(" Go to line $%02X", sline);
-								ou << s;
-								continue;
-							}
-							int trackslen = g_Tracks.m_maxTrackLength;
-							for (int i = 0; i < g_tracks4_8; i++)
-							{
-								int at = m_song[sline][i];
-								if (at < 0 || at >= TRACKSNUM) continue;
-								if (g_Tracks.GetGoLine(at) >= 0) continue;
-								int al = g_Tracks.GetLastLine(at) + 1;
-								if (al < trackslen) trackslen = al;
-							}
-							int t, i, j, not, dur, ins;
-							int ova = maxova;
-							t = m_song[sline][clm];
-							if (t < 0)
-							{
-								ou << " Track --";
-								if (!lprefix.IsEmpty())
-								{
-									s.Format("%s_column%s_line%02X", lprefix, cnames[clm], sline);
-									ou << EOL << s;
-								}
-								if (dlg.m_durations == 1)
-								{
-									for (i = 0; i < trackslen; i++, ova++)
-									{
-										if (ova >= maxova)
-										{
-											ova = 0;
-											ou << EOL << "\tdta XXX";
-										}
-										else
-											ou << ",XXX";
-									}
-								}
-								else
-									if (dlg.m_durations == 2)
-									{
-										ou << EOL << "\tdta XXX,";
-										ou << trackslen;
-										ova += 2;
-									}
-									else
-										if (dlg.m_durations == 3)
-										{
-											ou << EOL << "\tdta ";
-											ou << trackslen << ",XXX";
-											ova += 2;
-										}
-								sline++;
-								continue;
-							}
-
-							s.Format(" Track $%02X", t);
-							ou << s;
-							if (!lprefix.IsEmpty())
-							{
-								s.Format("%s_column%s_line%02X", lprefix, cnames[clm], sline);
-								ou << EOL << s;
-							}
-
-							TTrack& origtt = *g_Tracks.GetTrack(t);
-							TTrack tt; //temporary track
-							memcpy((void*)&tt, (void*)&origtt, sizeof(TTrack)); //make a copy of origtt to tt
-							g_Tracks.TrackExpandLoop(&tt); //expands tt due to GO loops
-							for (i = 0; i < trackslen; i++)
-							{
-								if (ova >= maxova)
-								{
-									ova = 0;
-									ou << EOL << "\tdta ";
-								}
-
-								not= tt.note[i];
-								if (not>= 0)
-								{
-									ins = tt.instr[i];
-									if (dlg.m_notes == 1) //notes
-										not= g_Instruments.GetNote(ins, not);
-									else				//frequencies
-										not= g_Instruments.GetFrequency(ins, not);
-								}
-								if (not>= 0) snot.Format("$%02X", not); else snot = "XXX";
-								for (dur = 1; i + dur < trackslen && tt.note[i + dur] < 0; dur++);
-								if (dlg.m_durations == 1)
-								{
-									if (ova > 0) ou << ",";
-									ou << snot; ova++;
-									for (j = 1; j < dur; j++, ova++)
-									{
-										if (ova >= maxova)
-										{
-											ova = 0;
-											ou << EOL << "\tdta XXX";
-										}
-										else
-											ou << ",XXX";
-									}
-								}
-								else
-									if (dlg.m_durations == 2)
-									{
-										if (ova > 0) ou << ",";
-										ou << snot;
-										ou << "," << dur;
-										ova += 2;
-									}
-									else
-										if (dlg.m_durations == 3)
-										{
-											if (ova > 0) ou << ",";
-											ou << dur << ",";
-											ou << snot;
-											ova += 2;
-										}
-								i += dur - 1;
-							}
-							sline++;
-						}
-					}
-				}
-			ou << EOL;
-		}
-		break;
-
 		//TODO: clean this up better, and allow multiple export choices later
 		//for now, this will simply be a full raw dump of all the bytes dumped at once, which is a full tune playback before loop
 		case IOTYPE_SAPR:
@@ -2390,10 +2491,22 @@ int CSong::LoadRMT(ifstream& in)
 }
 
 
-BOOL CSong::ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrsaved, BYTE* tracksaved, BOOL sfx, BOOL gvf, BOOL nos)
+BOOL CSong::ComposeRMTFEATstring(
+	CString& dest, 
+	char* filename, 
+	BYTE* instrsaved, 
+	BYTE* tracksaved, 
+	BOOL sfx, 
+	BOOL gvf, 
+	BOOL nos,
+	int assemblerFormat
+)
 {
+	char* equal = "equ";
+	if (assemblerFormat == ASSEMBLER_FORMAT_ATASM)
+		equal = "=";
 
-#define DEST(var,str)	s.Format("%s\t\tequ %i\t\t;(%i times)\n",str,(var>0),var); dest+=s;
+#define DEST(var,str)	s.Format("%s\t\t%s %i\t\t;(%i times)\n",str,equal,(var>0),var); dest+=s;
 
 	dest.Format(";* --------BEGIN--------\n;* %s\n", filename);
 	//
@@ -2505,20 +2618,20 @@ BOOL CSong::ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrsaved
 
 	//generate strings
 
-	s.Format("FEAT_SFX\t\tequ %u\n", sfx); dest += s;
+	s.Format("FEAT_SFX\t\t%s %u\n", equal, sfx); dest += s;
 
-	s.Format("FEAT_GLOBALVOLUMEFADE\tequ %u\t\t;RMTGLOBALVOLUMEFADE variable\n", gvf); dest += s;
+	s.Format("FEAT_GLOBALVOLUMEFADE\t%s %u\t\t;RMTGLOBALVOLUMEFADE variable\n", equal, gvf); dest += s;
 
-	s.Format("FEAT_NOSTARTINGSONGLINE\tequ %u\n", nos); dest += s;
+	s.Format("FEAT_NOSTARTINGSONGLINE\t%s %u\n", equal, nos); dest += s;
 
-	s.Format("FEAT_INSTRSPEED\t\tequ %i\n", m_instrumentSpeed); dest += s;
+	s.Format("FEAT_INSTRSPEED\t\t%s %i\n", equal, m_instrumentSpeed); dest += s;
 
-	s.Format("FEAT_CONSTANTSPEED\t\tequ %i\t\t;(%i times)\n", (speedchanges == 0) ? m_mainSpeed : 0, speedchanges); dest += s;
+	s.Format("FEAT_CONSTANTSPEED\t\t%s %i\t\t;(%i times)\n", equal, (speedchanges == 0) ? m_mainSpeed : 0, speedchanges); dest += s;
 
 	//commands 1-6
 	for (i = 1; i <= 6; i++)
 	{
-		s.Format("FEAT_COMMAND%i\t\tequ %i\t\t;(%i times)\n", i, (usedcmd[i] > 0), usedcmd[i]);
+		s.Format("FEAT_COMMAND%i\t\t%s %i\t\t;(%i times)\n", i, equal, (usedcmd[i] > 0), usedcmd[i]);
 		dest += s;
 	}
 
@@ -2560,4 +2673,519 @@ BOOL CSong::ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrsaved
 	dest += ";* --------END--------\n";
 	dest.Replace("\n", "\x0d\x0a");
 	return 1;
+}
+
+
+static int rword(unsigned char* data, int i)
+{
+	return data[i] | (data[i + 1] << 8);
+}
+
+/// <summary>
+/// Based on the rtm2atasm code
+/// </summary>
+/// <param name="dest"></param>
+/// <param name="exportDesc"></param>
+/// <param name="strAsmStartLabel"></param>
+/// <param name="strTracksLabel"></param>
+/// <param name="strSongLinesLabel"></param>
+/// <param name="strInstrumentsLabel"></param>
+/// <param name="assemblerFormat"></param>
+/// <param name="sfx"></param>
+/// <param name="gvf"></param>
+/// <param name="nos"></param>
+/// <returns></returns>
+BOOL CSong::BuildRelocatableAsm(
+	CString& addCodeHere,
+	tExportDescription* exportDesc,
+	CString strAsmStartLabel,
+	CString strTracksLabel,
+	CString strSongLinesLabel,
+	CString strInstrumentsLabel,
+	int assemblerFormat,
+	BOOL sfx,
+	BOOL gvf,
+	BOOL nos,
+	bool bWantSizeInfoOnly
+)
+{
+	CString strModuleSequence = "\nSequence of modules:\n  Header\n";
+	CString strCode;
+
+	int sizeIntro = 16;
+	int sizeInstruments = 0;
+	int sizeTrack = 0;
+	int sizeSongLines = 0;
+
+	// .byte		|	dta
+	// .word		|   dta a()
+	// .byte "str"	|	dta c'str'
+	// ?localvar	|   __localvar
+
+	// Assembler type setup
+	BOOL hasDotLocal = 0;
+	char* _byte = "dta";
+	if (assemblerFormat == ASSEMBLER_FORMAT_ATASM)
+	{
+		hasDotLocal = 1;
+		_byte = ".byte";
+	}
+
+	// Sanity checks
+	strAsmStartLabel.Trim();
+	if (strAsmStartLabel.IsEmpty())
+		strAsmStartLabel = "RMT_SONG_DATA";
+
+	strCode.Format("; Cut and paste the data from the line ';* --------BEGIN--------'  to the line ';* --------END--------'\n; into rmt_feat%s\n",
+		assemblerFormat == ASSEMBLER_FORMAT_ATASM ? ".asm" : "./65"
+	);
+
+	CString str;
+	ComposeRMTFEATstring(str, "", exportDesc->instrumentSavedFlags, exportDesc->trackSavedFlags, sfx, gvf, nos, assemblerFormat);
+	strCode += str;
+	//
+	unsigned char* buf =  &exportDesc->mem[exportDesc->targetAddrOfModule];
+	int start = exportDesc->targetAddrOfModule;
+	int end = exportDesc->firstByteAfterModule;
+	int len = end - start;
+	str.Format("; RMT%c file exported as relocatable source code\n"
+			 "; Original size: $%04x bytes @ $%04x\n", buf[3], len, start);
+	strCode += str;
+
+	// Read parameters from file:
+	int numTracks = buf[3] - '0';				// RMTx - x is 4 or 8
+	int offsetInstrumentPtrTable = rword(buf, 8) - start;	// This is where the instruments are stored (always directly after this table)
+	int offsetTrackPtrTableLow = rword(buf, 10) - start;	// Track ptrs are broken up into lo and hi bytes
+	int offsetTrackPtrTableHigh = rword(buf, 12) - start;
+	int offsetSong = rword(buf, 14) - start;				// The song tracks start here
+
+	int numInstruments = offsetTrackPtrTableLow - offsetInstrumentPtrTable;
+	int numtrk = offsetTrackPtrTableHigh - offsetTrackPtrTableLow;
+
+	// Read all tracks addresses searching for the lowest address
+	int first_track = 0xFFFF;
+	for (int i = 0; i < numtrk; i++)
+	{
+		int x = buf[offsetTrackPtrTableLow + i] + (buf[offsetTrackPtrTableHigh + i] << 8);
+		if (x)
+		{
+			x -= start;
+			if (x < 0 || x >= offsetSong)
+			{
+				return 0;
+			}
+			if (x < first_track)
+				first_track = x;
+		}
+	}
+	// Read all instrument addresses searching for the lowest address
+	int first_instr = 0xFFFF;
+	for (int i = 0; i < numInstruments; i += 2)
+	{
+		int x = rword(buf, offsetInstrumentPtrTable + i);
+		if (x)
+		{
+			x -= start;
+			if (x < 0 || x >= first_track)
+			{
+				return 0;
+			}
+			if (x < first_instr)
+				first_instr = x;
+		}
+	}
+	if (first_instr < 0 || first_instr >= len ||
+		first_track < 0 || first_track >= len)
+	{
+		if (first_instr == 0xFFFF)
+		{
+			strCode += "; No instrument data!\n";
+		}
+		if (first_track)
+			return 0;
+	}
+	if (offsetTrackPtrTableHigh + numtrk != first_instr)
+	{
+		return 0;
+	}
+	if (first_track < first_instr)
+	{
+		return 0;
+	}
+
+	// Write assembly output
+	str.Format(
+		".local\n"
+		"%s\n"					// This is the start of the song data
+		"?start\n"
+		,
+		strAsmStartLabel		
+	);
+	strCode += str;
+
+	if (assemblerFormat == ASSEMBLER_FORMAT_ATASM)
+		str.Format("    {{byte}} \"RMT%c\"\n", buf[3]);
+	else
+		str.Format("    dta c'RMT%c'\n", buf[3]);
+	strCode += str;
+
+	str.Format("?song_info\n"
+		"    {{byte}} $%02x            ; Track length = %d\n"
+		"    {{byte}} $%02x            ; Song speed\n"
+		"    {{byte}} $%02x            ; Player Frequency\n"
+		"    {{byte}} $%02x            ; Format version\n"
+		, buf[4], buf[4]// max track length
+		, buf[5]		// song speed
+		, buf[6]		// player frequency
+		, buf[7]		// format version
+	); 
+	strCode += str;
+	strCode += "; ptrs to tables\n";
+	if (assemblerFormat == ASSEMBLER_FORMAT_ATASM)
+	{
+		// Atasm
+		str.Format(
+			"?ptrInstrumentTbl\n    .word ?InstrumentsTable       ; start + $%04x\n"
+			"?ptrTracksTblLo\n    .word ?TracksTblLo            ; start + $%04x\n"
+			"?ptrTracksTblHi\n    .word ?TracksTblHi            ; start + $%04x\n"
+			"?ptrSong\n    .word ?SongData               ; start + $%04x\n",
+			offsetInstrumentPtrTable, offsetTrackPtrTableLow, offsetTrackPtrTableHigh, offsetSong);
+	}
+	else 
+	{
+		// Xasm
+		str.Format(
+			"__ptrInstrumentTbl\n    dta a(__InstrumentsTable)       ; start + $%04x\n"
+			"__ptrTracksTblLo\n    dta a(__TracksTblLo)            ; start + $%04x\n"
+			"__ptrTracksTblHi\n    dta a(__TracksTblHi)            ; start + $%04x\n"
+			"__ptrSong\n    dta a(__SongData)               ; start + $%04x\n",
+			offsetInstrumentPtrTable, offsetTrackPtrTableLow, offsetTrackPtrTableHigh, offsetSong);
+	}
+	strCode += str;
+
+	// List of ptrs to instruments
+	strCode += "\n; List of ptrs to instruments\n";
+	int instr_pos[65536];
+	memset(instr_pos, 0, sizeof(instr_pos));
+	strCode += "?InstrumentsTable";
+
+	for (int i = 0; i < numInstruments; i += 2)
+	{
+		int loc = rword(buf, i + offsetInstrumentPtrTable) - start;
+		if (loc >= first_instr && loc < first_track && loc < len)
+		{
+			instr_pos[loc] = (i >> 1) + 1;
+			str.Format(assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "?Instrument_%d" : "a(?Instrument_%d)", i >> 1);
+		}
+		else if (loc == -start)
+			str = (assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "  $0000" : " a($0000)");
+		else
+		{
+			return 0;
+		}
+
+		sizeIntro += 2;		// 2 bytes per used instrument
+
+		strCode += (assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "\n    .word " : "\n    dta ");
+		strCode += str;
+		str.Format("\t\t; %s", g_Instruments.GetName(i >> 1));
+		strCode += str;
+	}
+	strCode += "\n";
+	// List of tracks:
+	int track_pos[65536];
+	memset((void*)track_pos, 0, sizeof(track_pos));
+	strCode += "\n?TracksTblLo";
+	for (int i = 0; i < numtrk; i++)
+	{
+		int loc = buf[i + offsetTrackPtrTableLow] + (buf[i + offsetTrackPtrTableHigh] << 8) - start;
+		if (i % 8 == 0)
+			strCode += (assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "\n    .byte " : "\n    dta ");
+		else
+			strCode += ",";
+		if (loc >= first_track && loc < offsetSong && loc < len)
+		{
+			track_pos[loc] = i + 1;
+			str.Format(assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "<?Track_%02x" : "l(__Track_%02x)", i);
+			strCode += str;
+		}
+		else if (loc == -start)
+			strCode += "$00";
+		else
+		{
+			return 0;
+		}
+
+		sizeIntro += 1;		// 1 byte per used track
+	}
+	strCode += "\n?TracksTblHi";
+	for (int i = 0; i < numtrk; i++)
+	{
+		int loc = buf[i + offsetTrackPtrTableLow] + (buf[i + offsetTrackPtrTableHigh] << 8) - start;
+		if (i % 8 == 0)
+			strCode += (assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "\n    .byte " : "\n    dta ");
+		else
+			strCode += ",";
+		if (loc >= first_track && loc < offsetSong && loc < len)
+		{
+			str.Format(assemblerFormat == ASSEMBLER_FORMAT_ATASM ? ">?Track_%02x" : "h(__Track_%02x)", i);
+			strCode += str;
+		}
+		else if (loc == -start)
+			strCode += "$00";
+		else
+		{
+			return 0;
+		}
+
+		sizeIntro += 1;		// 1 byte per used track
+	}
+
+	strCode += "\n";
+
+	// First dump all the sequencial code, relocated data is dumped after this
+	if (strInstrumentsLabel.IsEmpty())
+	{
+		sizeInstruments = BuildInstrumentData(str, "", buf, first_instr, first_track, instr_pos, assemblerFormat);
+		strCode += str;
+
+		strModuleSequence += "  Instruments\n";
+	}
+	if (strTracksLabel.IsEmpty())
+	{
+		sizeTrack = BuildTracksData(str, "", buf, first_track, offsetSong, track_pos, assemblerFormat);
+		if (sizeTrack == 0)
+			return 0;
+		strCode += str;
+		strModuleSequence += "  Tracks\n";
+	}
+	if (strSongLinesLabel.IsEmpty())
+	{
+		sizeSongLines = BuildSongData(str, "", buf, offsetSong, len, start, numTracks, assemblerFormat);
+		strCode += str;
+		strModuleSequence += "  Song Lines\n";
+	}
+
+	// Dump the relocated data
+	if (strInstrumentsLabel.IsEmpty() == false)
+	{
+		sizeInstruments = BuildInstrumentData(str, strInstrumentsLabel, buf, first_instr, first_track, instr_pos, assemblerFormat);
+		strCode += str;
+		strModuleSequence += "Relocated Instruments\n";
+	}
+	if (strTracksLabel.IsEmpty() == false)
+	{
+		sizeTrack = BuildTracksData(str, strTracksLabel, buf, first_track, offsetSong, track_pos, assemblerFormat);
+		if (sizeTrack == 0)
+			return 0;
+		strCode += str;
+		strModuleSequence += "Relocated Tracks\n";
+	}
+	if (strSongLinesLabel.IsEmpty() == false)
+	{
+		sizeSongLines = BuildSongData(str, strSongLinesLabel, buf, offsetSong, len, start, numTracks, assemblerFormat);
+		strCode += str;
+		strModuleSequence += "Relocated Song Lines\n";
+	}
+
+	strCode.Replace("{{byte}}", _byte);
+	strCode.Replace("?", "__");
+
+	if (assemblerFormat == ASSEMBLER_FORMAT_XASM)
+		strCode.Replace(".local", "");
+
+
+	if (bWantSizeInfoOnly)
+	{
+		addCodeHere.Format(
+			"Header\t\t= $%04x (%d) bytes\n"
+			"Instruments\t= $%04x (%d) bytes\n"
+			"Tracks\t\t= $%04x (%d) bytes\n"
+			"Song Lines\t= $%04x (%d) bytes\n"
+			,
+			sizeIntro, sizeIntro,
+			sizeInstruments, sizeInstruments,
+			sizeTrack, sizeTrack,
+			sizeSongLines, sizeSongLines
+		);
+		addCodeHere += strModuleSequence;
+		addCodeHere.Replace("\n", "\x0d\x0a");
+	}
+	else
+	{
+		addCodeHere = strCode;
+	}
+
+	return 1;
+}
+
+int CSong::BuildInstrumentData(
+	CString &strCode, 
+	CString strInstrumentsLabel,
+	unsigned char* buf,
+	int from,
+	int to,
+	int *info,
+	int assemblerFormat
+)
+{
+	strCode = "\n\n; Instrument data\n";
+
+	int sizeInstruments = 0;
+	CString str;
+	if (strInstrumentsLabel.IsEmpty() == false)
+	{
+		// Make the instruments relocatable
+		str.Format(assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "* = %s\n" : "org %s\n", (LPCTSTR)strInstrumentsLabel);
+		strCode += str;
+	}
+
+	for (int i = from, l = 0; i < to; i++, l++)
+	{
+		if (info[i])
+		{
+			str.Format("\n?Instrument_%d", info[i] - 1);
+			strCode += str;
+			info[i] = 0;
+			l = 0;
+		}
+		if (l % 16 == 0)
+			strCode += "\n    {{byte}} ";
+		else
+			strCode += ",";
+		str.Format("$%02x", buf[i]);
+		strCode += str;
+
+		++sizeInstruments;
+	}
+
+	return sizeInstruments;
+}
+
+int CSong::BuildTracksData(
+	CString& strCode,
+	CString strTracksLabel,
+	unsigned char* buf,
+	int from,
+	int to,
+	int* track_pos,
+	int assemblerFormat
+)
+{
+	strCode = "\n\n; Track data";
+
+	int sizeTrack = 0;
+	CString str;
+
+	if (strTracksLabel.IsEmpty() == false)
+	{
+		// Make the track data relocatable
+		str.Format(assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "\n* = %s\n" : "\norg %s\n", (LPCTSTR)strTracksLabel);
+	}
+	strCode += str;
+	for (int i = from, l = 0; i < to; i++, l++)
+	{
+		if (track_pos[i])
+		{
+			str.Format("\n?Track_%02x", track_pos[i] - 1);
+			strCode += str;
+			track_pos[i] = 0;
+			l = 0;
+		}
+		if (l % 16 == 0)
+			strCode += "\n    {{byte}} ";
+		else
+			strCode += ",";
+		str.Format("$%02x", buf[i]);
+		strCode += str;
+
+		++sizeTrack;
+	}
+	for (int i = 0; i < 65536; i++)
+	{
+		if (track_pos[i] != 0)
+			return 0;
+	}
+	return sizeTrack;
+}
+
+int CSong::BuildSongData(
+	CString& strCode,
+	CString strSongLinesLabel,
+	unsigned char* buf,
+	int offsetSong,
+	int len,
+	int start,
+	int numTracks,
+	int assemblerFormat
+)
+{
+	strCode = "\n\n; Song data\n";
+
+	int sizeSongLines = 0;
+	CString str;
+	if (strSongLinesLabel.IsEmpty() == false)
+	{
+		str.Format(assemblerFormat == ASSEMBLER_FORMAT_ATASM ? "\n* = %s\n" : "\norg %s\n", (LPCTSTR)strSongLinesLabel);
+	}
+	strCode += str;
+
+	strCode += "?SongData";
+	int jmp = 0, l = 0;
+	for (int i = offsetSong; i < len; i++, l++)
+	{
+		if (jmp == -2)
+		{
+			jmp = 0x10000 + buf[i];
+			continue;
+		}
+		else if (jmp > 0)
+		{
+			jmp = (0xFFFF & (jmp | (buf[i] << 8))) - start;
+			if (0 == ((jmp - offsetSong) % numTracks) && jmp >= offsetSong && jmp < len)
+			{
+				int lnum = (jmp - offsetSong) / numTracks;
+				str.Format(assemblerFormat == ASSEMBLER_FORMAT_ATASM ? ",<?line_%02x,>?line_%02x" : ",l(__line_%02x),h(__line_%02x)", lnum, lnum);
+				strCode += str;
+			}
+			else
+			{
+				str.Format("; ERROR malformed file(song jump bad $ % 04x[% x:% x])\n", jmp, offsetSong, len);
+				strCode += str;
+				str.Format(assemblerFormat == ASSEMBLER_FORMAT_ATASM ? ",<($%x+?SongData),>($%x+?SongData)" : ",l($%x+__SongData),h($%x+__SongData)", jmp, jmp);
+				strCode += str;
+			}
+			jmp = 0;
+			// Allows terminating song on last JUMP
+			if (i + 1 == len && numTracks == 8)
+				l += 4;
+
+			continue;
+		}
+		else if (jmp == -1)
+			jmp = -2;
+
+		if (l % numTracks == 0)
+		{
+			str.Format("\n?Line_%02x  {{byte}} ", l / numTracks);
+			strCode += str;
+		}
+		else
+			strCode += ",";
+		str.Format("$%02x", buf[i]);
+		strCode += str;
+
+		if (buf[i] == 0xfe)
+		{
+			if ((l % numTracks) != 0)
+				return 0;
+			else
+				jmp = -1;
+		}
+
+		++sizeSongLines;
+	}
+	strCode += "\n";
+
+	return sizeSongLines;
 }

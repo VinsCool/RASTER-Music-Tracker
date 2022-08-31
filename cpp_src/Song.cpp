@@ -4,6 +4,8 @@ using namespace std;
 
 #include "GuiHelpers.h"
 
+#include "Song.h"
+
 // MFC interface code
 #include "FileNewDlg.h"
 #include "ExportDlgs.h"
@@ -17,7 +19,6 @@ using namespace std;
 #include "IOHelpers.h"
 
 #include "Instruments.h"
-#include "Song.h"
 #include "Clipboard.h"
 
 
@@ -112,7 +113,7 @@ void CSong::ClearSong(int numOfTracks)
 	g_rmtstripped_sfx = 0;		//is not a standard sfx variety stripped RMT
 	g_rmtstripped_gvf = 0;		//default does not use Feat GlobalVolumeFade
 	g_rmtmsxtext = "";			//clear the text for MSX export
-	g_expasmlabelprefix = "MUSIC";	//default label prefix for exporting simple ASM notation
+	g_PrefixForAllAsmLabels = "MUSIC";	//default label prefix for exporting simple ASM notation
 
 	PlayPressedTonesInit();
 
@@ -143,7 +144,7 @@ void CSong::ClearSong(int numOfTracks)
 
 	m_filename = "";
 	m_filetype = 0;	//none
-	m_exporttype = 0; //none
+	m_lastExportType = IOTYPE_NONE;
 
 	m_TracksOrderChange_songlinefrom = 0x00;
 	m_TracksOrderChange_songlineto = SONGLEN - 1;
@@ -251,7 +252,7 @@ int CSong::GetSubsongParts(CString& resultstr)
 }
 
 /// <summary>
-/// Mark all tracks that are referenced in song as USED
+/// Mark all tracks that are referenced in the song as USED
 /// </summary>
 /// <param name="arrayTRACKSNUM">Array where each used track if marked off</param>
 void CSong::MarkTF_USED(BYTE* arrayTRACKSNUM)
@@ -427,7 +428,7 @@ int CSong::MakeModule(unsigned char* mem, int addr, int iotype, BYTE* instrument
 {
 	int i, j;
 
-	//returns maxadr (points to the first free address after the module) and sets the instrsaved and tracksaved fields
+	// Returns maxadr (points to the first free address after the module) and sets the instrsaved and tracksaved fields
 	if (iotype == IOTYPE_RMF) return MakeRMFModule(mem, addr, instrumentSavedFlags, trackSavedFlags);
 
 	// Clear the instrument and tracks used flags

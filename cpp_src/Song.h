@@ -205,15 +205,60 @@ public:
 	int ImportTMC(std::ifstream& in);
 	int ImportMOD(std::ifstream& in);
 
-	int Export2(std::ofstream& ou, int iotype, char* filename = NULL);
 	int Export(std::ofstream& ou, int iotype, char* filename = NULL);
+
+	int ExportV2(std::ofstream& ou, int iotype, LPCTSTR filename = NULL);
 	int ExportAsRMT(std::ofstream& ou, tExportDescription* exportDesc);
-	int ExportAsStrippedRMT(std::ofstream& ou, tExportDescription* exportDesc);
+	int ExportAsStrippedRMT(std::ofstream& ou, tExportDescription* exportDesc, LPCTSTR filename);
+	int ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDesc);
+	int ExportAsRelocatableAsmForRmtPlayer(std::ofstream& ou, tExportDescription* exportStrippedDesc);
 
 	int TestBeforeFileSave();
 	int GetSubsongParts(CString& resultstr);
 
-	BOOL ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags, BOOL sfx, BOOL gvf, BOOL nos);
+	BOOL ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags, BOOL sfx, BOOL gvf, BOOL nos, int assemblerFormat);
+
+	BOOL BuildRelocatableAsm(CString& dest,
+		tExportDescription* exportDesc,
+		CString strAsmStartLabel,
+		CString strTracksLabel,
+		CString strSongLinesLabel,
+		CString strInstrumentsLabel,
+		int assemblerFormat,
+		BOOL sfx,
+		BOOL gvf,
+		BOOL nos,
+		bool bWantSizeInfoOnly);
+
+	int BuildInstrumentData(
+		CString& strCode,
+		CString strInstrumentsLabel,
+		unsigned char* buf,
+		int from,
+		int to,
+		int* info,
+		int assemblerFormat
+	);
+
+	int BuildTracksData(
+		CString& strCode,
+		CString strTracksLabel,
+		unsigned char* buf,
+		int from,
+		int to,
+		int* track_pos,
+		int assemblerFormat);
+
+	int BuildSongData(
+		CString& strCode,
+		CString strSongLinesLabel,
+		unsigned char* buf,
+		int offsetSong,
+		int len,
+		int start,
+		int numTracks,
+		int assemblerFormat
+	);
 
 	void MarkTF_USED(BYTE* arrayTRACKSNUM);
 	void MarkTF_NOEMPTY(BYTE* arrayTRACKSNUM);
@@ -345,7 +390,7 @@ private:
 
 	CString m_filename;
 	int m_filetype;
-	int m_exporttype;
+	int m_lastExportType;					// Which data format was used to export a file the last time?
 
 	int m_TracksOrderChange_songlinefrom; //is defined as a member variable to keep in use
 	int m_TracksOrderChange_songlineto;	  //the last values used remain

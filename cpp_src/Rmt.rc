@@ -490,7 +490,7 @@ BEGIN
     LTEXT           "Are you sure?",-1,7,38,172,8
 END
 
-IDD_EXPASM DIALOG 0, 0, 280, 159
+IDD_EXPORT_ASM DIALOG 0, 0, 280, 159
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Export ASM simple notation source file"
 FONT 8, "MS Sans Serif"
@@ -666,6 +666,38 @@ BEGIN
     LTEXT           "Temperament",IDC_STATIC,14,42,55,8
     PUSHBUTTON      "Test now",IDTESTNOW,9,325,50,14
     PUSHBUTTON      "Reset",IDRESET,83,325,50,14
+END
+
+IDD_EXPORT_RMTPLAYER_ASM DIALOGEX 0, 0, 277, 280
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Export ASM for RmtPlayer.asm"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
+BEGIN
+    EDITTEXT        IDC_RMT_MODULE_ASM_LABEL,118,27,155,12,ES_UPPERCASE | ES_AUTOHSCROLL
+    CONTROL         "Relocate instruments to",IDC_CHK_RELOCATE_INSTRUMENTS,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,43,87,10
+    EDITTEXT        IDC_EDIT_INSTRUMENTS_LABEL,176,42,97,12,ES_UPPERCASE | ES_AUTOHSCROLL | WS_DISABLED
+    CONTROL         "Relocate tracks to",IDC_CHK_RELOCATE_TRACKS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,58,74,10
+    EDITTEXT        IDC_EDIT_TRACKS_LABEL,176,57,97,12,ES_UPPERCASE | ES_AUTOHSCROLL | WS_DISABLED
+    CONTROL         "Relocatable song lines to",IDC_CHK_RELOCATE_SONG,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,73,95,10
+    EDITTEXT        IDC_EDIT_SONG_LINES_LABEL,176,72,97,12,ES_UPPERCASE | ES_AUTOHSCROLL | WS_DISABLED
+    COMBOBOX        IDC_COMBO_ASM_FORMAT,65,86,121,57,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "SFX support (also preserve unused tracks and instruments in module)",IDC_RASM_SFX,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,103,233,10
+    CONTROL         "GlobalVolumeFade support (RMTGLOBALVOLUMEFADE variable)",IDC_GLOBALVOLUMEFADE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,115,267,10
+    CONTROL         "No songline start (always start from songline 0)",IDC_NOSTARTINGSONGLINE,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,4,127,267,10
+    DEFPUSHBUTTON   "OK",IDOK,162,262,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,216,262,50,14
+    EDITTEXT        IDC_RMTFEAT,4,153,266,106,ES_MULTILINE | ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL
+    LTEXT           "The RMT song will be exported as byte definitions with specific labels.\r\nThe code is fully relocatable and can be split over various locations in memory!",IDC_STATIC,4,4,269,17
+    CTEXT           "Static",IDC_INFO,4,139,269,11
+    LTEXT           "ASM Label for start of song data:",IDC_STATIC,4,29,108,8
+    RTEXT           "ASM Tracks Label:",IDC_STATIC,109,59,64,8
+    RTEXT           "ASM Song Label:",IDC_STATIC,112,74,61,8
+    RTEXT           "ASM Instruments Label:",IDC_STATIC,94,45,79,8
+    LTEXT           "Assembler format:",IDC_STATIC,4,88,56,8
 END
 
 
@@ -930,7 +962,7 @@ BEGIN
         BOTTOMMARGIN, 94
     END
 
-    IDD_EXPASM, DIALOG
+    IDD_EXPORT_ASM, DIALOG
     BEGIN
     END
 
@@ -973,6 +1005,14 @@ BEGIN
         RIGHTMARGIN, 261
         BOTTOMMARGIN, 339
     END
+
+    IDD_EXPORT_RMTPLAYER_ASM, DIALOG
+    BEGIN
+        LEFTMARGIN, 4
+        RIGHTMARGIN, 273
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 276
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -998,6 +1038,11 @@ BEGIN
 END
 
 IDD_TUNING AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_EXPORT_RMTPLAYER_ASM AFX_DIALOG_LAYOUT
 BEGIN
     0
 END

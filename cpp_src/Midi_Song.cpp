@@ -3,6 +3,7 @@
 using namespace std;
 
 #include "GuiHelpers.h"
+#include "Song.h"
 
 // MFC interface code
 #include "FileNewDlg.h"
@@ -17,7 +18,6 @@ using namespace std;
 #include "IOHelpers.h"
 
 #include "Instruments.h"
-#include "Song.h"
 #include "Clipboard.h"
 
 

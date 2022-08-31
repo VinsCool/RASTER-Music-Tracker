@@ -147,6 +147,7 @@
 #define MPLAY_SAPR_BLOCK	252	//SAPR dump from selection block (loop optional)
 #define MPLAY_SAPR_BOOKMARK	251	//SAPR dump from bookmak position
 
+#define IOTYPE_NONE			0			// No export has been done yet
 #define IOTYPE_RMT			1
 #define IOTYPE_RMW			2
 #define IOTYPE_RMTSTRIPPED	3
@@ -155,6 +156,7 @@
 #define IOTYPE_TXT			6
 #define IOTYPE_ASM			7
 #define IOTYPE_RMF			8
+#define IOTYPE_ASM_RMTPLAYER 9
 
 #define IOTYPE_SAPR			9
 #define IOTYPE_LZSS			10
@@ -166,6 +168,9 @@
 #define IOINSTR_RTI			1		//corresponding IOTYPE_RMT
 #define IOINSTR_RMW			2		//corresponding IOTYPE_RMW
 #define IOINSTR_TXT			6		//corresponding IOTYPE_TXT
+
+#define ASSEMBLER_FORMAT_ATASM	0
+#define ASSEMBLER_FORMAT_XASM	1
 
 #define MAXSUBSONGS			128		//in exported SAP maximum number of subsongs
 
