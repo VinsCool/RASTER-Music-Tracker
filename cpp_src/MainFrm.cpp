@@ -17,7 +17,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-extern BOOL g_closeapplication;
+extern BOOL g_closeApplication;
 extern CSong g_Song;
 
 /////////////////////////////////////////////////////////////////////////////
@@ -198,7 +198,7 @@ void CMainFrame::OnClose()
 	app->WriteProfileInt("Frame", "Bottom", wp.rcNormalPosition.bottom);
 	app->WriteProfileInt("Frame", "Right", wp.rcNormalPosition.right);
 
-	if (g_closeapplication)
+	if (g_closeApplication)
 	{
 		CFrameWnd::OnClose();
 	}

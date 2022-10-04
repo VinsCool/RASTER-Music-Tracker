@@ -16,7 +16,7 @@
 #define IDD_FILENEW                     131
 #define IDR_TOOLBARPLAY                 133
 #define IDD_EXPSAP                      135
-#define IDD_EXPRMT                      136
+#define IDD_EXPORT_STRIPPED_RMT         136
 #define IDD_EXPMSX                      137
 #define IDR_TOOLBARBLOCK                138
 #define IDR_TOOLBARCHANNELS             140
@@ -358,7 +358,7 @@
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_3D_CONTROLS                     1
-#define _APS_NEXT_RESOURCE_VALUE        171
+#define _APS_NEXT_RESOURCE_VALUE        172
 #define _APS_NEXT_COMMAND_VALUE         32908
 #define _APS_NEXT_CONTROL_VALUE         1162
 #define _APS_NEXT_SYMED_VALUE           105

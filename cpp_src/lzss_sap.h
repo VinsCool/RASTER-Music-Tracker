@@ -44,4 +44,4 @@ static int match(const uint8_t* data, int pos, int size, int* mpos);
 static void lzop_backfill(struct lzop* lz, int last_literal);
 static int lzop_last_is_match(const struct lzop* lz);
 static int lzop_encode(struct bf* b, const struct lzop* lz, int pos, int lpos);
-int LZSS_SAP(char* src, int srclen);
+int LZSS_SAP(unsigned char* src, int srclen);

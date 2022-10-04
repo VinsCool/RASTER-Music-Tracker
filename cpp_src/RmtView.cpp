@@ -31,7 +31,7 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-extern BOOL g_closeapplication;
+extern BOOL g_closeApplication;
 //#define SCREENUPDATE	g_screenupdate=1
 
 
@@ -520,11 +520,11 @@ void CRmtView::ReadConfig()
 		if (NAME("MIDI_NOTEOFF")) g_Midi.m_NoteOff = atoi(value);
 		else
 		//paths
-		if (NAME("PATH_SONGS")) g_path_songs = value;
+		if (NAME("PATH_SONGS")) g_defaultSongsPath = value;
 		else
-		if (NAME("PATH_INSTRUMENTS")) g_path_instruments = value;
+		if (NAME("PATH_INSTRUMENTS")) g_defaultInstrumentsPath = value;
 		else
-		if (NAME("PATH_TRACKS")) g_path_tracks = value;
+		if (NAME("PATH_TRACKS")) g_defaultTracksPath = value;
 		else
 		//view
 		if (NAME("VIEW_MAINTOOLBAR")) g_viewMainToolbar = atoi(value);
@@ -618,9 +618,9 @@ void CRmtView::WriteConfig()
 	ou << "MIDI_VOLUMEOFFSET=" << g_Midi.m_VolumeOffset << endl;
 	ou << "MIDI_NOTEOFF=" << g_Midi.m_NoteOff << endl;
 	//paths
-	ou << "PATH_SONGS=" << g_path_songs << endl;
-	ou << "PATH_INSTRUMENTS=" << g_path_instruments << endl;
-	ou << "PATH_TRACKS=" << g_path_tracks << endl;
+	ou << "PATH_SONGS=" << g_defaultSongsPath << endl;
+	ou << "PATH_INSTRUMENTS=" << g_defaultInstrumentsPath << endl;
+	ou << "PATH_TRACKS=" << g_defaultTracksPath << endl;
 	//view
 	ou << "VIEW_MAINTOOLBAR=" << g_viewMainToolbar << endl;
 	ou << "VIEW_BLOCKTOOLBAR=" << g_viewBlockToolbar << endl;
@@ -884,7 +884,7 @@ void CRmtView::OnInitialUpdate()
 	CString cmdl = GetCommandLine();
 	CString commandLineFilename = "";
 	g_prgpath = "";
-	g_lastloadpath_songs = g_lastloadpath_instruments = g_lastloadpath_tracks = "";
+	g_lastLoadPath_Songs = g_lastLoadPath_Instruments = g_lastLoadPath_Tracks = "";
 	if (cmdl!="")
 	{
 		int i1=0,i2=0;
@@ -978,7 +978,7 @@ void CRmtView::OnInitialUpdate()
 	Sleep(200);	//this will ensure there will be no false positive with the sound initialisation, else it would attempt to check too early and assume the plugins were not initialised
 
 	//Displays the ABOUT dialog if there is no Pokey or 6502 initialized...
-	if (!g_Pokey.GetRenderSound() || !g_is6502)
+	if (!g_Pokey.IsSoundDriverLoaded() || !g_is6502)
 	{
 		AfxGetApp()->GetMainWnd()->PostMessage(WM_COMMAND,ID_APP_ABOUT,0);
 	}
@@ -3163,7 +3163,7 @@ void CRmtView::OnWantExit() //called from the menu File/Exit ID_WANTEXIT instead
 		return; //there is no exit
 	}
 	g_Song.Stop();
-	g_closeapplication = 1;
+	g_closeApplication = 1;
 	g_Song.StopTimer();
 	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE,0,0);
 }

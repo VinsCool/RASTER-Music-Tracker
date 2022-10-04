@@ -26,19 +26,21 @@ using namespace std;
 
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
+#include "PokeyStream.h"
 
 
 extern CSong g_Song;
 extern CInstruments g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
 extern CXPokey g_Pokey;
+extern CPokeyStream g_PokeyStream;
 
 static BOOL busyInTimer = 0;
 
 void WaitForTimerRoutineProcessed()
 {
-	g_timerroutineprocessed = 0;
-	while (!g_timerroutineprocessed && !g_closeapplication) Sleep(1);		//waiting
+	g_timerRoutineProcessed = 0;
+	while (!g_timerRoutineProcessed && !g_closeApplication) Sleep(1);		// waiting
 }
 
 // ----------------------------------------------------------------------------
@@ -55,19 +57,19 @@ void CALLBACK G_TimerRoutine(UINT, UINT, DWORD, DWORD, DWORD)
 
 CSong::CSong()
 {
-	ClearSong(8);	//the default is 8 stereo tracks
+	ClearSong(8);	// The default is 8 stereo tracks
 
-	//initialise Timer
+	// initialise Timer
 	m_timer = 0;
-	g_timerroutineprocessed = 0;
+	g_timerRoutineProcessed = 0;
 
-	m_quantization_note = -1; //init
+	m_quantization_note = -1; // init
 	m_quantization_instr = -1;
 	m_quantization_vol = -1;
 
-	//Timer 1/50s = 20ms, 1/60s ~ 16/17ms
-	//Pal or NTSC
-	ChangeTimer((g_ntsc) ? 17 : 20);
+	// Timer 1/50s = 20ms, 1/60s ~ 16/17ms
+	// Pal or NTSC
+	ChangeTimer(g_ntsc ? 17 : 20);
 }
 
 CSong::~CSong()
@@ -82,13 +84,12 @@ void CSong::StopTimer()
 {
 	if (m_timer)
 	{
-		
-		while (busyInTimer);				// Wait until not in timer handler
+		while (busyInTimer);		// Wait until not in timer handler
 		
 		timeKillEvent(m_timer);		// Kill the timer
 		m_timer = 0;
 		
-		while (busyInTimer);				// Make sure not in the timer handler
+		while (busyInTimer);		// Make sure not in the timer handler
 	}
 }
 
@@ -103,10 +104,14 @@ void CSong::ChangeTimer(int ms)
 	m_timer = timeSetEvent(ms, 0, G_TimerRoutine, (ULONG)(NULL), TIME_PERIODIC);
 }
 
+/// <summary>
+/// Reset the song data to empty and return RMT into a default state
+/// </summary>
+/// <param name="numOfTracks">How many tracks are supported 4 or 8</param>
 void CSong::ClearSong(int numOfTracks)
 {
-	g_tracks4_8 = numOfTracks;	//track for 4/8 channels
-	g_rmtroutine = 1;			//RMT routine execution enabled
+	g_tracks4_8 = numOfTracks;	// Track for 4/8 channels
+	g_rmtroutine = 1;			// RMT routine execution enabled
 	g_prove = 0;
 	g_respectvolume = 0;
 	g_rmtstripped_adr_module = 0x4000;	//default standard address for stripped RMT modules
@@ -123,7 +128,7 @@ void CSong::ClearSong(int numOfTracks)
 	m_mainSpeed = m_speed = m_speeda = 16;
 	m_instrumentSpeed = 1;
 
-	g_activepart = g_active_ti = PART_TRACKS;	//tracks
+	g_activepart = g_active_ti = PART_TRACKS;
 
 	m_songplayline = m_songactiveline = 0;
 	m_trackactiveline = m_trackplayline = 0;
@@ -143,7 +148,7 @@ void CSong::ClearSong(int numOfTracks)
 	m_songnamecur = 0;
 
 	m_filename = "";
-	m_filetype = 0;	//none
+	m_filetype = IOTYPE_NONE;
 	m_lastExportType = IOTYPE_NONE;
 
 	m_TracksOrderChange_songlinefrom = 0x00;
@@ -180,19 +185,8 @@ void CSong::ClearSong(int numOfTracks)
 	g_changes = 0;
 }
 
-
-
 BOOL CSong::InitPokey() { return g_Pokey.InitSound(); };
 BOOL CSong::DeInitPokey() { return g_Pokey.DeInitSound(); };
-
-
-
-
-
-
-
-
-
 
 //---
 
@@ -2924,8 +2918,7 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 	if (m_play)
 	{
 		if (mode != MPLAY_FROM) Stop(); //already playing and wants something other than play from edited pos.
-		else
-			if (!m_followplay) Stop(); //is playing and wants to play from edited pos. but not followplay
+		else if (!m_followplay) Stop(); //is playing and wants to play from edited pos. but not followplay
 	}
 
 	m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
@@ -3018,19 +3011,11 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 	g_playtime = 0;
 	m_play = mode;
 
-	if (SAPRDUMP == 3)	//the SAP-R dumper initialisation flag was set 
-	{
-		for (int i = 0; i < 256; i++) { m_playcount[i] = 0; }	//reset lines play counter first
-		if (m_play == MPLAY_BLOCK)
-			m_playcount[m_trackplayline] += 1;	//increment the track line play count early, so it will be detected as the selection block loop
-		else
-			m_playcount[m_songplayline] += 1;	//increment the line play count early, to ensure that same line will be detected again as the loop point
-		SAPRDUMP = 1;	//set the SAPR dumper with the "is currently recording data" flag 
-	}
+	g_PokeyStream.CallFromPlay(m_play, m_trackplayline, m_songplayline);
 	return 1;
 }
 
-BOOL CSong::Stop()
+BOOL CSong::Stop(void)
 {
 	g_Undo.Separator();
 	m_play = MPLAY_STOP;
@@ -3044,37 +3029,23 @@ BOOL CSong::SongPlayNextLine()
 {
 	m_trackplayline = 0;	//first track pattern line 
 
-	//normal play, play from current position, or play from bookmark => shift to the next line  
+	// Normal play, play from current position, or play from bookmark => shift to the next line  
 	if (m_play == MPLAY_SONG || m_play == MPLAY_FROM || m_play == MPLAY_BOOKMARK)
 	{
-		m_songplayline++;	//increment the song line by 1
-		if (m_songplayline > 255) m_songplayline = 0;	//above 255, roll over to 0
+		m_songplayline++;		// Increment the song line by 1
+		if (m_songplayline > 255) 
+			m_songplayline = 0;	// Above 255, roll over to 0
 	}
 
-	//when a goto line is encountered, the player will jump right to the defined line and continue playback from that position
-	if (m_songgo[m_songplayline] >= 0)	//if a goto line is set here...
-		m_songplayline = m_songgo[m_songplayline];	//goto line ?? 
+	// When a goto line is encountered, the player will jump right to the defined line and continue playback from that position
+	if (m_songgo[m_songplayline] >= 0)				// If a goto line is set here...
+		m_songplayline = m_songgo[m_songplayline];	// goto line xy
 
-	if (SAPRDUMP == 1)	//the SAPR dumper is running with the "is currently recording data" flag 
+	if (g_PokeyStream.TrackSongLine(m_songplayline) == true)
 	{
-		m_playcount[m_songplayline] += 1;	//increment the position counter by 1
-		int count = m_playcount[m_songplayline];	//fetch that line play count for the next step
-
-		if (count > 1)	//a value above 1 means a full playback loop has been completed, the line play count incremented twice
-		{
-			loops++;	//increment the dumper iteration count by 1
-			SAPRDUMP = 2;	//set the "write SAP-R data to file" flag
-			if (loops == 1)
-			{
-				for (int i = 0; i < 256; i++) { m_playcount[i] = 0; }	//reset the lines play count before the next step 
-				m_playcount[m_songplayline] += 1;	//increment the line play count early, to ensure that same line will be detected again as the loop point for the next dumper iteration 
-			}
-			if (loops == 2)
-			{
-				ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-				m_play = MPLAY_STOP;	//stop the player
-			}
-		}
+		// Song is done, so stop the play back
+		ChangeTimer((g_ntsc) ? 17 : 20);		// Reset the timer in case it was set to a different value
+		m_play = MPLAY_STOP;					// Stop the player
 	}
 	return 1;
 }
@@ -3148,26 +3119,12 @@ TrackLine:
 	}
 
 	if (m_play == MPLAY_BLOCK)
-	{	//most of this code was copied directly from the songline function, it's literally the same principle but on a trackline basis instead
-		if (SAPRDUMP == 1)	//the SAPR dumper is running with the "is currently recording data" flag 
+	{	
+		if (g_PokeyStream.CallFromPlayBeat(m_trackplayline) == true)
 		{
-			m_playcount[m_trackplayline] += 1;	//increment the position counter by 1
-			int count = m_playcount[m_trackplayline];	//fetch that line play count for the next step
-			if (count > 1)	//a value above 1 means a full playback loop has been completed, the line play count incremented twice
-			{
-				loops++;	//increment the dumper iteration count by 1
-				SAPRDUMP = 2;	//set the "write SAP-R data to file" flag
-				if (loops == 1)
-				{
-					for (int i = 0; i < 256; i++) { m_playcount[i] = 0; }	//reset the lines play count before the next step 
-					m_playcount[m_trackplayline] += 1;	//increment the line play count early, to ensure that same line will be detected again as the loop point for the next dumper iteration 
-				}
-				if (loops == 2)
-				{
-					ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-					m_play = MPLAY_STOP;	//stop the player
-				}
-			}
+			// Song is done, so stop the play back
+			ChangeTimer((g_ntsc) ? 17 : 20);		// Reset the timer in case it was set to a different value
+			m_play = MPLAY_STOP;					// Stop the player
 		}
 	}
 
@@ -3186,7 +3143,7 @@ BOOL CSong::PlayVBI()
 	//m_play mode 4 => only plays range in block
 	if (m_play == MPLAY_BLOCK && m_trackplayline > m_trackplayblockend) m_trackplayline = m_trackplayblockstart;
 
-	//if none of the tracks end with "end", then it will end when reaching m_maxtracklen
+	// If none of the tracks end with "end", then it will end when reaching m_maxtracklen
 	if (m_trackplayline >= g_Tracks.m_maxTrackLength)
 		SongPlayNextLine();
 
@@ -3229,28 +3186,31 @@ BOOL CSong::PlayVBI()
 	return 1;
 }
 
+/// <summary>
+/// Call this X times per second to handle the playing of the song
+/// </summary>
 void CSong::TimerRoutine()
 {
-	//things that are solved 1x for vbi
+	// Things that are solved 1x for vbi
 	PlayVBI();
 
-	//play tones if there are key presses
+	// Play tones if there are key presses
 	PlayPressedTones();
 
 	//--- Rendered Sound ---//
-	g_Pokey.RenderSound1_50(m_instrumentSpeed);		//rendering of a piece of sample (1 / 50s = 20ms), instrspeed
+	g_Pokey.RenderSound1_50(m_instrumentSpeed);		// Rendering of a piece of sample (1 / 50s = 20ms)
 
-	if (m_play) g_playtime++;					//if the song is currently playing, increment the timer
+	if (m_play) g_playtime++;						// If the song is currently playing, increment the timer
 
 	//--- NTSC timing hack during playback ---//
-	if (!SAPRDUMP && g_ntsc)
+	if (!g_PokeyStream.IsRecording() && g_ntsc)
 	{
-		//the NTSC timing cannot be divided to an integer
-		//the optimal timing would be 16.666666667ms, which is typically rounded to 17
-		//unfortunately, things run too slow with 17, or too fast 16
-		//a good enough compromise for now is to make use of a '17-17-16' miliseconds "groove"
-		//this isn't proper, but at least, this makes the timing much closer to the actual thing
-		//the only issue with this is that the sound will have very slight jitters during playback 
+		// The NTSC timing cannot be divided to an integer
+		// the optimal timing would be 16.666666667ms, which is typically rounded to 17
+		// unfortunately, things run too slow with 17, or too fast 16
+		// a good enough compromise for now is to make use of a '17-17-16' miliseconds "groove"
+		// this isn't proper, but at least, this makes the timing much closer to the actual thing
+		// the only issue with this is that the sound will have very slight jitters during playback 
 		
 		//if (g_playtime % 3 == 0) ChangeTimer(17);
 		//else if (g_playtime % 3 == 2) ChangeTimer(16);
@@ -3266,9 +3226,9 @@ void CSong::TimerRoutine()
 		if (g_screenupdate) //Does it want to redraw?
 		{
 			g_invalidatebytimer = 1;
-			if (!g_closeapplication)
+			if (!g_closeApplication)
 				AfxGetApp()->GetMainWnd()->Invalidate();
 		}
 	}
-	g_timerroutineprocessed = 1;	//TimerRoutine took place
+	g_timerRoutineProcessed = 1;	// TimerRoutine took place
 }

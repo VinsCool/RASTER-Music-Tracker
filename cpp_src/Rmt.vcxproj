@@ -218,6 +218,8 @@
     <ClCompile Include="IO_Importer.cpp" />
     <ClCompile Include="IO_Instruments.cpp" />
     <ClCompile Include="IO_Song.cpp" />
+    <ClCompile Include="IO_Song_ExportAsm.cpp" />
+    <ClCompile Include="IO_Song_ExportSaprLzss.cpp" />
     <ClCompile Include="IO_Tracks.cpp" />
     <ClCompile Include="Keyboard2NoteMapping.cpp" />
     <ClCompile Include="lzss_sap.cpp">
@@ -233,6 +235,7 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
     </ClCompile>
     <ClCompile Include="Midi_Song.cpp" />
+    <ClCompile Include="PokeyStream.cpp" />
     <ClCompile Include="Rmt.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
       <BasicRuntimeChecks Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">EnableFastChecks</BasicRuntimeChecks>
@@ -323,6 +326,7 @@
     <ClInclude Include="Keyboard2NoteMapping.h" />
     <ClInclude Include="libfmemopen.h" />
     <ClInclude Include="lzss_sap.h" />
+    <ClInclude Include="PokeyStream.h" />
     <ClInclude Include="Song.h" />
     <ClInclude Include="Tracks.h" />
     <ClInclude Include="Tuning.h" />

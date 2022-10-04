@@ -7,13 +7,13 @@
 // ConfigDlg.h : header file
 //
 
-extern CString g_path_songs;		//default path for songs
-extern CString g_path_instruments;	//default path for instruments
-extern CString g_path_tracks;		//default path for tracks
+extern CString g_defaultSongsPath;			// Default path for songs
+extern CString g_defaultInstrumentsPath;	// Default path for instruments
+extern CString g_defaultTracksPath;			// Default path for tracks
 
-extern CString g_lastloadpath_songs;
-extern CString g_lastloadpath_instruments;
-extern CString g_lastloadpath_tracks;
+extern CString g_lastLoadPath_Songs;
+extern CString g_lastLoadPath_Instruments;
+extern CString g_lastLoadPath_Tracks;
 
 /////////////////////////////////////////////////////////////////////////////
 // CConfigDlg dialog

@@ -3,23 +3,13 @@
 #include "XPokey.h"
 #include "RmtView.h"
 #include "Atari6502.h"
+#include "PokeyStream.h"
 #include "global.h"
-
-// Helper defines to make the code a bit more readable
-
-
-
 
 unsigned char g_atarimem[65536];
 char g_debugmem[65536];	//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
 
-unsigned char SAPRSTREAM[0xFFFFFF];	//SAP-R Dumper memory, TODO: assign memory dynamically instead, however this doesn't seem to harm anything for now
-
-int SAPRDUMP = 0;		//0, the SAPR dumper is disabled; 1, output is currently recorded to memory; 2, recording is finished and will be written to sap file; 3, flag engage the SAPR dumper
-int framecount = 0;		//SAPR dumper frame counter used for calculations and memory allignment with bytes 
-
-
-BOOL g_closeapplication = 0;			// Set when the application is busy shutting down
+BOOL g_closeApplication = 0;			// Set when the application is busy shutting down
 CDC* g_mem_dc = NULL;
 CDC* g_gfx_dc = NULL;
 
@@ -102,7 +92,7 @@ BOOL volatile g_invalidatebytimer = 0;
 int volatile g_screena;
 int volatile g_screenwait;
 BOOL volatile g_rmtroutine;
-BOOL volatile g_timerroutineprocessed;
+BOOL volatile g_timerRoutineProcessed;
 
 int volatile g_prove;			// Test notes without editing (0 = off, 1 = mono jam, 2 = stereo jam)
 int volatile g_respectvolume;	//does not change the volume if it is already there
@@ -141,11 +131,11 @@ BOOL is_editing_infos;		//0 no, 1 song name is edited
 
 int g_line_y = 0;			//active line coordinate, used to reference g_cursoractview to the correct position
 
-int g_trackLinePrimaryHighlight = 8;	//primary line highlighted every x lines
-int g_trackLineSecondaryHighlight = 4;	//secondary line highlighted every x lines
-BOOL g_tracklinealtnumbering = 0; //alternative way of line numbering in tracks
-int g_linesafter;			//number of lines to scroll after inserting a note (initializes in CSong :: Clear)
-BOOL g_ntsc = 0;				//NTSC (60Hz)
+int g_trackLinePrimaryHighlight = 8;	// Primary line highlighted every x lines
+int g_trackLineSecondaryHighlight = 4;	// Secondary line highlighted every x lines
+BOOL g_tracklinealtnumbering = 0;		// Alternative way of line numbering in tracks
+int g_linesafter;						// Number of lines to scroll after inserting a note (initializes in CSong :: Clear)
+BOOL g_ntsc = 0;						// NTSC (60Hz)
 BOOL g_nohwsoundbuffer = 0;	//Don't use hardware soundbuffer
 int g_cursoractview = 0;		//default position, line 0
 
@@ -173,13 +163,13 @@ int g_mouse_py = 0;
 int g_lastKeyPressed = 0;		//for debugging vk input
 
 CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
-CString g_lastloadpath_songs;		//the path of the last song loaded
-CString g_lastloadpath_instruments; //the path of the last instrument loaded
-CString g_lastloadpath_tracks;		//the path of the last track loaded
+CString g_lastLoadPath_Songs;		// Path of the last song loaded
+CString g_lastLoadPath_Instruments; //the path of the last instrument loaded
+CString g_lastLoadPath_Tracks;		//the path of the last track loaded
 
-CString g_path_songs;		//default path for songs
-CString g_path_instruments;	//default path for instruments
-CString g_path_tracks;		//default path for tracks
+CString g_defaultSongsPath;				// Default path for songs
+CString g_defaultInstrumentsPath;		// Default path for instruments
+CString g_defaultTracksPath;			// Default path for tracks
 
 int g_keyboard_layout = 1;	//Keyboard layout is used by RMT. eg: QWERTY, AZERTY, etc
 BOOL g_keyboard_swapenter = 0;	//1 yes, 0 no, probably not needed anymore but will be kept for now
@@ -200,6 +190,7 @@ CInstruments	g_Instruments;
 CTracks			g_Tracks;
 CTrackClipboard g_TrackClipboard;
 CTuning			g_Tuning;			// Tuning calculations and POKEY tuning lookup tables generation
+CPokeyStream	g_PokeyStream;
 
 /*
 void UpdateShiftControlKeys()

@@ -132,7 +132,7 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,129,86,50,14
     LTEXT           "Maximal length of tracks",IDC_STATIC,37,17,77,8
     CTEXT           "Warning: Current data will be discarded!",IDC_STATIC,7,55,172,11
-    CTEXT           "This operation could not be undone!",IDC_STATIC,1,69,184,11
+    CTEXT           "This operation cannot be undone!",IDC_STATIC,1,69,184,11
 END
 
 IDD_EXPSAP DIALOGEX 0, 0, 280, 129
@@ -152,27 +152,29 @@ BEGIN
     LTEXT           "Subsongs (hexadecimal song line number for each subsong, first is default song):",IDC_STATIC,7,82,270,8
 END
 
-IDD_EXPRMT DIALOGEX 0, 0, 280, 250
+IDD_EXPORT_STRIPPED_RMT DIALOGEX 0, 0, 280, 259
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Export RMT stripped file"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,169,230,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,223,230,50,14
+    DEFPUSHBUTTON   "OK",IDOK,169,243,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,223,243,50,14
     EDITTEXT        IDC_ADDR,75,19,27,12,ES_UPPERCASE
     CONTROL         "SFX support (also preserve unused tracks and instruments in module)",IDC_SFX,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,35,233,10
-    EDITTEXT        IDC_RMTFEAT,7,91,266,88,ES_MULTILINE | ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL
-    PUSHBUTTON      "Copy all to clipboard",IDC_COPYTOCLIPBOARD,169,184,104,14
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,48,233,10
+    EDITTEXT        IDC_RMTFEAT,7,104,266,88,ES_MULTILINE | ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL
+    PUSHBUTTON      "Copy all to clipboard",IDC_COPYTOCLIPBOARD,169,197,104,14
     LTEXT           "Memory location",IDC_STATIC,7,7,59,8
     LTEXT           "From address (HEX):",IDC_STATIC,7,20,65,8
     CTEXT           "Static",IDC_INFO,106,21,167,8
-    LTEXT           "Warning:\n",IDC_WARNING,9,202,258,27
-    LTEXT           "RMT FEATures definitions (for optimizations of RMT player assembler routine)",IDC_STATIC,7,81,266,8
+    LTEXT           "Warning:\n",IDC_WARNING,9,215,258,27
+    LTEXT           "RMT FEATures definitions (for optimizations of RMT player assembler routine)",IDC_STATIC,7,94,266,8
     CONTROL         "GlobalVolumeFade support (RMTGLOBALVOLUMEFADE variable)",IDC_GLOBALVOLUMEFADE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,49,267,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,62,267,10
     CONTROL         "No songline start (always start from songline 0)",IDC_NOSTARTINGSONGLINE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,63,267,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,76,267,10
+    COMBOBOX        IDC_COMBO_ASM_FORMAT,69,34,121,57,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Assembler format:",IDC_STATIC,8,36,56,8
 END
 
 IDD_EXPMSX DIALOGEX 0, 0, 280, 230
@@ -911,8 +913,9 @@ BEGIN
     BEGIN
     END
 
-    IDD_EXPRMT, DIALOG
+    IDD_EXPORT_STRIPPED_RMT, DIALOG
     BEGIN
+        BOTTOMMARGIN, 250
     END
 
     IDD_EXPMSX, DIALOG
@@ -1047,6 +1050,11 @@ BEGIN
     0
 END
 
+IDD_EXPORT_STRIPPED_RMT AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -1104,6 +1112,7 @@ BEGIN
     BUTTON      ID_FILE_NEW
     BUTTON      ID_FILE_OPEN
     BUTTON      ID_FILE_SAVE
+    BUTTON      ID_FILE_EXPORT_AS
     SEPARATOR
     BUTTON      ID_APP_ABOUT
     SEPARATOR
@@ -1422,6 +1431,11 @@ END
 
 STRINGTABLE
 BEGIN
+    ID_FILE_EXPORT_AS       "Export song to file\nExport"
+END
+
+STRINGTABLE
+BEGIN
     ID_APP_ABOUT            "Display program information, version number and copyright\nAbout"
     ID_APP_EXIT             "Quit the application\nExit"
 END
@@ -1534,11 +1548,6 @@ STRINGTABLE
 BEGIN
     ID_MIDIONOFF            "MIDI on/off\nMIDI on/off"
     ID_VIEW_CONFIGURATION   "Display the configuration menu"
-END
-
-STRINGTABLE
-BEGIN
-    ID_FILE_EXPORT_AS       "Export song to file"
 END
 
 STRINGTABLE

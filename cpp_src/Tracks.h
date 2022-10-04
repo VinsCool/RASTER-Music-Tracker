@@ -7,7 +7,7 @@
 
 struct TTrack
 {
-	int len;
+	int len;				// Length of the track
 	int go;
 	int note[TRACKLEN];
 	int instr[TRACKLEN];

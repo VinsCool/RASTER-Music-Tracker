@@ -290,8 +290,8 @@ static int lzop_encode(struct bf *b, const struct lzop *lz, int pos, int lpos)
     }
 }
 
-//hacked up version of main() by VinsCool, stripping out most options that aren't needed for RMT 
-int LZSS_SAP(char *src, int srclen)
+// Hacked up version of main() by VinsCool, stripping out most options that aren't needed for RMT 
+int LZSS_SAP(unsigned char *src, int srclen)
 {
     struct bf b;
     uint8_t buf[9], *data[9];
@@ -364,57 +364,52 @@ int LZSS_SAP(char *src, int srclen)
             break;
     }
 
-    FILE* input_file;
-
     // Load file directly from memory
-    input_file = fmemopen(src, srclen, "rb");
+    FILE* input_file = fmemopen(src, srclen, "rb");
 
     // Alloc statistic arrays
     stat_len = (int*)calloc(sizeof(int), max_mlen + 1);
     stat_off = (int*)calloc(sizeof(int), max_off + 1);
 
     // Max size of each bufer: 128k
-    for(int i=0; i<9; i++)
-    {
-        data[i] = (uint8_t*)malloc(128 * 1024);
-        lpos[i] = -1;
-    }
+	for (int i = 0; i < 9; i++)
+	{
+		data[i] = (uint8_t*)malloc(128 * 1024);
+		lpos[i] = -1;
+	}
 
     // Read all data
-    int sz;
-    for( sz = 0;  1 == fread(buf, 9, 1, input_file) && sz < (128*1024); sz++ )
-    {
-        for(int i=0; i<9; i++)
-        {
-            // Simplify patterns - rewrite silence as 0
-            if( (i & 1) == 1 )
-            {
-                int vol  = buf[i] & 0x0F;
-                int dist = buf[i] & 0xF0;
-                if( vol == 0 )
-                    buf[i] = 0;
-                // RMT will handle both the Proper Volume Only output, and the SAP-R dump patch for the Two-Tone Filter
-                //else if( dist & 0x10 )
-                //    buf[i] &= 0x1F;     // volume-only, ignore other bits
-                else if (dist & 0x20)
-                    buf[i] &= 0xBF;     // no noise, ignore noise type bit
+	int sz;
+	for (sz = 0; 1 == fread(buf, 9, 1, input_file) && sz < (128 * 1024); sz++)
+	{
+		for (int i = 0; i < 9; i++)
+		{
+			// Simplify patterns - rewrite silence as 0
+			if ((i & 1) == 1)
+			{
+				int vol = buf[i] & 0x0F;
+				int dist = buf[i] & 0xF0;
+				if (vol == 0)
+					buf[i] = 0;
+				// RMT will handle both the Proper Volume Only output, and the SAP-R dump patch for the Two-Tone Filter
+				//else if( dist & 0x10 )
+				//    buf[i] &= 0x1F;     // volume-only, ignore other bits
+				else if (dist & 0x20)
+					buf[i] &= 0xBF;     // no noise, ignore noise type bit
 
 
-            }
-            data[i][sz] = buf[i];
-        }
-    }
+			}
+			data[i][sz] = buf[i];
+		}
+	}
 
-    // Close file
-    if( input_file != stdin )
-        fclose(input_file);
-
-    // Open output file if needed
-    FILE* output_file; 
-   
+	// Close file
+	if (input_file != stdin)
+		fclose(input_file);
+ 
     // For some reason, writing directly to memory doesn't seem to work yet, use a temporary file as a compromise for the time being
     //output_file = fmemopen(dst, dstlen, "wb");
-    output_file = fopen(g_prgpath + "tmp.lzss", "wb");
+    FILE* output_file = fopen(g_prgpath + "tmp.lzss", "wb");
 
     if (!output_file)
         return 0;
@@ -422,121 +417,135 @@ int LZSS_SAP(char *src, int srclen)
     b.out = output_file;
 
     // Check for empty streams and warn
-    int chn_skip[9];;
-    init(&b);
-    for(int i=8; i>=0; i--)
-    {
-        const uint8_t *p = data[i], s = *p;
-        int n = 0;
-        for(int j=0; j<sz; j++)
-            if( *p++ != s )
-                n++;
-        if( i != 0 && !n )
-        {
-            if( show_stats )
-                fprintf(stderr,"Skipping channel #%d, set with $%02x.\n", i, s);
-            add_bit(&b,1);
-            chn_skip[i] = 1;
-        }
-        else
-        {
-            if( i )
-                add_bit(&b,0);
-            chn_skip[i] = 0;
-            if( !n )
-            {
-                fprintf(stderr,"WARNING: stream #%d ", i);
-                if( s == 0 )
-                    fprintf(stderr,"is empty");
-                else
-                    fprintf(stderr,"contains only $%02X", s);
-                fprintf(stderr, ", should not be included in output!\n");
-            }
-        }
-    }
-    bflush(&b);
+	int chn_skip[9];
+	init(&b);
+	for (int i = 8; i >= 0; i--)
+	{
+		const uint8_t* p = data[i], s = *p;
+		int n = 0;
+		for (int j = 0; j < sz; j++)
+			if (*p++ != s)
+				n++;
+		if (i != 0 && !n)
+		{
+			if (show_stats)
+				fprintf(stderr, "Skipping channel #%d, set with $%02x.\n", i, s);
+			add_bit(&b, 1);
+			chn_skip[i] = 1;
+		}
+		else
+		{
+			if (i)
+				add_bit(&b, 0);
+			chn_skip[i] = 0;
+			if (!n)
+			{
+				fprintf(stderr, "WARNING: stream #%d ", i);
+				if (s == 0)
+					fprintf(stderr, "is empty");
+				else
+					fprintf(stderr, "contains only $%02X", s);
+				fprintf(stderr, ", should not be included in output!\n");
+			}
+		}
+	}
+	bflush(&b);
 
-    // Now, we store initial values for all chanels:
-    for(int i=8; i>=0; i--)
-    {
-        // In version 1 we only store init byte for the skipped channels
-        if( fmt_literal_first || chn_skip[i] )
-            add_byte(&b, *data[i]);
-    }
-    bflush(&b);
+	// Now, we store initial values for all chanels:
+	for (int i = 8; i >= 0; i--)
+	{
+		// In version 1 we only store init byte for the skipped channels
+		if (fmt_literal_first || chn_skip[i])
+			add_byte(&b, *data[i]);
+	}
+	bflush(&b);
 
-    // Init LZ states
-    struct lzop lz[9];
-    for(int i=0; i<9; i++)
-        if( !chn_skip[i] )
-        {
-            lzop_init(&lz[i], data[i], sz);
-            lzop_backfill(&lz[i], 0);
-        }
+	// Init LZ states
+	struct lzop lz[9];
+	for (int i = 0; i < 9; i++)
+	{
+		if (!chn_skip[i])
+		{
+			lzop_init(&lz[i], data[i], sz);
+			lzop_backfill(&lz[i], 0);
+		}
+	}
 
     // Detect if at least one of the streams end in a match:
-    int end_not_ok = 1;
-    for(int i=0; i<9; i++)
-        if( !chn_skip[i] )
-            end_not_ok &= lzop_last_is_match(&lz[i]);
+	int end_not_ok = 1;
+	for (int i = 0; i < 9; i++)
+	{
+		if (!chn_skip[i])
+			end_not_ok &= lzop_last_is_match(&lz[i]);
+	}
 
-    // If all streams end in a match, we need to fix at least one to end in
-    // a literal - just fix stream 0, as this is always encoded:
-    if( force_last_literal && end_not_ok )
-    {
-        fprintf(stderr,"LZSS: fixing up stream #0 to end in a literal\n");
-        lzop_backfill(&lz[0], 1);
-    }
-    else if( end_not_ok )
-    {
-        fprintf(stderr,"WARNING: stream does not end in a literal.\n");
-        fprintf(stderr,"WARNING: this can produce errors at the end of decoding.\n");
-    }
+	// If all streams end in a match, we need to fix at least one to end in
+	// a literal - just fix stream 0, as this is always encoded:
+	if (force_last_literal && end_not_ok)
+	{
+		fprintf(stderr, "LZSS: fixing up stream #0 to end in a literal\n");
+		lzop_backfill(&lz[0], 1);
+	}
+	else if (end_not_ok)
+	{
+		fprintf(stderr, "WARNING: stream does not end in a literal.\n");
+		fprintf(stderr, "WARNING: this can produce errors at the end of decoding.\n");
+	}
 
     // Compress
-    for(int pos = fmt_literal_first ? 1 : 0; pos < sz; pos++)
-        for(int i=8; i>=0; i--)
-            if( !chn_skip[i] )
-                lpos[i] = lzop_encode(&b, &lz[i], pos, lpos[i]);
-    bflush(&b);
+	for (int pos = fmt_literal_first ? 1 : 0; pos < sz; pos++)
+	{
+		for (int i = 8; i >= 0; i--)
+		{
+			if (!chn_skip[i])
+				lpos[i] = lzop_encode(&b, &lz[i], pos, lpos[i]);
+		}
+	}
+	bflush(&b);
 
-    // Close file
-    if( output_file != stdout )
-        fclose(output_file);
-    else
-        fflush(stdout);
+	// Close file
+	if (output_file != stdout)
+		fclose(output_file);
+	else
+		fflush(stdout);
 
     // Show stats
     fprintf(stderr,"LZSS: max offset= %d,\tmax len= %d,\tmatch bits= %d,\t",
             max_off, max_mlen, bits_match - 1);
     fprintf(stderr,"ratio: %5d / %d = %5.2f%%\n", b.total, 9*sz, (100.0*b.total) / (9.0*sz));
-    if( show_stats )
-        for(int i=0; i<9; i++)
-            if( !chn_skip[i] )
-                fprintf(stderr," Stream #%d: %d bits,\t%5.2f%%,\t%5.2f%% of output\n", i,
-                        lz[i].bits[0], (100.0*lz[i].bits[0]) / (8.0*sz),
-                        (100.0*lz[i].bits[0])/(8.0*b.total) );
+	if (show_stats)
+	{
+		for (int i = 0; i < 9; i++)
+		{
+			if (!chn_skip[i])
+			{
+				fprintf(stderr, " Stream #%d: %d bits,\t%5.2f%%,\t%5.2f%% of output\n", i,
+					lz[i].bits[0], (100.0 * lz[i].bits[0]) / (8.0 * sz),
+					(100.0 * lz[i].bits[0]) / (8.0 * b.total));
+			}
+		}
+	}
 
-    if( show_stats>1 )
-    {
-        fprintf(stderr,"\nvalue\t  POS\t  LEN\n");
-        for(int i=0; i<=maximum(max_mlen,max_off); i++)
-        {
-            fprintf(stderr,"%2d\t%5d\t%5d\n", i,
-                    (i <= max_off) ? stat_off[i] : 0,
-                    (i <= max_mlen) ? stat_len[i] : 0);
-        }
-    }
+	if (show_stats > 1)
+	{
+		fprintf(stderr, "\nvalue\t  POS\t  LEN\n");
+		for (int i = 0; i <= maximum(max_mlen, max_off); i++)
+		{
+			fprintf(stderr, "%2d\t%5d\t%5d\n", i,
+				(i <= max_off) ? stat_off[i] : 0,
+				(i <= max_mlen) ? stat_len[i] : 0);
+		}
+	}
 
-    // Free memory
-    for(int i=0; i<9; i++)
-    {
-        free(data[i]);
-        if( !chn_skip[i] )
-            lzop_free(&lz[i]);
-    }
-    free(stat_len);
-    free(stat_off);
+	// Free memory
+	for (int i = 0; i < 9; i++)
+	{
+		free(data[i]);
+		if (!chn_skip[i])
+			lzop_free(&lz[i]);
+	}
+	free(stat_len);
+	free(stat_off);
 
-    return 1;
+	return 1;
 }

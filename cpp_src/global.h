@@ -15,12 +15,7 @@
 extern unsigned char g_atarimem[65536];
 extern char g_debugmem[65536];	//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
 
-extern unsigned char SAPRSTREAM[0xFFFFFF];	//SAP-R Dumper memory, TODO: assign memory dynamically instead, however this doesn't seem to harm anything for now
-
-extern int SAPRDUMP;		//0, the SAPR dumper is disabled; 1, output is currently recorded to memory; 2, recording is finished and will be written to sap file; 3, flag engage the SAPR dumper
-extern int framecount;		//SAPR dumper frame counter used for calculations and memory allignment with bytes 
-
-extern BOOL g_closeapplication;
+extern BOOL g_closeApplication;
 extern CDC* g_mem_dc;
 extern CDC* g_gfx_dc;
 
@@ -103,7 +98,7 @@ extern BOOL volatile g_invalidatebytimer;
 extern int volatile g_screena;
 extern int volatile g_screenwait;
 extern BOOL volatile g_rmtroutine;
-extern BOOL volatile g_timerroutineprocessed;
+extern BOOL volatile g_timerRoutineProcessed;
 
 extern int volatile g_prove;			//test notes without editing (0 = off, 1 = mono, 2 = stereo)
 extern int volatile g_respectvolume;	//does not change the volume if it is already there
@@ -172,13 +167,13 @@ extern int g_mouse_py;
 extern int g_lastKeyPressed;		//for debugging vk input
 
 extern CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
-extern CString g_lastloadpath_songs;		//the path of the last song loaded
-extern CString g_lastloadpath_instruments; //the path of the last instrument loaded
-extern CString g_lastloadpath_tracks;		//the path of the last track loaded
+extern CString g_lastLoadPath_Songs;		//the path of the last song loaded
+extern CString g_lastLoadPath_Instruments; //the path of the last instrument loaded
+extern CString g_lastLoadPath_Tracks;		//the path of the last track loaded
 
-extern CString g_path_songs;		//default path for songs
-extern CString g_path_instruments;	//default path for instruments
-extern CString g_path_tracks;		//default path for tracks
+extern CString g_defaultSongsPath;		//default path for songs
+extern CString g_defaultInstrumentsPath;	//default path for instruments
+extern CString g_defaultTracksPath;		//default path for tracks
 
 extern int g_keyboard_layout;			//Keyboard layout is used by RMT. eg: QWERTY, AZERTY, etc
 extern BOOL g_keyboard_swapenter;		//1 yes, 0 no, probably not needed anymore but will be kept for now

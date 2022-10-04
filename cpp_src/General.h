@@ -158,10 +158,10 @@
 #define IOTYPE_RMF			8
 #define IOTYPE_ASM_RMTPLAYER 9
 
-#define IOTYPE_SAPR			9
-#define IOTYPE_LZSS			10
-#define IOTYPE_LZSS_SAP		11
-#define IOTYPE_LZSS_XEX		12
+#define IOTYPE_SAPR			10
+#define IOTYPE_LZSS			11
+#define IOTYPE_LZSS_SAP		12
+#define IOTYPE_LZSS_XEX		13
 
 #define IOTYPE_TMC			101		//import TMC
 
@@ -276,3 +276,53 @@
 #define TIMBRE_GRITTY_C			0xC0	// (!MOD3 && !MOD5), also known as RMT Distortion E
 #define TIMBRE_BUZZY_C			0xC1	// (MOD3 && !MOD5), also known as RMT Distortion C
 #define TIMBRE_UNSTABLE_C		0xC2	// (!MOD3 && MOD5), must be avoided unless there is a purpose for it
+
+// ----------------------------------------------------------------------------
+// File open/save dialog format selections
+// .rmt / .txt / .rmw
+#define FILE_LOADSAVE_FILTERS "RMT song file (*.rmt)|*.rmt|TXT song file (*.txt)|*.txt|RMW song work file (*.rmw)|*.rmw||"
+#define FILE_LOADSAVE_FILTER_IDX_RMT 1
+#define FILE_LOADSAVE_FILTER_IDX_TXT 2
+#define FILE_LOADSAVE_FILTER_IDX_RMW 3
+#define FILE_LOADSAVE_FILTER_IDX_MIN FILE_LOADSAVE_FILTER_IDX_RMT
+#define FILE_LOADSAVE_FILTER_IDX_MAX FILE_LOADSAVE_FILTER_IDX_RMW
+#define FILE_LOADSAVE_EXTENSIONS_ARRAY { ".rmt",".txt",".rmw" }
+
+// ----------------------------------------------------------------------------
+// File import dialog format selections
+#define FILE_IMPORT_FILTERS "ProTracker Modules (*.mod)|*.mod|TMC song files (*.tmc,*.tm8)|*.tmc;*.tm8||"
+#define FILE_IMPORT_FILTER_IDX_MOD 1
+#define FILE_IMPORT_FILTER_IDX_TMC 2
+#define FILE_IMPORT_FILTER_IDX_MIN FILE_IMPORT_FILTER_IDX_MOD
+#define FILE_IMPORT_FILTER_IDX_MAX FILE_IMPORT_FILTER_IDX_TMC
+
+// ----------------------------------------------------------------------------
+// File export dialog format selections
+#define FILE_EXPORT_FILTERS \
+		"RMT stripped song file (*.rmt)|*.rmt|" \
+		"ASM simple notation source (*.asm)|*.asm|" \
+		"SAP-R data stream (*.sapr)|*.sapr|" \
+		"Compressed SAP-R data stream (*.lzss)|*.lzss|" \
+		"SAP file + LZSS driver (*.sap)|*.sap|" \
+		"XEX Atari executable + LZSS driver (*.xex)|*.xex|" \
+		"Relocatable ASM for RMTPlayer (*.asm)|*.asm|" \
+		"|"
+#define FILE_EXPORT_FILTER_IDX_STRIPPED_RMT 1
+#define FILE_EXPORT_FILTER_IDX_SIMPLE_ASM 2
+#define FILE_EXPORT_FILTER_IDX_SAPR 3
+#define FILE_EXPORT_FILTER_IDX_LZSS 4
+#define FILE_EXPORT_FILTER_IDX_SAP 5
+#define FILE_EXPORT_FILTER_IDX_XEX 6
+#define FILE_EXPORT_FILTER_IDX_RELOC_ASM 7
+#define FILE_EXPORT_FILTER_IDX_MIN FILE_EXPORT_FILTER_IDX_STRIPPED_RMT
+#define FILE_EXPORT_FILTER_IDX_MAX FILE_EXPORT_FILTER_IDX_RELOC_ASM
+#define FILE_EXPORT_EXTENSIONS_ARRAY { ".rmt",".asm",".sapr",".lzss",".sap",".xex",".asm" };
+#define FILE_EXPORT_EXTENSIONS_LENGTH_ARRAY { 4, 4, 5, 5, 4, 4, 4}
+
+// ----------------------------------------------------------------------------
+// Pokey play to buffer
+// 
+#define POKEY2BUFFER_STOP		0
+#define POKEY2BUFFER_RECORD		1
+#define POKEY2BUFFER_WRITE		2
+#define POKEY2BUFFER_START		3		// Start the Pokey 2 buffer recording process

@@ -144,15 +144,15 @@ void CConfigDlg::OnSelchangeKeyboardLayout()
 void CConfigDlg::OnPaths() 
 {
 	CConfigPathsDlg dlg;
-	dlg.m_path_songs = g_path_songs;
-	dlg.m_path_instruments = g_path_instruments;
-	dlg.m_path_tracks = g_path_tracks;
+	dlg.m_path_songs = g_defaultSongsPath;
+	dlg.m_path_instruments = g_defaultInstrumentsPath;
+	dlg.m_path_tracks = g_defaultTracksPath;
 	if (dlg.DoModal()==IDOK)
 	{
-		g_path_songs = dlg.m_path_songs;
-		g_path_instruments = dlg.m_path_instruments;
-		g_path_tracks = dlg.m_path_tracks;
-		g_lastloadpath_songs = g_lastloadpath_instruments = g_lastloadpath_tracks = "";
+		g_defaultSongsPath = dlg.m_path_songs;
+		g_defaultInstrumentsPath = dlg.m_path_instruments;
+		g_defaultTracksPath = dlg.m_path_tracks;
+		g_lastLoadPath_Songs = g_lastLoadPath_Instruments = g_lastLoadPath_Tracks = "";
 	}
 }
 /////////////////////////////////////////////////////////////////////////////

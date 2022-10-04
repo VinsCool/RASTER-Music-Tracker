@@ -157,7 +157,7 @@ public:
 	BOOL SetBookmark();
 
 	BOOL Play(int mode, BOOL follow, int special = 0);
-	BOOL Stop();
+	BOOL Stop(void);
 	BOOL SongPlayNextLine();
 
 	BOOL PlayBeat();
@@ -195,28 +195,32 @@ public:
 	int SongToAta(unsigned char* dest, int max, int adr);
 	BOOL AtaToSong(unsigned char* sour, int len, int adr);
 
-	int SaveTxt(std::ofstream& ou);
-	int SaveRMW(std::ofstream& ou);
+	bool SaveTxt(std::ofstream& ou);
+	bool SaveRMW(std::ofstream& ou);
 
-	int LoadRMT(std::ifstream& in);
-	int LoadTxt(std::ifstream& in);
-	int LoadRMW(std::ifstream& in);
+	bool LoadRMT(std::ifstream& in);
+	bool LoadTxt(std::ifstream& in);
+	bool LoadRMW(std::ifstream& in);
 
 	int ImportTMC(std::ifstream& in);
 	int ImportMOD(std::ifstream& in);
 
-	int Export(std::ofstream& ou, int iotype, char* filename = NULL);
+	bool ExportV2(std::ofstream& ou, int iotype, LPCTSTR filename = NULL);
+	bool ExportAsRMT(std::ofstream& ou, tExportDescription* exportDesc);
+	bool ExportAsStrippedRMT(std::ofstream& ou, tExportDescription* exportDesc, LPCTSTR filename);
+	bool ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDesc);
+	bool ExportAsRelocatableAsmForRmtPlayer(std::ofstream& ou, tExportDescription* exportStrippedDesc);
+	bool ExportSAP_R(std::ofstream& ou);
+	bool ExportLZSS(std::ofstream& ou);
+	bool ExportLZSS_SAP(std::ofstream& ou);
+	bool ExportLZSS_XEX(std::ofstream& ou);
 
-	int ExportV2(std::ofstream& ou, int iotype, LPCTSTR filename = NULL);
-	int ExportAsRMT(std::ofstream& ou, tExportDescription* exportDesc);
-	int ExportAsStrippedRMT(std::ofstream& ou, tExportDescription* exportDesc, LPCTSTR filename);
-	int ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDesc);
-	int ExportAsRelocatableAsmForRmtPlayer(std::ofstream& ou, tExportDescription* exportStrippedDesc);
+	void DumpSongToPokeyBuffer();
 
-	int TestBeforeFileSave();
+	bool TestBeforeFileSave();
 	int GetSubsongParts(CString& resultstr);
 
-	BOOL ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags, BOOL sfx, BOOL gvf, BOOL nos, int assemblerFormat);
+	void ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags, BOOL sfx, BOOL gvf, BOOL nos, int assemblerFormat);
 
 	BOOL BuildRelocatableAsm(CString& dest,
 		tExportDescription* exportDesc,
@@ -327,7 +331,7 @@ public:
 
 private:
 	int m_song[SONGLEN][SONGTRACKS];
-	int m_songgo[SONGLEN];					//if> = 0, then GO applies
+	int m_songgo[SONGLEN];						// If >= 0, then GO applies
 
 	int m_songactiveline;
 	int volatile m_songplayline;				// Which line of the song is currently being played

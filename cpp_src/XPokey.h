@@ -13,8 +13,6 @@
 
 #include "lzss_sap.h"
 
-/////////////////////////////////////////////////////////////////////////////
-// CMy2PokeysDlg dialog
 
 //hacked up, this should be restructured into a proper class and done in a cleaner way
 extern int loops;
@@ -37,6 +35,10 @@ extern int loops;
 #define CYCLESPERSCREEN ((float)CYCLESPERSECOND/FRAMERATE)
 #define CYCLESPERSAMPLE	((float)CYCLESPERSECOND/44100)
 
+#define SOUND_DRIVER_NONE		0
+#define SOUND_DRIVER_APOKEYSND	1
+#define SOUND_DRIVER_SA_POKEY	2
+
 class CXPokey
 {
 // Construction
@@ -47,16 +49,11 @@ public:
 	BOOL DeInitSound();
 	BOOL ReInitSound();
 	BOOL RenderSound1_50(int instrspeed);
-	BOOL MemToPokey(int tracks4_8);
-	BOOL GetRenderSound()		{ return m_rendersound; };
-
-	//Experimental SAP-R dumper functions, they may earn their own class at some point...
-	void WriteFileToSAPR(ofstream& ou, int frames, int offset);
-	void DumpSAPR();	
-	void DoneSAPR();	
+	void MemToPokey(int tracks4_8);
+	bool IsSoundDriverLoaded()	{ return m_soundDriverId != SOUND_DRIVER_NONE ? true : false; }
 
 private:
-	BOOL volatile m_rendersound;
+	int volatile m_soundDriverId;
 	HINSTANCE m_pokey_dll;
 
 	DWORD				m_LoadPos;

@@ -162,6 +162,15 @@
     <ClCompile Include="Midi_Song.cpp">
       <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
     </ClCompile>
+    <ClCompile Include="IO_Song_ExportAsm.cpp">
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
+    </ClCompile>
+    <ClCompile Include="IO_Song_ExportSaprLzss.cpp">
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
+    </ClCompile>
+    <ClCompile Include="PokeyStream.cpp">
+      <Filter>Source Files\Sound Generator</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConfigDlg.h">
@@ -256,6 +265,9 @@
     </ClInclude>
     <ClInclude Include="General.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PokeyStream.h">
+      <Filter>Source Files\Sound Generator</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

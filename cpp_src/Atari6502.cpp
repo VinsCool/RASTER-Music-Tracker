@@ -238,7 +238,7 @@ int LoadBinaryBlock(ifstream& in, unsigned char* memory, WORD& fromAddr, WORD& t
 	return toAddr-fromAddr+1;
 }
 
-int LoadBinaryFile(char *fname, unsigned char *memory,WORD& minadr,WORD& maxadr)
+int LoadBinaryFile(char* fname, unsigned char* memory, WORD& minadr, WORD& maxadr)
 {
 	int fsize,blen;
 	
