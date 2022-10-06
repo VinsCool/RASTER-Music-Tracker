@@ -269,6 +269,9 @@
     <ClInclude Include="PokeyStream.h">
       <Filter>Source Files\Sound Generator</Filter>
     </ClInclude>
+    <ClInclude Include="lzssp.h">
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\Rmt.ico">

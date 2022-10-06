@@ -17,20 +17,22 @@ using namespace std;
 
 #include "ChannelControl.h"
 
+#include "lzssp.h"
+
 extern CInstruments	g_Instruments;
 extern CPokeyStream g_PokeyStream;
 
-#define VU_PLAYER_LOOP_FLAG		0x1C22		// VUPlayer's address for the Loop flag
-#define VU_PLAYER_STEREO_FLAG	0x1DC3		// VUPlayer's address for the Stereo flag 
-#define VU_PLAYER_SONG_SPEED	0x2029		// VUPlayer's address for setting the song speed
-#define VU_PLAYER_DO_PLAY_ADDR	0x2174		// VUPlayer's address for Play, for SAP exports bypassing the mainloop code
-#define VU_PLAYER_RTS_NOP		0x21B1		// VUPlayer's address for JMP loop being patched to RTS NOP NOP with the SAP format
-#define VU_PLAYER_INIT_SAP		0x3080		// VUPlayer SAP initialisation hack
-#define LZSS_POINTER			0x3000		// All the LZSS subtunes index will occupy this memory page
-#define VU_PLAYER_REGION		0x202D		// VUPlayer's address for the region initialisation
-#define VU_PLAYER_RASTER_BAR	0x216B		// VUPlayer's address for the rasterbar display
-#define VU_PLAYER_COLOUR		0x2132		// VUPlayer's address for the rasterbar colour
-#define VU_PLAYER_SHUFFLE		0x2308		// VUPlayer's address for the rasterbar colour shuffle (incomplete feature)
+#define VU_PLAYER_LOOP_FLAG		LZSSP_LOOP_TOGGLE		// VUPlayer's address for the Loop flag
+#define VU_PLAYER_STEREO_FLAG	LZSSP_IS_STEREO_FLAG	// VUPlayer's address for the Stereo flag 
+#define VU_PLAYER_SONG_SPEED	LZSSP_PLAYER_SONG_SPEED	// VUPlayer's address for setting the song speed
+#define VU_PLAYER_DO_PLAY_ADDR	LZSSP_DO_PLAY			// VUPlayer's address for Play, for SAP exports bypassing the mainloop code
+#define VU_PLAYER_RTS_NOP		LZSSP_VU_PLAYER_RTS_NOP	// VUPlayer's address for JMP loop being patched to RTS NOP NOP with the SAP format
+#define VU_PLAYER_INIT_SAP		LZSSP_SAPINDEX			// VUPlayer SAP initialisation hack
+#define LZSS_POINTER			LZSSP_SONGSINDEXSTART	// All the LZSS subtunes index will occupy this memory page
+#define VU_PLAYER_REGION		LZSSP_PLAYER_REGION_INIT// VUPlayer's address for the region initialisation
+#define VU_PLAYER_RASTER_BAR	LZSSP_RASTERBAR_TOGGLER	// VUPlayer's address for the rasterbar display
+#define VU_PLAYER_COLOUR		LZSSP_RASTERBAR_COLOUR	// VUPlayer's address for the rasterbar colour
+#define VU_PLAYER_SHUFFLE		LZSSP_PLAYER_SHUFFLE	// VUPlayer's address for the rasterbar colour shuffle (incomplete feature)
 
 static void StrToAtariVideo(char* txt, int count)
 {
@@ -266,7 +268,7 @@ bool CSong::ExportLZSS_SAP(ofstream& ou)
 	g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
 
 	// Some additional variables that will be used below
-	int targetAddrOfModule = 0x3100;													// All the LZSS data will be written starting from this address
+	int targetAddrOfModule = LZSSP_SONGDATA;											// All the LZSS data will be written starting from this address
 	int lzss_offset = (intro) ? targetAddrOfModule + intro : targetAddrOfModule + full;	// Calculate the offset for the export process between the subtune parts, at the moment only 1 tune at the time can be exported
 	int lzss_end = lzss_offset + loop;													// this sets the address that defines where the data stream has reached its end
 
@@ -413,11 +415,11 @@ bool CSong::ExportLZSS_SAP(ofstream& ou)
 	// SAP initialisation patch, running from address 0x3080 in Atari executable 
 	unsigned char sapbytes[14] =
 	{
-		0x8D,0xE7,0x22,		// STA SongIdx
-		0xA2,0x00,			// LDX #0
-		0x8E,0x93,0x1B,		// STX is_fadeing_out
-		0x8E,0x03,0x1C,		// STX stop_on_fade_end
-		0x4C,0x39,0x1C		// JMP SetNewSongPtrsLoopsOnly
+		0x8D,LZSSP_SONGIDX & 0xff,LZSSP_SONGIDX>>8,									// STA SongIdx
+		0xA2,0x00,																	// LDX #0
+		0x8E,LZSSP_IS_FADEING_OUT & 0xff, LZSSP_IS_FADEING_OUT>>8,					// STX is_fadeing_out
+		0x8E,LZSSP_STOP_ON_FADE_END & 0xff, LZSSP_STOP_ON_FADE_END>>8,				// STX stop_on_fade_end
+		0x4C,LZSSP_SETNEWSONGPTRSLOOPSONLY & 0xff, LZSSP_SETNEWSONGPTRSLOOPSONLY>>8	// JMP SetNewSongPtrsLoopsOnly
 	};
 	memcpy(mem + VU_PLAYER_INIT_SAP, sapbytes, 14);
 
@@ -429,16 +431,16 @@ bool CSong::ExportLZSS_SAP(ofstream& ou)
 	SaveBinaryBlock(ou, mem, 0x2000, 0x27FF, 0);	// VUPlayer only
 
 	// SongStart pointers
-	mem[0x3000] = targetAddrOfModule >> 8;
-	mem[0x3001] = lzss_offset >> 8;
-	mem[0x3002] = targetAddrOfModule & 0xFF;
-	mem[0x3003] = lzss_offset & 0xFF;
+	mem[LZSSP_SONGSSHIPTRS] = targetAddrOfModule >> 8;				// SongsSHIPtrs
+	mem[LZSSP_SONGSINDEXEND] = lzss_offset >> 8;					// SongsIndexEnd
+	mem[LZSSP_SONGSSLOPTRS] = targetAddrOfModule & 0xFF;			// SongsSLOPtrs
+	mem[LZSSP_SONGSDUMMYEND] = lzss_offset & 0xFF;					// SongsDummyEnd
 
 	// SongEnd pointers
-	mem[0x3004] = lzss_offset >> 8;
-	mem[0x3005] = lzss_end >> 8;
-	mem[0x3006] = lzss_offset & 0xFF;
-	mem[0x3007] = lzss_end & 0xFF;
+	mem[LZSSP_LOOPSINDEXSTART] = lzss_offset >> 8;					// LoopsIndexStart
+	mem[LZSSP_LOOPSINDEXEND] = lzss_end >> 8;						// LoopsIndexEnd
+	mem[LZSSP_LOOPSSLOPTRS] = lzss_offset & 0xFF;					// LoopsSLOPtrs
+	mem[LZSSP_LOOPSDUMMYEND] = lzss_end & 0xFF;						// LoopsDummyEnd
 
 	if (intro)
 	{
@@ -523,7 +525,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
 
 	// Some additional variables that will be used below
-	int targetAddrOfModule = 0x3100;													// All the LZSS data will be written starting from this address
+	int targetAddrOfModule = LZSSP_SONGDATA;											// All the LZSS data will be written starting from this address
 	int lzss_offset = (intro) ? targetAddrOfModule + intro : targetAddrOfModule + full;	// Calculate the offset for the export process between the subtune parts, at the moment only 1 tune at the time can be exported
 	int lzss_end = lzss_offset + loop;													// this sets the address that defines where the data stream has reached its end
 
@@ -582,7 +584,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	g_rmtmsxtext.Replace("\x0d\x0d", "\x0d");	//13, 13 => 13
 
 	// This block of code will handle all the user input text that will be inserted in the binary during the export process
-	memset(mem + 0x2EBC, 32, 40 * 5);	// 5 lines of 40 characters at the user text address
+	memset(mem + LZSSP_LINE_1, 32, 40 * 5);	// 5 lines of 40 characters at the user text address
 	int p = 0, q = 0;
 	char a;
 	for (int i = 0; i < dlg.m_txt.GetLength(); i++)
@@ -591,34 +593,34 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		if (a == '\n') { p += 40; q = 0; }
 		else
 		{
-			mem[0x2EBC + p + q] = a;
+			mem[LZSSP_LINE_1 + p + q] = a;
 			q++;
 		}
 		if (p + q >= 5 * 40) break;
 	}
-	StrToAtariVideo((char*)mem + 0x2EBC, 200);
+	StrToAtariVideo((char*)mem + LZSSP_LINE_1, 200);
 
-	memset(mem + 0x2C0B, 32, 28);	// 28 characters on the top line, next to the Region and VBI speed
+	memset(mem + LZSSP_LINE_0 + 0x0B, 32, 28);	// 28 characters on the top line, next to the Region and VBI speed
 	char framesdisplay[28] = { 0 };
 	sprintf(framesdisplay, "(%i frames)", g_PokeyStream.GetFirstCountPoint());	// Total recorded frames
 	for (int i = 0; i < 28; i++)
 	{
-		mem[0x2C0B + i] = framesdisplay[i];
+		mem[LZSSP_LINE_0 + 0x0B + i] = framesdisplay[i];
 	}
-	StrToAtariVideo((char*)mem + 0x2C0B, 28);
+	StrToAtariVideo((char*)mem + LZSSP_LINE_0 + 0x0B, 28);
 
 	// I know the binary I have is currently set to NTSC, so I'll just convert to PAL and keep this going for now...
 	if (!g_ntsc)
 	{
 		unsigned char regionbytes[18] =
 		{
-			0xB9,0xE6,0x26,	//LDA tabppPAL-1,y
-			0x8D,0x56,0x21,	//STA acpapx2
-			0xE0,0x9B,		//CPX #$9B
-			0x30,0x05,		//BMI set_ntsc
-			0xB9,0xF6,0x26,	//LDA tabppPALfix-1,y
-			0xD0,0x03,		//BNE region_done
-			0xB9,0x16,0x27	//LDA tabppNTSCfix-1,y
+			0xB9,(LZSSP_TABPPPAL-1) & 0xff,(LZSSP_TABPPPAL-1) >> 8,			//LDA tabppPAL-1,y
+			0x8D,LZSSP_ACPAPX2 & 0xFF,LZSSP_ACPAPX2 >> 8,					//STA acpapx2
+			0xE0,0x9B,														//CPX #$9B
+			0x30,0x05,														//BMI set_ntsc
+			0xB9,(LZSSP_TABPPPALFIX-1) & 0xff,(LZSSP_TABPPPALFIX-1) >> 8,	//LDA tabppPALfix-1,y
+			0xD0,0x03,														//BNE region_done
+			0xB9,(LZSSP_TABPPNTSCFIX-1) & 0xFF,(LZSSP_TABPPNTSCFIX-1) >> 8	//LDA tabppNTSCfix-1,y
 		};
 		for (int i = 0; i < 18; i++) mem[VU_PLAYER_REGION + i] = regionbytes[i];
 	}
@@ -644,16 +646,16 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	SaveBinaryBlock(ou, mem, 0x2e0, 0x2e1, 0);
 
 	// SongStart pointers
-	mem[0x3000] = targetAddrOfModule >> 8;
-	mem[0x3001] = lzss_offset >> 8;
-	mem[0x3002] = targetAddrOfModule & 0xFF;
-	mem[0x3003] = lzss_offset & 0xFF;
+	mem[LZSSP_SONGSSHIPTRS] = targetAddrOfModule >> 8;				// SongsSHIPtrs
+	mem[LZSSP_SONGSINDEXEND] = lzss_offset >> 8;					// SongsIndexEnd
+	mem[LZSSP_SONGSSLOPTRS] = targetAddrOfModule & 0xFF;			// SongsSLOPtrs
+	mem[LZSSP_SONGSDUMMYEND] = lzss_offset & 0xFF;					// SongsDummyEnd
 
 	// SongEnd pointers
-	mem[0x3004] = lzss_offset >> 8;
-	mem[0x3005] = lzss_end >> 8;
-	mem[0x3006] = lzss_offset & 0xFF;
-	mem[0x3007] = lzss_end & 0xFF;
+	mem[LZSSP_LOOPSINDEXSTART] = lzss_offset >> 8;					// LoopsIndexStart
+	mem[LZSSP_LOOPSINDEXEND] = lzss_end >> 8;						// LoopsIndexEnd
+	mem[LZSSP_LOOPSSLOPTRS] = lzss_offset & 0xFF;					// LoopsSLOPtrs
+	mem[LZSSP_LOOPSDUMMYEND] = lzss_end & 0xFF;						// LoopsDummyEnd
 
 	if (intro)
 	{

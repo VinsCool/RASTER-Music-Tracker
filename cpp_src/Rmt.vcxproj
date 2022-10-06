@@ -325,6 +325,7 @@
     <ClInclude Include="IOHelpers.h" />
     <ClInclude Include="Keyboard2NoteMapping.h" />
     <ClInclude Include="libfmemopen.h" />
+    <ClInclude Include="lzssp.h" />
     <ClInclude Include="lzss_sap.h" />
     <ClInclude Include="PokeyStream.h" />
     <ClInclude Include="Song.h" />
