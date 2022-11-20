@@ -1153,7 +1153,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			r = g_Song.InfoCursorGotoHighlight(point.x - 432);
 			if (r) SCREENUPDATE;
 		}
-		if (wheelzDelta != 0)
+		else if (wheelzDelta != 0)
 		{
 			if (px < 2)	//primary line highlight
 			{
@@ -1181,7 +1181,11 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 					if (g_trackLineSecondaryHighlight < 1) g_trackLineSecondaryHighlight = 1;
 				}
 			}
-			if (r) SCREENUPDATE;
+			if (r)
+			{
+				WriteConfig();	//in order to save the edited highlight values without opening the Config Dialog
+				SCREENUPDATE;
+			}
 		}
 		return 6;
 	}
@@ -1844,6 +1848,8 @@ end_save_control_s:
 	AllModesDefaultKey:
 			int r=0;
 			BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
+			int primary_highlight = g_trackLinePrimaryHighlight;
+			int secondary_highlight = g_trackLineSecondaryHighlight;
 			switch (g_activepart)
 			{
 			case PART_INFO:
@@ -1873,6 +1879,10 @@ do_infokey_anyway:
 						r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
 					else
 					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
+				}
+				if (primary_highlight != g_trackLinePrimaryHighlight || secondary_highlight != g_trackLineSecondaryHighlight)
+				{
+					WriteConfig();	//quick and dirty hack for saving the line highlight into the .ini file when it is changed
 				}
 				break;
 
