@@ -32,7 +32,8 @@ public:
 	BOOL	m_midi_TouchResponse;
 	//BOOL	m_keyboard_playautofollow;
 	int		m_midi_VolumeOffset;
-	int		m_tracklinehighlight;
+	int		m_trackLinePrimaryHighlight;
+	int		m_trackLineSecondaryHighlight;
 	int     m_scaling_percentage;
 	//double	m_tuning;
 	BOOL	m_ntsc;
