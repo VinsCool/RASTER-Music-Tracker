@@ -133,12 +133,7 @@ void CConfigDlg::OnMidiTouchResponseClicked()
 
 void CConfigDlg::OnSelchangeKeyboardLayout() 
 {
-	if (m_keyboard_c_layout.GetCurSel()==1)
-	{
-		//Layer 2
-		CButton* af = (CButton*)GetDlgItem(IDC_KEYBOARD_PLAYAUTOFOLLOW);
-		af->SetCheck(1);
-	}
+	m_keyboard_layout = m_keyboard_c_layout.GetCurSel();
 }
 
 void CConfigDlg::OnPaths() 
