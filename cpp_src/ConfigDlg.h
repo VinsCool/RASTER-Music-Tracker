@@ -30,12 +30,10 @@ public:
 	CComboBox	m_keyboard_c_layout;
 	CComboBox	m_midi_c_device;
 	BOOL	m_midi_TouchResponse;
-	//BOOL	m_keyboard_playautofollow;
 	int		m_midi_VolumeOffset;
 	int		m_trackLinePrimaryHighlight;
 	int		m_trackLineSecondaryHighlight;
 	int     m_scaling_percentage;
-	//double	m_tuning;
 	BOOL	m_ntsc;
 	BOOL	m_doSmoothScrolling;
 	BOOL	m_displayflatnotes;
@@ -44,7 +42,6 @@ public:
 	BOOL	m_keyboard_updowncontinue;
 	BOOL	m_nohwsoundbuffer;
 	BOOL	m_tracklinealtnumbering;
-	//BOOL	m_keyboard_swapenter;
 	BOOL	m_keyboard_rememberoctavesandvolumes;
 	BOOL	m_keyboard_escresetatarisound;
 	BOOL	m_keyboard_askwhencontrol_s;
@@ -68,7 +65,6 @@ protected:
 	virtual BOOL OnInitDialog();
 	virtual void OnOK();
 	afx_msg void OnMidiTouchResponseClicked();
-	afx_msg void OnSelchangeKeyboardLayout();
 	afx_msg void OnPaths();
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()

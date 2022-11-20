@@ -70,7 +70,6 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CConfigDlg, CDialog)
 	//{{AFX_MSG_MAP(CConfigDlg)
 	ON_BN_CLICKED(IDC_MIDI_TR, OnMidiTouchResponseClicked)
-	ON_CBN_SELCHANGE(IDC_KEYBOARD_LAYOUT, OnSelchangeKeyboardLayout)
 	ON_BN_CLICKED(IDC_PATHS, OnPaths)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
@@ -124,11 +123,6 @@ void CConfigDlg::OnMidiTouchResponseClicked()
 	CButton *tr = (CButton*)GetDlgItem(IDC_MIDI_TR);
 	CEdit *vof = (CEdit*)GetDlgItem(IDC_MIDI_VOLUMEOFFSET);
 	vof->EnableWindow(tr->GetCheck());
-}
-
-void CConfigDlg::OnSelchangeKeyboardLayout() 
-{
-	m_keyboard_layout = m_keyboard_c_layout.GetCurSel();
 }
 
 void CConfigDlg::OnPaths() 
