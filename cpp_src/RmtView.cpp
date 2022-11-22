@@ -453,9 +453,7 @@ void CRmtView::ReadConfig()
 	ifstream in(s);
 	if (!in)
 	{
-		MessageBox("Can't read the config file\n"+s,"Read config",MB_ICONEXCLAMATION);
-		WriteConfig(); //create config as soon as possible
-		AfxGetApp()->GetMainWnd()->PostMessage(WM_COMMAND, ID_APP_ABOUT, 0);	//display the about dialog, assuming RMT was ran for the first time if no .ini file was found
+		MessageBox(CONFIG_FILENAME " could not be read.\nThe default configuration will be used.\n" + s, "Read config", MB_ICONEXCLAMATION);
 		return;
 	}
 	while(!in.eof())
@@ -813,7 +811,6 @@ void CRmtView::OnViewTuning()
 		g_basenote = dlg.m_basenote;
 		g_temperament = dlg.m_temperament;
 		WriteConfig();
-		//Atari_InitRMTRoutine(); //reset RMT routines
 		g_Tuning.init_tuning();
 		g_screenupdate = 1;
 	}
@@ -1133,7 +1130,6 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
 			g_Song.ChangeTimer((g_ntsc)? 17 : 20);
 			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
-			WriteConfig();
 			Atari_InitRMTRoutine(); //reset RMT routines
 			SCREENUPDATE;
 		}
@@ -1153,7 +1149,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			r = g_Song.InfoCursorGotoHighlight(point.x - 432);
 			if (r) SCREENUPDATE;
 		}
-		else if (wheelzDelta != 0)
+		if (wheelzDelta != 0)
 		{
 			if (px < 2)	//primary line highlight
 			{
@@ -1181,11 +1177,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 					if (g_trackLineSecondaryHighlight < 1) g_trackLineSecondaryHighlight = 1;
 				}
 			}
-			if (r)
-			{
-				WriteConfig();	//in order to save the edited highlight values without opening the Config Dialog
-				SCREENUPDATE;
-			}
+			if (r) SCREENUPDATE;
 		}
 		return 6;
 	}
@@ -1730,7 +1722,6 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
 			g_Song.ChangeTimer((g_ntsc) ? 17 : 20);
 			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
-			WriteConfig();
 			Atari_InitRMTRoutine(); //reset RMT routines
 			SCREENUPDATE;
 		}
@@ -1848,8 +1839,6 @@ end_save_control_s:
 	AllModesDefaultKey:
 			int r=0;
 			BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
-			int primary_highlight = g_trackLinePrimaryHighlight;
-			int secondary_highlight = g_trackLineSecondaryHighlight;
 			switch (g_activepart)
 			{
 			case PART_INFO:
@@ -1879,10 +1868,6 @@ do_infokey_anyway:
 						r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
 					else
 					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
-				}
-				if (primary_highlight != g_trackLinePrimaryHighlight || secondary_highlight != g_trackLineSecondaryHighlight)
-				{
-					WriteConfig();	//quick and dirty hack for saving the line highlight into the .ini file when it is changed
 				}
 				break;
 
@@ -3169,6 +3154,7 @@ void CRmtView::OnWantExit() //called from the menu File/Exit ID_WANTEXIT instead
 	g_Song.Stop();
 	g_closeApplication = 1;
 	g_Song.StopTimer();
+	WriteConfig();	// This is done in order to properly save the last configuration used for certain parameters such as Line Highlight 
 	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE,0,0);
 }
 
