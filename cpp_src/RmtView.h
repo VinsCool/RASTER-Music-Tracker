@@ -30,8 +30,12 @@ protected: // create from serialization only
 public:
 	CRmtDoc* GetDocument();
 
-	void ReadConfig();
-	void WriteConfig();
+	void ReadRMTConfig();
+	void WriteRMTConfig();
+	void ResetRMTConfig();
+
+	void ReadTuningConfig();
+	void WriteTuningConfig();
 
 	void DrawAll();
 	void DrawAnalyzer();

@@ -325,12 +325,12 @@ int CSong::MakeTuningBlock(unsigned char* mem, int addr)
 void CSong::ResetTuningVariables()
 {
 	// reset all tuning variables 
-	g_ntsc = 0;		//PAL region
+	//g_ntsc = 0;		//PAL region
 	g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
 	g_basenote = 3;	//3 = A-
 	g_temperament = 0;	//no temperament
-	g_trackLinePrimaryHighlight = 8;	//highlight every 8 rows
-	g_trackLineSecondaryHighlight = 4;	//highlight every 4 rows
+	//g_trackLinePrimaryHighlight = 8;	//highlight every 8 rows
+	//g_trackLineSecondaryHighlight = 4;	//highlight every 4 rows
 	g_UNISON_L = 1;	//ratio left
 	g_MIN_2ND_L = 40;
 	g_MAJ_2ND_L = 10;

@@ -62,8 +62,8 @@
 #define VK_PAGE_UP		33
 #define VK_PAGE_DOWN	34
 
-//TODO: make tuning configuration separate, also add theme configuration in the future
 #define CONFIG_FILENAME "rmt.ini"
+#define TUNING_FILENAME "tuning.ini"
 
 #define EOL "\x0d\x0a"			//Carriage Return (\r) and Line Feed (\n), for strings used during Exports
 

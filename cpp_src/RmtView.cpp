@@ -442,206 +442,268 @@ CRmtDoc* CRmtView::GetDocument() // non-debug version is inline
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView message handlers
 
-void CRmtView::ReadConfig()
+void CRmtView::ReadRMTConfig()
 {
 #define NAME(a)	(strcmp(a,name)==0)
 
 	CString s;
 	char line[1024];
-	char *tmp,*div,*name,*value,*value2;
-	s.Format("%s%s",g_prgpath,CONFIG_FILENAME);
+	char *tmp, *name, *value;
+	s.Format("%s%s", g_prgpath, CONFIG_FILENAME);
 	ifstream in(s);
 	if (!in)
 	{
-		MessageBox(CONFIG_FILENAME " could not be read.\nThe default configuration will be used.\n" + s, "Read config", MB_ICONEXCLAMATION);
+		MessageBox("Could not find: '" + s + "'\n\nRMT will use the default configuration.\n", "RMT", MB_ICONEXCLAMATION);
+		ResetRMTConfig();	// In order to save the default configuration file 
 		return;
 	}
-	while(!in.eof())
-	{
-		in.getline(line, 1023);
-		tmp = strchr(line, '=');
-		div = strchr(line, '/');
-		if (div)
-		{
-			div[0] = 0;
-			value2 = div + 1;
-		}
-		if (tmp)
-		{
-			tmp[0] = 0;
-			name = line;
-			value = tmp + 1;
-		}
-		else
-			continue;
-		//Individual lines config
 
-		//general
-		if (NAME("SCALEPERCENTAGE")) g_scaling_percentage = atoi(value);
-		else
-		if (NAME("TRACKLINEPRIMARYHIGHLIGHT")) g_trackLinePrimaryHighlight = atoi(value);
-		else
-		if (NAME("TRACKLINESECONDARYHIGHLIGHT")) g_trackLineSecondaryHighlight = atoi(value);
-		else
-		if (NAME("TRACKLINEALTNUMBERING")) g_tracklinealtnumbering = atoi(value);
-		else
-		if (NAME("DISPLAYFLATNOTES")) g_displayflatnotes = atoi(value);
-		else
-		if (NAME("USEGERMANNOTATION")) g_usegermannotation = atoi(value);
-		else
-		if (NAME("NTSC_SYSTEM")) g_ntsc = atoi(value);
-		else
-		if (NAME("SMOOTH_SCROLL")) g_viewDoSmoothScrolling = atoi(value);
-		else
-		if (NAME("NOHWSOUNDBUFFER")) g_nohwsoundbuffer = atoi(value);
-		else
-		//keyboard
-		if (NAME("KEYBOARD_LAYOUT")) g_keyboard_layout = atoi(value);
-		else
-		if (NAME("KEYBOARD_UPDOWNCONTINUE")) g_keyboard_updowncontinue = atoi(value);
-		else
-		if (NAME("KEYBOARD_REMEMBEROCTAVESANDVOLUMES")) g_keyboard_RememberOctavesAndVolumes = atoi(value);
-		else
-		if (NAME("KEYBOARD_ESCRESETATARISOUND")) g_keyboard_escresetatarisound = atoi(value);
-		else
-		if (NAME("KEYBOARD_ASKWHENCONTROL_S")) g_keyboard_askwhencontrol_s = atoi(value);
-		else
-		//midi
-		if (NAME("MIDI_IN")) g_Midi.SetDevice(value);
-		else
-		if (NAME("MIDI_TR")) g_Midi.m_TouchResponse = atoi(value);
-		else
-		if (NAME("MIDI_VOLUMEOFFSET")) g_Midi.m_VolumeOffset = atoi(value);
-		else
-		if (NAME("MIDI_NOTEOFF")) g_Midi.m_NoteOff = atoi(value);
-		else
-		//paths
-		if (NAME("PATH_SONGS")) g_defaultSongsPath = value;
-		else
-		if (NAME("PATH_INSTRUMENTS")) g_defaultInstrumentsPath = value;
-		else
-		if (NAME("PATH_TRACKS")) g_defaultTracksPath = value;
-		else
-		//view
-		if (NAME("VIEW_MAINTOOLBAR")) g_viewMainToolbar = atoi(value);
-		else
-		if (NAME("VIEW_BLOCKTOOLBAR")) g_viewBlockToolbar = atoi(value);
-		else
-		if (NAME("VIEW_STATUSBAR")) g_viewStatusBar = atoi(value);
-		else
-		if (NAME("VIEW_PLAYTIMECOUNTER")) g_viewPlayTimeCounter = atoi(value);
-		else
-		if (NAME("VIEW_VOLUMEANALYZER")) g_viewVolumeAnalyzer = atoi(value);
-		else
-		if (NAME("VIEW_POKEYCHIPREGISTERS")) g_viewPokeyRegisters = atoi(value);
-		else
-		if (NAME("VIEW_INSTRUMENTACTIVEHELP")) g_viewInstrumentEditHelp = atoi(value);
-		else
-		//tuning
-		if (NAME("TUNING")) g_basetuning = atof(value);
-		else
-		if (NAME("BASENOTE")) g_basenote = atoi(value);
-		else
-		if (NAME("TEMPERAMENT")) g_temperament = atoi(value);
-		else
-		//ratio
-		if (NAME("UNISON")) { g_UNISON_L = atoi(value); if (div) g_UNISON_R = atoi(value2); }
-		else
-		if (NAME("MIN_2ND")) { g_MIN_2ND_L = atoi(value); if (div) g_MIN_2ND_R = atoi(value2); }
-		else
-		if (NAME("MAJ_2ND")) { g_MAJ_2ND_L = atoi(value); if (div) g_MAJ_2ND_R = atoi(value2); }
-		else
-		if (NAME("MIN_3RD")) { g_MIN_3RD_L = atoi(value); if (div) g_MIN_3RD_R = atoi(value2); }
-		else
-		if (NAME("MAJ_3RD")) { g_MAJ_3RD_L = atoi(value); if (div) g_MAJ_3RD_R = atoi(value2); }
-		else
-		if (NAME("PERF_4TH")) { g_PERF_4TH_L = atoi(value); if (div) g_PERF_4TH_R = atoi(value2); }
-		else
-		if (NAME("TRITONE")) { g_TRITONE_L = atoi(value); if (div) g_TRITONE_R = atoi(value2); }
-		else
-		if (NAME("PERF_5TH")) { g_PERF_5TH_L = atoi(value); if (div) g_PERF_5TH_R = atoi(value2); }
-		else
-		if (NAME("MIN_6TH")) { g_MIN_6TH_L = atoi(value); if (div) g_MIN_6TH_R = atoi(value2); }
-		else
-		if (NAME("MAJ_6TH")) { g_MAJ_6TH_L = atoi(value); if (div) g_MAJ_6TH_R = atoi(value2); }
-		else
-		if (NAME("MIN_7TH")) { g_MIN_7TH_L = atoi(value); if (div) g_MIN_7TH_R = atoi(value2); }
-		else
-		if (NAME("MAJ_7TH")) { g_MAJ_7TH_L = atoi(value); if (div) g_MAJ_7TH_R = atoi(value2); }
-		else
-		if (NAME("OCTAVE")) { g_OCTAVE_L = atoi(value); if (div) g_OCTAVE_R = atoi(value2); }
+	// Parse individual lines until the end of the file is reached 
+	while (!in.eof())
+	{
+		in.getline(line, 1023);		// Seek for the next character in memory 
+		tmp = strchr(line, '=');	// The tmp pointer will be set at the position of '=' 
+		if (!tmp) continue;			// Seek for the character until a match is found 
+		tmp[-1] = 0;				// Offset by 1 to compensate the Space   
+		name = line;				// Name set to the current line, terminated by tmp 
+		value = tmp + 2;			// Offset by 1 to compensate the Space 
+
+		// GENERAL
+		if (NAME("SCALEPERCENTAGE")) { g_scaling_percentage = atoi(value); continue; }
+		if (NAME("TRACKLINEPRIMARYHIGHLIGHT")) { g_trackLinePrimaryHighlight = atoi(value); continue; }
+		if (NAME("TRACKLINESECONDARYHIGHLIGHT")) { g_trackLineSecondaryHighlight = atoi(value); continue; }
+		if (NAME("TRACKLINEALTNUMBERING")) { g_tracklinealtnumbering = atoi(value); continue; }
+		if (NAME("DISPLAYFLATNOTES")) { g_displayflatnotes = atoi(value); continue; }
+		if (NAME("USEGERMANNOTATION")) { g_usegermannotation = atoi(value); continue; }
+		if (NAME("NTSC_SYSTEM")) { g_ntsc = atoi(value); continue; }
+		if (NAME("SMOOTH_SCROLL")) { g_viewDoSmoothScrolling = atoi(value); continue; }
+		if (NAME("NOHWSOUNDBUFFER")) { g_nohwsoundbuffer = atoi(value); continue; }
+
+		// KEYBOARD
+		if (NAME("KEYBOARD_LAYOUT")) { g_keyboard_layout = atoi(value); continue; }
+		if (NAME("KEYBOARD_UPDOWNCONTINUE")) { g_keyboard_updowncontinue = atoi(value); continue; }
+		if (NAME("KEYBOARD_REMEMBEROCTAVESANDVOLUMES")) { g_keyboard_RememberOctavesAndVolumes = atoi(value); continue; }
+		if (NAME("KEYBOARD_ESCRESETATARISOUND")) { g_keyboard_escresetatarisound = atoi(value); continue; }
+		if (NAME("KEYBOARD_ASKWHENCONTROL_S")) { g_keyboard_askwhencontrol_s = atoi(value); continue; }
+
+		// MIDI
+		if (NAME("MIDI_IN")) { g_Midi.SetDevice(value); continue; }
+		if (NAME("MIDI_TR")) { g_Midi.m_TouchResponse = atoi(value); continue; }
+		if (NAME("MIDI_VOLUMEOFFSET")) { g_Midi.m_VolumeOffset = atoi(value); continue; }
+		if (NAME("MIDI_NOTEOFF")) { g_Midi.m_NoteOff = atoi(value); continue; }
+	
+		// PATHS
+		if (NAME("PATH_DEFAULTSONGS")) { g_defaultSongsPath = value; continue; }
+		if (NAME("PATH_DEFAULTINSTRUMENTS")) { g_defaultInstrumentsPath = value; continue; }
+		if (NAME("PATH_DEFAULTTRACKS")) { g_defaultTracksPath = value; continue; }
+		if (NAME("PATH_LASTSONGS")) { g_lastLoadPath_Songs = value; continue; }
+		if (NAME("PATH_LASTINSTRUMENTS")) { g_lastLoadPath_Instruments = value; continue; }
+		if (NAME("PATH_LASTTRACKS")) { g_lastLoadPath_Tracks = value; continue; }
+
+		// VIEW 
+		if (NAME("VIEW_MAINTOOLBAR")) { g_viewMainToolbar = atoi(value); continue; }
+		if (NAME("VIEW_BLOCKTOOLBAR")) { g_viewBlockToolbar = atoi(value); continue; }
+		if (NAME("VIEW_STATUSBAR")) { g_viewStatusBar = atoi(value); continue; }
+		if (NAME("VIEW_PLAYTIMECOUNTER")) { g_viewPlayTimeCounter = atoi(value); continue; }
+		if (NAME("VIEW_VOLUMEANALYZER")) { g_viewVolumeAnalyzer = atoi(value); continue; }
+		if (NAME("VIEW_POKEYCHIPREGISTERS")) { g_viewPokeyRegisters = atoi(value); continue; }
+		if (NAME("VIEW_INSTRUMENTACTIVEHELP")) { g_viewInstrumentEditHelp = atoi(value); continue; }
 	}
 	in.close();
 }
 
-void CRmtView::WriteConfig()
+void CRmtView::WriteRMTConfig()
 {
 	CString s;
 	s.Format("%s%s", g_prgpath, CONFIG_FILENAME);
 	ofstream ou(s);
 	if (!ou)
 	{
-		MessageBox("Can't create the config file\n"+s,"Write config",MB_ICONEXCLAMATION);
+		MessageBox("Could not create: '" + s + "'\n\nThe RMT configuration won't be saved.\n", "RMT", MB_ICONEXCLAMATION);
 		return;
 	}
 
-	ou << "RMT CONFIGURATION FILE" << endl;
+	ou << "# RMT CONFIGURATION FILE" << endl;
 	CString version;
 	version.LoadString(IDS_RMTVERSION);
-	ou << version << endl;
+	ou << "# " << version << endl;
 	ou << setprecision(16);
 
-	//general
-	ou << "SCALEPERCENTAGE=" << g_scaling_percentage << endl;
-	ou << "TRACKLINEPRIMARYHIGHLIGHT=" << g_trackLinePrimaryHighlight << endl;
-	ou << "TRACKLINESECONDARYHIGHLIGHT=" << g_trackLineSecondaryHighlight << endl;
-	ou << "TRACKLINEALTNUMBERING=" << g_tracklinealtnumbering << endl;
-	ou << "DISPLAYFLATNOTES=" << g_displayflatnotes << endl;
-	ou << "USEGERMANNOTATION=" << g_usegermannotation << endl;
-	ou << "NTSC_SYSTEM=" << g_ntsc << endl;
-	ou << "SMOOTH_SCROLL=" << g_viewDoSmoothScrolling << endl;
-	ou << "NOHWSOUNDBUFFER=" << g_nohwsoundbuffer << endl;
-	//keyboard
-	ou << "KEYBOARD_LAYOUT=" << g_keyboard_layout << endl;
-	ou << "KEYBOARD_UPDOWNCONTINUE=" << g_keyboard_updowncontinue << endl;
-	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES=" << g_keyboard_RememberOctavesAndVolumes << endl;
-	ou << "KEYBOARD_ESCRESETATARISOUND=" << g_keyboard_escresetatarisound << endl;
-	ou << "KEYBOARD_ASKWHENCONTROL_S=" << g_keyboard_askwhencontrol_s << endl;
-	//midi
-	ou << "MIDI_IN=" << g_Midi.GetMidiDevName() << endl;
-	ou << "MIDI_TR=" << g_Midi.m_TouchResponse << endl;
-	ou << "MIDI_VOLUMEOFFSET=" << g_Midi.m_VolumeOffset << endl;
-	ou << "MIDI_NOTEOFF=" << g_Midi.m_NoteOff << endl;
-	//paths
-	ou << "PATH_SONGS=" << g_defaultSongsPath << endl;
-	ou << "PATH_INSTRUMENTS=" << g_defaultInstrumentsPath << endl;
-	ou << "PATH_TRACKS=" << g_defaultTracksPath << endl;
-	//view
-	ou << "VIEW_MAINTOOLBAR=" << g_viewMainToolbar << endl;
-	ou << "VIEW_BLOCKTOOLBAR=" << g_viewBlockToolbar << endl;
-	ou << "VIEW_STATUSBAR=" << g_viewStatusBar << endl;
-	ou << "VIEW_PLAYTIMECOUNTER=" << g_viewPlayTimeCounter << endl;
-	ou << "VIEW_VOLUMEANALYZER=" << g_viewVolumeAnalyzer << endl;
-	ou << "VIEW_POKEYCHIPREGISTERS=" << g_viewPokeyRegisters << endl;
-	ou << "VIEW_INSTRUMENTACTIVEHELP=" << g_viewInstrumentEditHelp << endl;
-	//tuning
-	ou << "TUNING=" << g_basetuning << endl;
-	ou << "BASENOTE=" << g_basenote << endl;
-	ou << "TEMPERAMENT=" << g_temperament << endl;
-	//ratios
-	ou << "UNISON=" << g_UNISON_L << "/" << g_UNISON_R << endl;
-	ou << "MIN_2ND=" << g_MIN_2ND_L << "/" << g_MIN_2ND_R << endl;
-	ou << "MAJ_2ND=" << g_MAJ_2ND_L << "/" << g_MAJ_2ND_R << endl;
-	ou << "MIN_3RD=" << g_MIN_3RD_L << "/" << g_MIN_3RD_R << endl;
-	ou << "MAJ_3RD=" << g_MAJ_3RD_L << "/" << g_MAJ_3RD_R << endl;
-	ou << "PERF_4TH=" << g_PERF_4TH_L << "/" << g_PERF_4TH_R << endl;
-	ou << "TRITONE=" << g_TRITONE_L << "/" << g_TRITONE_R << endl;
-	ou << "PERF_5TH=" << g_PERF_5TH_L << "/" << g_PERF_5TH_R << endl;
-	ou << "MIN_6TH=" << g_MIN_6TH_L << "/" << g_MIN_6TH_R << endl;
-	ou << "MAJ_6TH=" << g_MAJ_6TH_L << "/" << g_MAJ_6TH_R << endl;
-	ou << "MIN_7TH=" << g_MIN_7TH_L << "/" << g_MIN_7TH_R << endl;
-	ou << "MAJ_7TH=" << g_MAJ_7TH_L << "/" << g_MAJ_7TH_R << endl;
-	ou << "OCTAVE=" << g_OCTAVE_L << "/" << g_OCTAVE_R << endl;
+	ou << "\n# GENERAL\n" << endl;
+	ou << "SCALEPERCENTAGE = " << g_scaling_percentage << endl;
+	ou << "TRACKLINEPRIMARYHIGHLIGHT = " << g_trackLinePrimaryHighlight << endl;
+	ou << "TRACKLINESECONDARYHIGHLIGHT = " << g_trackLineSecondaryHighlight << endl;
+	ou << "TRACKLINEALTNUMBERING = " << g_tracklinealtnumbering << endl;
+	ou << "DISPLAYFLATNOTES = " << g_displayflatnotes << endl;
+	ou << "USEGERMANNOTATION = " << g_usegermannotation << endl;
+	ou << "NTSC_SYSTEM = " << g_ntsc << endl;
+	ou << "SMOOTH_SCROLL = " << g_viewDoSmoothScrolling << endl;
+	ou << "NOHWSOUNDBUFFER = " << g_nohwsoundbuffer << endl;
+
+	ou << "\n# KEYBOARD\n" << endl;
+	ou << "KEYBOARD_LAYOUT = " << g_keyboard_layout << endl;
+	ou << "KEYBOARD_UPDOWNCONTINUE = " << g_keyboard_updowncontinue << endl;
+	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES = " << g_keyboard_RememberOctavesAndVolumes << endl;
+	ou << "KEYBOARD_ESCRESETATARISOUND = " << g_keyboard_escresetatarisound << endl;
+	ou << "KEYBOARD_ASKWHENCONTROL_S = " << g_keyboard_askwhencontrol_s << endl;
+
+	ou << "\n# MIDI\n" << endl;
+	ou << "MIDI_IN = " << g_Midi.GetMidiDevName() << endl;
+	ou << "MIDI_TR = " << g_Midi.m_TouchResponse << endl;
+	ou << "MIDI_VOLUMEOFFSET = " << g_Midi.m_VolumeOffset << endl;
+	ou << "MIDI_NOTEOFF = " << g_Midi.m_NoteOff << endl;
+
+	ou << "\n# PATHS\n" << endl;
+	ou << "PATH_DEFAULTSONGS = " << g_defaultSongsPath << endl;
+	ou << "PATH_DEFAULTINSTRUMENTS = " << g_defaultInstrumentsPath << endl;
+	ou << "PATH_DEFAULTTRACKS = " << g_defaultTracksPath << endl;
+	ou << "PATH_LASTSONGS = " << g_lastLoadPath_Songs << endl;
+	ou << "PATH_LASTINSTRUMENTS = " << g_lastLoadPath_Instruments << endl;
+	ou << "PATH_LASTTRACKS = " << g_lastLoadPath_Tracks << endl;
+
+	ou << "\n# VIEW\n" << endl;
+	ou << "VIEW_MAINTOOLBAR = " << g_viewMainToolbar << endl;
+	ou << "VIEW_BLOCKTOOLBAR = " << g_viewBlockToolbar << endl;
+	ou << "VIEW_STATUSBAR = " << g_viewStatusBar << endl;
+	ou << "VIEW_PLAYTIMECOUNTER = " << g_viewPlayTimeCounter << endl;
+	ou << "VIEW_VOLUMEANALYZER = " << g_viewVolumeAnalyzer << endl;
+	ou << "VIEW_POKEYCHIPREGISTERS = " << g_viewPokeyRegisters << endl;
+	ou << "VIEW_INSTRUMENTACTIVEHELP = " << g_viewInstrumentEditHelp << endl;
+
+	ou.close();
+}
+
+void CRmtView::ResetRMTConfig()
+{
+	g_scaling_percentage = 100;					// RMT interface scaling (in percentage) 
+	g_trackLinePrimaryHighlight = 8;			// Primary line highlighted every x lines
+	g_trackLineSecondaryHighlight = 4;			// Secondary line highlighted every x lines
+	g_tracklinealtnumbering = 0;				// Alternative way of line numbering in tracks 
+	g_linesafter = 1;							// Number of lines to scroll after inserting a note 
+	g_ntsc = 0;									// NTSC (60Hz)
+	g_nohwsoundbuffer = 0;						// Don't use hardware soundbuffer
+	g_displayflatnotes = 0;						// Display accidentals as Flats instead of Sharps
+	g_usegermannotation = 0;					// Display H notes instead of B
+	g_viewMainToolbar = 1;						// Display the Main Toolbar
+	g_viewBlockToolbar = 1;						// Display the Block Toolbar 
+	g_viewStatusBar = 1;						// Display the Status Bar
+	g_viewPlayTimeCounter = 1;					// Display the Play Time and BPM Counter
+	g_viewVolumeAnalyzer = 1;					// Display the Volume Analyser Bars
+	g_viewPokeyRegisters = 1;					// Display the POKEY Registers (TODO: Move the Detailed Registers to its own entry) 
+	g_viewInstrumentEditHelp = 1;				// Display useful info when editing various parts of an instrument
+	g_viewDoSmoothScrolling = 1;				// Smoothly scroll the track and song line data is smooth during playback 
+	g_lastLoadPath_Songs = "";					// Path of the last song loaded
+	g_lastLoadPath_Instruments = "";			// Path of the last instrument loaded
+	g_lastLoadPath_Tracks = "";					// Path of the last track loaded
+	g_defaultSongsPath = "";					// Default path for songs
+	g_defaultInstrumentsPath = "";				// Default path for instruments
+	g_defaultTracksPath = "";					// Default path for tracks
+	g_keyboard_layout = KEYBOARD_QWERTY;		// Keyboard layout used by RMT. eg: QWERTY, AZERTY, etc 
+	g_keyboard_updowncontinue = 1;				// Scroll to the next/previous Songline when the Pattern limits are crossed 
+	g_keyboard_RememberOctavesAndVolumes = 1;	// Remember the last octave and volume values used with an Instrument 
+	g_keyboard_escresetatarisound = 1;			// Reset the RMT Atari routines if the ESC key is pressed 
+	g_keyboard_askwhencontrol_s = 1;			// Prompt a dialog box upon hitting CTRL+S to ask if it is OK to overwrite the file 
+	g_Midi.SetDevice("");						// MIDI Device
+	g_Midi.m_TouchResponse = 0;					// MIDI Touch response
+	g_Midi.m_VolumeOffset = 0;					// MIDI Volume offset
+	g_Midi.m_NoteOff = 0;						// MIDI Note Off 
+	g_Midi.MidiInit();							// MIDI must be initialised just in case 
+	WriteRMTConfig();							// Write the default configuration file 
+}
+
+void CRmtView::ReadTuningConfig()
+{
+#define NAME(a)	(strcmp(a,name)==0)
+
+	CString s;
+	char line[1024];
+	char* tmp, * div, * name, * value, * value2;
+	s.Format("%s%s", g_prgpath, TUNING_FILENAME);
+	ifstream in(s);
+	if (!in)
+	{
+		MessageBox("Could not find: '" + s + "'\n\nRMT will use the default Tuning parameters.\n", "RMT", MB_ICONEXCLAMATION);
+		g_Song.ResetTuningVariables();
+		WriteTuningConfig();	// In order to save the default Tuning configuration file 
+		return;
+	}
+
+	// Parse individual lines until the end of the file is reached 
+	while (!in.eof())
+	{
+		in.getline(line, 1023);		// Seek for the next character in memory 
+		tmp = strchr(line, '=');	// The tmp pointer will be set at the position of '=' 
+		div = strchr(line, '/');	// The div pointer will be set at the position of '/'
+		if (!tmp) continue;			// Seek for the character until a match is found 
+		tmp[-1] = 0;				// Offset by 1 to compensate the Space   
+		name = line;				// Name set to the current line, terminated by tmp 
+		value = tmp + 2;			// Offset by 1 to compensate the Space 
+		if (div)					// The div pointer is used to get the 2nd Ratio value 
+		{
+			div[-1] = 0;			// Same as above, offset by 1 to compensate the Space(s) 
+			value2 = div + 2;
+		}
+
+		// TUNING 
+		if (NAME("TUNING")) { g_basetuning = atof(value); continue; }
+		if (NAME("BASENOTE")) { g_basenote = atoi(value); continue; }
+		if (NAME("TEMPERAMENT")) { g_temperament = atoi(value); continue; }
+
+		// RATIO
+		if (NAME("UNISON")) { g_UNISON_L = atoi(value); if (div) g_UNISON_R = atoi(value2); continue; }
+		if (NAME("MIN_2ND")) { g_MIN_2ND_L = atoi(value); if (div) g_MIN_2ND_R = atoi(value2); continue; }
+		if (NAME("MAJ_2ND")) { g_MAJ_2ND_L = atoi(value); if (div) g_MAJ_2ND_R = atoi(value2); continue; }
+		if (NAME("MIN_3RD")) { g_MIN_3RD_L = atoi(value); if (div) g_MIN_3RD_R = atoi(value2); continue; }
+		if (NAME("MAJ_3RD")) { g_MAJ_3RD_L = atoi(value); if (div) g_MAJ_3RD_R = atoi(value2); continue; }
+		if (NAME("PERF_4TH")) { g_PERF_4TH_L = atoi(value); if (div) g_PERF_4TH_R = atoi(value2); continue; }
+		if (NAME("TRITONE")) { g_TRITONE_L = atoi(value); if (div) g_TRITONE_R = atoi(value2); continue; }
+		if (NAME("PERF_5TH")) { g_PERF_5TH_L = atoi(value); if (div) g_PERF_5TH_R = atoi(value2); continue; }
+		if (NAME("MIN_6TH")) { g_MIN_6TH_L = atoi(value); if (div) g_MIN_6TH_R = atoi(value2); continue; }
+		if (NAME("MAJ_6TH")) { g_MAJ_6TH_L = atoi(value); if (div) g_MAJ_6TH_R = atoi(value2); continue; }
+		if (NAME("MIN_7TH")) { g_MIN_7TH_L = atoi(value); if (div) g_MIN_7TH_R = atoi(value2); continue; }
+		if (NAME("MAJ_7TH")) { g_MAJ_7TH_L = atoi(value); if (div) g_MAJ_7TH_R = atoi(value2); continue; }
+		if (NAME("OCTAVE")) { g_OCTAVE_L = atoi(value); if (div) g_OCTAVE_R = atoi(value2); continue; }
+	}
+	in.close();
+}
+
+void CRmtView::WriteTuningConfig()
+{
+	CString s;
+	s.Format("%s%s", g_prgpath, TUNING_FILENAME);
+	ofstream ou(s);
+	if (!ou)
+	{
+		MessageBox("Could not create: '" + s + "'\n\nThe Tuning parameters won't be saved.\n", "RMT", MB_ICONEXCLAMATION);
+		return;
+	}
+
+	ou << "# RMT CONFIGURATION FILE" << endl;
+	CString version;
+	version.LoadString(IDS_RMTVERSION);
+	ou << "# " << version << endl;
+	ou << setprecision(16);
+
+	ou << "\n# TUNING\n" << endl;
+	ou << "TUNING = " << g_basetuning << endl;
+	ou << "BASENOTE = " << g_basenote << endl;
+	ou << "TEMPERAMENT = " << g_temperament << endl;
+
+	ou << "\n# RATIO\n" << endl;
+	ou << "UNISON = " << g_UNISON_L << " / " << g_UNISON_R << endl;
+	ou << "MIN_2ND = " << g_MIN_2ND_L << " / " << g_MIN_2ND_R << endl;
+	ou << "MAJ_2ND = " << g_MAJ_2ND_L << " / " << g_MAJ_2ND_R << endl;
+	ou << "MIN_3RD = " << g_MIN_3RD_L << " / " << g_MIN_3RD_R << endl;
+	ou << "MAJ_3RD = " << g_MAJ_3RD_L << " / " << g_MAJ_3RD_R << endl;
+	ou << "PERF_4TH = " << g_PERF_4TH_L << " / " << g_PERF_4TH_R << endl;
+	ou << "TRITONE = " << g_TRITONE_L << " / " << g_TRITONE_R << endl;
+	ou << "PERF_5TH = " << g_PERF_5TH_L << " / " << g_PERF_5TH_R << endl;
+	ou << "MIN_6TH = " << g_MIN_6TH_L << " / " << g_MIN_6TH_R << endl;
+	ou << "MAJ_6TH = " << g_MAJ_6TH_L << " / " << g_MAJ_6TH_R << endl;
+	ou << "MIN_7TH = " << g_MIN_7TH_L << " / " << g_MIN_7TH_R << endl;
+	ou << "MAJ_7TH = " << g_MAJ_7TH_L << " / " << g_MAJ_7TH_R << endl;
+	ou << "OCTAVE = " << g_OCTAVE_L << " / " << g_OCTAVE_R << endl;
+
 	ou.close();
 }
 
@@ -732,8 +794,8 @@ void CRmtView::OnViewConfiguration()
 		g_Midi.m_NoteOff = dlg.m_midi_NoteOff;
 		g_Midi.MidiInit();
 		//
-		WriteConfig();
-		g_screenupdate=1;
+		//WriteRMTConfig();
+		SCREENUPDATE;
 	}
 }
 
@@ -810,7 +872,7 @@ void CRmtView::OnViewTuning()
 		g_basetuning = dlg.m_basetuning;
 		g_basenote = dlg.m_basenote;
 		g_temperament = dlg.m_temperament;
-		WriteConfig();
+		//WriteConfig();
 		g_Tuning.init_tuning();
 		g_screenupdate = 1;
 	}
@@ -932,7 +994,10 @@ void CRmtView::OnInitialUpdate()
 	SetChannelOnOff(-1,1);
 
 	//CONFIGURATION
-	ReadConfig();
+	ReadRMTConfig();
+
+	//tuning
+	ReadTuningConfig(); 
 
 	//view elements
 	ChangeViewElements(0); //without write!
@@ -2400,7 +2465,7 @@ void CRmtView::ChangeViewElements(BOOL writeconfig)
 	mf->ShowControlBar((CControlBar*)(&mf->m_wndToolBar),g_viewMainToolbar,0);
 	mf->ShowControlBar((CControlBar*)(&mf->m_ToolBarBlock),g_viewBlockToolbar,0);
 	mf->ShowControlBar((CControlBar*)(&mf->m_wndStatusBar),g_viewStatusBar,0);
-	if (writeconfig) WriteConfig();
+	if (writeconfig) WriteRMTConfig();
 }
 
 void CRmtView::OnViewToolbar() 
@@ -3145,16 +3210,17 @@ void CRmtView::OnUpdateUndoClearundoredo(CCmdUI* pCmdUI)
 	pCmdUI->Enable(g_Song.UndoGetUndoSteps() || g_Song.UndoGetRedoSteps());
 }
 
-void CRmtView::OnWantExit() //called from the menu File/Exit ID_WANTEXIT instead of the original ID_APP_EXIT
+void CRmtView::OnWantExit() // Called from the menu File/Exit ID_WANTEXIT instead of the original ID_APP_EXIT
 {
 	if ( g_Song.WarnUnsavedChanges() )
 	{
-		return; //there is no exit
+		return; // There is no exit
 	}
 	g_Song.Stop();
 	g_closeApplication = 1;
 	g_Song.StopTimer();
-	WriteConfig();	// This is done in order to properly save the last configuration used for certain parameters such as Line Highlight 
+	WriteRMTConfig();		// Save the current configuration 
+	WriteTuningConfig();	// Save the current Tuning parameters 
 	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE,0,0);
 }
 
