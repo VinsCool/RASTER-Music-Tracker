@@ -35,6 +35,7 @@ CConfigDlg::CConfigDlg(CWnd* pParent /*=NULL*/)
 	m_keyboard_rememberoctavesandvolumes = FALSE;
 	m_keyboard_escresetatarisound = FALSE;
 	m_keyboard_askwhencontrol_s = FALSE;
+	m_viewDebugDisplay = FALSE;
 	//}}AFX_DATA_INIT
 }
 
@@ -64,6 +65,7 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_KEYBOARD_REMEMBEROCTAVESANDVOLUMES, m_keyboard_rememberoctavesandvolumes);
 	DDX_Check(pDX, IDC_KEYBOARD_ESCRESETATARISOUND, m_keyboard_escresetatarisound);
 	DDX_Check(pDX, IDC_KEYBOARD_ASKWHENCONTROL_S, m_keyboard_askwhencontrol_s);
+	DDX_Check(pDX, IDC_DEBUGDISPLAY, m_viewDebugDisplay);
 	//}}AFX_DATA_MAP
 }
 

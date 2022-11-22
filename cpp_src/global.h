@@ -142,7 +142,8 @@ extern int g_linesafter;			//number of lines to scroll after inserting a note (i
 extern BOOL g_ntsc;				//NTSC (60Hz)
 extern BOOL g_nohwsoundbuffer;	//Don't use hardware soundbuffer
 extern int g_cursoractview;		//default position, line 0
-extern BOOL g_viewDoSmoothScrolling;	// True then the track and note data is smooth scrolled during playback
+extern BOOL g_viewDoSmoothScrolling;	// True then the track and note data is smooth scrolled during playback 
+extern BOOL g_viewDebugDisplay;		// Display Debug informations on screen if enabled 
 
 extern BOOL g_displayflatnotes;	//flats instead of sharps
 extern BOOL g_usegermannotation;	//H notes instead of B

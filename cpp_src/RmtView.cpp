@@ -357,7 +357,7 @@ void CRmtView::DrawAll()
 {
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);		// Clear the screen
 
-	GetFPS();	//it's crappy but it does an ok job
+	if (g_viewDebugDisplay) GetFPS();	//it's crappy but it does an ok job
 
 	g_Song.DrawInfo();
 	g_Song.DrawSong();
@@ -508,6 +508,7 @@ void CRmtView::ReadRMTConfig()
 		if (NAME("VIEW_VOLUMEANALYZER")) { g_viewVolumeAnalyzer = atoi(value); continue; }
 		if (NAME("VIEW_POKEYCHIPREGISTERS")) { g_viewPokeyRegisters = atoi(value); continue; }
 		if (NAME("VIEW_INSTRUMENTACTIVEHELP")) { g_viewInstrumentEditHelp = atoi(value); continue; }
+		if (NAME("VIEW_DEBUGDISPLAY")) { g_viewDebugDisplay = atoi(value); continue; }
 	}
 	in.close();
 }
@@ -568,7 +569,8 @@ void CRmtView::WriteRMTConfig()
 	ou << "VIEW_PLAYTIMECOUNTER = " << g_viewPlayTimeCounter << endl;
 	ou << "VIEW_VOLUMEANALYZER = " << g_viewVolumeAnalyzer << endl;
 	ou << "VIEW_POKEYCHIPREGISTERS = " << g_viewPokeyRegisters << endl;
-	ou << "VIEW_INSTRUMENTACTIVEHELP = " << g_viewInstrumentEditHelp << endl;
+	ou << "VIEW_INSTRUMENTACTIVEHELP = " << g_viewInstrumentEditHelp << endl; 
+	ou << "VIEW_DEBUGDISPLAY = " << g_viewDebugDisplay << endl;
 
 	ou.close();
 }
@@ -592,6 +594,7 @@ void CRmtView::ResetRMTConfig()
 	g_viewPokeyRegisters = 1;					// Display the POKEY Registers (TODO: Move the Detailed Registers to its own entry) 
 	g_viewInstrumentEditHelp = 1;				// Display useful info when editing various parts of an instrument
 	g_viewDoSmoothScrolling = 1;				// Smoothly scroll the track and song line data is smooth during playback 
+	g_viewDebugDisplay = 1;						// Debug display for a bunch of variables used for various tasks 
 	g_lastLoadPath_Songs = "";					// Path of the last song loaded
 	g_lastLoadPath_Instruments = "";			// Path of the last instrument loaded
 	g_lastLoadPath_Tracks = "";					// Path of the last track loaded
@@ -721,6 +724,7 @@ void CRmtView::OnViewConfiguration()
 	dlg.m_ntsc = g_ntsc;
 	dlg.m_doSmoothScrolling = g_viewDoSmoothScrolling;
 	dlg.m_nohwsoundbuffer = g_nohwsoundbuffer;
+	dlg.m_viewDebugDisplay = g_viewDebugDisplay;
 	//keyboard
 	dlg.m_keyboard_layout = g_keyboard_layout;
 	dlg.m_keyboard_escresetatarisound = g_keyboard_escresetatarisound;
@@ -767,6 +771,7 @@ void CRmtView::OnViewConfiguration()
 		}
 		g_ntsc = dlg.m_ntsc;
 		g_viewDoSmoothScrolling = dlg.m_doSmoothScrolling;
+		g_viewDebugDisplay = dlg.m_viewDebugDisplay;
 
 		g_trackLinePrimaryHighlight = dlg.m_trackLinePrimaryHighlight;
 		g_trackLineSecondaryHighlight = dlg.m_trackLineSecondaryHighlight;
@@ -1072,7 +1077,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	point.y = INVERSE_SCALE(point.y);
 
 	//debug
-	GetMouseXY(point.x, point.y, mousebutt);
+	if (g_viewDebugDisplay) GetMouseXY(point.x, point.y, mousebutt);
 
 	//TODO: make those parameters global so they won't have to be re-initialised in multiple functions separately
 	int MINIMAL_WIDTH_TRACKS = (g_tracks4_8 > 4 && g_active_ti == PART_TRACKS) ? 1420 : 960;
@@ -1615,7 +1620,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		}
 	}
 
-	g_lastKeyPressed = vk;	//debug key reading for setting up keyboard layouts withought having to guess which key is where
+	if (g_viewDebugDisplay) g_lastKeyPressed = vk;	//debug key reading for setting up keyboard layouts withought having to guess which key is where
 
 	switch(vk)
 	{

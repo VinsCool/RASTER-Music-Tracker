@@ -865,6 +865,8 @@ void CSong::DrawTracks()
 	int t;
 	int last_y;
 
+	BOOL printdebug = g_viewDebugDisplay;
+
 	//caching certain global variables makes sure they remain the same until the function finishes drawing the tracks
 	//this appears to be related to routine timing, and might actually explain why certain bugs seem to happen randomly
 	int trackactiveline = m_trackactiveline;
@@ -1099,32 +1101,35 @@ void CSong::DrawTracks()
 		TextXY(tx, x, TRACKS_Y + (4 + g_tracklines) * 16, TEXT_COLOR_RED);
 	}
 
-	//debugging the "jumpy line" 
-	sprintf(s, "Y = %02d", last_y);
-	TextXY(s, TRACKS_X, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+	//debug display, this could be toggled on if needed 
+	if (printdebug)
+	{
+		//debugging the "jumpy line" 
+		sprintf(s, "Y = %02d", last_y);
+		TextXY(s, TRACKS_X, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 
-	//debugging the sudden breakdown of mouse clicks on tracklines directly related to the changes done for the smooth scrolling
-	sprintf(s, "PX = %02d", g_mouse_px);
-	TextXY(s, TRACKS_X + 16 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-	sprintf(s, "PY = %02d", g_mouse_py);
-	TextXY(s, TRACKS_X + 32 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-	sprintf(s, "MB = %02d", g_mouselastbutt);
-	TextXY(s, TRACKS_X + 48 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-	sprintf(s, "CA = %02d", g_cursoractview);
-	TextXY(s, TRACKS_X + 64 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-	sprintf(s, "TA = %02d", trackactiveline);
-	TextXY(s, TRACKS_X + 80 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-	sprintf(s, "DY = %02d", g_mouse_py / 16);
-	TextXY(s, TRACKS_X + 96 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-	sprintf(s, "GTL = %02d", g_tracklines);
-	TextXY(s, TRACKS_X + 112 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-	sprintf(s, "OL = %02d", g_tracklines / 2);
-	TextXY(s, TRACKS_X + 128 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		//debugging the sudden breakdown of mouse clicks on tracklines directly related to the changes done for the smooth scrolling
+		sprintf(s, "PX = %02d", g_mouse_px);
+		TextXY(s, TRACKS_X + 16 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		sprintf(s, "PY = %02d", g_mouse_py);
+		TextXY(s, TRACKS_X + 32 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		sprintf(s, "MB = %02d", g_mouselastbutt);
+		TextXY(s, TRACKS_X + 48 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		sprintf(s, "CA = %02d", g_cursoractview);
+		TextXY(s, TRACKS_X + 64 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		sprintf(s, "TA = %02d", trackactiveline);
+		TextXY(s, TRACKS_X + 80 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		sprintf(s, "DY = %02d", g_mouse_py / 16);
+		TextXY(s, TRACKS_X + 96 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		sprintf(s, "GTL = %02d", g_tracklines);
+		TextXY(s, TRACKS_X + 112 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		sprintf(s, "OL = %02d", g_tracklines / 2);
+		TextXY(s, TRACKS_X + 128 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
 
-	//debugging the way vk is processed for keyboard layout configuration
-	sprintf(s, "VK = %02X", g_lastKeyPressed);
-	TextXY(s, TRACKS_X + 144 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-
+		//debugging the way vk is processed for keyboard layout configuration
+		sprintf(s, "VK = %02X", g_lastKeyPressed);
+		TextXY(s, TRACKS_X + 144 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+	}
 }
 
 void CSong::DrawInstrument()
@@ -1148,6 +1153,8 @@ void CSong::DrawInfo()
 	BOOL selected = FALSE;
 	is_editing_infos = 0;
 
+	BOOL printdebug = g_viewDebugDisplay;
+
 	// Line 1: Time  BPM  PAL/NTSC  Hightlight (XX/XX)  FPS
 	TextXY((g_ntsc) ? "NTSC" : "PAL", INFO_X + 33 * 8, INFO_Y_LINE_1, TEXT_COLOR_TURQUOISE);
 
@@ -1163,9 +1170,12 @@ void CSong::DrawInfo()
 	selected = (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_2ND_HIGHLIGHT) ? TRUE : FALSE;
 	TextXY(szBuffer, 344 + 14 * 8, INFO_Y_LINE_1, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
-	// A poor attempt at an FPS counter
-	snprintf(szBuffer, 16, "%1.2f FPS", last_fps);
-	TextXY(szBuffer, 560 - 9 * 8, INFO_Y_LINE_1, TEXT_COLOR_TURQUOISE);
+	if (printdebug)
+	{
+		// A poor attempt at an FPS counter
+		snprintf(szBuffer, 16, "%1.2f FPS", last_fps);
+		TextXY(szBuffer, 560 - 9 * 8, INFO_Y_LINE_1, TEXT_COLOR_TURQUOISE);
+	}
 
 	// Line 2: Name
 	if (g_activepart == PART_INFO && m_infoact == INFO_ACTIVE_NAME) //info? && edit name?

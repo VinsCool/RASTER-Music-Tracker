@@ -242,6 +242,8 @@ BEGIN
     PUSHBUTTON      "Paths...",IDC_PATHS,7,255,29,14
     EDITTEXT        IDC_TRACKLINESECONDARYHIGHLIGHT,226,15,17,12,ES_NUMBER
     LTEXT           "/",IDC_STATIC,218,17,8,8
+    CONTROL         "Debug display (enable only if you know what you are doing)",IDC_DEBUGDISPLAY,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,76,165,10
 END
 
 IDD_EFFECTS DIALOG 0, 0, 280, 156

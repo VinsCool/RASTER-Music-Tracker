@@ -45,6 +45,7 @@ public:
 	BOOL	m_keyboard_rememberoctavesandvolumes;
 	BOOL	m_keyboard_escresetatarisound;
 	BOOL	m_keyboard_askwhencontrol_s;
+	BOOL	m_viewDebugDisplay;
 	//}}AFX_DATA
 
 	int		m_midi_device;

@@ -86,6 +86,7 @@
 #define IDC_EFF_EDIT3                   1039
 #define IDC_SMOOTH_SCROLL               1039
 #define IDC_EFF_P1                      1040
+#define IDC_DEBUGDISPLAY				1040
 #define IDC_EFF_P2                      1041
 #define IDC_MIDI_NOTEOFF                1041
 #define IDC_EFF_P3                      1042

@@ -153,6 +153,8 @@ BOOL g_viewVolumeAnalyzer = 1;		// 1 yes, 0 no - Show the volume analyser bars
 BOOL g_viewPokeyRegisters = 1;		// 1 yes, 0 no
 BOOL g_viewInstrumentEditHelp = 1;	// 1 yes, 0 no - View useful info when editing various parts of an instrument
 BOOL g_viewDoSmoothScrolling = 1;	// True then the track and song line data is smooth scrolled during playback
+BOOL g_viewDebugDisplay = 1;		// Display Debug informations on screen if enabled 
+
 
 long g_playtime = 1;	//1 yes, 0 no
 
