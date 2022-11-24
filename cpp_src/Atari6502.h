@@ -8,22 +8,23 @@
 #define __ATARI6502__
 
 #include "Tuning.h"
+#include "tracker_obx.h"				// The ASM generated C header file
 
 //bass16bit low byte, bass 0C, bass 0E, clean tones 0A and 0,2,4,8, bass16bit hi byte, this might require different addresses? What is this even used for anyway?
-#define RMT_FRQTABLES	0xB000				
+#define RMT_FRQTABLES	RMTPLAYR_PAGE_DISTORTION_2				
 
-#define RMT_INIT		0x3400
-#define RMT_PLAY		0x3403
-#define RMT_P3			0x3406
-#define RMT_SILENCE		0x3409
-#define RMT_SETPOKEY	0x340c
+#define RMT_INIT		RMTPLAYR_RASTERMUSICTRACKER
+#define RMT_PLAY		RMTPLAYR_RASTERMUSICTRACKER+3
+#define RMT_P3			RMTPLAYR_RASTERMUSICTRACKER+6
+#define RMT_SILENCE		RMTPLAYR_RASTERMUSICTRACKER+9
+#define RMT_SETPOKEY	RMTPLAYR_RASTERMUSICTRACKER+12
 
-#define RMT_ATA_SETNOTEINSTR	0x3d00
-#define RMT_ATA_SETVOLUME		0x3e00
-#define RMT_ATA_INSTROFF		0x3e80
+#define RMT_ATA_SETNOTEINSTR	RMTPLAYR_GETINSTRUMENTY2
+#define RMT_ATA_SETVOLUME		RMTPLAYR_SETINSTRUMENTVOLUME
+#define RMT_ATA_INSTROFF		RMTPLAYR_STOPINSTRUMENT
 
 //immediately after RMT_ATA_INSTROFF, there is some bytes left unused, these will be used as plaintext data to display the RMT driver version used
-#define RMT_ATA_DRIVERVERSION	0x3e90		
+#define RMT_ATA_DRIVERVERSION	RMTPLAYR_DRIVERVERSION		
 
 //maximum clock count for the entire screen in PAL (default) and NTSC region
 #define MAXSCREENCYCLES_NTSC	114*262

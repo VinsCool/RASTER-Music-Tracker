@@ -43,20 +43,20 @@ INSTRPAR		equ 12
 	org 203	     	;* org $CB
 	
 p_tis
-p_instrstable		org *+2
-p_trackslbstable	org *+2
-p_trackshbstable	org *+2
-p_song			org *+2
-ns			org *+2
-nr			org *+2
-nt			org *+2
-reg1			org *+1
-reg2			org *+1
-reg3			org *+1
-tmp			org *+1
+ptrInstrumentTbl	org *+2			; ptr to Instrument table ptrs
+ptrTracksTblLo		org *+2			; ptr to low byte of track ptrs
+ptrTracksTblHi		org *+2			; ptr to high byte of track ptrs
+ptrSongLines		org *+2			; ptr to song data
+ns					org *+2
+nr					org *+2
+nt					org *+2
+reg1				org *+1
+reg2				org *+1
+reg3				org *+1
+tmp					org *+1
 
 	IFT FEAT_COMMAND2
-frqaddcmd2		org *+1
+frqaddcmd2			org *+1
 	EIF
 	
 ;* possible improvement: setting variables after the RMT driver itself? 
@@ -70,16 +70,16 @@ frqaddcmd2		org *+1
 	
 track_variables
 
-trackn_db		org *+TRACKS
-trackn_hb		org *+TRACKS
-trackn_idx		org *+TRACKS
-trackn_pause		org *+TRACKS
-trackn_note		org *+TRACKS
-trackn_volume		org *+TRACKS
+trackn_TblLo			org *+TRACKS		; low byte of ptrs to each track's data
+trackn_TblHi			org *+TRACKS		; Hi byte of ptrs to each track's data
+trackn_idx				org *+TRACKS		; How far into each track
+trackn_pause			org *+TRACKS		; 1 new note, 0 nothing new
+trackn_note				org *+TRACKS
+trackn_volume			org *+TRACKS
 trackn_volumeenvelope	org *+TRACKS
-trackn_command		org *+TRACKS
+trackn_command			org *+TRACKS
 trackn_effectparameter	org *+TRACKS
-trackn_shiftfrq		org *+TRACKS
+trackn_shiftfrq			org *+TRACKS
 
 	IFT FEAT_PORTAMENTO
 trackn_portafrqc 	org *+TRACKS
@@ -89,12 +89,12 @@ trackn_portaspeeda 	org *+TRACKS
 trackn_portadepth 	org *+TRACKS
 	EIF
 	
-trackn_instrx2		org *+TRACKS
-trackn_instrdb		org *+TRACKS
-trackn_instrhb		org *+TRACKS
-trackn_instridx		org *+TRACKS
-trackn_instrlen		org *+TRACKS
-trackn_instrlop		org *+TRACKS
+trackn_instrx2			org *+TRACKS		; New instrument init required (-1 = new new instrument)
+trackn_instrdb			org *+TRACKS
+trackn_instrhb			org *+TRACKS
+trackn_instridx			org *+TRACKS
+trackn_instrlen			org *+TRACKS
+trackn_instrlop			org *+TRACKS
 trackn_instrreachend	org *+TRACKS
 trackn_volumeslidedepth org *+TRACKS
 trackn_volumeslidevalue org *+TRACKS
@@ -192,16 +192,16 @@ DISTORTIONS equ *+1
 	
 	IFT FEAT_EFFECTVIBRATO
 vibtabbeg 
-	dta 0,vib1-vib0,vib2-vib0,vib3-vib0
+		dta 0,vib1-vib0,vib2-vib0,vib3-vib0
 vib0	dta 0
 vib1	dta 1,-1,-1,1
 vib2	dta 1,0,-1,-1,0,1
 vib3	dta 1,1,0,-1,-1,-1,-1,0,1,1
 vibtabnext
-	dta vib0-vib0+0
-	dta vib1-vib0+1,vib1-vib0+2,vib1-vib0+3,vib1-vib0+0
-	dta vib2-vib0+1,vib2-vib0+2,vib2-vib0+3,vib2-vib0+4,vib2-vib0+5,vib2-vib0+0
-	dta vib3-vib0+1,vib3-vib0+2,vib3-vib0+3,vib3-vib0+4,vib3-vib0+5,vib3-vib0+6,vib3-vib0+7,vib3-vib0+8,vib3-vib0+9,vib3-vib0+0
+		dta vib0-vib0+0
+		dta vib1-vib0+1,vib1-vib0+2,vib1-vib0+3,vib1-vib0+0
+		dta vib2-vib0+1,vib2-vib0+2,vib2-vib0+3,vib2-vib0+4,vib2-vib0+5,vib2-vib0+0
+		dta vib3-vib0+1,vib3-vib0+2,vib3-vib0+3,vib3-vib0+4,vib3-vib0+5,vib3-vib0+6,vib3-vib0+7,vib3-vib0+8,vib3-vib0+9,vib3-vib0+0
 	EIF	
 	
 	org PLAYER-$0100	;* it may be possible to reduce this table by half the size it is... this was something I did for the older RMT Patch16 code, so the option is still valuable...
@@ -234,134 +234,161 @@ volumetab
 RASTERMUSICTRACKER
 	jmp rmt_init			;* Must be run first, to clear memory and initialise the player... Once this is done, run rmt_play afterwards, or Set_Pokey if you want to manually time certain things.
 	jmp rmt_play			;* One play each subroutine call. SetPokey is executed first, then all the play code is ran once, until the RTS. rmt_play could be called multiple times per frame if wanted.
-	jmp rmt_p3			;* Similar to rmt_play, but will also skip SetPokey and the instruments/songlines/tracklines initialisation, very useful for playing simple things.
+	jmp rmt_p3				;* Similar to rmt_play, but will also skip SetPokey and the instruments/songlines/tracklines initialisation, very useful for playing simple things.
 	jmp rmt_silence			;* Run this to stop the driver, and reset all POKEY registers to 0. This is also part of rmt_init when it is executed first.
 	jmp SetPokey			;* Run to copy the contents of the Shadow POKEY registers (v_audctl, v_skctl, trackn_audf,x etc) into the real ones. Will be run first each time rmt_play is called.
 	IFT FEAT_SFX
-	jmp rmt_sfx			;* A=note(0,..,60),X=channel(0,..,3 or 0,..,7),Y=instrument*2(0,2,4,..,126)
+	jmp rmt_sfx				;* A=note(0,..,60),X=channel(0,..,3 or 0,..,7),Y=instrument*2(0,2,4,..,126)
 	EIF
 	
 ;* end of RMT jump table... from here, all the main driver code is being executed, have fun playing around! ;)
-	
+
 ;---------------------------------------------------------------------------------------------------------------------------------------------;
 
 ;* start of rmt_init code...
-	
+; A = Starting song line
+; X = low byte of the RMT module
+; Y = hi byte of the RMT module
 rmt_init
+	; (ns) -> module data
 	stx ns
 	sty ns+1
 	IFT FEAT_NOSTARTINGSONGLINE==0
-	pha	; backup the song line into the stack for now... I wonder if I could just use tmp in zeropage instead...
-	EIF
-		
-	IFT track_endvariables-track_variables>255	; more than 255 variables in memory...
-	ldy #0
-	tya
-ri0	
-	sta track_variables,y
-	sta track_endvariables-$100,y
-	iny
-	bne ri0
-	
-	ELS						
-	ldy #track_endvariables-track_variables
-	lda #0
-ri0	
-	sta track_variables-1,y
-	dey
-	bne ri0
+		pha	; backup the song line into the stack for now... I wonder if I could just use tmp in zeropage instead...
 	EIF
 	
+	; Clear the RMT variables
+	IFT track_endvariables-track_variables>255
+		; more than 255 bytes in variables memory...
+		; so clear from the front and 256 bytes from the end |>--->----|
+		ldy #0
+		tya
+ri_clear_loop	
+		sta track_variables,y
+		sta track_endvariables-$100,y
+		iny
+		bne ri_clear_loop
+	ELS
+		; Clear from the back  |----<|
+		ldy #track_endvariables-track_variables	; How many bytes to clear
+		lda #0
+ri_clear_loop	
+		sta track_variables-1,y
+		dey
+		bne ri_clear_loop
+	EIF
+	
+	; Parse the RMT module data
+	; Track length: +4
 	ldy #4
 	lda (ns),y
-	sta v_maxtracklen
+	sta smc_maxtracklen				; Change the code to store the track length
+
+	; Song speed: +5
 	iny
 	IFT FEAT_CONSTANTSPEED==0
-	lda (ns),y
-	sta v_speed
+		lda (ns),y
+		sta smc_speed				; Change the code to store the song speed
 	EIF
+	
+	; Instrument speed: +6
 	IFT FEAT_INSTRSPEED==0
-	iny
-	lda (ns),y
-	sta v_instrspeed
-	sta v_ainstrspeed
+		iny
+		lda (ns),y
+		sta smc_instrspeed			; Change the code to store the instrument speed
+		sta smc_silence_instrspeed
 	ELI FEAT_INSTRSPEED>1
-	lda #FEAT_INSTRSPEED
-	sta v_ainstrspeed
+		lda #FEAT_INSTRSPEED
+		sta smc_silence_instrspeed
 	EIF
+
+	; Copy 4 pointers: +8
+	; -> InstrumentPtrs[] 	2 bytes
+	; -> TracksPtrsLow[]	2 bytes
+	; -> TracksPtrsHi		2 bytes
+	; -> SongData			2 bytes
 	ldy #8
-ri1	
+ri_copy_loop	
 	lda (ns),y
 	sta p_tis-8,y
 	iny
-	cpy #8+8
-	bne ri1
+	cpy #8+8						; loop until y is 16
+	bne ri_copy_loop
+
 	IFT FEAT_NOSTARTINGSONGLINE==0
-	pla
-	pha
-	IFT TRACKS>4
-	asl @
-	asl @
-	asl @
-	clc
-	adc p_song
-	sta p_song
-	pla
-	php
-	and #$e0
-	asl @
-	rol @
-	rol @
-	rol @
-	ELS
-	asl @
-	asl @
-	clc
-	adc p_song
-	sta p_song
-	pla
-	php
-	and #$c0
-	asl @
-	rol @
-	rol @
+		; Set the starting song line by moving ptrSongLines forward
+		pla							; Get the saved starting song line
+		pha
+		IFT TRACKS>4
+			; Stereo
+			; ptrSongLines += song_line * 8
+			asl @					; offset * 8
+			asl @
+			asl @
+			clc
+			adc ptrSongLines				; ptrSongLines += offset * 8 (low) part
+			sta ptrSongLines
+			pla						; restore offset, but keep carry bit
+			php						; store flags on stack (carry bit!)
+			and #$e0
+			asl @
+			rol @
+			rol @
+			rol @
+		ELS
+			; Mono
+			; ptrSongLines += song_line * 4
+			asl @
+			asl @
+			clc
+			adc ptrSongLines
+			sta ptrSongLines
+			pla
+			php
+			and #$c0
+			asl @
+			rol @
+			rol @
+		EIF
+		plp							; restore the carry bit
+		adc ptrSongLines+1
+		sta ptrSongLines+1
 	EIF
-	plp
-	adc p_song+1
-	sta p_song+1
-	EIF
-	jsr GetSongLineTrackLineInitOfNewSetInstrumentsOnlyRmtp3
+	jsr GetSongLine					; Setup the first song line
 	
 ;* end of rmt_init code... rmt_silence will always be executed after the JSR above.
-	
+
 ;---------------------------------------------------------------------------------------------------------------------------------------------;
 	
-;* start of rmt_silence code...
+; RMT_SILENCE
+; Reset POKEY causes all sound to be stopped
 	
 rmt_silence
+	; Reset POKEY
 	IFT STEREOMODE>0
-	lda #0
-	sta $d208
-	sta $d218
-	ldy #3
-	sty $d20f
-	sty $d21f
-	ldy #8
-si1	
-	sta $d200,y
-	sta $d210,y
-	dey
-	bpl si1
+		lda #0
+		sta $d208			; AUDCTL
+		sta $d218
+		ldy #3
+		sty $d20f			; SKCTL
+		sty $d21f
+		; Clear AUDFx & AUDCx
+		ldy #8
+silence_loop	
+		sta $d200,y
+		sta $d210,y
+		dey
+		bpl silence_loop
 	ELS
-	lda #0
-	sta $d208
-	ldy #3
-	sty $d20f
-	ldy #8
-si1	
-	sta $d200,y	
-	dey
-	bpl si1
+		lda #0
+		sta $d208
+		ldy #3
+		sty $d20f
+		ldy #8
+silence_loop	
+		sta $d200,y	
+		dey
+		bpl silence_loop
 	EIF
 	
 	IFT FEAT_IS_TRACKER 		; reset the tables pointers 
@@ -377,10 +404,10 @@ si1
 	EIF	
 
 	IFT FEAT_INSTRSPEED==0
-	lda #$ff
-v_ainstrspeed equ *-1			; return instrument speed, does not seem to matter after rmt_init?
+		lda #$ff
+smc_silence_instrspeed equ *-1			; return instrument speed, does not seem to matter after rmt_init?
 	ELS
-	lda #FEAT_INSTRSPEED
+		lda #FEAT_INSTRSPEED
 	EIF
 	rts
 	
@@ -390,122 +417,138 @@ v_ainstrspeed equ *-1			; return instrument speed, does not seem to matter after
 	
 ;* start of mainloop code here... most of it is related to the songlines, tracklines and instruments initialisation...
 	
-GetSongLineTrackLineInitOfNewSetInstrumentsOnlyRmtp3
 GetSongLine
 	ldx #0
-	stx v_abeat			; set the pattern row to 0 for the new songline... This could be exploited with an effect command related to premature pattern end, or pattern goto...
-nn0
-nn0_a
+	stx smc_abeat						; set the pattern row to 0 for the new songline... This could be exploited with an effect command related to premature pattern end, or pattern goto...
+gsl_continueProcessing
 	IFT FEAT_IS_SIMPLEP
-	IFT EXPORTXEX			; Simple RMT Player hack for colour cycling, change the rasterbar colour every new pattern played
-	lda loop+1			; the #RASTERBAR colour defined will be loaded there specifically
-	add #16				; offset the value by #$10 for a simple colour shuffle
-	sta loop+1   			; store back where it was loaded, overwriting the previous value
-	lda p_song			; calculate the songline position below, this is done once every new songline
-	sub MODUL+14 			; TODO: relocate this code elsewhere, so toggling it would be easier
-	sta v_ord 
-	lda p_song+1
-	sbc MODUL+15
-	lsr @
-	ror v_ord
-	lsr @
-	ror v_ord
-	IFT TRACKS>4
-	lsr @
-	ror v_ord
-	EIF 
-	EIF 
+		IFT EXPORTXEX					; Simple RMT Player hack for colour cycling, change the rasterbar colour every new pattern played
+			lda loop+1					; the #RASTERBAR colour defined will be loaded there specifically
+			add #16						; offset the value by #$10 for a simple colour shuffle
+			sta loop+1   				; store back where it was loaded, overwriting the previous value
+			lda ptrSongLines					; calculate the songline position below, this is done once every new songline
+			sub MODUL+14 				; TODO: relocate this code elsewhere, so toggling it would be easier
+			sta v_ord 
+			lda ptrSongLines+1
+			sbc MODUL+15
+			lsr @
+			ror v_ord
+			lsr @
+			ror v_ord
+			IFT TRACKS>4
+				lsr @
+				ror v_ord
+			EIF 
+		EIF 
 	EIF
 	
-nn1	
-	txa
+gsl_nextSongLine	
+	txa								; A = X = Y = 0,1,2,3
 	tay
-	lda (p_song),y
-	cmp #$fe			; #$FE = Goto songline, #$FF = Empty track
-	bcs nn2				; branch if greater or equal
+	lda (ptrSongLines),y			; Get track info from the songline[y]
+	cmp #$fe						; #$FE = Goto songline, #$FF = Empty track
+	bcs gsl_GotoOrEmpty				; if A >= $FE --> gsl_GotoOrEmpty
+	; (A) = Real track #
+	; Get the ptr to the track data and store it in ptrTracksTblLo
 	tay
-	lda (p_trackslbstable),y
-	sta trackn_db,x
-	lda (p_trackshbstable),y
-nn1a 	
-	sta trackn_hb,x
+	lda (ptrTracksTblLo),y			; trackn_TblLo[x] = ptrTracksTblLo[y]
+	sta trackn_TblLo,x
+	lda (ptrTracksTblHi),y			; trackn_TblHi[x] = ptrTracksTblHi[y]
+	sta trackn_TblHi,x
+
 	lda #0
-	sta trackn_idx,x
+	sta trackn_idx,x				; reset the track index to 0 trackn_idx[x] = 0
+
 	lda #1
-nn1a2 	
-	sta trackn_pause,x		; #1 is a new note, #0 is no new note
-	lda #$80
-	sta trackn_instrx2,x		; #$80 is negative, will BMI when encountered, meaning no new instrument initialisation
-	inx	
-	cpx #TRACKS
-	bne nn1
-	lda p_song
+gsl_initTrack 	
+	sta trackn_pause,x				; #1 is a new track, #0 is no new track
+	lda #$80						; Mark that there is no new instrument
+	sta trackn_instrx2,x			; #$80 is negative, will BMI when encountered, meaning no new instrument initialisation
+	inx								; ++x
+	cpx #TRACKS						; if x < TRACKS --> gsl_nextSongLine
+	bne gsl_nextSongLine
+
+	; Done with data points of a song line, move to the next line
+	lda ptrSongLines				; ptrSontLines += #TRACKS (4 or 8)
 	clc	
 	adc #TRACKS
-	sta p_song
+	sta ptrSongLines
 	bcc GetTrackLine
-	inc p_song+1
+	inc ptrSongLines+1
 	
-nn1b
-	jmp GetTrackLine
-nn2
-	beq nn3				; branch if equal to #$FE, this is a Goto songline command
-nn2a
-	lda #0				; used to set the instrument to 0, meaning no new note
-	beq nn1a2			; unconditional
-nn3
+	jmp GetTrackLine				; Now progress the notes in a track
+
+gsl_GotoOrEmpty
+	beq gsl_thisIsAGoto				; branch if equal to #$FE, this is a Goto songline command
+
+	lda #0							; Used to set the instrument to 0, meaning no new track
+	beq gsl_initTrack				; unconditional
+
+gsl_thisIsAGoto
+	; Data format: 0xFE, 0x00, low, high bytes of ptr to next song line
 	ldy #2
-	lda (p_song),y
+	lda (ptrSongLines),y			; lo = ptrSongLines[2]
 	tax
 	iny
-	lda (p_song),y
-	sta p_song+1
-	stx p_song
+	lda (ptrSongLines),y			; hi = ptrSongLinex[3]
+	sta ptrSongLines+1
+	stx ptrSongLines				; (ptrSongLines) = ptrSongLines[2,3]
 	ldx #0
-	beq nn0
-	
+	beq gsl_continueProcessing
+
+; Process one line of a track
 GetTrackLine
-oo0
-oo0a
 	IFT FEAT_CONSTANTSPEED==0
-	lda #$ff
-v_speed equ *-1
-	sta v_bspeed
+		lda #$ff					; This value is changed by the code
+smc_speed equ *-1					; ptr to #$ff location in the code
+		sta smc_bspeed
 	EIF
-	ldx #-1
-oo1
-	inx
-	dec trackn_pause,x
-	bne oo1x
-oo1b
-	lda trackn_db,x
+	ldx #$ff						;-1 track data index
+gtl_loopTracks
+	inx								; 0,1, .. #TRACKS
+	dec trackn_pause,x				; --trackn_pause[x]
+	bne gtl_checkEndOfLoop			; if trackn_pause[x] != 0 --> gtl_checkEndOfLoop
+
+	; Setup ptr to track data
+	lda trackn_TblLo,x				; (ns) = trackn_TblLo/hi[x]
 	sta ns
-	lda trackn_hb,x
+	lda trackn_TblHi,x
 	sta ns+1
 oo1i
-	ldy trackn_idx,x
-	inc trackn_idx,x
-	lda (ns),y
+	ldy trackn_idx,x				; Y = index into track data
+	inc trackn_idx,x				; ++trackn_idx[x]
+	; Get a track data point
+	; 0 - 60 = Note, instr and volume data
+	; 61 - Volume only
+	; 62 = Pause/empty line
+	; 63 - Speed, go loop or end
+	lda (ns),y						; reg1 = A = ns[y]
 	sta reg1
-	and #$3f
-	cmp #61
-	beq oo1a
-	bcs oo2
-	sta trackn_note,x
+	and #$3f						; 0-63
+	cmp #61							; 61 = Volume only
+	beq gtl_ProcessVolumeData
+	bcs gtl_Is62or63
+	; Not a command so store the note
+	sta trackn_note,x				; note[x] = data & 0x3f
+
+	; Process the instrument #
 	iny
-	lda (ns),y
-	lsr @
+	lda (ns),y						; instr = (data & 0xfc) >> 1
+	lsr
 	and #$3f*2
-	sta trackn_instrx2,x
-oo1a
+	sta trackn_instrx2,x			; trackn_instrx2[x] = instrument # * 2
+
+gtl_ProcessVolumeData
 	lda #1
-	sta trackn_pause,x
-	ldy trackn_idx,x
-	inc trackn_idx,x
+	sta trackn_pause,x				; got a note
+
+	; Get the volume
+	ldy trackn_idx,x				; y = track index
+	inc trackn_idx,x				; move to the next data point in the track
 	lda (ns),y
-	lsr @
+	lsr
 	ror reg1
-	lsr @
+	lsr
 	ror reg1
 	lda reg1
 	IFT FEAT_GLOBALVOLUMEFADE
@@ -518,20 +561,21 @@ voig
 	EIF
 	and #$f0
 	sta trackn_volume,x
-oo1x	
+gtl_checkEndOfLoop	
 	cpx #TRACKS-1
-	bne oo1
+	bne gtl_loopTracks
+
 	IFT FEAT_CONSTANTSPEED==0
-	lda #$ff
-v_bspeed equ *-1
-	sta v_speed
+		lda #$ff					; This value is changed by the code
+smc_bspeed equ *-1					; ptr to #$ff location in the code
+		sta smc_speed
 	ELS
-	lda #FEAT_CONSTANTSPEED
+		lda #FEAT_CONSTANTSPEED
 	EIF
 	sta v_aspeed
 	jmp InitOfNewSetInstrumentsOnly
 	
-oo2
+gtl_Is62or63
 	cmp #63
 	beq oo63
 	lda reg1
@@ -541,22 +585,22 @@ oo2
 	rol @
 	rol @
 	sta trackn_pause,x
-	jmp oo1x
+	jmp gtl_checkEndOfLoop
 oo62_b
 	iny
 	lda (ns),y
 	sta trackn_pause,x
 	inc trackn_idx,x
-	jmp oo1x
+	jmp gtl_checkEndOfLoop
 oo63
 	lda reg1
 	IFT FEAT_CONSTANTSPEED==0
-	bmi oo63_1X
-	iny
-	lda (ns),y
-	sta v_bspeed
-	inc trackn_idx,x
-	jmp oo1i
+		bmi oo63_1X
+		iny
+		lda (ns),y
+		sta smc_bspeed				; Set the song speed
+		inc trackn_idx,x
+		jmp oo1i
 oo63_1X
 	EIF
 	cmp #255
@@ -598,11 +642,11 @@ RMTSFXVOLUME equ *-1		;* label for sfx note volume parameter overwriting
 ;---------------------------------------------------------------------------------------------------------------------------------------------;
 	
 SetUpInstrumentY2
-	lda (p_instrstable),y
+	lda (ptrInstrumentTbl),y
 	sta trackn_instrdb,x
 	sta nt
 	iny
-	lda (p_instrstable),y
+	lda (ptrInstrumentTbl),y
 	sta trackn_instrhb,x
 	sta nt+1
 	
@@ -709,37 +753,39 @@ SetUpInstrumentY2
 	ELS
 	jmp p2x0		; go process the next channel's instrument
 	EIF
-	
+
+;---------------------------------------------------------------------------------------------------------------------------------------------;
+
 rmt_play
 rmt_p0
 	jsr SetPokey
 	
 rmt_p1
 	IFT FEAT_INSTRSPEED==0||FEAT_INSTRSPEED>1
-	dec v_ainstrspeed
-	bne rmt_p3
+		dec smc_silence_instrspeed
+		bne rmt_p3
 	EIF
 	IFT FEAT_INSTRSPEED==0
-	lda #$ff
-v_instrspeed	equ *-1
-	sta v_ainstrspeed
+		lda #$ff
+smc_instrspeed	equ *-1				; ptr to #$ff location in the code
+		sta smc_silence_instrspeed
 	ELI FEAT_INSTRSPEED>1
-	lda #FEAT_INSTRSPEED
-	sta v_ainstrspeed
+		lda #FEAT_INSTRSPEED
+		sta smc_silence_instrspeed
 	EIF
 	
 rmt_p2
 	dec v_aspeed
 	bne rmt_p3
-	inc v_abeat
-	lda #$ff
-v_abeat equ *-1
+	inc smc_abeat					; ++smc_abeat
+	lda #$ff						; if (smc_abeat == smc_maxtracklen) GetSongLine else GetTrackLine
+smc_abeat equ *-1					; smc_abeat is the index into the track
 	cmp #$ff
-v_maxtracklen equ *-1
+smc_maxtracklen equ *-1
 	beq p2o3
 	jmp GetTrackLine
 p2o3
-	jmp GetSongLineTrackLineInitOfNewSetInstrumentsOnlyRmtp3
+	jmp GetSongLine
 
 rmt_p3	
 	ldx #TRACKS-1
@@ -783,16 +829,16 @@ dodex_a
 
 	IFT FEAT_AUDCTLMANUALSET&&FEAT_COMMAND7		; POSSIBLE IMPROVEMENT: process the Two-Tone Filter commands here instead, leaving CMD7 only useful for Volume Only checks later
 dex_cmd7	
-	lda trackn_command,x
-	and #$70			; clear distortion and other bits
-	cmp #$70 			; command 7? 
-	bne dexnext			; skip if not equal
-	lda trackn_effectparameter,x	
+		lda trackn_command,x
+		and #$70					; clear distortion and other bits
+		cmp #$70 					; command 7? 
+		bne dexnext					; skip if not equal
+		lda trackn_effectparameter,x	
 dex_xy
-	cmp #$FD                	; failsafe -> Volume Only Mode or SKCTL toggle 
-	bcs dexnext	        	; skip if above or equal #$FD 
-	sta trackn_audctl,x     	; overwrite the previous value	
-	EIF	
+		cmp #$FD					; failsafe -> Volume Only Mode or SKCTL toggle 
+		bcs dexnext					; skip if above or equal #$FD 
+		sta trackn_audctl,x			; overwrite the previous value	
+	EIF
 	
 dexnext
 	dex
@@ -806,101 +852,101 @@ pp0
 ;* get AUDCTL as early as possible, properly this time!
 
 	IFT FEAT_AUDCTLMANUALSET
-	lda trackn_audctl+0
-	ora trackn_audctl+1
-	ora trackn_audctl+2
-	ora trackn_audctl+3
-	sta v_audctl 
+		lda trackn_audctl+0
+		ora trackn_audctl+1
+		ora trackn_audctl+2
+		ora trackn_audctl+3
+		sta v_audctl
 	
-;* Assign flags early here as soon as possible 
-	
-	IFT FEAT_FULL_16BIT||FEAT_BASS16||FEAT_FULL_SAWTOOTH 
-	tay				; backup the now combined audctl for the flags attribution 
-	and #1				; 64khz == 0, 15khz == 1 always, the other flags will then take priority over this
-	sta g_flag+0			; ch1
-	sta g_flag+1			; ch2
-	sta g_flag+2			; ch3
-	sta g_flag+3			; ch4
-	tya				; get the AUDCTL back for the BIT tests below 
+		;* Assign flags early here as soon as possible 
+		
+		IFT FEAT_FULL_16BIT||FEAT_BASS16||FEAT_FULL_SAWTOOTH 
+			tay				; backup the now combined audctl for the flags attribution 
+			and #1				; 64khz == 0, 15khz == 1 always, the other flags will then take priority over this
+			sta g_flag+0			; ch1
+			sta g_flag+1			; ch2
+			sta g_flag+2			; ch3
+			sta g_flag+3			; ch4
+			tya				; get the AUDCTL back for the BIT tests below 
 pp0_a	
-	bit CH1_179
-	beq pp0_d			; BNE => 1.79mhz, BEQ => Nothing, skip the next BIT test 	
-	bit JOIN_12
-	bne pp0_b			; BNE => 16-bit, BEQ => 1.79mhz 
-	ldx #$40			; 1.79mhz pointer
-	bne pp0_c			; unconditional 
+			bit CH1_179
+			beq pp0_d			; BNE => 1.79mhz, BEQ => Nothing, skip the next BIT test 	
+			bit JOIN_12
+			bne pp0_b			; BNE => 16-bit, BEQ => 1.79mhz 
+			ldx #$40			; 1.79mhz pointer
+			bne pp0_c			; unconditional 
 pp0_b
-	ldx #$80			; 16-bit pointer
-	stx g_flag+1			; flag set in ch2
-	dex				; #$80 becomes #$7F
+			ldx #$80			; 16-bit pointer
+			stx g_flag+1			; flag set in ch2
+			dex				; #$80 becomes #$7F
 pp0_c		
-	stx g_flag+0			; flag set in ch1
+			stx g_flag+0			; flag set in ch1
 pp0_d 
-	bit CH3_179 
-	beq pp0_g			; BNE => 1.79mhz, BEQ => Nothing, skip the next BIT test 
-	bit JOIN_34
-	bne pp0_e			; BNE => 16-bit, BEQ => 1.79mhz 
-	ldx #$40			; 1.79mhz pointer
-	bne pp0_f			; unconditional 
+			bit CH3_179 
+			beq pp0_g			; BNE => 1.79mhz, BEQ => Nothing, skip the next BIT test 
+			bit JOIN_34
+			bne pp0_e			; BNE => 16-bit, BEQ => 1.79mhz 
+			ldx #$40			; 1.79mhz pointer
+			bne pp0_f			; unconditional 
 pp0_e
-	ldx #$80			; 16-bit pointer
-	stx g_flag+3			; flag set in ch4 
-	dex				; #$80 becomes #$7F 
+			ldx #$80			; 16-bit pointer
+			stx g_flag+3			; flag set in ch4 
+			dex				; #$80 becomes #$7F 
 pp0_f		
-	stx g_flag+2			; flag set in ch3 
+			stx g_flag+2			; flag set in ch3 
 pp0_g 
-	EIF
+		EIF
 	
-	IFT TRACKS>4			; Stereo 
-	lda trackn_audctl+4
-	ora trackn_audctl+5
-	ora trackn_audctl+6
-	ora trackn_audctl+7
-	sta v_audctl2	
+		IFT TRACKS>4			; Stereo 
+			lda trackn_audctl+4
+			ora trackn_audctl+5
+			ora trackn_audctl+6
+			ora trackn_audctl+7
+			sta v_audctl2
 
-	IFT FEAT_FULL_16BIT||FEAT_BASS16||FEAT_FULL_SAWTOOTH 
-	tay				; backup the now combined audctl for the flags attribution 
-	and #1				; 64khz == 0, 15khz == 1 always, the other flags will then take priority over this
-	sta g_flag+0+4			; ch1
-	sta g_flag+1+4			; ch2
-	sta g_flag+2+4			; ch3
-	sta g_flag+3+4			; ch4
-	tya				; get the AUDCTL back for the BIT tests below 
+			IFT FEAT_FULL_16BIT||FEAT_BASS16||FEAT_FULL_SAWTOOTH 
+				tay				; backup the now combined audctl for the flags attribution 
+				and #1				; 64khz == 0, 15khz == 1 always, the other flags will then take priority over this
+				sta g_flag+0+4			; ch1
+				sta g_flag+1+4			; ch2
+				sta g_flag+2+4			; ch3
+				sta g_flag+3+4			; ch4
+				tya				; get the AUDCTL back for the BIT tests below 
 pp0_h	
-	bit CH1_179
-	beq pp0_k			; BNE => 1.79mhz, BEQ => Nothing, skip the next BIT test 	
-	bit JOIN_12
-	bne pp0_i			; BNE => 16-bit, BEQ => 1.79mhz 
-	ldx #$40			; 1.79mhz pointer
-	bne pp0_j			; unconditional 
+				bit CH1_179
+				beq pp0_k			; BNE => 1.79mhz, BEQ => Nothing, skip the next BIT test 	
+				bit JOIN_12
+				bne pp0_i			; BNE => 16-bit, BEQ => 1.79mhz 
+				ldx #$40			; 1.79mhz pointer
+				bne pp0_j			; unconditional 
 pp0_i
-	ldx #$80			; 16-bit pointer
-	stx g_flag+1+4			; flag set in ch2
-	dex				; #$80 becomes #$7F
+				ldx #$80			; 16-bit pointer
+				stx g_flag+1+4			; flag set in ch2
+				dex				; #$80 becomes #$7F
 pp0_j		
-	stx g_flag+0+4			; flag set in ch1
+				stx g_flag+0+4			; flag set in ch1
 pp0_k 
-	bit CH3_179 
-	beq pp0_n			; BNE => 1.79mhz, BEQ => Nothing, skip the next BIT test 
-	bit JOIN_34
-	bne pp0_l			; BNE => 16-bit, BEQ => 1.79mhz 
-	ldx #$40			; 1.79mhz pointer
-	bne pp0_m			; unconditional 
+				bit CH3_179 
+				beq pp0_n			; BNE => 1.79mhz, BEQ => Nothing, skip the next BIT test 
+				bit JOIN_34
+				bne pp0_l			; BNE => 16-bit, BEQ => 1.79mhz 
+				ldx #$40			; 1.79mhz pointer
+				bne pp0_m			; unconditional 
 pp0_l
-	ldx #$80			; 16-bit pointer
-	stx g_flag+3+4			; flag set in ch4 
-	dex				; #$80 becomes #$7F 
+				ldx #$80			; 16-bit pointer
+				stx g_flag+3+4			; flag set in ch4 
+				dex				; #$80 becomes #$7F 
 pp0_m		
-	stx g_flag+2+4			; flag set in ch3 
+				stx g_flag+2+4			; flag set in ch3 
 pp0_n 
-	EIF	
-	EIF
+			EIF	
+		EIF
 	ELS
-	lda #0
-	sta v_audctl
-	IFT TRACKS>4
-	sta v_audctl2
-	EIF
+		lda #0
+		sta v_audctl
+		IFT TRACKS>4
+			sta v_audctl2
+		EIF
 	EIF
 
 pp0_o
@@ -924,12 +970,12 @@ pp1_b
 pp2
 	lda trackn_volumeenvelope,x	; volume envelope byte
 	IFT TRACKS>4
-	cpx #4
-	bcc pp2s
-	lsr @
-	lsr @
-	lsr @
-	lsr @
+		cpx #4
+		bcc pp2s
+		lsr @
+		lsr @
+		lsr @
+		lsr @
 	EIF
 pp2s
 	and #$0f
@@ -943,33 +989,33 @@ pp2s
 ;* start of manual tables code (unfinished)...
 
 	IFT FEAT_TABLE_MANUAL		; Manual tuning table loaded from instruments, this is currently not fully implemented into RMT...
-	lda trackn_pointertable,x
-	beq do_tuning_tables		; a value of 0 means no pointer will be used, thus, can be skipped immediately
-	tay
-	and #$0F
-	ora #$B0
-	sta nr+1			; Bx00, where x is manipulated
+		lda trackn_pointertable,x
+		beq do_tuning_tables		; a value of 0 means no pointer will be used, thus, can be skipped immediately
+		tay
+		and #$0F
+		ora #$B0
+		sta nr+1			; Bx00, where x is manipulated
 ;* hack for Reverse-16 proof of concept, won't be used later		
-	lda #0
-	cpx #1
-	bne stayzero
+		lda #0
+		cpx #1
+		bne stayzero
 ;* end hack
-	tya
-	and #$C0
+		tya
+		and #$C0
 stayzero	
-	sta nr				; B0x0, where is manipulated
-;* hack for Reverse-16 proof of concept, won't be used later	 
-	cpx #0
-	bne getdist
-	lda tmp
-	ora #$C0	
-	jmp store_tables_lsb_c 
-;* end of Reverse-16 hack, what is below should always be the same 
+		sta nr				; B0x0, where is manipulated
+	;* hack for Reverse-16 proof of concept, won't be used later	 
+		cpx #0
+		bne getdist
+		lda tmp
+		ora #$C0	
+		jmp store_tables_lsb_c 
+	;* end of Reverse-16 hack, what is below should always be the same 
 getdist	
-	lda reg2
-	and #$0e
-	tay
-	jmp store_tables_lsb_b
+		lda reg2
+		and #$0e
+		tay
+		jmp store_tables_lsb_b
 	EIF
 	
 ;* end of manual tables code...
@@ -994,114 +1040,114 @@ do_tuning_tables
 		
 	IFT FEAT_AUDCTLMANUALSET	;*!!!! big block begins here 
 
-	IFT FEAT_FULL_16BIT||FEAT_BASS16
-	lda reg1		; load the channel flag for the initial 16-bit checks
-	bmi get_16bit_flag	; 16-bit MSB flag detected, jump and finish there immediately 	
-	cmp #$7F		; 16-bit LSB flag
-	bcc check_index		; if not #$7F, the index checks will take care of everything else
-	
-	;lda trackn_bass16,x	; get the LSB pitch value
-	;sta trackn_audf,x	; and write into the appropriate channel! -- BUG! This may be skipped entirely, unfortunately
-	
-	lda #0			; the 16-bit LSB flag was set, so first load 0
-	sta trackn_audc,x	; then mute the channel
-	;sta trackn_bass16,x	; and reset the LSB value before the next call-- BUG? if this is not done, the channel seems to outputs garbage on certain commands, why does this happen?
-	jmp ppnext		; and finish this one early, there is nothing else to do here! 
-	EIF
+		IFT FEAT_FULL_16BIT||FEAT_BASS16
+			lda reg1		; load the channel flag for the initial 16-bit checks
+			bmi get_16bit_flag	; 16-bit MSB flag detected, jump and finish there immediately 	
+			cmp #$7F		; 16-bit LSB flag
+			bcc check_index		; if not #$7F, the index checks will take care of everything else
+			
+			;lda trackn_bass16,x	; get the LSB pitch value
+			;sta trackn_audf,x	; and write into the appropriate channel! -- BUG! This may be skipped entirely, unfortunately
+			
+			lda #0			; the 16-bit LSB flag was set, so first load 0
+			sta trackn_audc,x	; then mute the channel
+			;sta trackn_bass16,x	; and reset the LSB value before the next call-- BUG? if this is not done, the channel seems to outputs garbage on certain commands, why does this happen?
+			jmp ppnext		; and finish this one early, there is nothing else to do here!
+		EIF
 
 check_index			; IMPROVEMENT: the flags system should work much better this time!
-	txa
-	IFT TRACKS>4		; stereo mode 	
-	cpx #4			; are we in the right POKEY channels?
-	bcc check_index_a	; if x is below 4, we are not 
-	sbc #4			; carry is set, 4 will be subtracted 
-	EIF 
+		txa
+		IFT TRACKS>4		; stereo mode 	
+			cpx #4			; are we in the right POKEY channels?
+			bcc check_index_a	; if x is below 4, we are not 
+			sbc #4			; carry is set, 4 will be subtracted 
+		EIF 
 check_index_a
-	asl @ 
-	asl @ 
-	sta c_index+1
-	lda reg1		; load the channel flag back in memory for the upcoming checks
+		asl @ 
+		asl @ 
+		sta c_index+1
+		lda reg1		; load the channel flag back in memory for the upcoming checks
 c_index	bcc *
-	jmp check_ch1 
-	nop
-	jmp check_ch2
-	nop
-	jmp check_ch3
-	nop
-	jmp check_ch4 
+		jmp check_ch1 
+		nop
+		jmp check_ch2
+		nop
+		jmp check_ch3
+		nop
+		jmp check_ch4 
 
 check_ch1 
-	IFT FEAT_FULL_SAWTOOTH
-	cmp #$40 		; 1.79mhz flag 
-	bne get_15khz_flag	; no Sawtooth and no 1.79mhz if not equal
-	cpy #$0A		; Distortion A?
-	bne store_tables_lsb	; no Sawtooth if not equal, but the 1.79mhz flag is set! 
-	lda tmp			; volume value backup
-	beq check_ch1_a		; no Sawtooth if the volume is 0
-	lda reg2 		; commands backup 
-	bpl check_ch1_a		; no Sawtooth if the AUTOFILTER command is off 
-	jmp do_sawtooth		; if all checks passed, process the Sawtooth code from here 
+		IFT FEAT_FULL_SAWTOOTH
+			cmp #$40 		; 1.79mhz flag 
+			bne get_15khz_flag	; no Sawtooth and no 1.79mhz if not equal
+			cpy #$0A		; Distortion A?
+			bne store_tables_lsb	; no Sawtooth if not equal, but the 1.79mhz flag is set! 
+			lda tmp			; volume value backup
+			beq check_ch1_a		; no Sawtooth if the volume is 0
+			lda reg2 		; commands backup 
+			bpl check_ch1_a		; no Sawtooth if the AUTOFILTER command is off 
+			jmp do_sawtooth		; if all checks passed, process the Sawtooth code from here 
 check_ch1_a
-	lda reg1
-	bpl store_tables_lsb	; 1.79mhz flag is still set, finish like normal 
-	ELS			; no Sawtooth code 
-	bpl check_ch3		; the 1.79mhz flag is the same regardless of the channel used, saves some bytes
-	EIF
+			lda reg1
+			bpl store_tables_lsb	; 1.79mhz flag is still set, finish like normal 
+		ELS			; no Sawtooth code 
+			bpl check_ch3		; the 1.79mhz flag is the same regardless of the channel used, saves some bytes
+		EIF
 	
 check_ch2 
-	IFT FEAT_BASS16
-	cpy #$06		; Distortion 6?
-	bne get_15khz_flag	; if not equal, no BASS16	
-	lda tmp 		; volume value backup
-	beq reload_flag		; if the volume is 0, no BASS16	
-	lda #$50		; JOIN_12 + CH1_179 bits 
-	jmp do_bass16		; if all checks passed, process the BASS16 code from here 	
-	ELS 
-	bpl get_15khz_flag	; there is nothing else to check, unconditional 
-	EIF
+		IFT FEAT_BASS16
+			cpy #$06		; Distortion 6?
+			bne get_15khz_flag	; if not equal, no BASS16	
+			lda tmp 		; volume value backup
+			beq reload_flag		; if the volume is 0, no BASS16	
+			lda #$50		; JOIN_12 + CH1_179 bits 
+			jmp do_bass16		; if all checks passed, process the BASS16 code from here 	
+		ELS 
+			bpl get_15khz_flag	; there is nothing else to check, unconditional 
+		EIF
 	
 check_ch3 
-	cmp #$40 		; 1.79mhz flag 
-	beq store_tables_lsb	; yes! finish from there
-	bne get_15khz_flag	; there is nothing else to check, unconditional 
+		cmp #$40 		; 1.79mhz flag 
+		beq store_tables_lsb	; yes! finish from there
+		bne get_15khz_flag	; there is nothing else to check, unconditional 
 	
 check_ch4 
-	IFT FEAT_BASS16
-	cpy #$06		; Distortion 6?
-	bne get_15khz_flag	; if not equal, no BASS16
-	lda tmp 		; volume value backup
-	beq reload_flag		; if the volume is 0, no BASS16	
-	lda #$28		; JOIN_34 + CH3_179 bits 
-	jmp do_bass16		; if all checks passed, process the BASS16 code from here
+		IFT FEAT_BASS16
+			cpy #$06		; Distortion 6?
+			bne get_15khz_flag	; if not equal, no BASS16
+			lda tmp 		; volume value backup
+			beq reload_flag		; if the volume is 0, no BASS16	
+			lda #$28		; JOIN_34 + CH3_179 bits 
+			jmp do_bass16		; if all checks passed, process the BASS16 code from here
 reload_flag
-	lda reg1 		;* reload the channel flag if no longer in memory before the 15khz checks! 
-	EIF 
+			lda reg1 		;* reload the channel flag if no longer in memory before the 15khz checks! 
+		EIF 
 
 ;* from here, the flag MUST be in memory, so reload it unless it is 100% certain it is ready to use! 
 	
 get_15khz_flag
-	and #1			; #$01 == 15khz flag, unconditional 
-	beq store_tables_lsb	; #$00 == 64khz flag, unconditional
+		and #1			; #$01 == 15khz flag, unconditional 
+		beq store_tables_lsb	; #$00 == 64khz flag, unconditional
 	
 check_15khz 
-	cpy #$0C		; are we in Distortion C/E?
-	bcs check_15khz_b	; if equal or above, use the Distortion C 15khz table, else, use the Distortion A 15khz table
-	lda #<frqtabpure_15khz	; Distortion A 15khz table LSB
-	bcc check_15khz_c	; carry flag still set
+		cpy #$0C		; are we in Distortion C/E?
+		bcs check_15khz_b	; if equal or above, use the Distortion C 15khz table, else, use the Distortion A 15khz table
+		lda #<frqtabpure_15khz	; Distortion A 15khz table LSB
+		bcc check_15khz_c	; carry flag still set
 check_15khz_b
-	lda #<frqtabbuzzy_15khz	; Distortion C 15khz table LSB
+		lda #<frqtabbuzzy_15khz	; Distortion C 15khz table LSB
 check_15khz_c
-	sta nr
-	lda #>PAGE_EXTRA_0	; tables MSB pointer, it's the same one regardless of the table used
-	bne store_tables_lsb_a	; unconditional 
+		sta nr
+		lda #>PAGE_EXTRA_0	; tables MSB pointer, it's the same one regardless of the table used
+		bne store_tables_lsb_a	; unconditional 
 	
-	IFT FEAT_FULL_16BIT 
+		IFT FEAT_FULL_16BIT 
 goto_bass16
-	jmp do_bass16_c		; go directly in the BASS16 code handling the CMD6 hijack, skipping the AUDCTL update
+			jmp do_bass16_c		; go directly in the BASS16 code handling the CMD6 hijack, skipping the AUDCTL update
 get_16bit_flag
-	cpy #$06		; Distortion 6?
-	beq goto_bass16		; yes! finish from there 
-	EIF
+			cpy #$06		; Distortion 6?
+			beq goto_bass16		; yes! finish from there 
+		EIF
 	
 	EIF			;*!!! end of condition FEAT_AUDCTLMANUALSET
 	
@@ -1126,33 +1172,33 @@ store_tables_lsb_c
 	
 InstrumentsEffects
 	IFT FEAT_EFFECTS
-	lda trackn_effdelay,x
-	beq ei2
+		lda trackn_effdelay,x
+		beq ei2
 	
 ; possible improvement: use CMP #2 instead? This could save a CLC instruction...
 ;	cmp #2			; if A >= 2 -> skip, 
 ;	bcs ei1			; if A < 2 -> carry flag not set, so it must be A = 1, 0 was done with beq ei2
 	
-	cmp #1
-	bne ei1
-	lda trackn_shiftfrq,x
-	IFT FEAT_EFFECTFSHIFT
-	clc
-	adc trackn_effshift,x
-	EIF
-	IFT FEAT_EFFECTVIBRATO
-	clc
-	ldy trackn_effvibratoa,x
-	adc vib0,y
-	EIF
-	sta trackn_shiftfrq,x
-	IFT FEAT_EFFECTVIBRATO
-	lda vibtabnext,y
-	sta trackn_effvibratoa,x
-	EIF
-	jmp ei2
+		cmp #1
+		bne ei1
+		lda trackn_shiftfrq,x
+		IFT FEAT_EFFECTFSHIFT
+			clc
+			adc trackn_effshift,x
+		EIF
+		IFT FEAT_EFFECTVIBRATO
+			clc
+			ldy trackn_effvibratoa,x
+			adc vib0,y
+		EIF
+		sta trackn_shiftfrq,x
+		IFT FEAT_EFFECTVIBRATO
+			lda vibtabnext,y
+			sta trackn_effvibratoa,x
+		EIF
+		jmp ei2
 ei1
-	dec trackn_effdelay,x
+		dec trackn_effdelay,x
 ei2
 	EIF
 	ldy trackn_tableend,x
@@ -1165,9 +1211,9 @@ ei2c
 	cmp trackn_tablea,x
 	bne ei2c2
 	IFT FEAT_TABLEGO
-	lda trackn_tablelop,x
+		lda trackn_tablelop,x
 	ELS
-	lda #INSTRPAR
+		lda #INSTRPAR
 	EIF
 	sta trackn_tablea,x
 	bne ei2a
@@ -1181,16 +1227,16 @@ ei2a
 	ldy trackn_tablea,x
 	lda (nt),y
 	IFT FEAT_TABLEMODE
-	ldy trackn_tablemode,x
-	beq ei2e
-	clc
-	adc trackn_tablenote,x
+		ldy trackn_tablemode,x
+		beq ei2e
+		clc
+		adc trackn_tablenote,x
 ei2e
 	EIF
 	sta trackn_tablenote,x
 	lda trackn_tabletypespeed,x
 	IFT FEAT_TABLETYPE||FEAT_TABLEMODE
-	and #$3f
+		and #$3f
 	EIF
 ei2f
 	sec
@@ -1202,9 +1248,9 @@ ei3
 	lda trackn_volume,x
 	beq ei4
 	IFT FEAT_VOLUMEMIN
-	cmp trackn_volumemin,x
-	beq ei4
-	bcc ei4
+		cmp trackn_volumemin,x
+		beq ei4
+		bcc ei4
 	EIF
 	tay
 	lda trackn_volumeslidevalue,x
@@ -1217,47 +1263,47 @@ ei3
 	sta trackn_volume,x
 ei4
 	IFT FEAT_COMMAND2
-	lda #0
-	sta frqaddcmd2
+		lda #0
+		sta frqaddcmd2
 	EIF
 	IFT FEAT_COMMAND1||FEAT_COMMAND2||FEAT_COMMAND3||FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
-	lda reg2
-	and #$70
-	IFT 1==[FEAT_COMMAND1+FEAT_COMMAND2+FEAT_COMMAND3+FEAT_COMMAND4+FEAT_COMMAND5+FEAT_COMMAND6+FEAT_COMMAND7]	
-	beq cmd0	
-	ELS
-	lsr @
-	lsr @
-	sta jmx+1
-jmx	bcc *
-	jmp cmd0
-	nop
-	jmp cmd1
-	IFT FEAT_COMMAND2||FEAT_COMMAND3||FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
-	nop
-	jmp cmd2
-	EIF
-	IFT FEAT_COMMAND3||FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
-	nop
-	jmp cmd3
-	EIF
-	IFT FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
-	nop
-	jmp cmd4
-	EIF
-	IFT FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
-	nop
-	jmp cmd5
-	EIF
-	IFT FEAT_COMMAND6||FEAT_COMMAND7 
-	nop
-	jmp cmd6
-	EIF
-	IFT FEAT_COMMAND7 
-	nop
-	jmp cmd7
-	EIF
-	EIF
+		lda reg2
+		and #$70
+		IFT 1==[FEAT_COMMAND1+FEAT_COMMAND2+FEAT_COMMAND3+FEAT_COMMAND4+FEAT_COMMAND5+FEAT_COMMAND6+FEAT_COMMAND7]	
+			beq cmd0	
+		ELS
+			lsr @
+			lsr @
+			sta jmx+1
+jmx			bcc *
+			jmp cmd0
+			nop
+			jmp cmd1
+			IFT FEAT_COMMAND2||FEAT_COMMAND3||FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
+				nop
+				jmp cmd2
+			EIF
+			IFT FEAT_COMMAND3||FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
+				nop
+				jmp cmd3
+			EIF
+			IFT FEAT_COMMAND4||FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
+				nop
+				jmp cmd4
+			EIF
+			IFT FEAT_COMMAND5||FEAT_COMMAND6||FEAT_COMMAND7	
+				nop
+				jmp cmd5
+			EIF
+			IFT FEAT_COMMAND6||FEAT_COMMAND7 
+				nop
+				jmp cmd6
+			EIF
+			IFT FEAT_COMMAND7 
+				nop
+				jmp cmd7
+			EIF
+		EIF
 	EIF
 	
 ;* end of instruments effects code...
@@ -1268,191 +1314,191 @@ jmx	bcc *
 	
 cmd1
 	IFT FEAT_COMMAND1
-	lda reg3
-	IFT FEAT_PORTAMENTO
-	jmp pp10d		; fixes Portamento overwriting the CMD1 command (absolute pitch) 
-	ELS
-	jmp cmd0c
-	EIF
+		lda reg3
+		IFT FEAT_PORTAMENTO
+			jmp pp10d		; fixes Portamento overwriting the CMD1 command (absolute pitch) 
+		ELS
+			jmp cmd0c
+		EIF
 	EIF
 cmd2
 	IFT FEAT_COMMAND2
-	lda reg3
-	sta frqaddcmd2
-	lda trackn_note,x
-	jmp cmd0a
+		lda reg3
+		sta frqaddcmd2
+		lda trackn_note,x
+		jmp cmd0a
 	EIF
 cmd3
 	IFT FEAT_COMMAND3
-	lda trackn_note,x
-	clc
-	adc reg3
-	sta trackn_note,x
-	jmp cmd0a
+		lda trackn_note,x
+		clc
+		adc reg3
+		sta trackn_note,x
+		jmp cmd0a
 	EIF
 cmd4
 	IFT FEAT_COMMAND4
-	lda trackn_shiftfrq,x
-	clc
-	adc reg3
-	sta trackn_shiftfrq,x
-	lda trackn_note,x
-	jmp cmd0a
+		lda trackn_shiftfrq,x
+		clc
+		adc reg3
+		sta trackn_shiftfrq,x
+		lda trackn_note,x
+		jmp cmd0a
 	EIF
 cmd5
 	IFT FEAT_COMMAND5&&FEAT_PORTAMENTO
-	IFT FEAT_TABLETYPE
-	lda trackn_tabletypespeed,x		; table type? 
-	bpl cmd5a1				; positive is notes table mode
-	ldy trackn_note,x			; current note
-	
-	IFT FEAT_FULL_16BIT||FEAT_BASS16
-	lda reg1				; flag in memory
-	bpl cmd5a0				; positive means no 16-bit mode active
-	tya 
-	asl @					; offset for the 16-bit addressing
-	tay
-	iny					; 16-bit MSB offset
-	EIF
+		IFT FEAT_TABLETYPE
+			lda trackn_tabletypespeed,x		; table type? 
+			bpl cmd5a1						; positive is notes table mode
+			ldy trackn_note,x				; current note
+		
+			IFT FEAT_FULL_16BIT||FEAT_BASS16
+				lda reg1					; flag in memory
+				bpl cmd5a0					; positive means no 16-bit mode active
+				tya 
+				asl @						; offset for the 16-bit addressing
+				tay
+				iny							; 16-bit MSB offset
+			EIF
 
 cmd5a0
-;	lda (nr),y				; actual note from table
-;	clc					; clear carry flag	
-;	adc trackn_tablenote,x			; frequency from table-- FIXME: might overflow!
+;			lda (nr),y						; actual note from table
+;			clc								; clear carry flag	
+;			adc trackn_tablenote,x			; frequency from table-- FIXME: might overflow!
 
-	lda (nr),y				; this is the actual note base frequency, or AUDF 
-	clc					; clear carry 
-	bpl cmd5a0b				; if the value is positive, branch and finish there
+			lda (nr),y						; this is the actual note base frequency, or AUDF 
+			clc								; clear carry 
+			bpl cmd5a0b						; if the value is positive, branch and finish there
 cmd5a0a
-	adc trackn_tablenote,x
-	bvs cmd5ax
-	bmi cmd5ax
-	lda #$FF				; if overflow, force #$FF!
-	bne cmd5ax
+			adc trackn_tablenote,x
+			bvs cmd5ax
+			bmi cmd5ax
+			lda #$FF						; if overflow, force #$FF!
+			bne cmd5ax
 cmd5a0b
-	adc trackn_tablenote,x
-	bvs cmd5ax
-	bpl cmd5ax
-	lda #0					; if overflow, force #$00! 
-	beq cmd5ax
-;	jmp cmd5ax				; process the remaining of the code there
-	EIF
+			adc trackn_tablenote,x
+			bvs cmd5ax
+			bpl cmd5ax
+			lda #0					; if overflow, force #$00! 
+			beq cmd5ax
+;			jmp cmd5ax				; process the remaining of the code there
+		EIF
 	
 cmd5a1
-	lda trackn_note,x			; current note
-	clc					; clear carry
-	adc trackn_tablenote,x			; add the note from table
-	cmp #61					; max possible note 
-	bcc cmd5a2				; branch if lower than 61, finish with it 
-	lda #63					; else, max possible note value
+		lda trackn_note,x			; current note
+		clc					; clear carry
+		adc trackn_tablenote,x			; add the note from table
+		cmp #61					; max possible note 
+		bcc cmd5a2				; branch if lower than 61, finish with it 
+		lda #63					; else, max possible note value
 cmd5a2
-	tay
+		tay
 	
-	IFT FEAT_FULL_16BIT||FEAT_BASS16	;* TODO: fix the proper 16-bit mode, as well as the Sawtooth and/or AUTOFILTER when combined as well
-	lda reg1				; flag in memory
-	bpl cmd5a3				; positive means no 16-bit mode active
-	tya 
-	asl @					; offset for the 16-bit addressing
-	tay
-	iny					; 16-bit MSB offset
-	EIF
+		IFT FEAT_FULL_16BIT||FEAT_BASS16	;* TODO: fix the proper 16-bit mode, as well as the Sawtooth and/or AUTOFILTER when combined as well
+			lda reg1				; flag in memory
+			bpl cmd5a3				; positive means no 16-bit mode active
+			tya 
+			asl @					; offset for the 16-bit addressing
+			tay
+			iny					; 16-bit MSB offset
+		EIF
 
 cmd5a3	
-	lda (nr),y				; actual note from table
+		lda (nr),y				; actual note from table
 cmd5ax
-	sta trackn_portafrqc,x			; set the target portamento frequency
-	ldy reg3				; #$XY instrument parameter
-	bne cmd5a				; jump aheead if not zero 
-	sta trackn_portafrqa,x			; else, set the current portamento pitch instantly
-	;* BUG: Portamento is never initialised if the #$XY parameter is not on the very first player call! 
+		sta trackn_portafrqc,x			; set the target portamento frequency
+		ldy reg3				; #$XY instrument parameter
+		bne cmd5a				; jump aheead if not zero 
+		sta trackn_portafrqa,x			; else, set the current portamento pitch instantly
+		;* BUG: Portamento is never initialised if the #$XY parameter is not on the very first player call! 
 cmd5a
-	lda trackn_portafrqa,x			; is the current frequency set to 0?
-	bne cmd5b				; if not, it's most likely correctly set
-	tay					; force the #$XY parameter to 0 to force Portamento to not run 
-	sta reg3				; it will be called again further below
-	lda trackn_portafrqc,x			; target frequency previously set
-	sta trackn_portafrqa,x			; overwrite forced on the current frequency, to avoid the "pitch from 0" bug
+		lda trackn_portafrqa,x			; is the current frequency set to 0?
+		bne cmd5b				; if not, it's most likely correctly set
+		tay					; force the #$XY parameter to 0 to force Portamento to not run 
+		sta reg3				; it will be called again further below
+		lda trackn_portafrqc,x			; target frequency previously set
+		sta trackn_portafrqa,x			; overwrite forced on the current frequency, to avoid the "pitch from 0" bug
 cmd5b
-	tya					; transfer the #$XY parameter to the accumulator
-	lsr @					; divide by 16
-	lsr @
-	lsr @
-	lsr @
-	sta trackn_portaspeed,x			; set the portamento speed with the new value
-	sta trackn_portaspeeda,x
-	lda reg3				; #$XY parameter again
-	and #$0f				; Only keep the Y values
-	sta trackn_portadepth,x			; set the portamento pitch offset to process each step
-	lda trackn_note,x			; current note
-	jmp cmd0a				; finish everything else like normal from there
+		tya					; transfer the #$XY parameter to the accumulator
+		lsr @					; divide by 16
+		lsr @
+		lsr @
+		lsr @
+		sta trackn_portaspeed,x			; set the portamento speed with the new value
+		sta trackn_portaspeeda,x
+		lda reg3				; #$XY parameter again
+		and #$0f				; Only keep the Y values
+		sta trackn_portadepth,x			; set the portamento pitch offset to process each step
+		lda trackn_note,x			; current note
+		jmp cmd0a				; finish everything else like normal from there
 	ELI FEAT_COMMAND5
-	lda trackn_note,x
-	jmp cmd0a
+		lda trackn_note,x
+		jmp cmd0a
 	EIF
 
 cmd6
 	IFT FEAT_COMMAND6&&FEAT_FILTER		;* EXPERIMENTAL: do NOT stack the effects together, and start the offset at 0!
-	lda reg3				; $XY parameter for the effect command
+		lda reg3				; $XY parameter for the effect command
 ;		clc					; clear the carry flag
 ;		adc trackn_filter,x			; add it to the frequency offset currently in memory	
-	sta trackn_filter,x			; overwrite the frequency offset with the new value 
-	lda trackn_note,x			; current note for this instrument
-	jmp cmd0a				; process the remaining of CMD0 without adding the $XY value to it 
+		sta trackn_filter,x			; overwrite the frequency offset with the new value 
+		lda trackn_note,x			; current note for this instrument
+		jmp cmd0a				; process the remaining of CMD0 without adding the $XY value to it 
 	ELI FEAT_COMMAND6			; CMD6 alone is essentially no command at all, regardless of the $XY value
-	lda trackn_note,x			; current note for this instrument
-	jmp cmd0a				; process the remaining of CMD0 without adding the $XY value to it 
+		lda trackn_note,x			; current note for this instrument
+		jmp cmd0a				; process the remaining of CMD0 without adding the $XY value to it 
 	EIF
 
 cmd7
 	IFT FEAT_COMMAND7
-	IFT FEAT_TWO_TONE||FEAT_VOLUME_ONLY
-	IFT FEAT_TWO_TONE
-	lda reg3
-	cmp #$FD		; #$FD toggles Two-Tone off
-	bcc cmd7f		; no values will match if less than this, failsafe in case the BPL above didn't catch it
-	beq cmd7b		; turn off the Two-Tone Filter if equal
-	cmp #$FE		; #$FE toggles Two-Tone on
-	beq cmd7c		; turn on the Two-Tone Filter if equal
-	IFT FEAT_VOLUME_ONLY	
-	bne cmd7a		; #$FF sets volume only mode, and will always be that value here, unconditional branching
-	ELS
-	bne cmd7f		; skip ahead, and don't set volume only mode either
-	EIF
+		IFT FEAT_TWO_TONE||FEAT_VOLUME_ONLY
+			IFT FEAT_TWO_TONE
+				lda reg3
+				cmp #$FD		; #$FD toggles Two-Tone off
+				bcc cmd7f		; no values will match if less than this, failsafe in case the BPL above didn't catch it
+				beq cmd7b		; turn off the Two-Tone Filter if equal
+				cmp #$FE		; #$FE toggles Two-Tone on
+				beq cmd7c		; turn on the Two-Tone Filter if equal
+				IFT FEAT_VOLUME_ONLY	
+					bne cmd7a		; #$FF sets volume only mode, and will always be that value here, unconditional branching
+				ELS
+					bne cmd7f		; skip ahead, and don't set volume only mode either
+				EIF
 cmd7b				
-	lda #3			; disable the Two-Tone Filter with this value
-	bne cmd7d		; unconditional
+				lda #3			; disable the Two-Tone Filter with this value
+				bne cmd7d		; unconditional
 cmd7c				
-	lda #$8B		; enable the Two-Tone Filter with this value
+				lda #$8B		; enable the Two-Tone Filter with this value
 cmd7d
-	IFT TRACKS>4
-	cpx #4
-	bcc cmd7e		; less than 4
-	sta v_skctl2		; SKCTL, Right POKEY 
-	bcs cmd7f		; carry flag still set, unconditional
-	EIF
+				IFT TRACKS>4
+					cpx #4
+					bcc cmd7e		; less than 4
+					sta v_skctl2		; SKCTL, Right POKEY 
+					bcs cmd7f		; carry flag still set, unconditional
+				EIF
 cmd7e
-	sta v_skctl		; SKCTL, Left POKEY
-	ELS
-	IFT FEAT_VOLUME_ONLY	
-	lda reg3
-	cmp #$FF
-	beq cmd7a		; set volume only mode if equal
-	EIF
-	EIF
+				sta v_skctl		; SKCTL, Left POKEY
+			ELS
+				IFT FEAT_VOLUME_ONLY	
+					lda reg3
+					cmp #$FF
+					beq cmd7a		; set volume only mode if equal
+				EIF
+			EIF
 cmd7f
-	lda trackn_note,x	; this is the expected variable in memory
-	jmp cmd0a 
+			lda trackn_note,x	; this is the expected variable in memory
+			jmp cmd0a 
 cmd7a
-	IFT FEAT_VOLUME_ONLY
-	lda trackn_audc,x
-	ora #$f0
-	sta trackn_audc,x
-	bne cmd7f		; unconditional
-	EIF
-	ELS
-	lda trackn_note,x	; this is the expected variable in memory
-	jmp cmd0a 
-	EIF
+			IFT FEAT_VOLUME_ONLY
+				lda trackn_audc,x
+				ora #$f0
+				sta trackn_audc,x
+				bne cmd7f		; unconditional
+			EIF
+		ELS
+			lda trackn_note,x	; this is the expected variable in memory
+			jmp cmd0a 
+		EIF
 	EIF
 	
 cmd0
@@ -1461,8 +1507,8 @@ cmd0
 	adc reg3
 cmd0a
 	IFT FEAT_TABLETYPE
-	ldy trackn_tabletypespeed,x
-	bmi cmd0b
+		ldy trackn_tabletypespeed,x
+		bmi cmd0b
 	EIF
 	clc
 	adc trackn_tablenote,x
@@ -1476,59 +1522,59 @@ cmd0a1
 	
 cmd0a1_a 	
 	IFT FEAT_FULL_16BIT||FEAT_BASS16
-	lda reg1
-	beq cmd0a3		; no 16-bit flag set
-	bpl cmd0a2		; Sawtooth flag set (maybe) 
-	tya
-	asl @			; offset for the 16-bit addressing!!!
-	tay
-	iny			; offset to load the MSB value first
-	lda (nr),y
-	dey			; offset to load the LSB value later
-	sta trackn_audf,x	; get and store the MSB channel early
-	lda trackn_shiftfrq,x
-	IFT FEAT_COMMAND2
-	clc
-	adc frqaddcmd2
-	EIF
-	sta tmp			; get and store the frequency shift early, combined if CMD2 is also enabled
-	bmi cmd0a1sub		; will subtract 1 from the MSB if negative on overflow
+		lda reg1
+		beq cmd0a3		; no 16-bit flag set
+		bpl cmd0a2		; Sawtooth flag set (maybe) 
+		tya
+		asl @			; offset for the 16-bit addressing!!!
+		tay
+		iny			; offset to load the MSB value first
+		lda (nr),y
+		dey			; offset to load the LSB value later
+		sta trackn_audf,x	; get and store the MSB channel early
+		lda trackn_shiftfrq,x
+		IFT FEAT_COMMAND2
+			clc
+			adc frqaddcmd2
+		EIF
+		sta tmp			; get and store the frequency shift early, combined if CMD2 is also enabled
+		bmi cmd0a1sub		; will subtract 1 from the MSB if negative on overflow
 cmd0a1add
-	lda (nr),y
-	clc
-	adc tmp
-	sta trackn_bass16-1,x	; LSB channel
-	bcc cmd0a1adddone	; no overflow, done
-	inc trackn_audf,x	; increment the MSB if the value went past #$FF
+		lda (nr),y
+		clc
+		adc tmp
+		sta trackn_bass16-1,x	; LSB channel
+		bcc cmd0a1adddone	; no overflow, done
+		inc trackn_audf,x	; increment the MSB if the value went past #$FF
 cmd0a1adddone	
-	jmp pp9			; done
-	
+		jmp pp9			; done
+		
 cmd0a1sub
-	lda (nr),y
-	clc
-	adc tmp
-	sta trackn_bass16-1,x	; LSB channel
-	bcs cmd0a1adddone	; no overflow, done
-	dec trackn_audf,x	; decrement the MSB if the value went past #$00
-	
+		lda (nr),y
+		clc
+		adc tmp
+		sta trackn_bass16-1,x	; LSB channel
+		bcs cmd0a1adddone	; no overflow, done
+		dec trackn_audf,x	; decrement the MSB if the value went past #$00
+		
 cmd0a1subdone	
-	jmp pp9			; done	
+		jmp pp9			; done	
 	EIF
 	
 cmd0a2	;* Sawtooth is so unlikely to even range the low #$FF frequencies that applying the vibrato fixes is pointless!
 	IFT FEAT_FULL_SAWTOOTH&&FEAT_AUDCTLMANUALSET
-	cmp #$41		; 1.79mhz => Sawtooth?
-	bne cmd0a3		; no Sawtooth for sure
-	lda (nr),y
-	clc
-	adc trackn_shiftfrq,x
-	IFT FEAT_COMMAND2
-	clc
-	adc frqaddcmd2
-	EIF	
-	sta trackn_audf+2,x	; since we're in channel 1 of either POKEY, offset +2 will always be the 3rd channel
-	pla			; get the second sawtooth pointer back from stack
-	sta nr			; update the tables pointer to the other sawtooth table
+		cmp #$41		; 1.79mhz => Sawtooth?
+		bne cmd0a3		; no Sawtooth for sure
+		lda (nr),y
+		clc
+		adc trackn_shiftfrq,x
+		IFT FEAT_COMMAND2
+			clc
+			adc frqaddcmd2
+		EIF	
+		sta trackn_audf+2,x	; since we're in channel 1 of either POKEY, offset +2 will always be the 3rd channel
+		pla			; get the second sawtooth pointer back from stack
+		sta nr			; update the tables pointer to the other sawtooth table
 	EIF
 
 cmd0a3
@@ -1542,8 +1588,8 @@ cmd0a3
 
 	lda trackn_shiftfrq,x	; vibrato, and some other shifts use this value 
 	IFT FEAT_COMMAND2 
-	clc			; clear carry 
-	adc frqaddcmd2		; if the CMD2 feature is also enabled, add that value as well 
+		clc			; clear carry 
+		adc frqaddcmd2		; if the CMD2 feature is also enabled, add that value as well 
 	EIF 
 	sta tmp			; temporary, for faster operation below
 cmd0a3a
@@ -1576,62 +1622,62 @@ cmd0b1
 
 cmd0b1_a 
 	IFT FEAT_FULL_16BIT||FEAT_BASS16
-	lda reg1 
-	beq cmd0b3		; no 16-bit flag set
-	bpl cmd0b2		; Sawtooth flag set (maybe) 
-	tya
-	asl @			; offset for the 16-bit addressing!!!
-	tay
-	iny			; offset to load the MSB value first
-	lda (nr),y
-	dey			; offset to load the LSB value later
-	sta trackn_audf,x	; get and store the MSB channel early
-	lda trackn_shiftfrq,x
-	clc
-	adc trackn_tablenote,x
-	clc
-	IFT FEAT_COMMAND2
-	clc
-	adc frqaddcmd2
-	EIF
-	sta tmp			; get and store the frequency shift early, combined if CMD2 is also enabled
-	bmi cmd0b1sub		; will subtract 1 from the MSB if negative on overflow
+		lda reg1 
+		beq cmd0b3		; no 16-bit flag set
+		bpl cmd0b2		; Sawtooth flag set (maybe) 
+		tya
+		asl @			; offset for the 16-bit addressing!!!
+		tay
+		iny			; offset to load the MSB value first
+		lda (nr),y
+		dey			; offset to load the LSB value later
+		sta trackn_audf,x	; get and store the MSB channel early
+		lda trackn_shiftfrq,x
+		clc
+		adc trackn_tablenote,x
+		clc
+		IFT FEAT_COMMAND2
+			clc
+			adc frqaddcmd2
+		EIF
+		sta tmp			; get and store the frequency shift early, combined if CMD2 is also enabled
+		bmi cmd0b1sub		; will subtract 1 from the MSB if negative on overflow
 cmd0b1add
-	lda (nr),y
-	clc
-	adc tmp
-	sta trackn_bass16-1,x	; LSB 16-bit channel, update early here
-	bcc cmd0b1adddone	; no overflow, done
-	inc trackn_audf,x	; increment the MSB if the value went past #$FF
+		lda (nr),y
+		clc
+		adc tmp
+		sta trackn_bass16-1,x	; LSB 16-bit channel, update early here
+		bcc cmd0b1adddone	; no overflow, done
+		inc trackn_audf,x	; increment the MSB if the value went past #$FF
 cmd0b1adddone	
-	jmp pp9			; done
+		jmp pp9			; done
 cmd0b1sub
-	lda (nr),y
-	clc
-	adc tmp
-	sta trackn_bass16-1,x	; LSB 16-bit channel, update early here
-	bcs cmd0b1adddone	; no overflow, done
-	dec trackn_audf,x	; decrement the MSB if the value went past #$00
+		lda (nr),y
+		clc
+		adc tmp
+		sta trackn_bass16-1,x	; LSB 16-bit channel, update early here
+		bcs cmd0b1adddone	; no overflow, done
+		dec trackn_audf,x	; decrement the MSB if the value went past #$00
 cmd0b1subdone	
-	jmp pp9			; done 	
+		jmp pp9			; done 	
 	EIF
 	
 cmd0b2	;* Sawtooth is so unlikely to even range the low #$FF frequencies that applying the vibrato fixes is pointless!
 	IFT FEAT_FULL_SAWTOOTH&&FEAT_AUDCTLMANUALSET
-	cmp #$41		; 1.79mhz => Sawtooth?
-	bne cmd0b3		; no Sawtooth for sure 
-	lda trackn_shiftfrq,x
-	clc
-	adc trackn_tablenote,x
-	clc
-	adc (nr),y	
-	IFT FEAT_COMMAND2
-	clc
-	adc frqaddcmd2
-	EIF	
-	sta trackn_audf+2,x	; since we're in channel 1 of either POKEY, offset +2 will always be the 3rd channel
-	pla			; get the second sawtooth pointer back from stack
-	sta nr			; update the tables pointer to the other sawtooth table
+		cmp #$41					; 1.79mhz => Sawtooth?
+		bne cmd0b3					; no Sawtooth for sure 
+		lda trackn_shiftfrq,x
+		clc
+		adc trackn_tablenote,x
+		clc
+		adc (nr),y	
+		IFT FEAT_COMMAND2
+			clc
+			adc frqaddcmd2
+		EIF	
+		sta trackn_audf+2,x			; since we're in channel 1 of either POKEY, offset +2 will always be the 3rd channel
+		pla							; get the second sawtooth pointer back from stack
+		sta nr						; update the tables pointer to the other sawtooth table
 	EIF
 
 cmd0b3
@@ -1645,29 +1691,29 @@ cmd0b3
 ;	adc frqaddcmd2
 ;	EIF
 
-	lda trackn_shiftfrq,x	; vibrato, and some other shifts use this value 
-	clc			; clear carry 
-	adc trackn_tablenote,x	; freq table
+	lda trackn_shiftfrq,x			; vibrato, and some other shifts use this value 
+	clc								; clear carry 
+	adc trackn_tablenote,x			; freq table
 	IFT FEAT_COMMAND2 
-	clc			; clear carry 
-	adc frqaddcmd2		; if the CMD2 feature is also enabled, add that value as well 
+		clc							; clear carry 
+		adc frqaddcmd2				; if the CMD2 feature is also enabled, add that value as well 
 	EIF 
-	sta tmp			; temporary, for faster operation below
+	sta tmp							; temporary, for faster operation below
 cmd0b3a
-	lda (nr),y		; this is the actual note base frequency, or AUDF 
-	clc			; clear carry 
-	bpl cmd0b3c		; if the value is positive, branch and finish there
+	lda (nr),y						; this is the actual note base frequency, or AUDF 
+	clc								; clear carry 
+	bpl cmd0b3c						; if the value is positive, branch and finish there
 cmd0b3b
 	adc tmp
 	bvs cmd0c
 	bmi cmd0c
-	lda #$FF		; if overflow, force #$FF!
+	lda #$FF						; if overflow, force #$FF!
 	bne cmd0c
 cmd0b3c
 	adc tmp
 	bvs cmd0c
 	bpl cmd0c
-	lda #0			; if overflow, force #$00! 
+	lda #0							; if overflow, force #$00! 
 
 	EIF
 	
@@ -1687,70 +1733,70 @@ cmd0c
 	
 pp9
 	IFT FEAT_PORTAMENTO
-	lda trackn_portaspeeda,x	; is the portamento effect curently active?
-	beq pp10			; it will be skipped if equal 
-	dec trackn_portaspeeda,x	; decrease the value by 1
-	bne pp10			; then jump ahead if it is not 0
-	lda trackn_portaspeed,x		; portamento speed in memory
-	sta trackn_portaspeeda,x	; overwrite the current portamento speed value to reset it
-	lda trackn_portafrqa,x		; current portamento frequency in memory
-	cmp trackn_portafrqc,x		; compare to target frequency
-	beq pp10			; if equal, portamento is done and can be skipped
-	bcs pps1			; if the current portamento pitch is higher, branch here
+		lda trackn_portaspeeda,x	; is the portamento effect curently active?
+		beq pp10					; it will be skipped if equal 
+		dec trackn_portaspeeda,x	; decrease the value by 1
+		bne pp10					; then jump ahead if it is not 0
+		lda trackn_portaspeed,x		; portamento speed in memory
+		sta trackn_portaspeeda,x	; overwrite the current portamento speed value to reset it
+		lda trackn_portafrqa,x		; current portamento frequency in memory
+		cmp trackn_portafrqc,x		; compare to target frequency
+		beq pp10					; if equal, portamento is done and can be skipped
+		bcs pps1					; if the current portamento pitch is higher, branch here
 	
-pps0	; else, it is below the target pitch here
-	adc trackn_portadepth,x		; add the portamento frequency offset to it
-	bcs pps8			; overflown? branch if the carry flag is set
-	cmp trackn_portafrqc,x		; compare to the target frequency
-	bcs pps8			; equal or above means it was reached
-	jmp pps9			; otherwise, it is still not reached yet
+pps0 ; else, it is below the target pitch here
+		adc trackn_portadepth,x		; add the portamento frequency offset to it
+		bcs pps8					; overflown? branch if the carry flag is set
+		cmp trackn_portafrqc,x		; compare to the target frequency
+		bcs pps8					; equal or above means it was reached
+		jmp pps9					; otherwise, it is still not reached yet
 	
-pps1	; current pitch is higher than the target pitch here
-	sbc trackn_portadepth,x		; subtract the portamento frequency offset from it
-	bcc pps8			; overflown? branch if the carry flag is clear
-	cmp trackn_portafrqc,x		; compare to the target frequency
-	bcs pps9			; equal or above means it was not yet reached
+pps1 ; current pitch is higher than the target pitch here
+		sbc trackn_portadepth,x		; subtract the portamento frequency offset from it
+		bcc pps8					; overflown? branch if the carry flag is clear
+		cmp trackn_portafrqc,x		; compare to the target frequency
+		bcs pps9					; equal or above means it was not yet reached
 pps8
-	lda trackn_portafrqc,x		; the target pitch was reached, load it in memory
+		lda trackn_portafrqc,x		; the target pitch was reached, load it in memory
 pps9
-	sta trackn_portafrqa,x		; update the current portamento pitch with the new pitch
+		sta trackn_portafrqa,x		; update the current portamento pitch with the new pitch
 pp10
-	lda reg2			; instrument commands and distortion
-	and #$01			; Portamento bit
-	beq pp11			; if 0 it is not set and will be skipped
+		lda reg2					; instrument commands and distortion
+		and #$01					; Portamento bit
+		beq pp11					; if 0 it is not set and will be skipped
 	
 pp10a
-;	lda trackn_portafrqa,x		; load the current portamento frequency in memory
-;	clc				; clear the carry flag 
-;	adc trackn_shiftfrq,x		; add to it the shiftfrq/vibrato pitch
+;		lda trackn_portafrqa,x		; load the current portamento frequency in memory
+;		clc							; clear the carry flag 
+;		adc trackn_shiftfrq,x		; add to it the shiftfrq/vibrato pitch
 
 	;* TODO: add support for CMD2 offset, and fix vibrato when TableFreq is also involved, they have been ignored here!
 	;* looks like the CMD0, and CMD1 were also ignored??? but why? 
 	;* seems like the Table of Freqs mode is broken? Adding Negative values	
 
-	lda trackn_shiftfrq,x		; vibrato, and some other shifts use this value 
-	IFT FEAT_COMMAND2 
-	clc				; clear carry 
-	adc frqaddcmd2			; if the CMD2 feature is also enabled, add that value as well 
-	EIF 
-	sta tmp				; temporary, for faster operation below
-	lda trackn_portafrqa,x		; load the current portamento frequency in memory
-	clc				; clear the carry flag	
-	bpl pp10c 			; positive value is outside of the dangerous range and can be processed
+		lda trackn_shiftfrq,x		; vibrato, and some other shifts use this value 
+		IFT FEAT_COMMAND2 
+			clc						; clear carry 
+			adc frqaddcmd2			; if the CMD2 feature is also enabled, add that value as well 
+		EIF 
+		sta tmp						; temporary, for faster operation below
+		lda trackn_portafrqa,x		; load the current portamento frequency in memory
+		clc							; clear the carry flag	
+		bpl pp10c 					; positive value is outside of the dangerous range and can be processed
 pp10b
-	adc tmp
-	bvs pp10d
-	bmi pp10d
-	lda #$FF			; if overflow, force #$FF!
-	bne pp10d
+		adc tmp
+		bvs pp10d
+		bmi pp10d
+		lda #$FF					; if overflow, force #$FF!
+		bne pp10d
 pp10c
-	adc tmp
-	bvs pp10d
-	bpl pp10d
-	lda #0				; if overflow, force #$00! 
+		adc tmp
+		bvs pp10d
+		bpl pp10d
+		lda #0						; if overflow, force #$00! 
 	
 pp10d
-	sta trackn_audf,x		; update the channel AUDF with the new value if Portamento was processed 
+		sta trackn_audf,x			; update the channel AUDF with the new value if Portamento was processed 
 pp11
 	EIF
 
@@ -1781,34 +1827,34 @@ rmt_p4
 
 	IFT FEAT_FULL_16BIT||FEAT_BASS16	;****
 bb1	
-	lda g_flag+1
-	bpl bb2					; not 16-bit flag, do nothing here	
-	lda trackn_bass16+0			; ch1
-	sta trackn_audf+0
+		lda g_flag+1
+		bpl bb2						; not 16-bit flag, do nothing here	
+		lda trackn_bass16+0			; ch1
+		sta trackn_audf+0
 bb2
-	lda g_flag+3
-	bpl bb3					; not 16-bit flag, do nothing here
-	lda trackn_bass16+2			; ch3
-	sta trackn_audf+2
+		lda g_flag+3
+		bpl bb3						; not 16-bit flag, do nothing here
+		lda trackn_bass16+2			; ch3
+		sta trackn_audf+2
 bb3
-	sty trackn_bass16+0
-	sty trackn_bass16+2
+		sty trackn_bass16+0
+		sty trackn_bass16+2
 	
-	IFT STEREOMODE==1
+		IFT STEREOMODE==1
 bs1	
-	lda g_flag+1+4
-	bpl bs2					; not 16-bit flag, do nothing here	
-	lda trackn_bass16+0+4			; ch1
-	sta trackn_audf+0+4
+			lda g_flag+1+4
+			bpl bs2					; not 16-bit flag, do nothing here	
+			lda trackn_bass16+0+4	; ch1
+			sta trackn_audf+0+4
 bs2
-	lda g_flag+3+4
-	bpl bs3					; not 16-bit flag, do nothing here
-	lda trackn_bass16+2+4			; ch3
-	sta trackn_audf+2+4
+			lda g_flag+3+4
+			bpl bs3					; not 16-bit flag, do nothing here
+			lda trackn_bass16+2+4	; ch3
+			sta trackn_audf+2+4
 bs3
-	sty trackn_bass16+0+4
-	sty trackn_bass16+2+4
-	EIF
+			sty trackn_bass16+0+4
+			sty trackn_bass16+2+4
+		EIF
 	EIF					;****
 
 ;* end of 16-bit flag code...
@@ -1820,125 +1866,125 @@ bs3
 ;* UPDATE: an attempt to mitigate overflows has been done here... 
 
 	IFT FEAT_FILTER 
-	ldx v_audctl 
+		ldx v_audctl 
 qq1
-	IFT FEAT_FILTERG0L
-	lda trackn_command+0		; AUTOFILTER command set? BIT7 == #$80
-	bpl qq2				; if the value is positive, the command is not set, skip
-	lda trackn_audc+0		; AUDC value from ch1 currently in memory
-	and #$0f			; only keep the volume value from the byte
-	beq qq2				; if the volume is 0, skip 
-	lda trackn_audf+0		; AUDF value from ch1 currently in memory 
-	clc				; clear the carry flag
-	bpl qq1a			; it's alright! carry on if the value is in the positive range
-	sta tmp				; quick backup first
-	adc trackn_filter+0		; add the frequency offset 
-	bmi qq1b			; all good, carry on!
-	lda tmp				; reload the backup value if it had overflown
-	sec				; set the carry flag first!
-	sbc trackn_filter+0		; subtract the frequency offset instead!
-	bmi qq1b			; finish like normal from here
+		IFT FEAT_FILTERG0L
+			lda trackn_command+0		; AUTOFILTER command set? BIT7 == #$80
+			bpl qq2				; if the value is positive, the command is not set, skip
+			lda trackn_audc+0		; AUDC value from ch1 currently in memory
+			and #$0f			; only keep the volume value from the byte
+			beq qq2				; if the volume is 0, skip 
+			lda trackn_audf+0		; AUDF value from ch1 currently in memory 
+			clc				; clear the carry flag
+			bpl qq1a			; it's alright! carry on if the value is in the positive range
+			sta tmp				; quick backup first
+			adc trackn_filter+0		; add the frequency offset 
+			bmi qq1b			; all good, carry on!
+			lda tmp				; reload the backup value if it had overflown
+			sec				; set the carry flag first!
+			sbc trackn_filter+0		; subtract the frequency offset instead!
+			bmi qq1b			; finish like normal from here
 qq1a
-	adc trackn_filter+0		; add the frequency offset for the AUTOFILTER modulation into the ch1 frequency 
+			adc trackn_filter+0		; add the frequency offset for the AUTOFILTER modulation into the ch1 frequency 
 qq1b
-	sta trackn_audf+2		; overwrite the ch3 frequency with the new offset frequency 
-	sty trackn_filter+0		; reset that value until a new CMD6 overwrites it
+			sta trackn_audf+2		; overwrite the ch3 frequency with the new offset frequency 
+			sty trackn_filter+0		; reset that value until a new CMD6 overwrites it
 qq1c
-	txa				; get the AUDCTL into the accumulator
-	ora #4				; set the High Pass Filter Ch1+3 bit into it
-	tax				; tramsfer back into X to process the next channel the exact same way
-	EIF
+			txa				; get the AUDCTL into the accumulator
+			ora #4				; set the High Pass Filter Ch1+3 bit into it
+			tax				; tramsfer back into X to process the next channel the exact same way
+		EIF
 	
 qq2
-	IFT FEAT_FILTERG1L
-	lda trackn_command+1
-	bpl qq3
-	lda trackn_audc+1
-	and #$0f
-	beq qq3
-	lda trackn_audf+1
-	clc
-	bpl qq2a
-	sta tmp
-	adc trackn_filter+1
-	bmi qq2b
-	lda tmp
-	sec
-	sbc trackn_filter+1
-	bmi qq2b
+		IFT FEAT_FILTERG1L
+			lda trackn_command+1
+			bpl qq3
+			lda trackn_audc+1
+			and #$0f
+			beq qq3
+			lda trackn_audf+1
+			clc
+			bpl qq2a
+			sta tmp
+			adc trackn_filter+1
+			bmi qq2b
+			lda tmp
+			sec
+			sbc trackn_filter+1
+			bmi qq2b
 qq2a
-	adc trackn_filter+1
+			adc trackn_filter+1
 qq2b
-	sta trackn_audf+3
-	sty trackn_filter+1
+			sta trackn_audf+3
+			sty trackn_filter+1
 qq2c
-	txa
-	ora #2
-	tax
-		
-	EIF
+			txa
+			ora #2
+			tax
+			
+		EIF
 qq3
-	stx v_audctl
+		stx v_audctl
 	EIF
 
 	IFT FEAT_FILTER&&TRACKS>4
-	ldx v_audctl2 
+		ldx v_audctl2 
 qs1
-	IFT FEAT_FILTERG0R
-	lda trackn_command+0+4
-	bpl qs2
-	lda trackn_audc+0+4
-	and #$0f
-	beq qs2
-	lda trackn_audf+0+4
-	clc
-	bpl qs1a
-	sta tmp
-	adc trackn_filter+0+4
-	bmi qs1b
-	lda tmp
-	sec
-	sbc trackn_filter+0+4
-	bmi qs1b
+		IFT FEAT_FILTERG0R
+			lda trackn_command+0+4
+			bpl qs2
+			lda trackn_audc+0+4
+			and #$0f
+			beq qs2
+			lda trackn_audf+0+4
+			clc
+			bpl qs1a
+			sta tmp
+			adc trackn_filter+0+4
+			bmi qs1b
+			lda tmp
+			sec
+			sbc trackn_filter+0+4
+			bmi qs1b
 qs1a	
-	adc trackn_filter+0+4
+			adc trackn_filter+0+4
 qs1b
-	sta trackn_audf+2+4
-	sty trackn_filter+0+4
+			sta trackn_audf+2+4
+			sty trackn_filter+0+4
 qs1c
-	txa
-	ora #4
-	tax
-	EIF
+			txa
+			ora #4
+			tax
+		EIF
 qs2
-	IFT FEAT_FILTERG1R
-	lda trackn_command+1+4
-	bpl qs3
-	lda trackn_audc+1+4
-	and #$0f
-	beq qs3
-	lda trackn_audf+1+4
-	clc
-	bpl qs2a
-	sta tmp
-	adc trackn_filter+1+4
-	bmi qs2b
-	lda tmp 
-	sec
-	sbc trackn_filter+1+4
-	bmi qs2b 
+		IFT FEAT_FILTERG1R
+			lda trackn_command+1+4
+			bpl qs3
+			lda trackn_audc+1+4
+			and #$0f
+			beq qs3
+			lda trackn_audf+1+4
+			clc
+			bpl qs2a
+			sta tmp
+			adc trackn_filter+1+4
+			bmi qs2b
+			lda tmp 
+			sec
+			sbc trackn_filter+1+4
+			bmi qs2b 
 qs2a
-	adc trackn_filter+1+4
+			adc trackn_filter+1+4
 qs2b
-	sta trackn_audf+3+4
-	sty trackn_filter+1+4
+			sta trackn_audf+3+4
+			sty trackn_filter+1+4
 qs2c
-	txa
-	ora #2
-	tax
-	EIF
+			txa
+			ora #2
+			tax
+		EIF
 qs3
-	stx v_audctl2
+		stx v_audctl2
 	EIF
 	
 ;* end of Autofilter code...
@@ -1956,55 +2002,55 @@ rmt_p5
 
 	IFT FEAT_FULL_SAWTOOTH&&FEAT_AUDCTLMANUALSET
 do_sawtooth
-	IFT FEAT_FILTER
-	eor #$80			; inverts the AUTOFILTER bit, so it does not overwrite things later
-	sta trackn_command,x		; overwrite the command byte before the AUTOFILTER code since things where done early
-	EIF
-	lda #$64			; high pass filter, CH1+3 + 1.79mhz CH1+3
-	IFT TRACKS>4			; stereo mode
-	cpx #4				; are we in the right POKEY channels?
-	bcc do_sawtooth_a 		; if x is lower than 4, we are not
-	ora v_audctl2			; combine the existing AUDCTL value to it
-	sta v_audctl2			; store the new AUDCTL value, right POKEY
-	bne do_sawtooth_b 		; unconditional
-	EIF
+		IFT FEAT_FILTER
+			eor #$80				; inverts the AUTOFILTER bit, so it does not overwrite things later
+			sta trackn_command,x	; overwrite the command byte before the AUTOFILTER code since things where done early
+		EIF
+		lda #$64					; high pass filter, CH1+3 + 1.79mhz CH1+3
+		IFT TRACKS>4				; stereo mode
+			cpx #4					; are we in the right POKEY channels?
+			bcc do_sawtooth_a 		; if x is lower than 4, we are not
+			ora v_audctl2			; combine the existing AUDCTL value to it
+			sta v_audctl2			; store the new AUDCTL value, right POKEY
+			bne do_sawtooth_b 		; unconditional
+		EIF
 do_sawtooth_a	
-	ora v_audctl			; combine the existing AUDCTL value to it
-	sta v_audctl			; store the new AUDCTL value, left POKEY
+		ora v_audctl				; combine the existing AUDCTL value to it
+		sta v_audctl				; store the new AUDCTL value, left POKEY
 do_sawtooth_b
 
-	IFT FEAT_COMMAND6		; Sawtooth CMD6 hack... could be optimised much better, or maybe moved into the commands? 
-	lda reg2			; Command and Distortion
-	and #$70			; keep the Command bits only
-	cmp #$60			; CMD6?
-	bne do_sawtooth_c 		; skip if not equal
-	lda reg3			; $XY parameter
-	beq do_sawtooth_c 		; skip if the value is 0, nothing will be changed
-	bmi sawtooth_reverse		; negative values (#$80 to #$FF) will reverse the pointers, positive values (#$01 to #$7F) will set the pointers back to normal
+		IFT FEAT_COMMAND6			; Sawtooth CMD6 hack... could be optimised much better, or maybe moved into the commands? 
+			lda reg2				; Command and Distortion
+			and #$70				; keep the Command bits only
+			cmp #$60				; CMD6?
+			bne do_sawtooth_c 		; skip if not equal
+			lda reg3				; $XY parameter
+			beq do_sawtooth_c 		; skip if the value is 0, nothing will be changed
+			bmi sawtooth_reverse	; negative values (#$80 to #$FF) will reverse the pointers, positive values (#$01 to #$7F) will set the pointers back to normal
 sawtooth_normal
-	lda #<frqtabsawtooth_ch1
-	sta saw_ch1
-	lda #<frqtabsawtooth_ch3
-	sta saw_ch3	
-	bpl do_sawtooth_c 
+			lda #<frqtabsawtooth_ch1
+			sta saw_ch1
+			lda #<frqtabsawtooth_ch3
+			sta saw_ch3	
+			bpl do_sawtooth_c 
 sawtooth_reverse
-	lda #<frqtabsawtooth_ch3
-	sta saw_ch1
-	lda #<frqtabsawtooth_ch1
-	sta saw_ch3	
-	EIF
+			lda #<frqtabsawtooth_ch3
+			sta saw_ch1
+			lda #<frqtabsawtooth_ch1
+			sta saw_ch3
+		EIF
 	
 do_sawtooth_c
-	lda #<frqtabsawtooth_ch1
+		lda #<frqtabsawtooth_ch1
 saw_ch1	equ *-1	
-	pha				; very TEMPORARILY keep the other pointer in the stack
-	lda #<frqtabsawtooth_ch3
+		pha							; very TEMPORARILY keep the other pointer in the stack
+		lda #<frqtabsawtooth_ch3
 saw_ch3	equ *-1	
-	sta nr
-	inc reg1			; #$40 => #$41, will be necessary later to help differentiate the other flags!
+		sta nr
+		inc reg1					; #$40 => #$41, will be necessary later to help differentiate the other flags!
 do_sawtooth_d
-	lda #>PAGE_EXTRA_0		; tables MSB pointer, it's the same one regardless of the table used
-	jmp store_tables_lsb_a		; finish in the middle of the 64khz/1.79mhz branch
+		lda #>PAGE_EXTRA_0			; tables MSB pointer, it's the same one regardless of the table used
+		jmp store_tables_lsb_a		; finish in the middle of the 64khz/1.79mhz branch
 
 	EIF
 
@@ -2016,53 +2062,53 @@ do_sawtooth_d
 
 	IFT FEAT_BASS16	
 do_bass16 
-	IFT TRACKS>4		; stereo mode
-	cpx #4			; are we in the right POKEY channels?
-	bcc do_bass16_a 	; if x is lower than 4, we are not
-	ora v_audctl2		; merge the values with the AUDCTL in memory
-	sta v_audctl2		; overwrite the AUDCTL, to force 16-bit mode through Distortion 6
-	bne do_bass16_b		; unconditional	
-	EIF
+		IFT TRACKS>4				; stereo mode
+			cpx #4					; are we in the right POKEY channels?
+			bcc do_bass16_a 		; if x is lower than 4, we are not
+			ora v_audctl2			; merge the values with the AUDCTL in memory
+			sta v_audctl2			; overwrite the AUDCTL, to force 16-bit mode through Distortion 6
+			bne do_bass16_b			; unconditional	
+		EIF
 do_bass16_a
-	ora v_audctl		; merge the values with the AUDCTL in memory
-	sta v_audctl		; overwrite the AUDCTL, to force 16-bit mode through Distortion 6
+		ora v_audctl				; merge the values with the AUDCTL in memory
+		sta v_audctl				; overwrite the AUDCTL, to force 16-bit mode through Distortion 6
 do_bass16_b 
-	lda #$80 		; 16-bit pointer
-	sta g_flag,x		; flag set in the MSB channel --actually necessary since the flag is retrieved later!
-	sta reg1		; since it is not permanent, it is good for immediate use!
-	eor #$FF 		; invert, #$80 becomes #$7F
-	sta g_flag-1,x		; flag set for the next channel, which will be skipped due to being in 16-bit mode now! 
+		lda #$80 					; 16-bit pointer
+		sta g_flag,x				; flag set in the MSB channel --actually necessary since the flag is retrieved later!
+		sta reg1					; since it is not permanent, it is good for immediate use!
+		eor #$FF 					; invert, #$80 becomes #$7F
+		sta g_flag-1,x				; flag set for the next channel, which will be skipped due to being in 16-bit mode now! 
 do_bass16_c
-	IFT FEAT_COMMAND6&&FEAT_FULL_16BIT
-	lda reg2		; Distortion and Commands
-	and #$70		; leave only the Commands bits
-	cmp #$60		; CMD6?
-	bne do_bass16_d		; skip if not CMD6
-	lda reg3		; XY parameter 
-	and #$0E		; strip away all unwanted bits, left nybble will not affect anything
-	sta bass16_pointer	; PERMANENTLY change the value until a new CMD6 value is read
-	EIF 
-	IFT FEAT_FULL_16BIT	
+		IFT FEAT_COMMAND6&&FEAT_FULL_16BIT
+			lda reg2				; Distortion and Commands
+			and #$70				; leave only the Commands bits
+			cmp #$60				; CMD6?
+			bne do_bass16_d			; skip if not CMD6
+			lda reg3				; XY parameter 
+			and #$0E				; strip away all unwanted bits, left nybble will not affect anything
+			sta bass16_pointer		; PERMANENTLY change the value until a new CMD6 value is read
+		EIF 
+		IFT FEAT_FULL_16BIT	
 do_bass16_d
-	ldy #$0A		; Distortion A
+			ldy #$0A				; Distortion A
 bass16_pointer equ *-1 
-	lda reg1		; the flag has been set, and also became the tables pointer!
-	jmp store_tables_lsb	; continue like normal from there
-	
-	ELS			;* FIXMEEEE... later 
-	lda #<frqtabpure_hi
-	sta nr
-	lda #<frqtabpure_lo
-	sta trackn_bass16 	
-	lda #0				
-	sta trackn_audc-1,x	; update the next channel's AUDC early, it will always be volume 0, and Distortion won't matter
-	lda #>PAGE_DISTORTION_A
-	sta trackn_bass16+1	; this value can also be used to identify if 16-bit mode is active or not, since it will never be 0
-	sta nr+1
-	lda tmp
-	ora #$A0
-	jmp store_tables_lsb_c
-	EIF
+			lda reg1				; the flag has been set, and also became the tables pointer!
+			jmp store_tables_lsb	; continue like normal from there
+			
+		ELS			;* FIXMEEEE... later 
+			lda #<frqtabpure_hi
+			sta nr
+			lda #<frqtabpure_lo
+			sta trackn_bass16 	
+			lda #0				
+			sta trackn_audc-1,x		; update the next channel's AUDC early, it will always be volume 0, and Distortion won't matter
+			lda #>PAGE_DISTORTION_A
+			sta trackn_bass16+1		; this value can also be used to identify if 16-bit mode is active or not, since it will never be 0
+			sta nr+1
+			lda tmp
+			ora #$A0
+			jmp store_tables_lsb_c
+		EIF
 	
 	EIF
 
@@ -2076,161 +2122,161 @@ SetPokey
 	ldy #0
 v_audctl equ *-1			; left POKEY AUDCTL is loaded as the very first thing, for all STEREOMODE variations
 	IFT STEREOMODE==1		;* L1 L2 L3 L4 R1 R2 R3 R4
-	lda trackn_audf+0+4
-	ldx trackn_audf+0
-	sta $d210
-	stx $d200
-	lda trackn_audc+0+4
-	ldx trackn_audc+0
-	sta $d211
-	stx $d201
-	lda trackn_audf+1+4
-	ldx trackn_audf+1
-	sta $d212
-	stx $d202
-	lda trackn_audc+1+4
-	ldx trackn_audc+1
-	sta $d213
-	stx $d203
-	lda trackn_audf+2+4
-	ldx trackn_audf+2
-	sta $d214
-	stx $d204
-	lda trackn_audc+2+4
-	ldx trackn_audc+2
-	sta $d215
-	stx $d205
-	lda trackn_audf+3+4
-	ldx trackn_audf+3
-	sta $d216
-	stx $d206
-	lda trackn_audc+3+4
-	ldx trackn_audc+3
-	sta $d217
-	stx $d207
-	lda #0
+		lda trackn_audf+0+4
+		ldx trackn_audf+0
+		sta $d210
+		stx $d200
+		lda trackn_audc+0+4
+		ldx trackn_audc+0
+		sta $d211
+		stx $d201
+		lda trackn_audf+1+4
+		ldx trackn_audf+1
+		sta $d212
+		stx $d202
+		lda trackn_audc+1+4
+		ldx trackn_audc+1
+		sta $d213
+		stx $d203
+		lda trackn_audf+2+4
+		ldx trackn_audf+2
+		sta $d214
+		stx $d204
+		lda trackn_audc+2+4
+		ldx trackn_audc+2
+		sta $d215
+		stx $d205
+		lda trackn_audf+3+4
+		ldx trackn_audf+3
+		sta $d216
+		stx $d206
+		lda trackn_audc+3+4
+		ldx trackn_audc+3
+		sta $d217
+		stx $d207
+		lda #0
 v_audctl2 equ *-1
-	sta $d218
-	sty $d208
-	IFT FEAT_TWO_TONE
-	lda #$03
+		sta $d218
+		sty $d208
+		IFT FEAT_TWO_TONE
+			lda #$03
 v_skctl equ *-1	
-	ldy #$03
+			ldy #$03
 v_skctl2 equ *-1
-	sty $d21f
-	sta $d20f 		
-	EIF
+			sty $d21f
+			sta $d20f 		
+		EIF
 	ELI STEREOMODE==0		;* L1 L2 L3 L4
-	lda trackn_audf+0
-	ldx trackn_audc+0
-	sta $d200
-	stx $d201
-	lda trackn_audf+1
-	ldx trackn_audc+1
-	sta $d200+2
-	stx $d201+2
-	lda trackn_audf+2
-	ldx trackn_audc+2
-	sta $d200+4
-	stx $d201+4
-	lda trackn_audf+3
-	ldx trackn_audc+3
-	sta $d200+6
-	stx $d201+6
-	sty $d208
-	IFT FEAT_TWO_TONE
-	lda #$03
+		lda trackn_audf+0
+		ldx trackn_audc+0
+		sta $d200
+		stx $d201
+		lda trackn_audf+1
+		ldx trackn_audc+1
+		sta $d200+2
+		stx $d201+2
+		lda trackn_audf+2
+		ldx trackn_audc+2
+		sta $d200+4
+		stx $d201+4
+		lda trackn_audf+3
+		ldx trackn_audc+3
+		sta $d200+6
+		stx $d201+6
+		sty $d208
+		IFT FEAT_TWO_TONE
+			lda #$03
 v_skctl equ *-1	
-	sta $d20f
-	EIF	
+			sta $d20f
+		EIF	
 	ELI STEREOMODE==2		;* L1 R2 R3 L4
-	lda trackn_audf+0
-	ldx trackn_audc+0
-	sta $d200
-	stx $d201
-	sta $d210
-	lda trackn_audf+1
-	ldx trackn_audc+1
-	sta $d210+2
-	stx $d211+2
-	lda trackn_audf+2
-	ldx trackn_audc+2
-	sta $d210+4
-	stx $d211+4
-	sta $d200+4
-	lda trackn_audf+3
-	ldx trackn_audc+3
-	sta $d200+6
-	stx $d201+6
-	sta $d210+6
-	sty $d218
-	sty $d208
-	IFT FEAT_TWO_TONE
-	lda #$03
+		lda trackn_audf+0
+		ldx trackn_audc+0
+		sta $d200
+		stx $d201
+		sta $d210
+		lda trackn_audf+1
+		ldx trackn_audc+1
+		sta $d210+2
+		stx $d211+2
+		lda trackn_audf+2
+		ldx trackn_audc+2
+		sta $d210+4
+		stx $d211+4
+		sta $d200+4
+		lda trackn_audf+3
+		ldx trackn_audc+3
+		sta $d200+6
+		stx $d201+6
+		sta $d210+6
+		sty $d218
+		sty $d208
+		IFT FEAT_TWO_TONE
+			lda #$03
 v_skctl equ *-1	
-	sta $d20f
-	sta $d21f
-	EIF
+			sta $d20f
+			sta $d21f
+		EIF
 	ELI STEREOMODE==3		;* L1 L2 R3 R4
-	lda trackn_audf+0
-	ldx trackn_audc+0
-	sta $d200
-	stx $d201
-	lda trackn_audf+1
-	ldx trackn_audc+1
-	sta $d200+2
-	stx $d201+2
-	lda trackn_audf+2
-	ldx trackn_audc+2
-	sta $d210+4
-	stx $d211+4
-	sta $d200+4
-	lda trackn_audf+3
-	ldx trackn_audc+3
-	sta $d210+6
-	stx $d211+6
-	sta $d200+6
-	sty $d218
-	sty $d208
-	IFT FEAT_TWO_TONE
-	lda #$03
+		lda trackn_audf+0
+		ldx trackn_audc+0
+		sta $d200
+		stx $d201
+		lda trackn_audf+1
+		ldx trackn_audc+1
+		sta $d200+2
+		stx $d201+2
+		lda trackn_audf+2
+		ldx trackn_audc+2
+		sta $d210+4
+		stx $d211+4
+		sta $d200+4
+		lda trackn_audf+3
+		ldx trackn_audc+3
+		sta $d210+6
+		stx $d211+6
+		sta $d200+6
+		sty $d218
+		sty $d208
+		IFT FEAT_TWO_TONE
+			lda #$03
 v_skctl equ *-1	
-	sta $d20f
-	sta $d21f
-	EIF
+			sta $d20f
+			sta $d21f
+		EIF
 	ELI STEREOMODE==4		;* LR1 LR2 LR3 LR4
-	lda trackn_audf+0
-	ldx trackn_audc+0
-	sta $d200
-	stx $d201
-	sta $d210
-	stx $d211
-	lda trackn_audf+1
-	ldx trackn_audc+1
-	sta $d200+2
-	stx $d201+2
-	sta $d210+2
-	stx $d211+2
-	lda trackn_audf+2
-	ldx trackn_audc+2
-	sta $d200+4
-	stx $d201+4
-	sta $d210+4
-	stx $d211+4
-	lda trackn_audf+3
-	ldx trackn_audc+3
-	sta $d200+6
-	stx $d201+6
-	sta $d210+6
-	stx $d211+6
-	sty $d208
-	sty $d218
-	IFT FEAT_TWO_TONE
-	lda #$03
+		lda trackn_audf+0
+		ldx trackn_audc+0
+		sta $d200
+		stx $d201
+		sta $d210
+		stx $d211
+		lda trackn_audf+1
+		ldx trackn_audc+1
+		sta $d200+2
+		stx $d201+2
+		sta $d210+2
+		stx $d211+2
+		lda trackn_audf+2
+		ldx trackn_audc+2
+		sta $d200+4
+		stx $d201+4
+		sta $d210+4
+		stx $d211+4
+		lda trackn_audf+3
+		ldx trackn_audc+3
+		sta $d200+6
+		stx $d201+6
+		sta $d210+6
+		stx $d211+6
+		sty $d208
+		sty $d218
+		IFT FEAT_TWO_TONE
+			lda #$03
 v_skctl equ *-1	
-	sta $d20f
-	sta $d21f
-	EIF
+			sta $d20f
+			sta $d21f
+		EIF
 	EIF
 	rts
 	
