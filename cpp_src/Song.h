@@ -211,7 +211,7 @@ public:
 	bool ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDesc);
 	bool ExportAsRelocatableAsmForRmtPlayer(std::ofstream& ou, tExportDescription* exportStrippedDesc);
 	bool ExportSAP_R(std::ofstream& ou);
-	bool ExportLZSS(std::ofstream& ou);
+	bool ExportLZSS(std::ofstream& ou, LPCTSTR filename);
 	bool ExportLZSS_SAP(std::ofstream& ou);
 	bool ExportLZSS_XEX(std::ofstream& ou);
 

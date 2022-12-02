@@ -148,8 +148,9 @@ bool CSong::ExportSAP_R(ofstream& ou)
 /// Generate a SAP-R data stream and compress it with LZSS
 /// </summary>
 /// <param name="ou">File to output the compressed data to</param>
+/// <param name="filename">Filename to output additional files, required for splitting the Intro and Loop sections of a song</param>
 /// <returns></returns>
-bool CSong::ExportLZSS(ofstream& ou)
+bool CSong::ExportLZSS(ofstream& ou, LPCTSTR filename)
 {
 	DumpSongToPokeyBuffer();
 
@@ -158,9 +159,15 @@ bool CSong::ExportLZSS(ofstream& ou)
 	int frameSize = (g_tracks4_8 == 8) ? 18 : 9;	//SAP-R bytes to copy, Stereo doubles the number
 
 	// Now, create LZSS files using the SAP-R dump created earlier
+	unsigned char* compressedData = NULL;
+
+	// TODO: add a Dialog box for proper standalone LZSS exports
+	// This is a hacked up method that was added only out of necessity for a project making use of song sections separately
+	// I refuse to touch RMT2LZSS ever again
+	CString fn = filename;
+	fn = fn.Left(fn.GetLength() - 5);	// In order to keep the filename without the extention 
 
 	// Full tune playback up to its loop point
-	unsigned char* compressedData = NULL;
 	int full = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetFirstCountPoint() * frameSize);
 	if (full)
 	{
@@ -188,16 +195,95 @@ bool CSong::ExportLZSS(ofstream& ou)
 		if (full < 16) full = 1;
 		in.close();
 		DeleteFile(g_prgpath + "tmp.lzss");
+
+		if (compressedData)
+		{
+			ou.write((char*)compressedData, full);		// Write the buffer contents to the export file
+			delete[]compressedData;
+		}
 	}
+	ou.close();	// Close the file, if successful, it should not be empty 
+
+	// Intro section playback, up to the start of the detected loop point
+	int intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize);
+	if (intro)
+	{
+		// Load tmp.lzss in destination buffer 
+		ifstream in;
+		in.open(g_prgpath + "tmp.lzss", ifstream::binary);
+
+		// Find the file size
+		in.seekg(0, in.end);
+		int fileSize = (int)in.tellg();
+
+		// Go back to the beginning
+		in.seekg(0, in.beg);
+
+		intro = 0;
+
+		if (fileSize > 16)
+		{
+			compressedData = new unsigned char[fileSize];
+
+			in.read((char*)compressedData, fileSize);
+			intro = (int)in.gcount();
+		}
+
+		if (intro < 16) intro = 1;
+		in.close();
+		DeleteFile(g_prgpath + "tmp.lzss");
+
+		if (compressedData)
+		{
+			ou.open(fn + "_INTRO.lzss", ios::binary);	// Create a new file for the Intro section
+			ou.write((char*)compressedData, intro);		// Write the buffer contents to the export file
+			delete[]compressedData;
+		}
+	}
+	ou.close();	// Close the file, if successful, it should not be empty 
+
+	// Looped section playback, this part is virtually seamless to itself
+	int loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize);
+	if (loop)
+	{
+		// Load tmp.lzss in destination buffer 
+		ifstream in;
+		in.open(g_prgpath + "tmp.lzss", ifstream::binary);
+
+		// Find the file size
+		in.seekg(0, in.end);
+		int fileSize = (int)in.tellg();
+
+		// Go back to the beginning
+		in.seekg(0, in.beg);
+
+		loop = 0;
+
+		if (fileSize > 16)
+		{
+			compressedData = new unsigned char[fileSize];
+
+			in.read((char*)compressedData, fileSize);
+			loop = (int)in.gcount();
+		}
+
+		if (loop < 16) loop = 1;
+		in.close();
+		DeleteFile(g_prgpath + "tmp.lzss");
+
+		if (compressedData)
+		{
+			ou.open(fn + "_LOOP.lzss", ios::binary);	// Create a new file for the Loop section
+			ou.write((char*)compressedData, loop);		// Write the buffer contents to the export file
+			delete[]compressedData;
+		}
+	}
+	ou.close();	// Close the file, if successful, it should not be empty
 
 	g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
 
 	SetStatusBarText("");
-	if (compressedData)
-	{
-		ou.write((char*)compressedData, full);		// Write the buffer 1 contents to the export file
-		delete []compressedData;
-	}
+
 	return true;
 }
 

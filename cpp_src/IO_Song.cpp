@@ -611,39 +611,35 @@ void CSong::FileExportAs()
 		{
 			case FILE_EXPORT_FILTER_IDX_STRIPPED_RMT:
 				m_lastExportType = IOTYPE_RMTSTRIPPED;
-				exportResult = ExportV2(out, m_lastExportType, (LPCTSTR)fn);
 				break;
 
 			case FILE_EXPORT_FILTER_IDX_SIMPLE_ASM:
 				m_lastExportType = IOTYPE_ASM;
-				exportResult = ExportV2(out, m_lastExportType, (LPCTSTR)fn);
 				break;
 
 			case FILE_EXPORT_FILTER_IDX_SAPR:
 				m_lastExportType = IOTYPE_SAPR;
-				exportResult = ExportV2(out, m_lastExportType);
 				break;
 
 			case FILE_EXPORT_FILTER_IDX_LZSS:
 				m_lastExportType = IOTYPE_LZSS;
-				exportResult = ExportV2(out, m_lastExportType);
 				break;
 
 			case FILE_EXPORT_FILTER_IDX_SAP:
 				m_lastExportType = IOTYPE_LZSS_SAP;
-				exportResult = ExportV2(out, m_lastExportType);
 				break;
 
 			case FILE_EXPORT_FILTER_IDX_XEX:
 				m_lastExportType = IOTYPE_LZSS_XEX;
-				exportResult = ExportV2(out, m_lastExportType);
 				break;
 
 			case FILE_EXPORT_FILTER_IDX_RELOC_ASM:	// Relocatable ASM for RMTPlayer
 				m_lastExportType = IOTYPE_ASM_RMTPLAYER;
-				exportResult = ExportV2(out, m_lastExportType, (LPCTSTR)fn);
 				break;
 		}
+
+		// Save the file using the set parameters 
+		exportResult = ExportV2(out, m_lastExportType, (LPCTSTR)fn);
 
 		// File should have been successfully saved, make sure to close it
 		out.close();
@@ -1346,9 +1342,8 @@ bool CSong::ExportV2(ofstream& ou, int iotype, LPCTSTR filename)
 		case IOTYPE_RMTSTRIPPED: return ExportAsStrippedRMT(ou, &exportDesc, filename);
 		case IOTYPE_ASM: return ExportAsAsm(ou, &exportDesc);
 		case IOTYPE_ASM_RMTPLAYER: return ExportAsRelocatableAsmForRmtPlayer(ou, &exportDesc);
-
 		case IOTYPE_SAPR: return ExportSAP_R(ou);
-		case IOTYPE_LZSS: return ExportLZSS(ou);
+		case IOTYPE_LZSS: return ExportLZSS(ou, filename);
 		case IOTYPE_LZSS_SAP: return ExportLZSS_SAP(ou);
 		case IOTYPE_LZSS_XEX: return ExportLZSS_XEX(ou);
 	}
