@@ -185,9 +185,6 @@ void CSong::ClearSong(int numOfTracks)
 	g_changes = 0;
 }
 
-BOOL CSong::InitPokey() { return g_Pokey.InitSound(); };
-BOOL CSong::DeInitPokey() { return g_Pokey.DeInitSound(); };
-
 //---
 
 int CSong::GetSubsongParts(CString& resultstr)
@@ -3191,19 +3188,23 @@ BOOL CSong::PlayVBI()
 /// </summary>
 void CSong::TimerRoutine()
 {
-	// Things that are solved 1x for vbi
-	PlayVBI();
+	// If the POKEY Stream is being recorded, the Timer Routine is bypassed entirely to run as fast as possible
+	if (!g_PokeyStream.IsRecording())
+	{
+		// Things that are solved 1x for vbi
+		PlayVBI();
 
-	// Play tones if there are key presses
-	PlayPressedTones();
+		// Play tones if there are key presses
+		PlayPressedTones();
 
-	//--- Rendered Sound ---//
-	g_Pokey.RenderSound1_50(m_instrumentSpeed);		// Rendering of a piece of sample (1 / 50s = 20ms)
+		//--- Rendered Sound ---//
+		g_Pokey.RenderSound1_50(m_instrumentSpeed);		// Rendering of a piece of sample (1 / 50s = 20ms)
 
-	if (m_play) g_playtime++;						// If the song is currently playing, increment the timer
+		if (m_play) g_playtime++;						// If the song is currently playing, increment the timer
+	}
 
 	//--- NTSC timing hack during playback ---//
-	if (!g_PokeyStream.IsRecording() && g_ntsc)
+	if (g_ntsc)
 	{
 		// The NTSC timing cannot be divided to an integer
 		// the optimal timing would be 16.666666667ms, which is typically rounded to 17
@@ -3212,10 +3213,8 @@ void CSong::TimerRoutine()
 		// this isn't proper, but at least, this makes the timing much closer to the actual thing
 		// the only issue with this is that the sound will have very slight jitters during playback 
 		
-		//if (g_playtime % 3 == 0) ChangeTimer(17);
-		//else if (g_playtime % 3 == 2) ChangeTimer(16);
-		if (g_playtime % 2 == 0) ChangeTimer(17);
-		else ChangeTimer(16);
+		if (g_timerGlobalCount % 3 == 0) ChangeTimer(17);
+		if (g_timerGlobalCount % 3 == 2) ChangeTimer(16);
 	}
 
 	//--- PICTURE DRAWING ---//
@@ -3230,5 +3229,6 @@ void CSong::TimerRoutine()
 				AfxGetApp()->GetMainWnd()->Invalidate();
 		}
 	}
+	g_timerGlobalCount++;	// increment by one each time Timer Routine was processed
 	g_timerRoutineProcessed = 1;	// TimerRoutine took place
 }

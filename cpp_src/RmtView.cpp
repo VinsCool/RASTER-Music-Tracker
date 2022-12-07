@@ -25,6 +25,8 @@
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 
+using namespace std;
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
@@ -263,7 +265,8 @@ CRmtView::~CRmtView()
 void CRmtView::OnDestroy() 
 {
 	//cancels Pokey DLL
-	g_Song.DeInitPokey();
+	//g_Song.DeInitPokey();
+	g_Pokey.DeInitSound();
 
 	//cancels 6502 DLL
 	Atari6502_DeInit();
@@ -1008,9 +1011,9 @@ void CRmtView::OnInitialUpdate()
 	ChangeViewElements(0); //without write!
 
 	//INITIAL POKEY INITIALISATION (DLL)
-	if (!g_Song.InitPokey())
+	if (!g_Pokey.InitSound())
 	{
-		g_Song.DeInitPokey();
+		g_Pokey.DeInitSound();
 		exit(1);
 	}
 

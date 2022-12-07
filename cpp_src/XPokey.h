@@ -11,12 +11,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "lzss_sap.h"
-
-
-//hacked up, this should be restructured into a proper class and done in a cleaner way
-extern int loops;
-
 #define CHANNELS		2
 #define BITRESOLUTION	8
 #define OUTPUTFREQ		44100		//22050		//44100
@@ -35,10 +29,6 @@ extern int loops;
 #define CYCLESPERSCREEN ((float)CYCLESPERSECOND/FRAMERATE)
 #define CYCLESPERSAMPLE	((float)CYCLESPERSECOND/44100)
 
-#define SOUND_DRIVER_NONE		0
-#define SOUND_DRIVER_APOKEYSND	1
-#define SOUND_DRIVER_SA_POKEY	2
-
 class CXPokey
 {
 // Construction
@@ -49,13 +39,12 @@ public:
 	BOOL DeInitSound();
 	BOOL ReInitSound();
 	BOOL RenderSound1_50(int instrspeed);
-	void MemToPokey(int tracks4_8);
-	bool IsSoundDriverLoaded()	{ return m_soundDriverId != SOUND_DRIVER_NONE ? true : false; }
+	void MemToPokey();
+	bool IsSoundDriverLoaded() { return m_soundDriverId; }
 
 private:
-	int volatile m_soundDriverId;
-	HINSTANCE m_pokey_dll;
-
+	int volatile		m_soundDriverId;
+	HINSTANCE			m_pokey_dll;
 	DWORD				m_LoadPos;
 	WAVEFORMATEX*		m_SoundFormat;
 	DWORD				m_LoadSize;
@@ -67,6 +56,8 @@ private:
 	DWORD				m_PlayCursor;  
 	DWORD				m_WriteCursor;
 	DWORD				m_WriteCursorStart;
+
+	int InitPokeyDll();
 };
 
 #endif

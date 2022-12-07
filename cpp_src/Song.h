@@ -171,9 +171,6 @@ public:
 
 	void TimerRoutine();
 
-	BOOL InitPokey();
-	BOOL DeInitPokey();
-
 	void SetRMTTitle();
 
 	void FileOpen(const char* filename = NULL, BOOL warnOfUnsavedChanges = TRUE);

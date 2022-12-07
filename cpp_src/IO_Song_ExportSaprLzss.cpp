@@ -18,6 +18,7 @@ using namespace std;
 #include "ChannelControl.h"
 
 #include "lzssp.h"
+#include "lzss_sap.h"
 
 extern CInstruments	g_Instruments;
 extern CPokeyStream g_PokeyStream;
@@ -766,7 +767,6 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 /// <returns></returns>
 void CSong::DumpSongToPokeyBuffer()
 {
-	ChangeTimer(20);							// This helps avoiding corruption if things are running too fast
 	Atari_InitRMTRoutine();						// Reset the RMT routines 
 	SetChannelOnOff(-1, 0);						// Switch all channels off 
 
@@ -778,23 +778,46 @@ void CSong::DumpSongToPokeyBuffer()
 
 	int savedFollowPlay = m_followplay;
 	Play(MPLAY_SONG, TRUE);						// Play song from start, start before the timer changes again
-	ChangeTimer(1);								// Set the timer to be as fast as possible for the recording process
 
 	// Wait in a tight loop pumping messages until the playback stops
-	MSG msg;
+	//MSG msg;
+
 	while (m_play != MPLAY_STOP)				// The SAP-R dumper is running during that time...
 	{
+		int xvbi = 0;
+
+		// 1 VBI of module playback
+		PlayVBI();
+
+		// The song is currently playing, increment the timer
+		g_playtime++;
+
+		while (xvbi < g_Song.m_instrumentSpeed)
+		{
+			// 1xVBI of RMT routine (for instruments)
+			if (g_rmtroutine) Atari_PlayRMT();
+
+			// Transfer from g_atarimem to POKEY buffer
+			g_PokeyStream.Record();
+
+			// 1xVBI was played
+			xvbi++;
+		}
+
+/*
+		// Displaying everything in real time slows things down considerably!
 		if (::PeekMessage(&msg, wnd->m_hWnd, 0, 0, PM_REMOVE))
 		{
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);
 		}
+*/
+
 	}
 
 	SetStatusBarText("");
 	wnd->EnableWindow();						// Turn on the window again
 
-	ChangeTimer((g_ntsc) ? 17 : 20);			// Reset the timer again, to avoid corruption from running too fast
 	Stop();										// End playback now, the SAP-R data should have been dumped successfully!
 
 	m_followplay = savedFollowPlay;				// Restore the foillow play flag
