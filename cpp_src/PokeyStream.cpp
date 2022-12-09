@@ -15,8 +15,11 @@ CPokeyStream::CPokeyStream()
 	m_StreamBuffer = NULL;
 	m_BufferSize = 0;
 	m_FrameCounter = 0;
+	m_SonglineCounter = 0;
 	memset(m_PlayCount, 0, sizeof(m_PlayCount));
-	m_SongLoppedCounter = 0;
+	memset(m_FramesPerSongline, 0, sizeof(m_FramesPerSongline));
+	memset(m_OffsetPerSongline, 0, sizeof(m_OffsetPerSongline));
+	m_SongLoopedCounter = 0;
 }
 
 CPokeyStream::~CPokeyStream()
@@ -37,8 +40,11 @@ void CPokeyStream::Clear()
 	}
 	m_BufferSize = 0;
 	m_FrameCounter = 0;
+	m_SonglineCounter = 0;
 	memset(m_PlayCount, 0, sizeof(m_PlayCount));
-	m_SongLoppedCounter = 0;
+	memset(m_FramesPerSongline, 0, sizeof(m_FramesPerSongline));
+	memset(m_OffsetPerSongline, 0, sizeof(m_OffsetPerSongline));
+	m_SongLoopedCounter = 0;
 }
 
 void CPokeyStream::StartRecording()
@@ -53,8 +59,11 @@ void CPokeyStream::StartRecording()
 	m_BufferSize = 0xFFFFF;
 	m_StreamBuffer = (unsigned char*)calloc(m_BufferSize, 1);
 	m_FrameCounter = 0;
+	m_SonglineCounter = 0;
 	memset(m_PlayCount, 0, sizeof(m_PlayCount));
-	m_SongLoppedCounter = 0;
+	memset(m_FramesPerSongline, 0, sizeof(m_FramesPerSongline));
+	memset(m_OffsetPerSongline, 0, sizeof(m_OffsetPerSongline));
+	m_SongLoopedCounter = 0;
 
 	m_FirstCountPoint = 0;
 	m_SecondCountPoint = 0;
@@ -96,20 +105,28 @@ bool CPokeyStream::TrackSongLine(int trackedInstance)
 	{
 		m_PlayCount[trackedInstance] += 1;				// Increment the position counter by 1
 
+		// If the Songline is played for the first time, the current frames count will be used for its index
+		if (m_SongLoopedCounter < 1)
+		{
+			// At least 1 Songline will be played, increment the count early
+			m_SonglineCounter++;
+			m_OffsetPerSongline[m_SonglineCounter] = m_FrameCounter;
+		}
+
 		int count = m_PlayCount[trackedInstance];		// Fetch that line play count for the next step
-		if (count > 1)	
+		if (count > 1)
 		{
 			// A value above 1 means a full playback loop has been completed, the line play count incremented twice
-			m_SongLoppedCounter++;						// Increment the dumper iteration count by 1
+			m_SongLoopedCounter++;						// Increment the dumper iteration count by 1
 			m_recordState = STREAM_STATE::WRITE;		// Set the "write SAP-R data to file" flag
-			if (m_SongLoppedCounter == 1)
+			if (m_SongLoopedCounter == 1)
 			{
 				memset(m_PlayCount, 0, sizeof(m_PlayCount));	// Reset the lines play count before the next step 
 				m_PlayCount[trackedInstance] += 1;				// Increment the line play count early, to ensure that same line will be detected again as the loop point for the next dumper iteration 
 
 				SwitchIntoRecording();
 			}
-			if (m_SongLoppedCounter == 2)
+			if (m_SongLoopedCounter == 2)
 			{
 				SwitchIntoStop();
 				return true;
@@ -130,14 +147,14 @@ bool CPokeyStream::CallFromPlayBeat(int trackedInstance)
 		if (count > 1)
 		{
 			// A value above 1 means a full playback loop has been completed, the line play count incremented twice
-			m_SongLoppedCounter++;						// Increment the dumper iteration count by 1
+			m_SongLoopedCounter++;						// Increment the dumper iteration count by 1
 			m_recordState = STREAM_STATE::WRITE;		// Set the "write SAP-R data to file" flag
-			if (m_SongLoppedCounter == 1)
+			if (m_SongLoopedCounter == 1)
 			{
 				memset(m_PlayCount, 0, sizeof(m_PlayCount));	// Reset the lines play count before the next step 
 				m_PlayCount[trackedInstance] += 1;					// Increment the line play count early, to ensure that same line will be detected again as the loop point for the next dumper iteration 
 			}
-			if (m_SongLoppedCounter == 2)
+			if (m_SongLoopedCounter == 2)
 			{
 				return true;
 			}
@@ -146,7 +163,7 @@ bool CPokeyStream::CallFromPlayBeat(int trackedInstance)
 	return false;
 }
 
-void CPokeyStream::Record(void)
+void CPokeyStream::Record()
 {
 	if (m_recordState == STREAM_STATE::STOP) return;
 	if (m_recordState == STREAM_STATE::START) return;		// Too soon, must first be initialised to get a constant rate every time, this prevents writing garbage in memory for the first few frames
@@ -188,9 +205,17 @@ void CPokeyStream::Record(void)
 	}
 
 	// If the end was reached, do nothing, simply ignore the last frame
-	if (m_SongLoppedCounter == 2) return;
+	if (m_SongLoopedCounter == 2) return;
 
-	m_FrameCounter++;	// Increment the frames counter for the next iteration
+	// Count the frames played in each Songline, until the first loop point is found
+	if (m_SongLoopedCounter < 1)
+	{
+		// Increment the frames counter for the current songline
+		m_FramesPerSongline[m_SonglineCounter]++; 
+	}
+
+	// Increment the frames counter for the next iteration
+	m_FrameCounter++;
 }
 
 void CPokeyStream::WriteToFile(std::ofstream& ou, int frames, int offset)
@@ -207,7 +232,7 @@ void CPokeyStream::FinishedRecording()
 {
 	m_recordState = STREAM_STATE::STOP;		// Reset the SAPR dump flag now it is done
 	m_FrameCounter = 0;						// Also reset the framecount once finished
-	m_SongLoppedCounter = 0;				// Reset the playback counter
+	m_SongLoopedCounter = 0;				// Reset the playback counter
 
 	// Clear the allocated memory for the SAP-R dumper, TODO: manage memory dynamically instead
 	if (m_StreamBuffer)

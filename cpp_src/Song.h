@@ -212,6 +212,8 @@ public:
 	bool ExportLZSS_SAP(std::ofstream& ou);
 	bool ExportLZSS_XEX(std::ofstream& ou);
 
+	bool ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename);
+
 	void DumpSongToPokeyBuffer();
 
 	bool TestBeforeFileSave();
@@ -323,8 +325,6 @@ public:
 
 	BOOL volatile m_followplay;
 	int volatile m_play;
-
-	int m_playcount[256] = { 0 };	//used for keeping track of loop points, useful for SAP-R recording specifically, maybe more sometime later...
 
 private:
 	int m_song[SONGLEN][SONGTRACKS];
