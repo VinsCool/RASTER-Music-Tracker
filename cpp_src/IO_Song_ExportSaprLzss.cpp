@@ -770,6 +770,8 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 /// <returns></returns>
 bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 {
+	// TODO: everything related to exporting the stream buffer into small files and compress them to LZSS
+
 	DumpSongToPokeyBuffer();
 
 	SetStatusBarText("Compressing data ...");
@@ -789,6 +791,48 @@ bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 	// TODO: add a Dialog box for proper standalone LZSS exports
 	CString fn = filename;
 	fn = fn.Left(fn.GetLength() - 5);	// In order to keep the filename without the extention 
+
+	// Full tune playback up to its loop point
+	int full = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetFirstCountPoint() * frameSize);
+	if (full)
+	{
+		// Load tmp.lzss in destination buffer 
+		ifstream in;
+		in.open(g_prgpath + "tmp.lzss", ifstream::binary);
+
+		// Find the file size
+		in.seekg(0, in.end);
+		int fileSize = (int)in.tellg();
+
+		// Go back to the beginning
+		in.seekg(0, in.beg);
+
+		full = 0;
+
+		if (fileSize > 16)
+		{
+			compressedData = new unsigned char[fileSize];
+
+			in.read((char*)compressedData, fileSize);
+			full = (int)in.gcount();
+		}
+
+		if (full < 16) full = 1;
+		in.close();
+		DeleteFile(g_prgpath + "tmp.lzss");
+
+		if (compressedData)
+		{
+			ou.write((char*)compressedData, full);		// Write the buffer contents to the export file
+			delete[]compressedData;
+		}
+	}
+	ou.close();	// Close the file, if successful, it should not be empty 
+
+	// Write the SAP-R stream to the output file defined in the path dialog with the data specified above
+	ou.open(fn + ".sapr", ios::binary);
+	g_PokeyStream.WriteToFile(ou, g_PokeyStream.GetFirstCountPoint(), 0);
+	ou.close();
 
 	// For all songlines to index, process with comparisons and find duplicates 
 	while (indexToSongline < songlineCount)
@@ -820,19 +864,94 @@ bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 		// Process to the next songline index until they are all processed
 		indexToSongline++;
 	}
+	indexToSongline = 0;
 
-	// TODO: everything related to exporting the stream buffer into small files and compress them to LZSS
+	// From here, data blocs based on the Songline index and offset will be written to file
+	// This should strip away every duplicated chunks, but save just enough data for reconstructing everything 
+	while (indexToSongline < songlineCount)
+	{
+		// Get the current index to Songline offset from the current position
+		int index = listOfMatches[indexToSongline];
+		bool isDupe = false;
+
+		// Find if this offset was already processed from a previous Songline
+		for (int i = 0; i < songlineCount; i++)
+		{
+			// As soon as a single match is found, break out of the loop, there is nothing else to do
+			//if (isDupe = (index == listOfMatches[i] && indexToSongline > i));
+			if (index == listOfMatches[i] && indexToSongline > i)
+			{
+				isDupe = true;
+				break;
+			}
+		}
+
+		// Compress a stream buffer chunk at offset position with LZSS and save as a new file 
+		if (!isDupe)
+		{
+			CString idx;
+
+			idx.Format(fn + ".sa%02d", indexToSongline);
+			ou.open(idx, ios::binary);
+
+			g_PokeyStream.WriteToFile(ou, g_PokeyStream.GetFramesPerSongline(indexToSongline), index);
+			ou.close();
+
+			idx.Format(fn + ".lz%02d", indexToSongline);
+			ou.open(idx, ios::binary);
+
+			int chunk = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (index * frameSize), g_PokeyStream.GetFramesPerSongline(indexToSongline) * frameSize);
+			if (chunk)
+			{
+				// Load tmp.lzss in destination buffer 
+				ifstream in;
+				in.open(g_prgpath + "tmp.lzss", ifstream::binary);
+
+				// Find the file size
+				in.seekg(0, in.end);
+				int fileSize = (int)in.tellg();
+
+				// Go back to the beginning
+				in.seekg(0, in.beg);
+
+				chunk = 0;
+
+				if (fileSize > 16)
+				{
+					compressedData = new unsigned char[fileSize];
+
+					in.read((char*)compressedData, fileSize);
+					chunk = (int)in.gcount();
+				}
+
+				if (chunk < 16) chunk = 1;
+				in.close();
+				DeleteFile(g_prgpath + "tmp.lzss");
+
+				if (compressedData)
+				{
+					ou.write((char*)compressedData, chunk);		// Write the buffer contents to the export file
+					delete[]compressedData;
+				}
+			}
+			ou.close();	// Close the file, if successful, it should not be empty 
+		}
+
+		// Process to the next songline index until they are all processed
+		indexToSongline++;
+	}
+
+	// Create a new file for logging everything related to the procedure
+	ou.open(fn + ".txt", ios::binary);
 	ou << "This is a test that displays all duplicated SAP-R bytes from m_StreamBuffer." << endl;
 	ou << "Each ones of the Buffer Chunks are indexed into memory using Songlines.\n" << endl;
-
 	for (int i = 0; i < songlineCount; i++)
 	{
 		ou << "Index: 0x" << hex << uppercase << i << ", Offset (real): " << dec << g_PokeyStream.GetOffsetPerSongline(i);
 		ou << ", Offset (dupe): " << listOfMatches[i] << ", Frames: " << g_PokeyStream.GetFramesPerSongline(i);
 		ou << ", Bytes (uncompressed): " << g_PokeyStream.GetFramesPerSongline(i) * frameSize << endl;
 	}
-
-	ou.close();	// Close the file, if successful, it should not be empty
+	ou.close();	
 
 	g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
 
