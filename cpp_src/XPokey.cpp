@@ -413,7 +413,7 @@ int CXPokey::InitPokeyDll()
 			Pokey_Initialise(0, 0);
 
 			// Specify the machine region and if it uses Stereo or Mono, as well as the frequency for the sound output
-			Pokey_SoundInit((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL, OUTPUTFREQ, (g_tracks4_8 == 8));	//+1);
+			Pokey_SoundInit((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL, OUTPUTFREQ, (g_tracks4_8 == 8) + 1);
 			return SOUND_DRIVER_SA_POKEY;
 		}
 
