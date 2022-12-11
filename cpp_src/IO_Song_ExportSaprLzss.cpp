@@ -201,6 +201,7 @@ bool CSong::ExportLZSS(ofstream& ou, LPCTSTR filename)
 		{
 			ou.write((char*)compressedData, full);		// Write the buffer contents to the export file
 			delete[]compressedData;
+			compressedData = NULL;
 		}
 	}
 	ou.close();	// Close the file, if successful, it should not be empty 
@@ -239,6 +240,7 @@ bool CSong::ExportLZSS(ofstream& ou, LPCTSTR filename)
 			ou.open(fn + "_INTRO.lzss", ios::binary);	// Create a new file for the Intro section
 			ou.write((char*)compressedData, intro);		// Write the buffer contents to the export file
 			delete[]compressedData;
+			compressedData = NULL;
 		}
 	}
 	ou.close();	// Close the file, if successful, it should not be empty 
@@ -277,6 +279,7 @@ bool CSong::ExportLZSS(ofstream& ou, LPCTSTR filename)
 			ou.open(fn + "_LOOP.lzss", ios::binary);	// Create a new file for the Loop section
 			ou.write((char*)compressedData, loop);		// Write the buffer contents to the export file
 			delete[]compressedData;
+			compressedData = NULL;
 		}
 	}
 	ou.close();	// Close the file, if successful, it should not be empty
@@ -825,6 +828,7 @@ bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 		{
 			ou.write((char*)compressedData, full);		// Write the buffer contents to the export file
 			delete[]compressedData;
+			compressedData = NULL;
 		}
 	}
 	ou.close();	// Close the file, if successful, it should not be empty 
@@ -932,6 +936,7 @@ bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 				{
 					ou.write((char*)compressedData, chunk);		// Write the buffer contents to the export file
 					delete[]compressedData;
+					compressedData = NULL;
 				}
 			}
 			ou.close();	// Close the file, if successful, it should not be empty 
