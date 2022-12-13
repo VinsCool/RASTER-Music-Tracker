@@ -535,7 +535,7 @@ void CSong::DrawAnalyzer(CDC* pDC)
 				double tuning = g_basetuning;	//defined in Tuning.cpp through initialisation using input parameter
 				int basenote = g_basenote;
 				int reverse_basenote = (24 - basenote) % 12;	//since things are wack I had to do this
-				int FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;	//useful for debugging I guess
+				//int FREQ_17 = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;	//useful for debugging I guess
 				int cycles = (g_ntsc) ? MAXSCREENCYCLES_NTSC : MAXSCREENCYCLES_PAL;
 				int tracks = (g_tracks4_8 == 8) ? 8 : 4;
 				char t[12] = { 0 };

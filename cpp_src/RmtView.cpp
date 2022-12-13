@@ -34,8 +34,6 @@ static char THIS_FILE[] = __FILE__;
 #endif
 
 extern BOOL g_closeApplication;
-//#define SCREENUPDATE	g_screenupdate=1
-
 
 extern CSong	g_Song;
 extern CRmtMidi	g_Midi;
@@ -264,14 +262,13 @@ CRmtView::~CRmtView()
 
 void CRmtView::OnDestroy() 
 {
-	//cancels Pokey DLL
-	//g_Song.DeInitPokey();
+	// Unload Pokey DLL
 	g_Pokey.DeInitSound();
 
-	//cancels 6502 DLL
+	// Unload 6502 DLL
 	Atari6502_DeInit();
 
-	//turns off the timer
+	// Turn off the timer
 	if (m_timeranalyzer) 
 	{
 		KillTimer(m_timeranalyzer);
@@ -291,7 +288,7 @@ void CRmtView::OnTimer(UINT nIDEvent)
 		CView::OnTimer(nIDEvent);
 }
 
-//debug function, poor attempt at a FPS counter
+// Debug function, poor attempt at a FPS counter
 void CRmtView::GetFPS()
 {
 	using namespace std::chrono;
@@ -317,7 +314,7 @@ void CRmtView::GetFPS()
 	}
 }
 
-//debug function, to get the pointer coordinates
+// Debug function, to get the mouse pointer coordinates
 void CRmtView::GetMouseXY(int px, int py, int mousebutt)
 {
 	g_mouse_px = px;
@@ -360,14 +357,14 @@ void CRmtView::DrawAll()
 {
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);		// Clear the screen
 
-	if (g_viewDebugDisplay) GetFPS();	//it's crappy but it does an ok job
+	if (g_viewDebugDisplay) GetFPS();	// It's crappy but it does an ok job
 
 	g_Song.DrawInfo();
 	g_Song.DrawSong();
 	g_Song.DrawAnalyzer();
 	g_Song.DrawPlayTimeCounter();
 	
-	if (g_active_ti == PART_TRACKS)	//which one is the active screen?
+	if (g_active_ti == PART_TRACKS)	// Which one is the active screen?
 	{
 		g_Song.DrawTracks();
 	}
@@ -716,34 +713,35 @@ void CRmtView::WriteTuningConfig()
 void CRmtView::OnViewConfiguration() 
 {
 	CConfigDlg dlg;
-	//general
+
+	// GENERAL
 	dlg.m_scaling_percentage = g_scaling_percentage;
 	dlg.m_trackLinePrimaryHighlight = g_trackLinePrimaryHighlight;
 	dlg.m_trackLineSecondaryHighlight = g_trackLineSecondaryHighlight;
 	dlg.m_tracklinealtnumbering = g_tracklinealtnumbering;
 	dlg.m_displayflatnotes = g_displayflatnotes;
 	dlg.m_usegermannotation = g_usegermannotation;
-	//
 	dlg.m_ntsc = g_ntsc;
 	dlg.m_doSmoothScrolling = g_viewDoSmoothScrolling;
 	dlg.m_nohwsoundbuffer = g_nohwsoundbuffer;
 	dlg.m_viewDebugDisplay = g_viewDebugDisplay;
-	//keyboard
+	
+	// KEYBOARD
 	dlg.m_keyboard_layout = g_keyboard_layout;
 	dlg.m_keyboard_escresetatarisound = g_keyboard_escresetatarisound;
 	dlg.m_keyboard_updowncontinue = g_keyboard_updowncontinue;
 	dlg.m_keyboard_rememberoctavesandvolumes = g_keyboard_RememberOctavesAndVolumes;
 	dlg.m_keyboard_askwhencontrol_s = g_keyboard_askwhencontrol_s;
 
-	// MIDI settings
+	// MIDI 
 	dlg.m_midi_device = g_Midi.GetMidiDevId();
 	dlg.m_midi_TouchResponse = g_Midi.m_TouchResponse;
 	dlg.m_midi_VolumeOffset = g_Midi.m_VolumeOffset;
 	dlg.m_midi_NoteOff = g_Midi.m_NoteOff;
-	//
+	
 	if (dlg.DoModal()==IDOK)
 	{
-		//general
+		// GENERAL
 		if (g_scaling_percentage != dlg.m_scaling_percentage)	//necessary to scale all the elements immetiately, without resizing the window first
 		{
 			g_scaling_percentage = dlg.m_scaling_percentage;
@@ -752,25 +750,22 @@ void CRmtView::OnViewConfiguration()
 			g_height = INVERSE_SCALE(m_height);
 			g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16; 
 			g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
-			SCREENUPDATE;
 		}
 
 		if (g_nohwsoundbuffer != dlg.m_nohwsoundbuffer)
 		{
 			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
-			Atari_InitRMTRoutine(); //reset RMT routines
+			//Atari_InitRMTRoutine(); //reset RMT routines
 		}
 		g_nohwsoundbuffer = dlg.m_nohwsoundbuffer;
 
 		if (g_ntsc != dlg.m_ntsc)
 		{
-			//Pal or NTSC
+			// PAL or NTSC
 			g_ntsc = dlg.m_ntsc;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
 			g_Song.ChangeTimer((g_ntsc) ? 17 : 20);
-			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
 			Atari_InitRMTRoutine(); //reset RMT routines
-			SCREENUPDATE;
 		}
 		g_ntsc = dlg.m_ntsc;
 		g_viewDoSmoothScrolling = dlg.m_doSmoothScrolling;
@@ -782,13 +777,14 @@ void CRmtView::OnViewConfiguration()
 		g_displayflatnotes = dlg.m_displayflatnotes;
 		g_usegermannotation = dlg.m_usegermannotation;
 
-		//keyboard
+		// KEYBOARD
 		g_keyboard_layout = dlg.m_keyboard_layout;
 		g_keyboard_escresetatarisound = dlg.m_keyboard_escresetatarisound;
 		g_keyboard_updowncontinue=dlg.m_keyboard_updowncontinue;
 		g_keyboard_RememberOctavesAndVolumes = dlg.m_keyboard_rememberoctavesandvolumes;
 		g_keyboard_askwhencontrol_s = dlg.m_keyboard_askwhencontrol_s;
-		//midi
+
+		// MIDI
 		if (dlg.m_midi_device>=0)
 		{
 			MIDIINCAPS micaps;
@@ -801,8 +797,6 @@ void CRmtView::OnViewConfiguration()
 		g_Midi.m_VolumeOffset = dlg.m_midi_VolumeOffset;
 		g_Midi.m_NoteOff = dlg.m_midi_NoteOff;
 		g_Midi.MidiInit();
-		//
-		//WriteRMTConfig();
 		SCREENUPDATE;
 	}
 }
@@ -814,7 +808,7 @@ void CRmtView::OnViewTuning()
 	dlg.m_basenote = g_basenote; 
 	dlg.m_temperament = g_temperament;
 
-	//ratio left
+	// Ratio left
 	dlg.UNISON_L = g_UNISON_L;
 	dlg.MIN_2ND_L = g_MIN_2ND_L;
 	dlg.MAJ_2ND_L = g_MAJ_2ND_L;
@@ -829,7 +823,7 @@ void CRmtView::OnViewTuning()
 	dlg.MAJ_7TH_L = g_MAJ_7TH_L;
 	dlg.OCTAVE_L = g_OCTAVE_L;
 
-	//ratio right
+	// Ratio right
 	dlg.UNISON_R = g_UNISON_R;
 	dlg.MIN_2ND_R = g_MIN_2ND_R;
 	dlg.MAJ_2ND_R = g_MAJ_2ND_R;
@@ -846,7 +840,7 @@ void CRmtView::OnViewTuning()
 
 	if (dlg.DoModal() == IDOK)
 	{
-		//ratio left
+		// Ratio left
 		g_UNISON_L = dlg.UNISON_L;
 		g_MIN_2ND_L = dlg.MIN_2ND_L;
 		g_MAJ_2ND_L = dlg.MAJ_2ND_L;
@@ -861,7 +855,7 @@ void CRmtView::OnViewTuning()
 		g_MAJ_7TH_L = dlg.MAJ_7TH_L;
 		g_OCTAVE_L = dlg.OCTAVE_L;
 
-		//ratio right
+		// Ratio right
 		g_UNISON_R = dlg.UNISON_R;
 		g_MIN_2ND_R = dlg.MIN_2ND_R;
 		g_MAJ_2ND_R = dlg.MAJ_2ND_R;
@@ -876,13 +870,12 @@ void CRmtView::OnViewTuning()
 		g_MAJ_7TH_R = dlg.MAJ_7TH_R;
 		g_OCTAVE_R = dlg.OCTAVE_R;
 		
-		//update tuning
+		// Update tuning
 		g_basetuning = dlg.m_basetuning;
 		g_basenote = dlg.m_basenote;
 		g_temperament = dlg.m_temperament;
-		//WriteConfig();
 		g_Tuning.init_tuning();
-		g_screenupdate = 1;
+		SCREENUPDATE;
 	}
 }
 
@@ -1202,7 +1195,6 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			g_ntsc ^=1;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
 			g_Song.ChangeTimer((g_ntsc)? 17 : 20);
-			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
 			Atari_InitRMTRoutine(); //reset RMT routines
 			SCREENUPDATE;
 		}
@@ -1666,11 +1658,6 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			Atari_InitRMTRoutine(); //reset RMT routines automatically
 		}
-		if (g_shiftkey) 
-		{
-			g_Pokey.ReInitSound(); 
-			Atari_InitRMTRoutine(); //reset RMT routines
-		}
 		if (g_Song.GetPlayMode()==0) //only if the module is stopped
 		{
 			g_playtime=0;
@@ -1794,7 +1781,6 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			g_ntsc ^= 1;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
 			g_Song.ChangeTimer((g_ntsc) ? 17 : 20);
-			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
 			Atari_InitRMTRoutine(); //reset RMT routines
 			SCREENUPDATE;
 		}

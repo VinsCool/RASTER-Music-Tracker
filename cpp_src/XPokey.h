@@ -15,19 +15,15 @@
 #define BITRESOLUTION	8
 #define OUTPUTFREQ		44100		//22050		//44100
 #define BUFFER_SIZE		0x8000		//must be a power of 2
-#define CHUNK_SIZE_NTSC		BITRESOLUTION/8*CHANNELS*OUTPUTFREQ/60		//sixties (CHUNK_SIZE (tm) by VinsCool lol) 
-#define CHUNK_SIZE_PAL		BITRESOLUTION/8*CHANNELS*OUTPUTFREQ/50		//fifties (CHUNK_SIZE (tm) by JirkaS)
-
+#define FRAMERATE		((g_ntsc) ? 60 : 50)
+#define CHUNK_SIZE		(BITRESOLUTION / 8 * CHANNELS * OUTPUTFREQ / FRAMERATE)
 #define LATENCY			3			//3/50sec
-#define LATENCY_SIZE	LATENCY*CHUNK_SIZE
+#define LATENCY_SIZE	(LATENCY * CHUNK_SIZE)
 #define FREQ_17_NTSC	1789773		//The true clock frequency for the NTSC Atari 8-bit computer is 1.7897725 MHz
 #define FREQ_17_PAL		1773447		//The true clock frequency for the PAL Atari 8-bit computer is 1.7734470 MHz
-
-#define FRAMERATE_NTSC	60
-#define FRAMERATE_PAL	50
-
-#define CYCLESPERSCREEN ((float)CYCLESPERSECOND/FRAMERATE)
-#define CYCLESPERSAMPLE	((float)CYCLESPERSECOND/44100)
+#define FREQ_17			((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL)
+#define CYCLESPERSCREEN	((float)FREQ_17 / FRAMERATE)
+#define CYCLESPERSAMPLE	((float)FREQ_17 / 44100)
 
 class CXPokey
 {
@@ -52,12 +48,12 @@ private:
 	LPDIRECTSOUNDBUFFER m_SoundBuffer;
 	DWORD				dwSize1, dwSize2;
 	LPVOID				Data1, Data2;
-	BYTE				m_PlayBuffer[BUFFER_SIZE];	//rendered part of the swing CHUNK_SIZE + - something (but it can be much bigger)
+	BYTE				m_PlayBuffer[BUFFER_SIZE];	// Rendered part of the swing CHUNK_SIZE +- something (but it can be much bigger)
 	DWORD				m_PlayCursor;  
 	DWORD				m_WriteCursor;
 	DWORD				m_WriteCursorStart;
 
-	int InitPokeyDll();
+	int InitPokeyDll();	// The function will return the m_soundDriverId value
 };
 
 #endif

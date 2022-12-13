@@ -1,6 +1,6 @@
 // Original code by Raster, 2002-2009
 // Experimental changes and additions by VinsCool, 2021-2022
-// TODO: fix apokeysnd support, and backport sapokey changes to alternative plugins
+// TODO: fix apokeysnd support
 
 #include "stdafx.h"
 #include "Rmt.h"
@@ -117,43 +117,42 @@ BOOL CXPokey::RenderSound1_50(int instrspeed)
 	if (!m_soundDriverId) return 0;
 	if (!m_SoundBuffer) return 0;
 
-	m_SoundBuffer->GetCurrentPosition(&m_PlayCursor,&m_WriteCursor);
+	m_SoundBuffer->GetCurrentPosition(&m_PlayCursor, &m_WriteCursor);
 
 	//|||||||||||||||||||||||||||||||||||||||||
 	//           ^|-------delta------->^
 	//      m_WriteCursor           m_LoadPos
 
-	int delta = (m_LoadPos - m_WriteCursor) & (BUFFER_SIZE-1);
-	int CHUNK_SIZE = (g_ntsc) ? CHUNK_SIZE_NTSC : CHUNK_SIZE_PAL;
+	int delta = (m_LoadPos - m_WriteCursor) & (BUFFER_SIZE - 1);
 
 	m_LoadSize = CHUNK_SIZE;	//1764  (882 samples * 2 channels)
-	if ( delta > LATENCY_SIZE )
+	if (delta > LATENCY_SIZE)
 	{
-		if (delta > (BUFFER_SIZE/2))
+		if (delta > (BUFFER_SIZE / 2))
 		{
 			//we missed it, we're more than half a buffer late, so get to it and move on to what we should be right
-			m_LoadPos = (m_WriteCursor+LATENCY_SIZE) & (BUFFER_SIZE-1);
+			m_LoadPos = (m_WriteCursor + LATENCY_SIZE) & (BUFFER_SIZE - 1);
 		}
-		else 
+		else
 		{
 			//we ran too far ahead so we slow down a bit (we will render smaller pieces than CHUNK_SIZE)
-			m_LoadSize = CHUNK_SIZE - ( ((delta-LATENCY_SIZE) /16) & (BUFFER_SIZE-1-1) );	//-1-1 <=Just the numbers!
+			m_LoadSize = CHUNK_SIZE - (((delta - LATENCY_SIZE) / 16) & (BUFFER_SIZE - 1 - 1));	//-1-1 <=Just the numbers!
 			//watched
-			if (m_LoadSize <= 0 ) return 0; //we are so far ahead that it will not render at all
+			if (m_LoadSize <= 0) return 0; //we are so far ahead that it will not render at all
 		}
 	}
 	else // delta <=LATENCY_SIZE
 	{
 		//we are closer than the required latency, that's great, but we'd rather speed up so that m_WriteCursor doesn't catch up with us (we'll render bigger chunks than CHUNK_SIZE)
-		m_LoadSize = CHUNK_SIZE + ( ((LATENCY_SIZE-delta) /16) & (BUFFER_SIZE-1-1) );	//-1-1 <=Just the numbers!
+		m_LoadSize = CHUNK_SIZE + (((LATENCY_SIZE - delta) / 16) & (BUFFER_SIZE - 1 - 1));	//-1-1 <=Just the numbers!
 
 		//watched
-		if (m_LoadSize >= BUFFER_SIZE/2 ) return 0; //that would be a bigger piece than the size of a buffer pulse
+		if (m_LoadSize >= BUFFER_SIZE / 2) return 0; //that would be a bigger piece than the size of a buffer pulse
 	}
 
-	int rendersize=m_LoadSize;
-	int renderpartsize;
-	int renderoffset=0;
+	int rendersize = m_LoadSize;
+	int renderpartsize = 0;
+	int renderoffset = 0;
 
 	for (; instrspeed > 0; instrspeed--)
 	{
@@ -162,35 +161,34 @@ BOOL CXPokey::RenderSound1_50(int instrspeed)
 		MemToPokey();			//transfer from g_atarimem to POKEY (mono or stereo)
 		renderpartsize = (rendersize / instrspeed) & 0xfffe;	//just the numbers
 
-		if (m_soundDriverId == SOUND_DRIVER_APOKEYSND)
+		switch (m_soundDriverId)
 		{
-			// apokeysnd
-			int CYCLESPERSECOND = (g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL;
-			int FRAMERATE = (g_ntsc) ? FRAMERATE_NTSC : FRAMERATE_PAL;
-			int cycles = (unsigned short)((float)renderpartsize / CHANNELS * CYCLESPERSAMPLE);
-			while (cycles > 0 && renderpartsize > 0)
+		case SOUND_DRIVER_APOKEYSND:	// FIXME: Mono POKEY sound generation is broken, currently the reason for this is unclear...
 			{
-				// The maximum number of cycles that can be generated is CYCLESPERSCREEN
-				int rencyc = (cycles > CYCLESPERSCREEN) ? (int)CYCLESPERSCREEN : cycles;
-				renderpartsize = APokeySound_Generate(rencyc, (unsigned char*)&m_PlayBuffer + renderoffset, ASAP_FORMAT_U8);
-				rendersize -= renderpartsize;
-				renderoffset += renderpartsize;
-				cycles -= rencyc;
+				int cycles = (unsigned short)((float)renderpartsize / CHANNELS * CYCLESPERSAMPLE);
+				while (cycles > 0 && renderpartsize > 0)
+				{
+					// The maximum number of cycles that can be generated is CYCLESPERSCREEN
+					int rencyc = (cycles > CYCLESPERSCREEN) ? (int)CYCLESPERSCREEN : cycles;
+					renderpartsize = APokeySound_Generate(rencyc, (unsigned char*)&m_PlayBuffer + renderoffset, ASAP_FORMAT_U8);
+					rendersize -= renderpartsize;
+					renderoffset += renderpartsize;
+					cycles -= rencyc;
+				}
 			}
-		}
-		else
-		if (m_soundDriverId == SOUND_DRIVER_SA_POKEY)
-		{
-			// sa_pokey
+			break;
+
+		case SOUND_DRIVER_SA_POKEY:
 			Pokey_Process((unsigned char*)&m_PlayBuffer + renderoffset, (unsigned short)renderpartsize);
 			rendersize -= renderpartsize;
 			renderoffset += renderpartsize;
+			break;
 		}
 	}
 
-	if (!m_SoundBuffer) return 0;	//should help preventing crashes from reading NULL pointer when data is read faster than it could be processed
+	if (!m_SoundBuffer) return 0;	// Should help preventing crashes from reading NULL pointer when data is read faster than it could be processed
 
-	m_LoadSize = renderoffset; //actually generated sample data
+	m_LoadSize = renderoffset; // Actually generated sample data
 
 	int r = m_SoundBuffer->Lock(m_LoadPos, m_LoadSize, &Data1, &dwSize1, &Data2, &dwSize2, 0);
 
@@ -237,8 +235,6 @@ BOOL CXPokey::InitSound()
 	ntscRegionSetOnDriver = g_ntsc;
 
 	WAVEFORMATEX wfm;
-
-	int CHUNK_SIZE = (g_ntsc) ? CHUNK_SIZE_NTSC : CHUNK_SIZE_PAL;
 
 	// Set primary buffer format
 	ZeroMemory(&wfm, sizeof(WAVEFORMATEX));
@@ -313,31 +309,39 @@ BOOL CXPokey::InitSound()
 /// </summary>
 void CXPokey::MemToPokey()
 {
-	// If the variabes no longer match the last known parameters, the sound must be re-initialised first
+	// If the variabes no longer match the last known parameters, the POKEY plugins must be re-initialised first
+	bool resetPokey = false;
 	if (numTracksSetOnDriver != g_tracks4_8 || ntscRegionSetOnDriver != g_ntsc)
 	{
-		ReInitSound();
-		return;
+		numTracksSetOnDriver = g_tracks4_8;
+		ntscRegionSetOnDriver = g_ntsc;
+		resetPokey = true;
+		//ReInitSound();
+		//return;
 	}
 
 	// Check for which POKEY plugin to use, and process whichever is currently active
 	switch (m_soundDriverId)
 	{
 	case SOUND_DRIVER_APOKEYSND:
-		for (int i = 0; i <= 8; i++)	// 0-7 + 8audctl
+		if (resetPokey) 
+			APokeySound_Initialize(g_tracks4_8 == 8);
+		for (int i = 0; i <= 8; i++)	// 0-7 + 8 (AUDCTL)
 		{
 			APokeySound_PutByte(i, (i & 0x01) && !GetChannelOnOff(i / 2) ? 0 : g_atarimem[0xd200 + i]);
 			if (numTracksSetOnDriver == 8)
-				APokeySound_PutByte(i + 16, (i & 0x01) && !GetChannelOnOff(i / 2 + 4) ? 0 : g_atarimem[0xd210 + i]);	//stereo
+				APokeySound_PutByte(i + 16, (i & 0x01) && !GetChannelOnOff(i / 2 + 4) ? 0 : g_atarimem[0xd210 + i]);	// Stereo
 		}
 		break;
 
 	case SOUND_DRIVER_SA_POKEY:
-		for (int i = 0; i <= 8; i++)	//0-7 + 8audctl
+		if (resetPokey) 
+			Pokey_SoundInit(FREQ_17, OUTPUTFREQ, (g_tracks4_8 == 8) + 1);
+		for (int i = 0; i <= 8; i++)	// 0-7 + 8 (AUDCTL)
 		{
 			Pokey_PutByte(i, (i & 0x01) && !GetChannelOnOff(i / 2) ? 0 : g_atarimem[0xd200 + i]);
 			if (numTracksSetOnDriver == 8)
-				Pokey_PutByte(i + 16, (i & 0x01) && !GetChannelOnOff(i / 2 + 4) ? 0 : g_atarimem[0xd210 + i]);		//stereo
+				Pokey_PutByte(i + 16, (i & 0x01) && !GetChannelOnOff(i / 2 + 4) ? 0 : g_atarimem[0xd210 + i]);		// Stereo
 		}
 		break;
 	}
@@ -372,7 +376,7 @@ int CXPokey::InitPokeyDll()
 			const char* name, * author, * description;
 			APokeySound_About(&name, &author, &description);
 			g_aboutpokey.Format("%s\n%s\n%s", name, author, description);
-			APokeySound_Initialize((g_tracks4_8 == 8) + 1);	// STEREO enabled
+			APokeySound_Initialize(g_tracks4_8 == 8);	// STEREO enabled
 			return SOUND_DRIVER_APOKEYSND;
 		}
 
@@ -413,7 +417,7 @@ int CXPokey::InitPokeyDll()
 			Pokey_Initialise(0, 0);
 
 			// Specify the machine region and if it uses Stereo or Mono, as well as the frequency for the sound output
-			Pokey_SoundInit((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL, OUTPUTFREQ, (g_tracks4_8 == 8) + 1);
+			Pokey_SoundInit(FREQ_17, OUTPUTFREQ, (g_tracks4_8 == 8) + 1);
 			return SOUND_DRIVER_SA_POKEY;
 		}
 

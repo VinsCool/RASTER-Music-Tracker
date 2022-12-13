@@ -248,7 +248,7 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 			// Something in the Load... function failed
 			ClearSong(g_tracks4_8);		// Erases everything
 			SetRMTTitle();
-			g_screenupdate = 1;			// Must refresh
+			SCREENUPDATE;			// Must refresh
 			return;
 		}
 
@@ -256,19 +256,7 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 		m_speed = m_mainSpeed;			// Init speed
 		SetRMTTitle();					// Window name
 		SetChannelOnOff(-1, 1);			// All channels ON (unmute all) -1 = all, 1 = on
-
-		if (m_instrumentSpeed > 0x04)
-		{
-			// Allow RMT to support instrument speed up to 8, but warn when it's above 4. Pressing "No" resets the value to 1.
-			int r = MessageBox(g_hwnd, "Instrument speed values above 4 are not officially supported by RMT.\nThis may cause compatibility issues.\nDo you want keep this nonstandard speed anyway?", "Warning", MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION);
-			if (r != IDYES)
-			{
-				MessageBox(g_hwnd, "Instrument speed has been reset to the value of 1.", "Warning", MB_ICONEXCLAMATION);
-				m_instrumentSpeed = 0x01;
-			}
-		}
-
-		g_screenupdate = 1;
+		SCREENUPDATE;
 	}
 }
 
@@ -292,19 +280,7 @@ void CSong::FileSave()
 		return;
 	}
 
-	// Allow saving files with speed values above 4, up to 8, which will also trigger a warning message, but it will save with no problem.
-	if (m_instrumentSpeed > 0x04)
-	{
-		int r = MessageBox(g_hwnd, "Instrument speed values above 4 are not officially supported by RMT.\nThis may cause compatibility issues.\nDo you want to save anyway?", "Warning", MB_YESNO | MB_DEFBUTTON2 | MB_ICONQUESTION);
-		if (r != IDYES)
-		{
-			MessageBox(g_hwnd, "Warning!\nNo data has been saved!", "Warning", MB_ICONEXCLAMATION);
-			return;
-		}
-
-	}
-
-	// Create the file to save, iso::binary will be assumed if the format isn't TXT
+	// Create the file to save, ios::binary will be assumed if the format isn't TXT
 	ofstream out(m_filename, (m_filetype == IOTYPE_TXT) ? ios::out : ios::binary);
 	if (!out)
 	{
@@ -537,7 +513,10 @@ void CSong::FileImport()
 	}
 	// All channels ON (unmute all)
 	SetChannelOnOff(-1, 1);		// -1 = all, 1 = on
-	g_screenupdate = 1;
+
+	// Initialise RMT routine
+	Atari_InitRMTRoutine();
+	SCREENUPDATE;
 }
 
 /// <summary>

@@ -183,6 +183,9 @@ void CSong::ClearSong(int numOfTracks)
 
 	//Changes in the module
 	g_changes = 0;
+
+	// Initialise RMT routine, to clear anything leftover in Atari memory
+	Atari_InitRMTRoutine();
 }
 
 //---
@@ -2326,6 +2329,8 @@ void CSong::Songswitch4_8(int tracks4_8)
 	}
 	else
 		if (tracks4_8 == 8) g_tracks4_8 = 8;
+
+	Atari_InitRMTRoutine();
 }
 
 int CSong::GetEffectiveMaxtracklen()
