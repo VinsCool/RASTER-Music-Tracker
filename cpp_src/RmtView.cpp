@@ -755,7 +755,7 @@ void CRmtView::OnViewConfiguration()
 		if (g_nohwsoundbuffer != dlg.m_nohwsoundbuffer)
 		{
 			g_Pokey.ReInitSound();	//the sound needs to be reinitialized
-			//Atari_InitRMTRoutine(); //reset RMT routines
+			Atari_InitRMTRoutine(); //reset RMT routines
 		}
 		g_nohwsoundbuffer = dlg.m_nohwsoundbuffer;
 

@@ -287,8 +287,8 @@ BOOL CXPokey::InitSound()
 	int r = m_SoundBuffer->Lock(0, BUFFER_SIZE, &Data1, &dwSize1, &Data2, &dwSize2, DSBLOCK_FROMWRITECURSOR);
 	if (r == DS_OK)
 	{
-		memset(Data1, 0, dwSize1);
-		if (Data2) memset(Data2, 0, dwSize2);
+		memset(Data1, 0x80, dwSize1);
+		if (Data2) memset(Data2, 0x80, dwSize2);
 		m_SoundBuffer->Unlock(Data1, dwSize1, Data2, dwSize2);
 	}
 

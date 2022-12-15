@@ -383,7 +383,6 @@ void CSong::DrawAnalyzer(CDC* pDC)
 				audf16 = audf;
 				audf16 <<= 8;
 				audf16 += audf2;
-				cout << audf16;
 			}
 
 			int gap = (IS_RIGHT_POKEY) ? 64 : 0;
