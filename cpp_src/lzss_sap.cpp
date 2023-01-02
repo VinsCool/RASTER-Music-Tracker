@@ -389,15 +389,15 @@ int LZSS_SAP(unsigned char *src, int srclen)
 			{
 				int vol = buf[i] & 0x0F;
 				int dist = buf[i] & 0xF0;
-				if (vol == 0)
-					buf[i] = 0;
-				// RMT will handle both the Proper Volume Only output, and the SAP-R dump patch for the Two-Tone Filter
-				//else if( dist & 0x10 )
-				//    buf[i] &= 0x1F;     // volume-only, ignore other bits
-				else if (dist & 0x20)
-					buf[i] &= 0xBF;     // no noise, ignore noise type bit
 
-
+                // RMT will handle both the Proper Volume Only output, and the SAP-R dump patch for the Two-Tone Filter
+                if (dist < 0xF0)
+                {
+                    if (vol == 0)
+                        buf[i] = 0;         // no volume, ignore distortion bits
+                    else if (dist & 0x20)
+                        buf[i] &= 0xBF;     // no noise, ignore noise type bit
+                }
 			}
 			data[i][sz] = buf[i];
 		}
