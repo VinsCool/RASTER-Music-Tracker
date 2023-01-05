@@ -75,9 +75,6 @@
     <ClCompile Include="ImportDlgs.cpp">
       <Filter>Source Files\Dialogs</Filter>
     </ClCompile>
-    <ClCompile Include="libfmemopen.cpp">
-      <Filter>Source Files\Helpers</Filter>
-    </ClCompile>
     <ClCompile Include="getopt.cpp">
       <Filter>Source Files\Helpers</Filter>
     </ClCompile>
@@ -201,9 +198,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lzss_sap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="libfmemopen.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Tuning.h">

@@ -1322,8 +1322,8 @@ bool CSong::ExportV2(ofstream& ou, int iotype, LPCTSTR filename)
 		case IOTYPE_ASM: return ExportAsAsm(ou, &exportDesc);
 		case IOTYPE_ASM_RMTPLAYER: return ExportAsRelocatableAsmForRmtPlayer(ou, &exportDesc);
 		case IOTYPE_SAPR: return ExportSAP_R(ou);
-		case IOTYPE_LZSS: return ExportLZSS(ou, filename);
-		//case IOTYPE_LZSS: return ExportCompactLZSS(ou, filename);
+		//case IOTYPE_LZSS: return ExportLZSS(ou, filename);
+		case IOTYPE_LZSS: return ExportCompactLZSS(ou, filename);	// This is used for experimental styff, however it does output valid LZSS data if needed
 		case IOTYPE_LZSS_SAP: return ExportLZSS_SAP(ou);
 		case IOTYPE_LZSS_XEX: return ExportLZSS_XEX(ou);
 	}
