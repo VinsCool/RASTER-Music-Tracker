@@ -214,7 +214,7 @@ public:
 
 	bool ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename);
 
-	void DumpSongToPokeyBuffer();
+	void DumpSongToPokeyBuffer(int playmode = MPLAY_SONG, int songline = 0, int trackline = 0);
 
 	bool TestBeforeFileSave();
 	int GetSubsongParts(CString& resultstr);
