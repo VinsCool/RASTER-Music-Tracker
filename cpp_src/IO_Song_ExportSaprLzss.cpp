@@ -434,6 +434,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 	int lzss_chunk = 0;	// Subtune size will be added to be used as the offset to the next one
 	int lzss_total = 0;	// Final offset for LZSS bytes to export
+	int framescount = 0;
 
 	int frameSize = (g_tracks4_8 == 8) ? 18 : 9;	// SAP-R bytes to copy, Stereo doubles the number
 
@@ -519,7 +520,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		if (p + q >= 5 * 40) break;
 	}
 	StrToAtariVideo((char*)mem + LZSSP_LINE_1, 200);
-
+/*
 	memset(mem + LZSSP_LINE_0 + 0x0B, 32, 28);	// 28 characters on the top line, next to the Region and VBI speed
 	char framesdisplay[28] = { 0 };
 	sprintf(framesdisplay, "(%i frames)", g_PokeyStream.GetFirstCountPoint());	// Total recorded frames
@@ -528,7 +529,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		mem[LZSSP_LINE_0 + 0x0B + i] = framesdisplay[i];
 	}
 	StrToAtariVideo((char*)mem + LZSSP_LINE_0 + 0x0B, 28);
-
+*/
 	// I know the binary I have is currently set to NTSC, so I'll just convert to PAL and keep this going for now...
 	if (!g_ntsc)
 	{
@@ -574,6 +575,8 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	mem[0x1CAC + 1] = lzss_loop_index + 0x20;
 	mem[0x1CB2 + 1] = lzss_loop_index;
 
+	s.Format("");	// Clear the text from the CString before it is used below
+
 	while (count < subsongs)
 	{
 		DumpSongToPokeyBuffer(MPLAY_FROM, subtune[count], 0);
@@ -582,8 +585,55 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 		// Now, create LZSS files using the SAP-R dump created earlier
 		//int full = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetFirstCountPoint() * frameSize, buff1);
-		int intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2);
-		int loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3);
+		//int intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2);
+		//int loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3);
+
+		// Bruteforce the compression to find the most optimal pattern
+		int intro = 0xFFFFFF, loop = 0xFFFFFF, best = 0;
+
+		if (loop_section == false)
+		{
+			for (int i = 0; i < 8; i++)
+			{
+				int bruteintro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2, i);
+				if (bruteintro < intro)
+				{
+					intro = bruteintro;
+					best = i;
+				}
+			}
+			intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2, best);
+
+			if (intro > 16)
+			{
+				s.Format(s + "Subtune number: %i\nSize of Intro section: %i bytes\nOptimal compression pattern: %i\n", count, intro, best);
+				//s.Format("Size of Intro section: 0x%x\n Optimal compression pattern: 0x%x\n", intro, best);
+				//MessageBox(g_hwnd, s, "LZSS Compression Bruteforcer", MB_ICONASTERISK);
+			}
+		}
+
+		if (loop_section == true)
+		{
+			for (int i = 0; i < 8; i++)
+			{
+				int bruteloop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3, i);
+				if (bruteloop < loop)
+				{
+					loop = bruteloop;
+					best = i;
+				}
+			}
+			loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3, best);
+
+			if (loop > 16)
+			{
+				s.Format(s + "Subtune number: %i\nSize of Loop section: %i bytes\nOptimal compression pattern: %i\n", count, loop, best);
+				//s.Format("Size of Loop section: 0x%x\n Optimal compression pattern: 0x%x\n", loop, best);
+				//MessageBox(g_hwnd, s, "LZSS Compression Bruteforcer", MB_ICONASTERISK);
+			}
+		}
+
+		framescount += g_PokeyStream.GetFirstCountPoint();	// Add the number of frames recorded to the total count
 
 		g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
 
@@ -650,16 +700,36 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		count++;
 
 		// Kill me for commiting a sin
+		// The reason for this hack is the broken subtune index code from VUPlayer
+		// It expects 2 blocks of data, 1 for Intro sections, and 1 for Looped sections
+		// This cannot be avoided, since I need to literally have ALL data in 1 shot there
+		// To work around it, literally dump all the Intro sections first, then the Loop sections
+		// This then ensures the memory addresses are all aligned and makes the broken VUPlayer happy
+		// The updated player will fix this fuckup, don't worry about that ;P
 		if (count == subsongs && loop_section == false)
 		{
 			loop_section = true;
 			count = 0;
 		}
 
-		s.Format("0x%x, 0x%x", targetAddrOfModule, lzss_end);
-		MessageBox(g_hwnd, s, "targetAddrOfModule, lzss_end", MB_ICONASTERISK);
+		if (lzss_end > targetAddrOfModule)
+		{
+			s.Format(s + "LZSS chunk written from address 0x%x to 0x%x\n\n", targetAddrOfModule, lzss_end);
+		}
+
+		//s.Format("0x%x, 0x%x", targetAddrOfModule, lzss_end);
+		//MessageBox(g_hwnd, s, "targetAddrOfModule, lzss_end", MB_ICONASTERISK);
 	}
-	
+
+	memset(mem + LZSSP_LINE_0 + 0x0B, 32, 28);	// 28 characters on the top line, next to the Region and VBI speed
+	char framesdisplay[28] = { 0 };
+	sprintf(framesdisplay, "(%i frames total)", framescount);	// Total recorded frames
+	for (int i = 0; i < 28; i++)
+	{
+		mem[LZSSP_LINE_0 + 0x0B + i] = framesdisplay[i];
+	}
+	StrToAtariVideo((char*)mem + LZSSP_LINE_0 + 0x0B, 28);
+
 	// Reconstruct the export binary 
 	SaveBinaryBlock(ou, mem, 0x1900, 0x1EFF, 1);	// LZSS Driver, and some free bytes for later if needed
 	SaveBinaryBlock(ou, mem, 0x2000, 0x2FFF, 0);	// VUPlayer + Font + Data + Display Lists
@@ -672,6 +742,10 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	// Overwrite the LZSS data region with both the pointers for subtunes index, and the actual LZSS streams until the end of file
 	//SaveBinaryBlock(ou, mem, LZSS_POINTER, lzss_end, 0);
 	SaveBinaryBlock(ou, mem, LZSS_POINTER, lzss_total, 0);
+
+	// Display all the stuff that was logged once everything was exported
+	s.Format(s + "LZSS Export finished with %i Subtune(s) recorded\nFor a total of %i frames\nCompressed to %i bytes", subsongs, framescount, lzss_total - LZSS_POINTER);
+	MessageBox(g_hwnd, s, "ExportLZSS_XEX Log", MB_ICONASTERISK);
 
 	return true;
 }
