@@ -23,17 +23,22 @@ using namespace std;
 extern CInstruments	g_Instruments;
 extern CPokeyStream g_PokeyStream;
 
-#define VU_PLAYER_LOOP_FLAG		LZSSP_LOOP_TOGGLE		// VUPlayer's address for the Loop flag
+#define VU_PLAYER_LOOP_FLAG		LZSSP_LOOP_COUNT		// VUPlayer's address for the Loop flag
 #define VU_PLAYER_STEREO_FLAG	LZSSP_IS_STEREO_FLAG	// VUPlayer's address for the Stereo flag 
 #define VU_PLAYER_SONG_SPEED	LZSSP_PLAYER_SONG_SPEED	// VUPlayer's address for setting the song speed
 #define VU_PLAYER_DO_PLAY_ADDR	LZSSP_DO_PLAY			// VUPlayer's address for Play, for SAP exports bypassing the mainloop code
 #define VU_PLAYER_RTS_NOP		LZSSP_VU_PLAYER_RTS_NOP	// VUPlayer's address for JMP loop being patched to RTS NOP NOP with the SAP format
-#define VU_PLAYER_INIT_SAP		LZSSP_SAPINDEX			// VUPlayer SAP initialisation hack
-#define LZSS_POINTER			LZSSP_SONGSINDEXSTART	// All the LZSS subtunes index will occupy this memory page
+#define VU_PLAYER_INIT_SAP		NULL					// VUPlayer SAP initialisation hack
+
+#define LZSS_POINTER			LZSSP_SONGINDEX			// All the LZSS subtunes index will occupy this memory page
+#define VU_PLAYER_SEQUENCE		LZSSP_SONGSEQUENCE
+#define VU_PLAYER_SECTION		LZSSP_SONGSECTION
+#define VU_PLAYER_SONGDATA		LZSSP_LZ_DTA
+
 #define VU_PLAYER_REGION		LZSSP_PLAYER_REGION_INIT// VUPlayer's address for the region initialisation
 #define VU_PLAYER_RASTER_BAR	LZSSP_RASTERBAR_TOGGLER	// VUPlayer's address for the rasterbar display
 #define VU_PLAYER_COLOUR		LZSSP_RASTERBAR_COLOUR	// VUPlayer's address for the rasterbar colour
-#define VU_PLAYER_SHUFFLE		LZSSP_PLAYER_SHUFFLE	// VUPlayer's address for the rasterbar colour shuffle (incomplete feature)
+//#define VU_PLAYER_SHUFFLE		LZSSP_PLAYER_SHUFFLE	// VUPlayer's address for the rasterbar colour shuffle (incomplete feature)
 #define VU_PLAYER_SONGTOTAL		LZSSP_SONGTOTAL			// VUPlayer's address for the total number of subtunes that could be played back
 
 static void StrToAtariVideo(char* txt, int count)
@@ -228,7 +233,7 @@ bool CSong::ExportLZSS_SAP(ofstream& ou)
 	g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
 
 	// Some additional variables that will be used below
-	int targetAddrOfModule = LZSSP_SONGDATA;											// All the LZSS data will be written starting from this address
+	int targetAddrOfModule = VU_PLAYER_SONGDATA;											// All the LZSS data will be written starting from this address
 	//int lzss_offset = (intro) ? targetAddrOfModule + intro : targetAddrOfModule + full;	// Calculate the offset for the export process between the subtune parts, at the moment only 1 tune at the time can be exported
 	int lzss_offset = (intro > 16) ? targetAddrOfModule + intro : targetAddrOfModule;
 	int lzss_end = lzss_offset + loop;													// this sets the address that defines where the data stream has reached its end
@@ -380,7 +385,7 @@ bool CSong::ExportLZSS_SAP(ofstream& ou)
 		0xA2,0x00,																	// LDX #0
 		0x8E,LZSSP_IS_FADEING_OUT & 0xff, LZSSP_IS_FADEING_OUT>>8,					// STX is_fadeing_out
 		0x8E,LZSSP_STOP_ON_FADE_END & 0xff, LZSSP_STOP_ON_FADE_END>>8,				// STX stop_on_fade_end
-		0x4C,LZSSP_SETNEWSONGPTRSLOOPSONLY & 0xff, LZSSP_SETNEWSONGPTRSLOOPSONLY>>8	// JMP SetNewSongPtrsLoopsOnly
+		0x4C,LZSSP_SETNEWSONGPTRSFULL & 0xff, LZSSP_SETNEWSONGPTRSFULL>>8	// JMP SetNewSongPtrsLoopsOnly
 	};
 	memcpy(mem + VU_PLAYER_INIT_SAP, sapbytes, 14);
 
@@ -392,16 +397,16 @@ bool CSong::ExportLZSS_SAP(ofstream& ou)
 	SaveBinaryBlock(ou, mem, 0x2000, 0x27FF, 0);	// VUPlayer only
 
 	// SongStart pointers
-	mem[LZSSP_SONGSSHIPTRS] = targetAddrOfModule >> 8;				// SongsSHIPtrs
-	mem[LZSSP_SONGSINDEXEND] = lzss_offset >> 8;					// SongsIndexEnd
-	mem[LZSSP_SONGSSLOPTRS] = targetAddrOfModule & 0xFF;			// SongsSLOPtrs
-	mem[LZSSP_SONGSDUMMYEND] = lzss_offset & 0xFF;					// SongsDummyEnd
+	mem[LZSS_POINTER] = targetAddrOfModule >> 8;				// SongsSHIPtrs
+	mem[LZSS_POINTER] = lzss_offset >> 8;					// SongsIndexEnd
+	mem[LZSS_POINTER] = targetAddrOfModule & 0xFF;			// SongsSLOPtrs
+	mem[LZSS_POINTER] = lzss_offset & 0xFF;					// SongsDummyEnd
 
 	// SongEnd pointers
-	mem[LZSSP_LOOPSINDEXSTART] = lzss_offset >> 8;					// LoopsIndexStart
-	mem[LZSSP_LOOPSINDEXEND] = lzss_end >> 8;						// LoopsIndexEnd
-	mem[LZSSP_LOOPSSLOPTRS] = lzss_offset & 0xFF;					// LoopsSLOPtrs
-	mem[LZSSP_LOOPSDUMMYEND] = lzss_end & 0xFF;						// LoopsDummyEnd
+	mem[LZSS_POINTER] = lzss_offset >> 8;					// LoopsIndexStart
+	mem[LZSS_POINTER] = lzss_end >> 8;						// LoopsIndexEnd
+	mem[LZSS_POINTER] = lzss_offset & 0xFF;					// LoopsSLOPtrs
+	mem[LZSS_POINTER] = lzss_end & 0xFF;						// LoopsDummyEnd
 
 	if (intro > 16)
 	{
@@ -438,13 +443,9 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 	int frameSize = (g_tracks4_8 == 8) ? 18 : 9;	// SAP-R bytes to copy, Stereo doubles the number
 
-	unsigned char buff1[65536];			// LZSS buffers for each ones of the tune parts being reconstructed
+	//unsigned char buff1[65536];			// LZSS buffers for each ones of the tune parts being reconstructed
 	unsigned char buff2[65536];			// they are used for parts labeled: full, intro, and loop 
 	unsigned char buff3[65536];			// a LZSS export will typically make use of intro and loop only, unless specified otherwise
-
-	//s.Format("Found %i subtune(s), starting on songline(s):\n\n'" + t + "'\n\nWould you like to export everything that way?", songline);
-	//int r = MessageBox(g_hwnd, s, "Subtune Index Test", MB_OKCANCEL | MB_ICONINFORMATION);
-	//if (r == IDCANCEL) return false;
 
 	// GetSubsongParts returns a CString, so the values must be converted back to int first, FIXME
 	for (int i = 0; i < subsongs; i++)
@@ -454,13 +455,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		c[1] = t[i * 3 + 1];
 		c[2] = '\0';
 		subtune[i] = strtoul(c, NULL, 16);
-
-		//s.Format("Export subtune starting at songline %x?", subtune[i]);
-		//int no_u = MessageBox(g_hwnd, s, "Chose a Subtune", MB_OKCANCEL | MB_ICONINFORMATION);
-		//if (no_u == IDOK) break;
 	}
-
-	////////////////////
 
 	unsigned char mem[65536];					// Default RAM size for most 800xl/xe machines
 	memset(mem, 0, sizeof(mem));
@@ -520,16 +515,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		if (p + q >= 5 * 40) break;
 	}
 	StrToAtariVideo((char*)mem + LZSSP_LINE_1, 200);
-/*
-	memset(mem + LZSSP_LINE_0 + 0x0B, 32, 28);	// 28 characters on the top line, next to the Region and VBI speed
-	char framesdisplay[28] = { 0 };
-	sprintf(framesdisplay, "(%i frames)", g_PokeyStream.GetFirstCountPoint());	// Total recorded frames
-	for (int i = 0; i < 28; i++)
-	{
-		mem[LZSSP_LINE_0 + 0x0B + i] = framesdisplay[i];
-	}
-	StrToAtariVideo((char*)mem + LZSSP_LINE_0 + 0x0B, 28);
-*/
+
 	// I know the binary I have is currently set to NTSC, so I'll just convert to PAL and keep this going for now...
 	if (!g_ntsc)
 	{
@@ -550,7 +536,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	mem[VU_PLAYER_SONG_SPEED] = m_instrumentSpeed;						// Song speed
 	mem[VU_PLAYER_RASTER_BAR] = (dlg.m_meter) ? 0x80 : 0x00;			// Display the rasterbar for CPU level
 	mem[VU_PLAYER_COLOUR] = dlg.m_metercolor;							// Rasterbar colour 
-	mem[VU_PLAYER_SHUFFLE] = 0x00;	// = (dlg.m_msx_shuffle) ? 0x10 : 0x00;		// Rasterbar colour shuffle, incomplete feature so it is disabled
+	//mem[VU_PLAYER_SHUFFLE] = 0x00;	// = (dlg.m_msx_shuffle) ? 0x10 : 0x00;		// Rasterbar colour shuffle, incomplete feature so it is disabled
 	mem[VU_PLAYER_STEREO_FLAG] = (g_tracks4_8 > 4) ? 0xFF : 0x00;		// Is the song stereo?
 	mem[VU_PLAYER_SONGTOTAL] = subsongs;								// Total number of subtunes
 	if (!dlg.m_region_auto)												// Automatically adjust speed between regions?
@@ -558,24 +544,10 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		for (int i = 0; i < 4; i++) mem[VU_PLAYER_REGION + 6 + i] = 0xEA;	//set the 4 bytes to NOPs to disable it
 	}
 
-	////////////////////
-
-	// Temporary patches for the time being, until I update VUPlayer properly later...
-	bool loop_section = false;
-	int lzss_intro_index = 0x3000;
-	int lzss_loop_index = 0x3040;
-
-	mem[0x1C7C + 1] = lzss_intro_index + 0x20;
-	mem[0x1C82 + 1] = lzss_intro_index;
-	mem[0x1C89 + 1] = lzss_intro_index + 0x20;
-	mem[0x1C8F + 1] = lzss_intro_index;
-
-	mem[0x1C9F + 1] = lzss_loop_index + 0x20;
-	mem[0x1CA5 + 1] = lzss_loop_index;
-	mem[0x1CAC + 1] = lzss_loop_index + 0x20;
-	mem[0x1CB2 + 1] = lzss_loop_index;
-
 	s.Format("");	// Clear the text from the CString before it is used below
+
+	int section = VU_PLAYER_SECTION;
+	int sequence = VU_PLAYER_SEQUENCE;
 
 	while (count < subsongs)
 	{
@@ -583,54 +555,41 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 		SetStatusBarText("Compressing data ...");
 
-		// Now, create LZSS files using the SAP-R dump created earlier
-		//int full = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetFirstCountPoint() * frameSize, buff1);
-		//int intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2);
-		//int loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3);
+		s.Format(s + "Subtune number: %i\n", count);
 
 		// Bruteforce the compression to find the most optimal pattern
-		int intro = 0xFFFFFF, loop = 0xFFFFFF, best = 0;
+		int intro = 0, loop = 0, bestintro = 0, bestloop = 0;
 
-		if (loop_section == false)
+		// There is an Intro section 
+		if (g_PokeyStream.GetThirdCountPoint())
 		{
+			intro = 0xFFFFFF;	// Start from a high value to force the first pattern to be the best one
 			for (int i = 0; i < 8; i++)
 			{
 				int bruteintro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2, i);
 				if (bruteintro < intro)
 				{
 					intro = bruteintro;
-					best = i;
+					bestintro = i;
 				}
 			}
-			intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2, best);
-
-			if (intro > 16)
-			{
-				s.Format(s + "Subtune number: %i\nSize of Intro section: %i bytes\nOptimal compression pattern: %i\n", count, intro, best);
-				//s.Format("Size of Intro section: 0x%x\n Optimal compression pattern: 0x%x\n", intro, best);
-				//MessageBox(g_hwnd, s, "LZSS Compression Bruteforcer", MB_ICONASTERISK);
-			}
+			intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2, bestintro);
 		}
 
-		if (loop_section == true)
+		// There is a Loop section
+		if (g_PokeyStream.GetFirstCountPoint())
 		{
+			loop = 0xFFFFFF;	// Start from a high value to force the first pattern to be the best one
 			for (int i = 0; i < 8; i++)
 			{
 				int bruteloop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3, i);
 				if (bruteloop < loop)
 				{
 					loop = bruteloop;
-					best = i;
+					bestloop = i;
 				}
 			}
-			loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3, best);
-
-			if (loop > 16)
-			{
-				s.Format(s + "Subtune number: %i\nSize of Loop section: %i bytes\nOptimal compression pattern: %i\n", count, loop, best);
-				//s.Format("Size of Loop section: 0x%x\n Optimal compression pattern: 0x%x\n", loop, best);
-				//MessageBox(g_hwnd, s, "LZSS Compression Bruteforcer", MB_ICONASTERISK);
-			}
+			loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3, bestloop);
 		}
 
 		framescount += g_PokeyStream.GetFirstCountPoint();	// Add the number of frames recorded to the total count
@@ -638,16 +597,9 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
 
 		// Some additional variables that will be used below
-/*
-		int targetAddrOfModule = LZSSP_SONGDATA;											// All the LZSS data will be written starting from this address
-		//int lzss_offset = (intro) ? targetAddrOfModule + intro : targetAddrOfModule + full;	// Calculate the offset for the export process between the subtune parts, at the moment only 1 tune at the time can be exported
-		int lzss_offset = (intro > 16) ? targetAddrOfModule + intro : targetAddrOfModule;
-		int lzss_end = lzss_offset + loop;													// this sets the address that defines where the data stream has reached its end
-*/
-
-		int targetAddrOfModule = LZSSP_SONGDATA + lzss_chunk;											// All the LZSS data will be written starting from this address
-		int lzss_offset = (intro > 16 && loop_section == false) ? targetAddrOfModule + intro : targetAddrOfModule;
-		int lzss_end = (loop_section) ? targetAddrOfModule + loop : lzss_offset;													// this sets the address that defines where the data stream has reached its end
+		int targetAddrOfModule = VU_PLAYER_SONGDATA + lzss_chunk;	// All the LZSS data will be written starting from this address
+		int lzss_offset = targetAddrOfModule + intro;
+		int lzss_end = lzss_offset + loop;							// this sets the address that defines where the data stream has reached its end
 
 		SetStatusBarText("");
 
@@ -661,64 +613,57 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 			return false;
 		}
 
-/*
-		// SongStart pointers
-		mem[LZSSP_SONGSSHIPTRS] = targetAddrOfModule >> 8;				// SongsSHIPtrs
-		mem[LZSSP_SONGSINDEXEND] = lzss_offset >> 8;					// SongsIndexEnd
-		mem[LZSSP_SONGSSLOPTRS] = targetAddrOfModule & 0xFF;			// SongsSLOPtrs
-		mem[LZSSP_SONGSDUMMYEND] = lzss_offset & 0xFF;					// SongsDummyEnd
+		// Set the song section index 
+		int index = LZSS_POINTER + count * 4;
+		int chunk = 0;
 
-		// SongEnd pointers
-		mem[LZSSP_LOOPSINDEXSTART] = lzss_offset >> 8;					// LoopsIndexStart
-		mem[LZSSP_LOOPSINDEXEND] = lzss_end >> 8;						// LoopsIndexEnd
-		mem[LZSSP_LOOPSSLOPTRS] = lzss_offset & 0xFF;					// LoopsSLOPtrs
-		mem[LZSSP_LOOPSDUMMYEND] = lzss_end & 0xFF;						// LoopsDummyEnd
-*/
+		mem[index + 0] = section & 0xFF;
+		mem[index + 1] = section >> 8;
+		mem[index + 2] = sequence & 0xFF;
+		mem[index + 3] = sequence >> 8;
 
-		int ptr_offset = (loop_section) ? lzss_loop_index + count: lzss_intro_index + count;
-
-		mem[ptr_offset + 0] = targetAddrOfModule >> 8;
-		mem[ptr_offset + 1] = lzss_end >> 8;
-		mem[ptr_offset + 0x20 + 0] = targetAddrOfModule & 0xFF;
-		mem[ptr_offset + 0x20 + 1] = lzss_end & 0xFF;
-
-		if (intro > 16 && loop_section == false)
+		// If there is an Intro section...
+		if (intro)
 		{
 			memcpy(mem + targetAddrOfModule, buff2, intro);
-			//memcpy(mem + lzss_offset, buff3, loop);
 			lzss_chunk += intro;
+			mem[section + 0] = targetAddrOfModule & 0xFF;
+			mem[section + 1] = targetAddrOfModule >> 8;
+			mem[sequence] = chunk;
+			section += 2;
+			sequence += 1;
+			chunk += 1;
+			s.Format(s + "Size of Intro section: %i bytes\nOptimal compression pattern: %i\n", intro, bestintro);
+			s.Format(s + "LZSS chunk written from address 0x%x to 0x%x\n", targetAddrOfModule, lzss_offset);
 		}
-		else if (loop_section)
+
+		// If there is a Loop section...
+		if (loop)
 		{
-			memcpy(mem + targetAddrOfModule, buff3, loop);
-			//memcpy(mem + lzss_offset, buff3, loop);
+			memcpy(mem + lzss_offset, buff3, loop);
 			lzss_chunk += loop;
+			mem[section + 0] = lzss_offset & 0xFF;
+			mem[section + 1] = lzss_offset >> 8;
+			mem[sequence] = chunk;
+			section += 2;
+			sequence += 1;
+			chunk += 1;
+			s.Format(s + "Size of Loop section: %i bytes\nOptimal compression pattern: %i\n", loop, bestloop);
+			s.Format(s + "LZSS chunk written from address 0x%x to 0x%x\n", lzss_offset, lzss_end);
 		}
+
+		// End of data, will be overwritten if there is more data to export
+		mem[section + 0] = lzss_end & 0xFF;
+		mem[section + 1] = lzss_end >> 8;
+		section += 2;
+		mem[sequence] = (chunk | 0x80) - 1;
+		sequence += 1;
 
 		// Update the subtune offsets to export the next one
 		lzss_total = lzss_end;
 		count++;
 
-		// Kill me for commiting a sin
-		// The reason for this hack is the broken subtune index code from VUPlayer
-		// It expects 2 blocks of data, 1 for Intro sections, and 1 for Looped sections
-		// This cannot be avoided, since I need to literally have ALL data in 1 shot there
-		// To work around it, literally dump all the Intro sections first, then the Loop sections
-		// This then ensures the memory addresses are all aligned and makes the broken VUPlayer happy
-		// The updated player will fix this fuckup, don't worry about that ;P
-		if (count == subsongs && loop_section == false)
-		{
-			loop_section = true;
-			count = 0;
-		}
-
-		if (lzss_end > targetAddrOfModule)
-		{
-			s.Format(s + "LZSS chunk written from address 0x%x to 0x%x\n\n", targetAddrOfModule, lzss_end);
-		}
-
-		//s.Format("0x%x, 0x%x", targetAddrOfModule, lzss_end);
-		//MessageBox(g_hwnd, s, "targetAddrOfModule, lzss_end", MB_ICONASTERISK);
+		s.Format(s + "Inserted %i chunk(s)\nFor a concatenated size of %i bytes\n\n", chunk, lzss_end - targetAddrOfModule);
 	}
 
 	memset(mem + LZSSP_LINE_0 + 0x0B, 32, 28);	// 28 characters on the top line, next to the Region and VBI speed
@@ -731,20 +676,18 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	StrToAtariVideo((char*)mem + LZSSP_LINE_0 + 0x0B, 28);
 
 	// Reconstruct the export binary 
-	SaveBinaryBlock(ou, mem, 0x1900, 0x1EFF, 1);	// LZSS Driver, and some free bytes for later if needed
-	SaveBinaryBlock(ou, mem, 0x2000, 0x2FFF, 0);	// VUPlayer + Font + Data + Display Lists
+	SaveBinaryBlock(ou, mem, LZSSP_DRIVER + 0x900, LZSSP_SONGINDEX, 1);	// LZSS Driver, VUPlayer, and all the included data
 
 	// Set the run address to VUPlayer 
-	mem[0x2e0] = 0x2000 & 0xff;
-	mem[0x2e1] = 0x2000 >> 8;
+	mem[0x2e0] = LZSSP_VUPLAYER & 0xff;
+	mem[0x2e1] = LZSSP_VUPLAYER >> 8;
 	SaveBinaryBlock(ou, mem, 0x2e0, 0x2e1, 0);
 
 	// Overwrite the LZSS data region with both the pointers for subtunes index, and the actual LZSS streams until the end of file
-	//SaveBinaryBlock(ou, mem, LZSS_POINTER, lzss_end, 0);
 	SaveBinaryBlock(ou, mem, LZSS_POINTER, lzss_total, 0);
 
 	// Display all the stuff that was logged once everything was exported
-	s.Format(s + "LZSS Export finished with %i Subtune(s) recorded\nFor a total of %i frames\nCompressed to %i bytes", subsongs, framescount, lzss_total - LZSS_POINTER);
+	s.Format(s + "LZSS Export finished with %i Subtune(s) recorded\nFor a total of %i frames\nCompressed to %i bytes", subsongs, framescount, lzss_total - VU_PLAYER_SONGDATA);
 	MessageBox(g_hwnd, s, "ExportLZSS_XEX Log", MB_ICONASTERISK);
 
 	return true;
