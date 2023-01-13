@@ -676,7 +676,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	StrToAtariVideo((char*)mem + LZSSP_LINE_0 + 0x0B, 28);
 
 	// Reconstruct the export binary 
-	SaveBinaryBlock(ou, mem, LZSSP_DRIVER + 0x900, LZSSP_SONGINDEX, 1);	// LZSS Driver, VUPlayer, and all the included data
+	SaveBinaryBlock(ou, mem, LZSSP_PLAYLZ16BEGIN, LZSSP_SONGINDEX, 1);	// LZSS Driver, VUPlayer, and all the included data
 
 	// Set the run address to VUPlayer 
 	mem[0x2e0] = LZSSP_VUPLAYER & 0xff;
