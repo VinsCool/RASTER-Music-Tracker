@@ -439,7 +439,7 @@ int LZSS_SAP(unsigned char* src, int srclen, unsigned char* dst, int optimisatio
             if (!(buf[5] & 0x0F) && !(buf[8] & 0x08) && !(buf[8] & 0x04)) buf[8] &= 0xDF;
 
             // Both CH3 and CH4 are mute, disable 16-bit mode
-            if (!(buf[5] & 0x0F) && !(buf[7] & 0x0F)) buf[8] &= 0xD7;
+            if (!(buf[5] & 0x0F) && !(buf[7] & 0x0F)) buf[8] &= 0xF7;
         }
 
         if (optimisations == 3 || optimisations == 4 || optimisations == 6 || optimisations == 7)
