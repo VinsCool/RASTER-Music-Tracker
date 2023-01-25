@@ -41,6 +41,8 @@ extern CPokeyStream g_PokeyStream;
 //#define VU_PLAYER_SHUFFLE		LZSSP_PLAYER_SHUFFLE	// VUPlayer's address for the rasterbar colour shuffle (incomplete feature)
 #define VU_PLAYER_SONGTOTAL		LZSSP_SONGTOTAL			// VUPlayer's address for the total number of subtunes that could be played back
 
+#define VU_PLAYER_SOUNGTIMER	LZSSP_SONGTIMERCOUNT
+
 static void StrToAtariVideo(char* txt, int count)
 {
 	char a;
@@ -613,14 +615,22 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 			return false;
 		}
 
-		// Set the song section index 
+		// Set the song section and timer index 
 		int index = LZSS_POINTER + count * 4;
+		int timerindex = VU_PLAYER_SOUNGTIMER + count * 4;
+		int subtunetimetotal = 0xFFFFFF / g_PokeyStream.GetFirstCountPoint();
+		int subtunelooppoint = subtunetimetotal * g_PokeyStream.GetThirdCountPoint();
 		int chunk = 0;
 
 		mem[index + 0] = section & 0xFF;
 		mem[index + 1] = section >> 8;
 		mem[index + 2] = sequence & 0xFF;
 		mem[index + 3] = sequence >> 8;
+
+		mem[timerindex + 0] = subtunetimetotal >> 16;
+		mem[timerindex + 1] = subtunetimetotal >> 8;
+		mem[timerindex + 2] = subtunetimetotal & 0xFF;
+		mem[timerindex + 3] = subtunelooppoint >> 16;
 
 		// If there is an Intro section...
 		if (intro)
