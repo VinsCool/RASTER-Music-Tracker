@@ -326,3 +326,21 @@
 #define POKEY2BUFFER_RECORD		1
 #define POKEY2BUFFER_WRITE		2
 #define POKEY2BUFFER_START		3		// Start the Pokey 2 buffer recording process
+
+// ----------------------------------------------------------------------------
+// SAP-R optimisations pattern, for optimal data compression to LZSS 
+// This is a set of combinations that may or may not provide better compression ratios
+// Results vary wildly between any given stream of bytes, due to many variables at play 
+// Bruteforcing each pattern is more or less a requirement for optimal results
+// Ideally, the resulting compressed data should be as small as possible
+// If several patterns gave identical results, the first optimal pattern will be used
+// 
+#define SAPR_OPTIMISATIONS_NONE				0
+#define SAPR_OPTIMISATIONS_AUDC				1
+#define SAPR_OPTIMISATIONS_AUDCTL			2
+#define SAPR_OPTIMISATIONS_AUDF				3
+#define SAPR_OPTIMISATIONS_AUDC_AUDF		4
+#define SAPR_OPTIMISATIONS_AUDCTL_AUDC		5
+#define SAPR_OPTIMISATIONS_AUDCTL_AUDF		6
+#define SAPR_OPTIMISATIONS_ALL				7
+#define SAPR_OPTIMISATIONS_COUNT			8

@@ -290,6 +290,90 @@ static int lzop_encode(struct bf* b, const struct lzop* lz, int pos, int lpos)
     }
 }
 
+// Optimise the AUDC bytes
+static void Optimise_AUDC(uint8_t* buf)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        int audc = i * 2 + 1;
+        int vol = buf[audc] & 0x0F;
+        int dist = buf[audc] & 0xF0;
+
+        // RMT will handle both the Proper Volume Only output, and the SAP-R dump patch for the Two-Tone Filter
+        if (dist < 0xF0)
+        {
+            if (vol == 0)
+                buf[audc] = 0; // No volume, ignore distortion bits
+
+            else if (dist & 0x20)
+                buf[audc] &= 0xBF; // No noise, ignore noise type bit
+        }
+    }
+}
+
+// Optimise the AUDCTL bytes, based on the values of AUDC
+static void Optimise_AUDCTL(uint8_t* buf)
+{
+    // CH1 is mute, disable High Pass Filter in CH1+3
+    if (!(buf[1] & 0x0F)) buf[8] &= 0xFB;
+
+    // CH1 is mute and Join1+2 is not set, disable 1.79mhz clock in CH1
+    if (!(buf[1] & 0x0F) && !(buf[8] & 0x10)) buf[8] &= 0xBF;
+
+    // Both CH1 and CH2 are mute, disable 16-bit mode
+    if (!(buf[1] & 0x0F) && !(buf[3] & 0x0F)) buf[8] &= 0xAF;
+
+    // CH2 is mute, disable High Pass Filter in CH2+4
+    if (!(buf[3] & 0x0F)) buf[8] &= 0xFD;
+
+    // CH3 is mute and Join3+4 is not set, disable 1.79mhz clock in CH3, if Filter in CH1+3 is also disabled
+    if (!(buf[5] & 0x0F) && !(buf[8] & 0x08) && !(buf[8] & 0x04)) buf[8] &= 0xDF;
+
+    // Both CH3 and CH4 are mute, disable 16-bit mode
+    if (!(buf[5] & 0x0F) && !(buf[7] & 0x0F)) buf[8] &= 0xF7;
+}
+
+// Optimise the AUDF bytes, based on the values of AUDCTL and AUDC
+static void Optimise_AUDF(uint8_t* buf)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        int audf = i * 2;
+        int audc = audf + 1;
+        int vol = buf[audc] & 0x0F;
+        int audctl = buf[8];
+        bool twotone = ((buf[1] & 0x10) && (buf[1] < 0xF0));
+
+        // Check if there is no volume, and if the AUDCTL actually needs the AUDF
+        if (!vol)
+        {
+            // This is literally a case by case situation, this is painful
+            switch (i)
+            {
+            case 0:
+                if (!(audctl & 0x04 || audctl & 0x10 || audctl & 0x40))
+                    buf[audf] = 0;
+                break;
+
+            case 1:
+                if (!(audctl & 0x02 || audctl & 0x10 || twotone))
+                    buf[audf] = 0;
+                break;
+
+            case 2:
+                if (!(audctl & 0x04 || audctl & 0x08 || audctl & 0x20))
+                    buf[audf] = 0;
+                break;
+
+            case 3:
+                if (!(audctl & 0x02 || audctl & 0x08))
+                    buf[audf] = 0;
+                break;
+            }
+        }
+    }
+}
+
 // Hacked up version of main() by VinsCool, stripping out most options that aren't needed for RMT 
 int LZSS_SAP(unsigned char* src, int srclen, unsigned char* dst, int optimisations)
 {
@@ -386,101 +470,41 @@ int LZSS_SAP(unsigned char* src, int srclen, unsigned char* dst, int optimisatio
         // AUDF0, AUDC0, AUDF1, AUDC1, AUDF2, AUDC2, AUDF3, AUDC3, AUDCTL
         for (int i = 0; i < 9; i++) { buf[i] = src[mem + i]; }
 
-        /*
-        Optimisations pattern....
-
-        0 - No optimisations
-        1 - AUDC (default)
-        2 - AUDCTL
-        3 - AUDF
-        4 - AUDC + AUDF
-        5 - AUDCTL + AUDC
-        6 - AUDCTL + AUDF
-        7 - AUDCTL + AUDC + AUDF
-        */
-        
-        if (optimisations == 1 || optimisations == 4 || optimisations == 5 || optimisations == 7)
+        // Apply desired optimisations to the buffered bytes
+        switch (optimisations)
         {
-            // First, optimise the AUDC bytes
-            for (int i = 0; i < 4; i++)
-            {
-                int audc = i * 2 + 1;
-                int vol = buf[audc] & 0x0F;
-                int dist = buf[audc] & 0xF0;
+        case SAPR_OPTIMISATIONS_AUDC:
+            Optimise_AUDC(buf);
+            break;
 
-                // RMT will handle both the Proper Volume Only output, and the SAP-R dump patch for the Two-Tone Filter
-                if (dist < 0xF0)
-                {
-                    if (vol == 0)
-                        buf[audc] = 0; // No volume, ignore distortion bits
+        case SAPR_OPTIMISATIONS_AUDCTL:
+            Optimise_AUDCTL(buf);
+            break;
 
-                    else if (dist & 0x20)
-                        buf[audc] &= 0xBF; // No noise, ignore noise type bit
-                }
-            }
-        }
+        case SAPR_OPTIMISATIONS_AUDF:
+            Optimise_AUDF(buf);
+            break;
 
-        // Second, optimise the AUDCTL based on the AUDC values
-        if (optimisations == 2 || optimisations == 5 || optimisations == 6 || optimisations == 7)
-        {
-            // CH1 is mute, disable High Pass Filter in CH1+3
-            if (!(buf[1] & 0x0F)) buf[8] &= 0xFB;
+        case SAPR_OPTIMISATIONS_AUDC_AUDF:
+            Optimise_AUDC(buf);
+            Optimise_AUDF(buf);
+            break;
 
-            // CH1 is mute and Join1+2 is not set, disable 1.79mhz clock in CH1
-            if (!(buf[1] & 0x0F) && !(buf[8] & 0x10)) buf[8] &= 0xBF;
+        case SAPR_OPTIMISATIONS_AUDCTL_AUDC:
+            Optimise_AUDC(buf);
+            Optimise_AUDCTL(buf);
+            break;
 
-            // Both CH1 and CH2 are mute, disable 16-bit mode
-            if (!(buf[1] & 0x0F) && !(buf[3] & 0x0F)) buf[8] &= 0xAF;
+        case SAPR_OPTIMISATIONS_AUDCTL_AUDF:
+            Optimise_AUDCTL(buf);
+            Optimise_AUDF(buf);
+            break;
 
-            // CH2 is mute, disable High Pass Filter in CH2+4
-            if (!(buf[3] & 0x0F)) buf[8] &= 0xFD;
-
-            // CH3 is mute and Join3+4 is not set, disable 1.79mhz clock in CH3, if Filter in CH1+3 is also disabled
-            if (!(buf[5] & 0x0F) && !(buf[8] & 0x08) && !(buf[8] & 0x04)) buf[8] &= 0xDF;
-
-            // Both CH3 and CH4 are mute, disable 16-bit mode
-            if (!(buf[5] & 0x0F) && !(buf[7] & 0x0F)) buf[8] &= 0xF7;
-        }
-
-        if (optimisations == 3 || optimisations == 4 || optimisations == 6 || optimisations == 7)
-        {
-            // Finally, optimise the AUDF bytes, based on the values of AUDCTL and AUDC
-            for (int i = 0; i < 4; i++)
-            {
-                int audf = i * 2;
-                int audc = audf + 1;
-                int vol = buf[audc] & 0x0F;
-                int audctl = buf[8];
-                bool twotone = ((buf[1] & 0x10) && (buf[1] < 0xF0));
-
-                // Check if there is no volume, and if the AUDCTL actually needs the AUDF
-                if (!vol)
-                {
-                    // This is literally a case by case situation, this is painful
-                    switch (i)
-                    {
-                    case 0:
-                        if (!(audctl & 0x04 || audctl & 0x10 || audctl & 0x40))
-                            buf[audf] = 0;
-                        break;
-
-                    case 1:
-                        if (!(audctl & 0x02 || audctl & 0x10 || twotone))
-                            buf[audf] = 0;
-                        break;
-
-                    case 2:
-                        if (!(audctl & 0x04 || audctl & 0x08 || audctl & 0x20))
-                            buf[audf] = 0;
-                        break;
-
-                    case 3:
-                        if (!(audctl & 0x02 || audctl & 0x08))
-                            buf[audf] = 0;
-                        break;
-                    }
-                }
-            }
+        case SAPR_OPTIMISATIONS_ALL:
+            Optimise_AUDC(buf);
+            Optimise_AUDCTL(buf);
+            Optimise_AUDF(buf);
+            break;
         }
 
         // Write the processed bytes once the optimisations were applied to them

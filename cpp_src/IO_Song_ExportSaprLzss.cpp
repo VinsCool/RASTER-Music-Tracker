@@ -566,7 +566,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		if (g_PokeyStream.GetThirdCountPoint())
 		{
 			intro = 0xFFFFFF;	// Start from a high value to force the first pattern to be the best one
-			for (int i = 0; i < 8; i++)
+			for (int i = 0; i < SAPR_OPTIMISATIONS_COUNT; i++)
 			{
 				int bruteintro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2, i);
 				if (bruteintro < intro)
@@ -582,7 +582,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		if (g_PokeyStream.GetFirstCountPoint())
 		{
 			loop = 0xFFFFFF;	// Start from a high value to force the first pattern to be the best one
-			for (int i = 0; i < 8; i++)
+			for (int i = 0; i < SAPR_OPTIMISATIONS_COUNT; i++)
 			{
 				int bruteloop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3, i);
 				if (bruteloop < loop)

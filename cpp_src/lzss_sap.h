@@ -26,6 +26,7 @@ using namespace std;
 
 #include "getopt.h"
 #include "stdafx.h"
+#include "General.h"
 
 extern CString g_prgpath;
 
@@ -43,4 +44,7 @@ static int match(const uint8_t* data, int pos, int size, int* mpos);
 static void lzop_backfill(struct lzop* lz, int last_literal);
 static int lzop_last_is_match(const struct lzop* lz);
 static int lzop_encode(struct bf* b, const struct lzop* lz, int pos, int lpos);
-int LZSS_SAP(unsigned char* src, int srclen, unsigned char* dst, int optimisations = 1);
+static void Optimise_AUDC(uint8_t* buf);
+static void Optimise_AUDCTL(uint8_t* buf);
+static void Optimise_AUDF(uint8_t* buf);
+int LZSS_SAP(unsigned char* src, int srclen, unsigned char* dst, int optimisations = SAPR_OPTIMISATIONS_AUDC);
