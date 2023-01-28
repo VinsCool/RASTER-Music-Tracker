@@ -714,6 +714,105 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 {
 	// TODO: everything related to exporting the stream buffer into small files and compress them to LZSS
+	DumpSongToPokeyBuffer();
+
+	SetStatusBarText("Compressing data ...");
+
+	// SAP-R bytes to copy, Stereo doubles the number
+	int frameSize = (g_tracks4_8 == 8) ? 18 : 9;
+
+	// Since 0 is also a valid offset, the initial values are set to -1 to prevent conflicts
+	int listOfMatches[64][256];
+	memset(listOfMatches, -1, sizeof(listOfMatches));
+	int listOfIndexes[64][256];
+	memset(listOfIndexes, -1, sizeof(listOfIndexes));
+
+	// Now, create LZSS files using the SAP-R dump created earlier
+	unsigned char compressedData[65536];
+
+	// TODO: add a Dialog box for proper standalone LZSS exports
+	CString fn = filename;
+	fn = fn.Left(fn.GetLength() - 5);	// In order to keep the filename without the extention 
+	ou.close();
+
+	// Total number of bytes to process, for reference purposes
+	int bytesCount = (g_PokeyStream.GetFirstCountPoint() * frameSize);
+	int iteration = 0;
+
+	// For all songlines to index, process with comparisons and find duplicates 
+	while (iteration < 64)
+	{
+		int multi = 0;
+		int bytesLoop = bytesCount / (iteration + 1);
+
+		while (multi <= iteration)
+		{
+			// Get the primary offset in the streambuffer derived from the divided number of bytes 
+			int index1 = multi * bytesLoop;
+			unsigned char* buff1 = g_PokeyStream.GetStreamBuffer() + index1;
+
+			// Real index offset
+			listOfIndexes[iteration][multi] = index1;
+
+			// If there is no index already, assume the Index1 to be the first occurence 
+			if (listOfMatches[iteration][multi] == -1)
+				listOfMatches[iteration][multi] = index1;
+
+			// Compare all indexes available and overwrite matching songline streams with index1's offset
+			for (int i = 0; i <= iteration; i++)
+			{
+				// Get the secondary offset in the streambuffer derived from the divided number of bytes 
+				int index2 = i * bytesLoop;
+				unsigned char* buff2 = g_PokeyStream.GetStreamBuffer() + index2;
+
+				// If there is a match, the second index will adopt the offset of the first index
+				if (!memcmp(buff1, buff2, bytesLoop))
+					listOfMatches[iteration][i] = index1;
+			}
+
+			// Next
+			multi++;
+		}
+
+		// Process to the next songline index until they are all processed
+		iteration++;
+	}
+
+	// Create a new file for logging everything related to the procedure
+	ou.open(fn + ".txt", ios::binary);
+	ou << "This is a test that displays all duplicated SAP-R bytes from m_StreamBuffer." << endl;
+	ou << "Each ones of the Buffer Chunks are indexed into memory using Songlines.\n" << endl;
+	for (int i = 0; i < 64; i++)
+	{
+		for (int index = 0; index < 256; index++)
+		{
+			if (listOfMatches[i][index] == -1)
+				continue;
+
+			ou << "Index: 0x" << PADHEX(2, i) << "[" << PADHEX(2, index) << "]";
+			ou << ",\t Offset (real): 0x" << PADHEX(6, listOfIndexes[i][index]);
+			ou << ",\t Offset (dupe): 0x" << PADHEX(6, listOfMatches[i][index]);
+			ou << ",\t Frames: " << dec << (bytesCount / (i + 1)) / frameSize;
+			ou << ",\t Bytes (uncompressed): " << bytesCount / (i + 1);
+			ou << ",\t Bytes (LZ16 compressed): " << LZSS_SAP(g_PokeyStream.GetStreamBuffer() + listOfMatches[i][index], bytesCount / (i + 1), compressedData);
+			ou << endl;
+		}
+		ou << endl;
+	}
+	ou.close();
+
+	g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
+
+	SetStatusBarText("");
+
+	return true;
+
+}
+
+/*
+bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
+{
+	// TODO: everything related to exporting the stream buffer into small files and compress them to LZSS
 
 	DumpSongToPokeyBuffer();
 
@@ -846,6 +945,7 @@ bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 
 	return true;
 }
+*/
 
 /// <summary>
 /// Get the Pokey registers to be dumped to a stream buffer.
