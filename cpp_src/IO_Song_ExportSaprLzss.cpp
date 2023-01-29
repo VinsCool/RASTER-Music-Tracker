@@ -435,6 +435,9 @@ bool CSong::ExportLZSS_SAP(ofstream& ou)
 bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 {
 	CString s, t;
+
+	WORD addressFrom, addressTo;
+
 	int subsongs = GetSubsongParts(t);
 	int count = 0;
 	int subtune[256] = { 0 };
@@ -444,10 +447,14 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	int framescount = 0;
 
 	int frameSize = (g_tracks4_8 == 8) ? 18 : 9;	// SAP-R bytes to copy, Stereo doubles the number
+	int section = VU_PLAYER_SECTION;
+	int sequence = VU_PLAYER_SEQUENCE;
 
-	//unsigned char buff1[65536];			// LZSS buffers for each ones of the tune parts being reconstructed
-	unsigned char buff2[65536];			// they are used for parts labeled: full, intro, and loop 
+	unsigned char buff2[65536];			// LZSS buffers for each ones of the tune parts being reconstructed
 	unsigned char buff3[65536];			// a LZSS export will typically make use of intro and loop only, unless specified otherwise
+
+	unsigned char mem[65536];					// Default RAM size for most 800xl/xe machines
+	memset(mem, 0, sizeof(mem));
 
 	// GetSubsongParts returns a CString, so the values must be converted back to int first, FIXME
 	for (int i = 0; i < subsongs; i++)
@@ -458,12 +465,6 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		c[2] = '\0';
 		subtune[i] = strtoul(c, NULL, 16);
 	}
-
-	unsigned char mem[65536];					// Default RAM size for most 800xl/xe machines
-	memset(mem, 0, sizeof(mem));
-
-	WORD addressFrom;
-	WORD addressTo;
 
 	if (!LoadBinaryFile((char*)((LPCSTR)(g_prgpath + "RMT Binaries/VUPlayer (LZSS Export).obx")), mem, addressFrom, addressTo))
 	{
@@ -523,13 +524,13 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	{
 		unsigned char regionbytes[18] =
 		{
-			0xB9,(LZSSP_TABPPPAL - 1) & 0xff,(LZSSP_TABPPPAL - 1) >> 8,			//LDA tabppPAL-1,y
-			0x8D,LZSSP_ACPAPX2 & 0xFF,LZSSP_ACPAPX2 >> 8,					//STA acpapx2
-			0xE0,0x9B,														//CPX #$9B
-			0x30,0x05,														//BMI set_ntsc
-			0xB9,(LZSSP_TABPPPALFIX - 1) & 0xff,(LZSSP_TABPPPALFIX - 1) >> 8,	//LDA tabppPALfix-1,y
-			0xD0,0x03,														//BNE region_done
-			0xB9,(LZSSP_TABPPNTSCFIX - 1) & 0xFF,(LZSSP_TABPPNTSCFIX - 1) >> 8	//LDA tabppNTSCfix-1,y
+			0xB9,(LZSSP_TABPPPAL - 1) & 0xff,(LZSSP_TABPPPAL - 1) >> 8,			// LDA tabppPAL-1,y
+			0x8D,LZSSP_ACPAPX2 & 0xFF,LZSSP_ACPAPX2 >> 8,						// STA acpapx2
+			0xE0,0x9B,															// CPX #$9B
+			0x30,0x05,															// BMI set_ntsc
+			0xB9,(LZSSP_TABPPPALFIX - 1) & 0xff,(LZSSP_TABPPPALFIX - 1) >> 8,	// LDA tabppPALfix-1,y
+			0xD0,0x03,															// BNE region_done
+			0xB9,(LZSSP_TABPPNTSCFIX - 1) & 0xFF,(LZSSP_TABPPNTSCFIX - 1) >> 8	// LDA tabppNTSCfix-1,y
 		};
 		for (int i = 0; i < 18; i++) mem[VU_PLAYER_REGION + i] = regionbytes[i];
 	}
@@ -546,18 +547,11 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		for (int i = 0; i < 4; i++) mem[VU_PLAYER_REGION + 6 + i] = 0xEA;	//set the 4 bytes to NOPs to disable it
 	}
 
-	s.Format("");	// Clear the text from the CString before it is used below
-
-	int section = VU_PLAYER_SECTION;
-	int sequence = VU_PLAYER_SEQUENCE;
-
 	while (count < subsongs)
 	{
 		DumpSongToPokeyBuffer(MPLAY_FROM, subtune[count], 0);
 
 		SetStatusBarText("Compressing data ...");
-
-		s.Format(s + "Subtune number: %i\n", count);
 
 		// Bruteforce the compression to find the most optimal pattern
 		int intro = 0, loop = 0, bestintro = 0, bestloop = 0;
@@ -626,7 +620,6 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		mem[index + 1] = section >> 8;
 		mem[index + 2] = sequence & 0xFF;
 		mem[index + 3] = sequence >> 8;
-
 		mem[timerindex + 0] = subtunetimetotal >> 16;
 		mem[timerindex + 1] = subtunetimetotal >> 8;
 		mem[timerindex + 2] = subtunetimetotal & 0xFF;
@@ -643,8 +636,6 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 			section += 2;
 			sequence += 1;
 			chunk += 1;
-			s.Format(s + "Size of Intro section: %i bytes\nOptimal compression pattern: %i\n", intro, bestintro);
-			s.Format(s + "LZSS chunk written from address 0x%x to 0x%x\n", targetAddrOfModule, lzss_offset);
 		}
 
 		// If there is a Loop section...
@@ -658,8 +649,6 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 			section += 2;
 			sequence += 1;
 			chunk += 1;
-			s.Format(s + "Size of Loop section: %i bytes\nOptimal compression pattern: %i\n", loop, bestloop);
-			s.Format(s + "LZSS chunk written from address 0x%x to 0x%x\n", lzss_offset, lzss_end);
 		}
 
 		// End of data, will be overwritten if there is more data to export
@@ -672,8 +661,6 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		// Update the subtune offsets to export the next one
 		lzss_total = lzss_end;
 		count++;
-
-		s.Format(s + "Inserted %i chunk(s)\nFor a concatenated size of %i bytes\n\n", chunk, lzss_end - targetAddrOfModule);
 	}
 
 	memset(mem + LZSSP_LINE_0 + 0x0B, 32, 28);	// 28 characters on the top line, next to the Region and VBI speed
@@ -695,10 +682,6 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 	// Overwrite the LZSS data region with both the pointers for subtunes index, and the actual LZSS streams until the end of file
 	SaveBinaryBlock(ou, mem, LZSS_POINTER, lzss_total, 0);
-
-	// Display all the stuff that was logged once everything was exported
-	s.Format(s + "LZSS Export finished with %i Subtune(s) recorded\nFor a total of %i frames\nCompressed to %i bytes", subsongs, framescount, lzss_total - VU_PLAYER_SONGDATA);
-	MessageBox(g_hwnd, s, "ExportLZSS_XEX Log", MB_ICONASTERISK);
 
 	return true;
 }
