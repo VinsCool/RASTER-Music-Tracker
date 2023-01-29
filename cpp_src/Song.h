@@ -212,7 +212,7 @@ public:
 	bool ExportLZSS_SAP(std::ofstream& ou);
 	bool ExportLZSS_XEX(std::ofstream& ou);
 
-	bool ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename);
+	//bool ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename);
 
 	void DumpSongToPokeyBuffer(int playmode = MPLAY_SONG, int songline = 0, int trackline = 0);
 

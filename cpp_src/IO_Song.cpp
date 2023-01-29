@@ -1322,11 +1322,13 @@ bool CSong::ExportV2(ofstream& ou, int iotype, LPCTSTR filename)
 		case IOTYPE_ASM: return ExportAsAsm(ou, &exportDesc);
 		case IOTYPE_ASM_RMTPLAYER: return ExportAsRelocatableAsmForRmtPlayer(ou, &exportDesc);
 		case IOTYPE_SAPR: return ExportSAP_R(ou);
-		case IOTYPE_LZSS: 
+		case IOTYPE_LZSS: return ExportLZSS(ou, filename);
+/*
 			if (MessageBox(g_hwnd, "Process using ExportCompactLZSS?\nMany files will be created at once.", "ExportLZSS", MB_YESNO | MB_ICONINFORMATION) == IDYES)
 				return ExportCompactLZSS(ou, filename);	// This is used for experimental stuff, however it does output valid LZSS data if needed
 			else 
 				return ExportLZSS(ou, filename);	// Original LZSS export method
+*/
 		case IOTYPE_LZSS_SAP: return ExportLZSS_SAP(ou);
 		case IOTYPE_LZSS_XEX: return ExportLZSS_XEX(ou);
 	}

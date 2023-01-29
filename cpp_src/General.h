@@ -68,7 +68,8 @@
 #define EOL "\x0d\x0a"			//Carriage Return (\r) and Line Feed (\n), for strings used during Exports
 
 // This macro was shamelessly stolen from this stackoverflow post: https://stackoverflow.com/a/42450151 
-#define PADHEX(width, val) setfill('0') << setw(width) << hex << uppercase << (unsigned)val
+#define PADHEX(width, val) "0x"  << setfill('0') << setw(width) << hex << uppercase << (unsigned)val
+#define PADDEC(width, val) setfill('0') << setw(width) << dec << (unsigned)val
 
 #define TRACKS_X 2*8
 #define TRACKS_Y 8*16+8
