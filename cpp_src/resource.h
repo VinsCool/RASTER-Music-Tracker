@@ -86,10 +86,11 @@
 #define IDC_EFF_EDIT3                   1039
 #define IDC_SMOOTH_SCROLL               1039
 #define IDC_EFF_P1                      1040
-#define IDC_DEBUGDISPLAY				1040
+#define IDC_DEBUGDISPLAY                1040
 #define IDC_EFF_P2                      1041
 #define IDC_MIDI_NOTEOFF                1041
 #define IDC_EFF_P3                      1042
+#define IDC_TRACKERDRIVERVERSION        1043
 #define IDC_RADIO1                      1045
 #define IDC_RADIO2                      1046
 #define IDC_CHECK1                      1047

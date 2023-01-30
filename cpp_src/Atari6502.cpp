@@ -12,6 +12,7 @@
 using namespace std;
 
 #include "Atari6502.h"
+#include "RmtAtariBinaries.h"
 #include "General.h"
 #include "global.h"
 
@@ -82,10 +83,32 @@ int Atari6502_Init()
 
 int Atari_LoadRMTRoutines()
 {
-	//load rmt routine to $3400, setnoteinstrvol to $3d00, and setvol to $3e00
+	// Load RMT routine to $3400, setnoteinstrvol to $3d00, and setvol to $3e00
 	WORD min,max;
-	int r = LoadBinaryFile((char*)(LPCSTR)(g_prgpath+"RMT Binaries/tracker.obx"),g_atarimem,min,max);
-	return r;
+
+	switch (g_trackerDriverVersion)
+	{
+	case TRACKER_DRIVER_UNPATCHED:
+	case TRACKER_DRIVER_UNPATCHED_WITH_TUNING:
+		return LoadDataAsBinaryFile(tracker_Unpatched, sizeof tracker_Unpatched, g_atarimem, min, max);
+
+	case TRACKER_DRIVER_PATCH3_INSTRUMENTARIUM:
+		return LoadDataAsBinaryFile(tracker_Patch3_Instrumentarium, sizeof tracker_Patch3_Instrumentarium, g_atarimem, min, max);
+
+	case TRACKER_DRIVER_PATCH6:
+		return LoadDataAsBinaryFile(tracker_Patch6, sizeof tracker_Patch6, g_atarimem, min, max);
+
+	//case TRACKER_DRIVER_PATCH8:
+		//return LoadDataAsBinaryFile(tracker_Patch8, sizeof tracker_Patch8, g_atarimem, min, max);
+
+	case TRACKER_DRIVER_PATCH16:
+		return LoadDataAsBinaryFile(tracker_Patch16, sizeof tracker_Patch16, g_atarimem, min, max);
+
+	case TRACKER_DRIVER_PATCH_PRINCE_OF_PERSIA:
+		return LoadDataAsBinaryFile(tracker_PatchPoP, sizeof tracker_PatchPoP, g_atarimem, min, max);
+	}
+
+	return 0;
 }
 
 int Atari_InitRMTRoutine()

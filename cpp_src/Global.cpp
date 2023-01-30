@@ -155,6 +155,7 @@ BOOL g_viewInstrumentEditHelp = 1;	// 1 yes, 0 no - View useful info when editin
 BOOL g_viewDoSmoothScrolling = 1;	// True then the track and song line data is smooth scrolled during playback
 BOOL g_viewDebugDisplay = 1;		// Display Debug informations on screen if enabled 
 
+int g_trackerDriverVersion = TRACKER_DRIVER_PATCH16;
 int g_timerGlobalCount = 0;	// Initialised once, ticking forever
 long g_playtime = 1;	//1 yes, 0 no
 

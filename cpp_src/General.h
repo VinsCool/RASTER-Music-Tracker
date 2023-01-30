@@ -348,3 +348,18 @@
 #define SAPR_OPTIMISATIONS_AUDCTL_AUDF		6
 #define SAPR_OPTIMISATIONS_ALL				7
 #define SAPR_OPTIMISATIONS_COUNT			8
+
+// ----------------------------------------------------------------------------
+// RMT tracker driver binaries versions
+// These binaries were designed for being ran within the emulated Atari setup created by Raster 
+// Most of these were not official versions of the RMT driver, but patches with few changes
+// For optimal results, the Altirra Emulator plugins are recommended
+//
+#define TRACKER_DRIVER_NONE						0
+#define	TRACKER_DRIVER_UNPATCHED				1
+#define	TRACKER_DRIVER_UNPATCHED_WITH_TUNING	2
+#define TRACKER_DRIVER_PATCH3_INSTRUMENTARIUM	3
+#define	TRACKER_DRIVER_PATCH6					4
+#define	TRACKER_DRIVER_PATCH8					5
+#define	TRACKER_DRIVER_PATCH16					6
+#define	TRACKER_DRIVER_PATCH_PRINCE_OF_PERSIA	7

@@ -266,6 +266,9 @@
     <ClInclude Include="lzssp.h">
       <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
     </ClInclude>
+    <ClInclude Include="RmtAtariBinaries.h">
+      <Filter>Source Files\IO - Load/Save/Export/Import/Midi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="res\Rmt.ico">

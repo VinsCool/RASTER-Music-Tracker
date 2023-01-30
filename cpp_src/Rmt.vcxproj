@@ -308,6 +308,7 @@
     <ClInclude Include="Atari6502.h" />
     <ClInclude Include="Clipboard.h" />
     <ClInclude Include="ConfigDlg.h" />
+    <ClInclude Include="RmtAtariBinaries.h" />
     <ClInclude Include="EffectsDlg.h" />
     <ClInclude Include="ExportDlgs.h" />
     <ClInclude Include="FileNewDlg.h" />

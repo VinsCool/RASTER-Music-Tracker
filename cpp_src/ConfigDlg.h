@@ -29,11 +29,13 @@ public:
 	enum { IDD = IDD_CONFIG };
 	CComboBox	m_keyboard_c_layout;
 	CComboBox	m_midi_c_device;
+	CComboBox	m_trackerDriver_c_Version;
 	BOOL	m_midi_TouchResponse;
 	int		m_midi_VolumeOffset;
 	int		m_trackLinePrimaryHighlight;
 	int		m_trackLineSecondaryHighlight;
 	int     m_scaling_percentage;
+	int		m_trackerDriverVersion;
 	BOOL	m_ntsc;
 	BOOL	m_doSmoothScrolling;
 	BOOL	m_displayflatnotes;

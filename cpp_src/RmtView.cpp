@@ -478,6 +478,7 @@ void CRmtView::ReadRMTConfig()
 		if (NAME("NTSC_SYSTEM")) { g_ntsc = atoi(value); continue; }
 		if (NAME("SMOOTH_SCROLL")) { g_viewDoSmoothScrolling = atoi(value); continue; }
 		if (NAME("NOHWSOUNDBUFFER")) { g_nohwsoundbuffer = atoi(value); continue; }
+		if (NAME("TRACKERDRIVERVERSION")) { g_trackerDriverVersion = atoi(value); continue; }
 
 		// KEYBOARD
 		if (NAME("KEYBOARD_LAYOUT")) { g_keyboard_layout = atoi(value); continue; }
@@ -540,6 +541,7 @@ void CRmtView::WriteRMTConfig()
 	ou << "NTSC_SYSTEM = " << g_ntsc << endl;
 	ou << "SMOOTH_SCROLL = " << g_viewDoSmoothScrolling << endl;
 	ou << "NOHWSOUNDBUFFER = " << g_nohwsoundbuffer << endl;
+	ou << "TRACKERDRIVERVERSION = " << g_trackerDriverVersion << endl;
 
 	ou << "\n# KEYBOARD\n" << endl;
 	ou << "KEYBOARD_LAYOUT = " << g_keyboard_layout << endl;
@@ -584,6 +586,7 @@ void CRmtView::ResetRMTConfig()
 	g_linesafter = 1;							// Number of lines to scroll after inserting a note 
 	g_ntsc = 0;									// NTSC (60Hz)
 	g_nohwsoundbuffer = 0;						// Don't use hardware soundbuffer
+	g_trackerDriverVersion = TRACKER_DRIVER_PATCH16;
 	g_displayflatnotes = 0;						// Display accidentals as Flats instead of Sharps
 	g_usegermannotation = 0;					// Display H notes instead of B
 	g_viewMainToolbar = 1;						// Display the Main Toolbar
@@ -725,6 +728,7 @@ void CRmtView::OnViewConfiguration()
 	dlg.m_doSmoothScrolling = g_viewDoSmoothScrolling;
 	dlg.m_nohwsoundbuffer = g_nohwsoundbuffer;
 	dlg.m_viewDebugDisplay = g_viewDebugDisplay;
+	dlg.m_trackerDriverVersion = g_trackerDriverVersion;
 	
 	// KEYBOARD
 	dlg.m_keyboard_layout = g_keyboard_layout;
@@ -768,6 +772,16 @@ void CRmtView::OnViewConfiguration()
 			Atari_InitRMTRoutine(); //reset RMT routines
 		}
 		g_ntsc = dlg.m_ntsc;
+
+		if (g_trackerDriverVersion != dlg.m_trackerDriverVersion)
+		{
+			// Something here to reset the thing
+			g_trackerDriverVersion = dlg.m_trackerDriverVersion;
+			Atari_LoadRMTRoutines();
+			Atari_InitRMTRoutine();
+		}
+		g_trackerDriverVersion = dlg.m_trackerDriverVersion;
+
 		g_viewDoSmoothScrolling = dlg.m_doSmoothScrolling;
 		g_viewDebugDisplay = dlg.m_viewDebugDisplay;
 
@@ -1018,13 +1032,18 @@ void CRmtView::OnInitialUpdate()
 	}
 
 	//INITIALISATION OF ATARI RMT ROUTINES
+	Memory_Clear();
+	Atari_LoadRMTRoutines();
+	Atari_InitRMTRoutine();
+
+/*
 	Memory_Clear();	//clear the allocated memory space beforehand in order to avoid reading garbage
 	if (!Atari_LoadRMTRoutines())
 	{
 		MessageBox("Fatal error with RMT ATARI system routines.\nCouldn't load 'RMT Binaries/tracker.obx'.","Error",MB_ICONERROR);
 		exit(1);
 	}
-	Atari_InitRMTRoutine();
+*/
 
 	Get_Driver_Version();	//get the driver version from the binary, nothing will appear if it does not exist
 

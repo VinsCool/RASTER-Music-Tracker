@@ -36,6 +36,7 @@ CConfigDlg::CConfigDlg(CWnd* pParent /*=NULL*/)
 	m_keyboard_escresetatarisound = FALSE;
 	m_keyboard_askwhencontrol_s = FALSE;
 	m_viewDebugDisplay = FALSE;
+	m_trackerDriverVersion = FALSE;
 	//}}AFX_DATA_INIT
 }
 
@@ -66,6 +67,7 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_KEYBOARD_ESCRESETATARISOUND, m_keyboard_escresetatarisound);
 	DDX_Check(pDX, IDC_KEYBOARD_ASKWHENCONTROL_S, m_keyboard_askwhencontrol_s);
 	DDX_Check(pDX, IDC_DEBUGDISPLAY, m_viewDebugDisplay);
+	DDX_Control(pDX, IDC_TRACKERDRIVERVERSION, m_trackerDriver_c_Version);
 	//}}AFX_DATA_MAP
 }
 
@@ -102,6 +104,16 @@ BOOL CConfigDlg::OnInitDialog()
 	m_keyboard_c_layout.AddString("AZERTY Layout");
 	m_keyboard_c_layout.SetCurSel(m_keyboard_layout);
 
+	m_trackerDriver_c_Version.AddString("No RMT Driver");
+	m_trackerDriver_c_Version.AddString("RMT 1.28 Unpatched by Raster");
+	m_trackerDriver_c_Version.AddString("RMT 1.28 Unpatched with Tuning");
+	m_trackerDriver_c_Version.AddString("RMT 1.25 Patch3 Instrumentarium by Analmux");
+	m_trackerDriver_c_Version.AddString("RMT 1.27 Patch6 by Analmux");
+	m_trackerDriver_c_Version.AddString("RMT 1.28 Patch8 by Analmux");
+	m_trackerDriver_c_Version.AddString("RMT 1.34 Patch16 by VinsCool");
+	m_trackerDriver_c_Version.AddString("RMT 1.28 Patch Prince of Persia");
+	m_trackerDriver_c_Version.SetCurSel(m_trackerDriverVersion);
+
 	return TRUE;
 }
 
@@ -114,6 +126,7 @@ void CConfigDlg::OnOK()
 {
 	m_midi_device = m_midi_c_device.GetCurSel()-1;
 	m_keyboard_layout = m_keyboard_c_layout.GetCurSel();
+	m_trackerDriverVersion = m_trackerDriver_c_Version.GetCurSel();
 	CDialog::OnOK();
 }
 
