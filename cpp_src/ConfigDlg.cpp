@@ -111,7 +111,7 @@ BOOL CConfigDlg::OnInitDialog()
 	m_trackerDriver_c_Version.AddString("RMT 1.27 Patch6 by Analmux");
 	m_trackerDriver_c_Version.AddString("RMT 1.28 Patch8 by Analmux");
 	m_trackerDriver_c_Version.AddString("RMT 1.34 Patch16 by VinsCool");
-	m_trackerDriver_c_Version.AddString("RMT 1.28 Patch Prince of Persia");
+	m_trackerDriver_c_Version.AddString("RMT 1.28 Patch Prince of Persia by VinsCool");
 	m_trackerDriver_c_Version.SetCurSel(m_trackerDriverVersion);
 
 	return TRUE;

@@ -220,15 +220,15 @@ BEGIN
     CONTROL         "Smooth scroll during playback",IDC_SMOOTH_SCROLL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,65,110,10
     DEFPUSHBUTTON   "OK",IDOK,139,255,50,14
     PUSHBUTTON      "Cancel",IDCANCEL,194,255,50,14
-    COMBOBOX        IDC_KEYBOARD_LAYOUT,92,127,146,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    COMBOBOX        IDC_KEYBOARD_LAYOUT,92,136,146,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "Move to previous/next song line while track boundaries are crossed",IDC_KEYBOARD_UPDOWNCONTINUE,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,142,229,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,151,229,10
     CONTROL         "Remember octaves and volumes separately for each instrument",IDC_KEYBOARD_REMEMBEROCTAVESANDVOLUMES,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,153,224,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,162,224,10
     CONTROL         "Reset the Atari sound routines each time ESC is pressed",IDC_KEYBOARD_ESCRESETATARISOUND,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,164,193,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,173,193,10
     CONTROL         "Prompt a save dialog box each time CTRL+S is pressed",IDC_KEYBOARD_ASKWHENCONTROL_S,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,175,191,10
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,184,191,10
     COMBOBOX        IDC_MIDI_DEVICE,68,209,170,59,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     CONTROL         "Touch response",IDC_MIDI_TR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,226,70,10
     EDITTEXT        IDC_MIDI_VOLUMEOFFSET,222,225,15,12,ES_NUMBER
@@ -236,16 +236,16 @@ BEGIN
     LTEXT           "Atari volume offset",IDC_STATIC,159,227,59,8
     GROUPBOX        "MIDI",IDC_STATIC,7,199,237,53
     LTEXT           "MIDI IN device:",IDC_STATIC,13,212,52,8
-    GROUPBOX        "Keyboard",IDC_STATIC,7,116,237,81
-    GROUPBOX        "General",IDC_STATIC,7,7,237,108
-    LTEXT           "Keyboard layout:",IDC_STATIC,13,129,76,8
+    GROUPBOX        "Keyboard",IDC_STATIC,7,125,237,72
+    GROUPBOX        "General",IDC_STATIC,7,7,237,116
+    LTEXT           "Keyboard layout:",IDC_STATIC,13,138,76,8
     PUSHBUTTON      "Paths...",IDC_PATHS,7,255,29,14
     EDITTEXT        IDC_TRACKLINESECONDARYHIGHLIGHT,222,16,17,12,ES_NUMBER
     LTEXT           "/",IDC_STATIC,214,18,8,8
     CONTROL         "Debug display (enable only if you know what you are doing)",IDC_DEBUGDISPLAY,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,77,224,10
-    COMBOBOX        IDC_TRACKERDRIVERVERSION,92,93,146,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    LTEXT           "RMT Driver Version:",IDC_STATIC,13,95,76,8
+    COMBOBOX        IDC_TRACKERDRIVERVERSION,14,103,224,55,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "RMT Driver Version:",IDC_STATIC,13,93,76,8
 END
 
 IDD_EFFECTS DIALOG 0, 0, 280, 156
@@ -1154,7 +1154,7 @@ CAPTION "About Rmt"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,286,195,50,14,WS_GROUP
-    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,21,20
+    ICON            IDR_MAINFRAME,IDC_STATIC,7,7,20,20
     LTEXT           "RASTER Music Tracker",IDC_RMTVERSION,47,7,185,8,SS_NOPREFIX
     LTEXT           "by Radek Sterba, Raster/C.P.U.",IDC_RMTAUTHOR,47,18,260,8
     LTEXT           "http://raster.atari.org",IDC_STATIC,47,29,91,10
@@ -1164,7 +1164,6 @@ BEGIN
     EDITTEXT        IDC_ABOUTPOKEY,7,113,329,32,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY
     LTEXT           "External Atari 6502 processor emulation provided by:",IDC_STATIC,7,150,329,8
     EDITTEXT        IDC_ABOUT6502,7,160,329,32,ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY
-    LTEXT           "RMT driver",IDC_DRIVERVERSION,7,199,268,10
 END
 
 

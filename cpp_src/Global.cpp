@@ -77,7 +77,6 @@ HINSTANCE g_c6502_dll = NULL;
 BOOL volatile g_is6502 = 0;
 CString g_aboutpokey;
 CString g_about6502;
-CString g_driverversion;
 
 BOOL g_changes = 0;	//have there been any changes in the module?
 

@@ -98,8 +98,8 @@ int Atari_LoadRMTRoutines()
 	case TRACKER_DRIVER_PATCH6:
 		return LoadDataAsBinaryFile(tracker_Patch6, sizeof tracker_Patch6, g_atarimem, min, max);
 
-	//case TRACKER_DRIVER_PATCH8:
-		//return LoadDataAsBinaryFile(tracker_Patch8, sizeof tracker_Patch8, g_atarimem, min, max);
+	case TRACKER_DRIVER_PATCH8:
+		return LoadDataAsBinaryFile(tracker_Patch8, sizeof tracker_Patch8, g_atarimem, min, max);
 
 	case TRACKER_DRIVER_PATCH16:
 		return LoadDataAsBinaryFile(tracker_Patch16, sizeof tracker_Patch16, g_atarimem, min, max);
@@ -194,24 +194,6 @@ void Atari_InstrumentTurnOff(int instr)
 			g_rmtinstr[i]=-1;
 		}
 	}
-}
-
-//hack: fetch plaintext from tracker.obx, and display it in the About dialog as the RMT driver version
-void Get_Driver_Version()
-{
-	const char driver[] = "RMT driver ";
-	char version[65] = {0};
-	for (int i = 0; i < 64; i++)				//64 characters are more than enough...
-	{
-		WORD adr = RMT_ATA_DRIVERVERSION + i;
-		version[i] = g_atarimem[adr];
-		if (!i && !g_atarimem[adr])				//if i is 0 and byte is 0x00...
-		{
-			sprintf (version, "version unknown. Are you using an older version of tracker.obx?");
-			break;
-		}
-	}
-	g_driverversion.Format("%s%s", driver, version);
 }
 
 void Memory_Clear()

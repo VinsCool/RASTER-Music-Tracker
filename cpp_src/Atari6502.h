@@ -47,7 +47,4 @@ extern void Atari_InstrumentTurnOff(int instr);
 extern int Atari6502_Init();
 extern void Atari6502_DeInit();
 
-//hack: optionally display the RMT driver version using the plaintext data from tracker.obx
-extern void Get_Driver_Version();
-
 #endif

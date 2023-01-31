@@ -83,7 +83,6 @@ extern HINSTANCE g_c6502_dll;
 extern BOOL volatile g_is6502;
 extern CString g_aboutpokey;
 extern CString g_about6502;
-extern CString g_driverversion;
 
 extern BOOL g_changes;	//have there been any changes in the module?
 

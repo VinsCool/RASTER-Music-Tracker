@@ -18,7 +18,6 @@ static char THIS_FILE[] = __FILE__;
 // Some information for the about box is supplied by components outside this file
 extern CString g_aboutpokey;
 extern CString g_about6502;
-extern CString g_driverversion;	//used to display the RMT Driver "tracker.obx" version number
 
 extern CSong g_Song;
 
@@ -121,7 +120,6 @@ public:
 	//{{AFX_DATA(CAboutDlg)
 	enum { IDD = IDD_ABOUTBOX };
 	CString	m_rmtversion;
-	CString m_driverversion;
 	CString	m_rmtauthor;
 	CString	m_credits;
 	CString	m_about6502;
@@ -146,7 +144,6 @@ CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
 {
 	//{{AFX_DATA_INIT(CAboutDlg)
 	m_rmtversion = _T("");
-	m_driverversion = _T("");
 	m_rmtauthor = _T("");
 	m_credits = _T("");
 	m_about6502 = _T("");
@@ -159,7 +156,6 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 	CDialog::DoDataExchange(pDX);
 	//{{AFX_DATA_MAP(CAboutDlg)
 	DDX_Text(pDX, IDC_RMTVERSION, m_rmtversion);
-	DDX_Text(pDX, IDC_DRIVERVERSION, m_driverversion);
 	DDX_Text(pDX, IDC_RMTAUTHOR, m_rmtauthor);
 	DDX_Text(pDX, IDC_CREDITS, m_credits);
 	DDX_Text(pDX, IDC_ABOUT6502, m_about6502);
@@ -179,7 +175,6 @@ void CRmtApp::OnAppAbout()
 	CAboutDlg aboutDlg;
 	aboutDlg.m_rmtversion.LoadString(IDS_RMTVERSION);
 	aboutDlg.m_rmtauthor.LoadString(IDS_RMTAUTHOR);
-	aboutDlg.m_driverversion = g_driverversion;
 	aboutDlg.m_credits =
 		"Bob!k/C.P.U., JirkaS/C.P.U., PG, Fandal, Atari800 emulator developer team, Fox/Taquart, Jaskier/Taquart, Tatqoo/Taquart, Sack/Cosine, Grayscale music band, LiSU, Miker, Dely\n\n"
 		"RASTER Music Tracker is now open source! Contributions are welcome, and appreciated, for making this program better in any way!\n\n"

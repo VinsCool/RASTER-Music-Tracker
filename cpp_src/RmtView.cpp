@@ -1036,17 +1036,6 @@ void CRmtView::OnInitialUpdate()
 	Atari_LoadRMTRoutines();
 	Atari_InitRMTRoutine();
 
-/*
-	Memory_Clear();	//clear the allocated memory space beforehand in order to avoid reading garbage
-	if (!Atari_LoadRMTRoutines())
-	{
-		MessageBox("Fatal error with RMT ATARI system routines.\nCouldn't load 'RMT Binaries/tracker.obx'.","Error",MB_ICONERROR);
-		exit(1);
-	}
-*/
-
-	Get_Driver_Version();	//get the driver version from the binary, nothing will appear if it does not exist
-
 	g_screenupdate=1;	//first rendered
 	m_timeranalyzer=0;
 	m_timeranalyzer = SetTimer(1,20,NULL);
