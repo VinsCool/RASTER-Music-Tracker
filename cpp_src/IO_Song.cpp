@@ -1527,3 +1527,79 @@ bool CSong::LoadRMT(ifstream& in)
 
 	return true;
 }
+
+bool CSong::CreateExportMetadata(int iotype, struct TExportMetadata* metadata)
+{
+	memcpy(metadata->songname, m_songname, SONG_NAME_MAX_LEN);
+	metadata->currentTime = CTime::GetCurrentTime();
+	metadata->isNTSC = g_ntsc;
+	metadata->isStereo = (g_tracks4_8 == 8);
+	metadata->instrspeed = m_instrumentSpeed;
+
+	switch (iotype)
+	{
+	case IOTYPE_XEX:
+	case IOTYPE_LZSS_XEX:
+		return WriteToXEX(metadata);
+	}
+
+	return false;
+}
+
+// The XEX dialog process was split to a different function for clarity, same will be done for SAP later...
+bool CSong::WriteToXEX(struct TExportMetadata* metadata)
+{
+	CExpMSXDlg dlg;
+	CString str;
+
+	str = metadata->songname;
+	str.TrimRight();
+
+	if (g_rmtmsxtext != "")
+	{
+		dlg.m_txt = g_rmtmsxtext;	// same from last time, making repeated exports faster
+	}
+	else
+	{
+		dlg.m_txt = str + EOL;
+		if (metadata->isStereo) dlg.m_txt += "STEREO";
+		dlg.m_txt += EOL + metadata->currentTime.Format("%d/%m/%Y");
+		dlg.m_txt += EOL;
+		dlg.m_txt += "Author: (press SHIFT key)" EOL;
+		dlg.m_txt += "Author: ???";
+	}
+	str = "Playback speed will be adjusted to ";
+	str += metadata->isNTSC ? "60" : "50";
+	str += "Hz on both PAL and NTSC systems.";
+	dlg.m_speedinfo = str;
+
+	if (dlg.DoModal() != IDOK)
+	{
+		return false;
+	}
+	g_rmtmsxtext = dlg.m_txt;
+	g_rmtmsxtext.Replace("\x0d\x0d", "\x0d");	//13, 13 => 13
+
+	// This block of code will handle all the user input text that will be inserted in the binary during the export process
+	memset(metadata->atariText, 32, 40 * 5);	// 5 lines of 40 characters at the user text address
+	int p = 0, q = 0;
+	char a;
+	for (int i = 0; i < dlg.m_txt.GetLength(); i++)
+	{
+		a = dlg.m_txt.GetAt(i);
+		if (a == '\n') { p += 40; q = 0; }
+		else
+		{
+			metadata->atariText[p + q] = a;
+			q++;
+		}
+		if (p + q >= 5 * 40) break;
+	}
+	StrToAtariVideo((char*)metadata->atariText, 200);
+
+	metadata->rasterbarColour = dlg.m_metercolor;
+	metadata->displayRasterbar = dlg.m_meter;
+	metadata->autoRegion = dlg.m_region_auto;
+
+	return true;
+}

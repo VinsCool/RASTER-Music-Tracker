@@ -440,7 +440,9 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 	int subsongs = GetSubsongParts(t);
 	int count = 0;
-	int subtune[256] = { 0 };
+
+	int subtune[256];
+	memset(subtune, 0, sizeof(subtune));
 
 	int lzss_chunk = 0;	// Subtune size will be added to be used as the offset to the next one
 	int lzss_total = 0;	// Final offset for LZSS bytes to export
@@ -449,9 +451,6 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	int frameSize = (g_tracks4_8 == 8) ? 18 : 9;	// SAP-R bytes to copy, Stereo doubles the number
 	int section = VU_PLAYER_SECTION;
 	int sequence = VU_PLAYER_SEQUENCE;
-
-	unsigned char buff2[65536];			// LZSS buffers for each ones of the tune parts being reconstructed
-	unsigned char buff3[65536];			// a LZSS export will typically make use of intro and loop only, unless specified otherwise
 
 	unsigned char mem[65536];					// Default RAM size for most 800xl/xe machines
 	memset(mem, 0, sizeof(mem));
@@ -466,131 +465,38 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		subtune[i] = strtoul(c, NULL, 16);
 	}
 
-	if (!LoadBinaryFile((char*)((LPCSTR)(g_prgpath + "RMT Binaries/VUPlayer (LZSS Export).obx")), mem, addressFrom, addressTo))
-	{
-		MessageBox(g_hwnd, "Fatal error with RMT LZSS system routines.\nCouldn't load 'RMT Binaries/VUPlayer (LZSS Export).obx'.", "Export aborted", MB_ICONERROR);
-		return false;
-	}
+	// Load VUPlayerLZSS to memory
+	Atari_LoadOBX(IOTYPE_LZSS_XEX, mem, addressFrom, addressTo);
 
-	CExpMSXDlg dlg;
-	CString str;
-	str = m_songname;
-	str.TrimRight();
-	CTime time = CTime::GetCurrentTime();
-	if (g_rmtmsxtext != "")
-	{
-		dlg.m_txt = g_rmtmsxtext;	// same from last time, making repeated exports faster
-	}
-	else
-	{
-		dlg.m_txt = str + "\x0d\x0a";
-		if (g_tracks4_8 > 4) dlg.m_txt += "STEREO";
-		dlg.m_txt += "\x0d\x0a" + time.Format("%d/%m/%Y");
-		dlg.m_txt += "\x0d\x0a";
-		dlg.m_txt += "Author: (press SHIFT key)\x0d\x0a";
-		dlg.m_txt += "Author: ???";
-	}
-	str = "Playback speed will be adjusted to ";
-	str += g_ntsc ? "60" : "50";
-	str += "Hz on both PAL and NTSC systems.";
-	dlg.m_speedinfo = str;
-
-	if (dlg.DoModal() != IDOK)
-	{
-		return false;
-	}
-	g_rmtmsxtext = dlg.m_txt;
-	g_rmtmsxtext.Replace("\x0d\x0d", "\x0d");	//13, 13 => 13
-
-	// This block of code will handle all the user input text that will be inserted in the binary during the export process
-	memset(mem + LZSSP_LINE_1, 32, 40 * 5);	// 5 lines of 40 characters at the user text address
-	int p = 0, q = 0;
-	char a;
-	for (int i = 0; i < dlg.m_txt.GetLength(); i++)
-	{
-		a = dlg.m_txt.GetAt(i);
-		if (a == '\n') { p += 40; q = 0; }
-		else
-		{
-			mem[LZSSP_LINE_1 + p + q] = a;
-			q++;
-		}
-		if (p + q >= 5 * 40) break;
-	}
-	StrToAtariVideo((char*)mem + LZSSP_LINE_1, 200);
-
-	// I know the binary I have is currently set to NTSC, so I'll just convert to PAL and keep this going for now...
-	if (!g_ntsc)
-	{
-		unsigned char regionbytes[18] =
-		{
-			0xB9,(LZSSP_TABPPPAL - 1) & 0xff,(LZSSP_TABPPPAL - 1) >> 8,			// LDA tabppPAL-1,y
-			0x8D,LZSSP_ACPAPX2 & 0xFF,LZSSP_ACPAPX2 >> 8,						// STA acpapx2
-			0xE0,0x9B,															// CPX #$9B
-			0x30,0x05,															// BMI set_ntsc
-			0xB9,(LZSSP_TABPPPALFIX - 1) & 0xff,(LZSSP_TABPPPALFIX - 1) >> 8,	// LDA tabppPALfix-1,y
-			0xD0,0x03,															// BNE region_done
-			0xB9,(LZSSP_TABPPNTSCFIX - 1) & 0xFF,(LZSSP_TABPPNTSCFIX - 1) >> 8	// LDA tabppNTSCfix-1,y
-		};
-		for (int i = 0; i < 18; i++) mem[VU_PLAYER_REGION + i] = regionbytes[i];
-	}
-
-	// Additional patches from the Export Dialog...
-	mem[VU_PLAYER_SONG_SPEED] = m_instrumentSpeed;						// Song speed
-	mem[VU_PLAYER_RASTER_BAR] = (dlg.m_meter) ? 0x80 : 0x00;			// Display the rasterbar for CPU level
-	mem[VU_PLAYER_COLOUR] = dlg.m_metercolor;							// Rasterbar colour 
-	//mem[VU_PLAYER_SHUFFLE] = 0x00;	// = (dlg.m_msx_shuffle) ? 0x10 : 0x00;		// Rasterbar colour shuffle, incomplete feature so it is disabled
-	mem[VU_PLAYER_STEREO_FLAG] = (g_tracks4_8 > 4) ? 0xFF : 0x00;		// Is the song stereo?
-	mem[VU_PLAYER_SONGTOTAL] = subsongs;								// Total number of subtunes
-	if (!dlg.m_region_auto)												// Automatically adjust speed between regions?
-	{
-		for (int i = 0; i < 4; i++) mem[VU_PLAYER_REGION + 6 + i] = 0xEA;	//set the 4 bytes to NOPs to disable it
-	}
+	// Create the export metadata for songname, Atari text, parameters, etc
+	TExportMetadata metadata;
+	CreateExportMetadata(IOTYPE_LZSS_XEX, &metadata);
 
 	while (count < subsongs)
 	{
+		// a LZSS export will typically make use of intro and loop only, unless specified otherwise
+		int intro = 0, loop = 0;
+
+		// LZSS buffers for each ones of the tune parts being reconstructed
+		unsigned char buff2[65536], buff3[65536];
+
 		DumpSongToPokeyBuffer(MPLAY_FROM, subtune[count], 0);
 
 		SetStatusBarText("Compressing data ...");
 
-		// Bruteforce the compression to find the most optimal pattern
-		int intro = 0, loop = 0, bestintro = 0, bestloop = 0;
-
 		// There is an Intro section 
 		if (g_PokeyStream.GetThirdCountPoint())
-		{
-			intro = 0xFFFFFF;	// Start from a high value to force the first pattern to be the best one
-			for (int i = 0; i < SAPR_OPTIMISATIONS_COUNT; i++)
-			{
-				int bruteintro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2, i);
-				if (bruteintro < intro)
-				{
-					intro = bruteintro;
-					bestintro = i;
-				}
-			}
-			intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2, bestintro);
-		}
+			intro = BruteforceOptimalLZSS(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2);
 
 		// There is a Loop section
 		if (g_PokeyStream.GetFirstCountPoint())
-		{
-			loop = 0xFFFFFF;	// Start from a high value to force the first pattern to be the best one
-			for (int i = 0; i < SAPR_OPTIMISATIONS_COUNT; i++)
-			{
-				int bruteloop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3, i);
-				if (bruteloop < loop)
-				{
-					loop = bruteloop;
-					bestloop = i;
-				}
-			}
-			loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3, bestloop);
-		}
+			loop = BruteforceOptimalLZSS(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3);
 
-		framescount += g_PokeyStream.GetFirstCountPoint();	// Add the number of frames recorded to the total count
+		// Add the number of frames recorded to the total count
+		framescount += g_PokeyStream.GetFirstCountPoint();	
 
-		g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
+		// Clear the SAP-R dumper memory and reset RMT routines
+		g_PokeyStream.FinishedRecording();	
 
 		// Some additional variables that will be used below
 		int targetAddrOfModule = VU_PLAYER_SONGDATA + lzss_chunk;	// All the LZSS data will be written starting from this address
@@ -663,17 +569,44 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		count++;
 	}
 
-	memset(mem + LZSSP_LINE_0 + 0x0B, 32, 28);	// 28 characters on the top line, next to the Region and VBI speed
+	// Write the Atari Video text to memory, for 5 lines of 40 characters
+	memcpy(mem + LZSSP_LINE_1, metadata.atariText, 40 * 5);
+
+	// Write the total framescount on the top line, next to the Region and VBI speed, for 28 characters
+	memset(mem + LZSSP_LINE_0 + 0x0B, 32, 28);
 	char framesdisplay[28] = { 0 };
-	sprintf(framesdisplay, "(%i frames total)", framescount);	// Total recorded frames
-	for (int i = 0; i < 28; i++)
-	{
-		mem[LZSSP_LINE_0 + 0x0B + i] = framesdisplay[i];
-	}
+	sprintf(framesdisplay, "(%i frames total)", framescount);
+	for (int i = 0; i < 28; i++) mem[LZSSP_LINE_0 + 0x0B + i] = framesdisplay[i];
 	StrToAtariVideo((char*)mem + LZSSP_LINE_0 + 0x0B, 28);
 
-	// Reconstruct the export binary 
-	SaveBinaryBlock(ou, mem, LZSSP_PLAYLZ16BEGIN, LZSSP_SONGINDEX, 1);	// LZSS Driver, VUPlayer, and all the included data
+	// I know the binary I have is currently set to NTSC, so I'll just convert to PAL and keep this going for now...
+	if (!metadata.isNTSC)
+	{
+		unsigned char regionbytes[18] =
+		{
+			0xB9,(LZSSP_TABPPPAL - 1) & 0xff,(LZSSP_TABPPPAL - 1) >> 8,			// LDA tabppPAL-1,y
+			0x8D,LZSSP_ACPAPX2 & 0xFF,LZSSP_ACPAPX2 >> 8,						// STA acpapx2
+			0xE0,0x9B,															// CPX #$9B
+			0x30,0x05,															// BMI set_ntsc
+			0xB9,(LZSSP_TABPPPALFIX - 1) & 0xff,(LZSSP_TABPPPALFIX - 1) >> 8,	// LDA tabppPALfix-1,y
+			0xD0,0x03,															// BNE region_done
+			0xB9,(LZSSP_TABPPNTSCFIX - 1) & 0xFF,(LZSSP_TABPPNTSCFIX - 1) >> 8	// LDA tabppNTSCfix-1,y
+		};
+		for (int i = 0; i < 18; i++) mem[VU_PLAYER_REGION + i] = regionbytes[i];
+	}
+
+	// Additional patches from the Export Dialog...
+	mem[VU_PLAYER_SONG_SPEED] = metadata.instrspeed;						// Song speed
+	mem[VU_PLAYER_RASTER_BAR] = metadata.displayRasterbar ? 0x80 : 0x00;	// Display the rasterbar for CPU level
+	mem[VU_PLAYER_COLOUR] = metadata.rasterbarColour;						// Rasterbar colour 
+	mem[VU_PLAYER_STEREO_FLAG] = metadata.isStereo ? 0xFF : 0x00;			// Is the song stereo?
+	mem[VU_PLAYER_SONGTOTAL] = subsongs;									// Total number of subtunes
+	if (!metadata.autoRegion)												// Automatically adjust speed between regions?
+		for (int i = 0; i < 4; i++) mem[VU_PLAYER_REGION + 6 + i] = 0xEA;	// set the 4 bytes to NOPs to disable it
+	
+
+	// Reconstruct the export binary for the LZSS Driver, VUPlayer, and all the included data
+	SaveBinaryBlock(ou, mem, LZSSP_PLAYLZ16BEGIN, LZSSP_SONGINDEX, 1);
 
 	// Set the run address to VUPlayer 
 	mem[0x2e0] = LZSSP_VUPLAYER & 0xff;
@@ -868,4 +801,24 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	Stop();										// End playback now, the SAP-R data should have been dumped successfully!
 
 	m_followplay = savedFollowPlay;				// Restore the follow play flag
+}
+
+// A dumb SAP-R LZSS optimisations bruteforcer, returns the optimal value and buffer
+int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* dst)
+{
+	// Start from a high value to force the first pattern to be the best one
+	int bestScore = 0xFFFFFF;
+	int optimal = 0;
+
+	for (int i = 0; i < SAPR_OPTIMISATIONS_COUNT; i++)
+	{
+		int bruteforced = LZSS_SAP(src, srclen, dst, i);
+		if (bruteforced < bestScore)
+		{
+			bestScore = bruteforced;
+			optimal = i;
+		}
+	}
+
+	return LZSS_SAP(src, srclen, dst, bestScore);
 }

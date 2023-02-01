@@ -47,4 +47,6 @@ extern void Atari_InstrumentTurnOff(int instr);
 extern int Atari6502_Init();
 extern void Atari6502_DeInit();
 
+extern int Atari_LoadOBX(int obx, unsigned char* mem, WORD& minadr, WORD& maxadr);
+
 #endif

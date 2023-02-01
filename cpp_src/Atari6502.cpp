@@ -81,9 +81,29 @@ int Atari6502_Init()
 	return 1;
 }
 
+// Load Atari executable to memory
+int Atari_LoadOBX(int obx, unsigned char* mem, WORD& minadr, WORD& maxadr)
+{
+	int size;
+	unsigned char* bin;
+
+	switch (obx)
+	{
+	case IOTYPE_LZSS_XEX:
+		bin = export_VUPlayer_LZSS;
+		size = sizeof export_VUPlayer_LZSS;
+		break;
+
+	default:
+		return 0;
+	}
+
+	return LoadDataAsBinaryFile(bin, size, mem, minadr, maxadr);
+}
+
+// Load RMT routine to $3400, setnoteinstrvol to $3d00, and setvol to $3e00
 int Atari_LoadRMTRoutines()
 {
-	// Load RMT routine to $3400, setnoteinstrvol to $3d00, and setvol to $3e00
 	WORD min,max;
 
 	switch (g_trackerDriverVersion)

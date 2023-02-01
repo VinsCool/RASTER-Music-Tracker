@@ -23,6 +23,29 @@ struct TSong	//due to Undo
 	TBookmark bookmark;
 };
 
+struct TInfo
+{
+	char songname[SONG_NAME_MAX_LEN + 1];
+	int speed;
+	int mainspeed;
+	int instrspeed;
+	int songnamecur; //to return the cursor to the appropriate position when undo changes in the song name
+};
+
+struct TExportMetadata
+{
+	//TInfo* parameter;	// Probably will just be replaced by individual parameters
+	char songname[SONG_NAME_MAX_LEN + 1];
+	CTime currentTime;
+	int instrspeed;
+	bool isStereo;
+	bool isNTSC;
+	bool autoRegion;
+	bool displayRasterbar;
+	int rasterbarColour;
+	char atariText[5 * 40];
+};
+
 /*
 struct TSongTrackAndTrackData
 {
@@ -192,6 +215,9 @@ public:
 	int SongToAta(unsigned char* dest, int max, int adr);
 	BOOL AtaToSong(unsigned char* sour, int len, int adr);
 
+	bool CreateExportMetadata(int iotype, struct TExportMetadata* metadata);
+	bool WriteToXEX(struct TExportMetadata* metadata);
+
 	bool SaveTxt(std::ofstream& ou);
 	bool SaveRMW(std::ofstream& ou);
 
@@ -207,14 +233,15 @@ public:
 	bool ExportAsStrippedRMT(std::ofstream& ou, tExportDescription* exportDesc, LPCTSTR filename);
 	bool ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDesc);
 	bool ExportAsRelocatableAsmForRmtPlayer(std::ofstream& ou, tExportDescription* exportStrippedDesc);
+
 	bool ExportSAP_R(std::ofstream& ou);
 	bool ExportLZSS(std::ofstream& ou, LPCTSTR filename);
 	bool ExportLZSS_SAP(std::ofstream& ou);
 	bool ExportLZSS_XEX(std::ofstream& ou);
-
 	//bool ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename);
 
 	void DumpSongToPokeyBuffer(int playmode = MPLAY_SONG, int songline = 0, int trackline = 0);
+	int BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* dst);
 
 	bool TestBeforeFileSave();
 	int GetSubsongParts(CString& resultstr);
