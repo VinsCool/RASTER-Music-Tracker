@@ -820,5 +820,5 @@ int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* 
 		}
 	}
 
-	return LZSS_SAP(src, srclen, dst, bestScore);
+	return LZSS_SAP(src, srclen, dst, optimal);
 }
