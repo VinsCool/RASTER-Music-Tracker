@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "resource.h"
 #include <fstream>
-using namespace std;
 
 #include "Atari6502.h"
 #include "IOHelpers.h"
@@ -151,7 +150,7 @@ void CInstruments::DrawInstrument(int instrNr)
 			case ENV_DISTORTION:
 			{
 				int d = t.envelope[t.editEnvelopeX][ENV_DISTORTION];
-				static char* distor_help[8] = {
+				const char* distor_help[8] = {
 					"Distortion 0, white noise. (AUDC $0v, Poly5+17/9)",
 					"Distortion 2, square-ish tones. (AUDC $2v, Poly5)",
 					"Distortion 4, no note table yet, Pure Table by default. (AUDC $4v, Poly4+5)",
@@ -160,7 +159,7 @@ void CInstruments::DrawInstrument(int instrNr)
 					"Distortion A, pure tones. Special mode: CH1+CH3 1.79mhz + AUTOFILTER = Sawtooth (AUDC $Av)",
 					"Distortion C, buzzy bass tones. (AUDC $Cv, Poly4)",
 					"Distortion C, gritty bass tones. (AUDC $Cv, Poly4)" };
-				char* hs = distor_help[(d >> 1) & 0x07];
+				const char* hs = distor_help[(d >> 1) & 0x07];
 				TextXY(hs, INSTRS_HELP_X, INSTRS_HELP_Y, TEXT_COLOR_GRAY);
 				//HORIZONTALLINE;
 			}
@@ -169,7 +168,7 @@ void CInstruments::DrawInstrument(int instrNr)
 			case ENV_COMMAND:
 			{
 				int c = t.envelope[t.editEnvelopeX][ENV_COMMAND];
-				static char* comm_help[8] = {
+				const char* comm_help[8] = {
 					"Play BASE_NOTE + $XY semitones.",
 					"Play frequency $XY.",
 					"Play BASE_NOTE + frequency $XY.",
@@ -178,7 +177,7 @@ void CInstruments::DrawInstrument(int instrNr)
 					"Set portamento speed $X, step $Y. Play BASE_NOTE.",
 					"Set FILTER_SHFRQ += $XY. $0Y = BASS16 Distortion. $FF/$01 = Sawtooth inversion (Distortion A).",
 					"Set instrument AUDCTL. $FF = VOLUME ONLY mode. $FE/$FD = enable/disable Two-Tone Filter." };
-				char* hs = comm_help[c & 0x07];
+				const char* hs = comm_help[c & 0x07];
 				TextXY(hs, INSTRS_HELP_X, INSTRS_HELP_Y, TEXT_COLOR_GRAY);
 				//HORIZONTALLINE;
 			}
@@ -272,7 +271,8 @@ void CInstruments::DrawParameter(int p, int instrNr)
 {
 	char s[2];
 	s[1] = 0;
-	char* txt = shpar[p].name;
+	//char* txt = shpar[p].name;
+	const char* txt = shpar[p].name;
 	int x = shpar[p].x;
 	int y = shpar[p].y;
 

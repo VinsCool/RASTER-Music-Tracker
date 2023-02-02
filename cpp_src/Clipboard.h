@@ -9,7 +9,8 @@
 class CTrackClipboard
 {
 public:
-	CTrackClipboard::CTrackClipboard();
+	//CTrackClipboard::CTrackClipboard();
+	CTrackClipboard();
 	void Empty();
 	BOOL IsBlockSelected() { return (m_selcol >= 0); };
 	BOOL BlockSetBegin(int col, int track, int line);

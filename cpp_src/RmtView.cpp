@@ -25,7 +25,7 @@
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 
-using namespace std;
+//using namespace std;
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -450,7 +450,7 @@ void CRmtView::ReadRMTConfig()
 	char line[1024];
 	char *tmp, *name, *value;
 	s.Format("%s%s", g_prgpath, CONFIG_FILENAME);
-	ifstream in(s);
+	std::ifstream in(s);
 	if (!in)
 	{
 		MessageBox("Could not find: '" + s + "'\n\nRMT will use the default configuration.\n", "RMT", MB_ICONEXCLAMATION);
@@ -518,61 +518,61 @@ void CRmtView::WriteRMTConfig()
 {
 	CString s;
 	s.Format("%s%s", g_prgpath, CONFIG_FILENAME);
-	ofstream ou(s);
+	std::ofstream ou(s);
 	if (!ou)
 	{
 		MessageBox("Could not create: '" + s + "'\n\nThe RMT configuration won't be saved.\n", "RMT", MB_ICONEXCLAMATION);
 		return;
 	}
 
-	ou << "# RMT CONFIGURATION FILE" << endl;
+	ou << "# RMT CONFIGURATION FILE" << std::endl;
 	CString version;
 	version.LoadString(IDS_RMTVERSION);
-	ou << "# " << version << endl;
-	ou << setprecision(16);
+	ou << "# " << version << std::endl;
+	ou << std::setprecision(16);
 
-	ou << "\n# GENERAL\n" << endl;
-	ou << "SCALEPERCENTAGE = " << g_scaling_percentage << endl;
-	ou << "TRACKLINEPRIMARYHIGHLIGHT = " << g_trackLinePrimaryHighlight << endl;
-	ou << "TRACKLINESECONDARYHIGHLIGHT = " << g_trackLineSecondaryHighlight << endl;
-	ou << "TRACKLINEALTNUMBERING = " << g_tracklinealtnumbering << endl;
-	ou << "DISPLAYFLATNOTES = " << g_displayflatnotes << endl;
-	ou << "USEGERMANNOTATION = " << g_usegermannotation << endl;
-	ou << "NTSC_SYSTEM = " << g_ntsc << endl;
-	ou << "SMOOTH_SCROLL = " << g_viewDoSmoothScrolling << endl;
-	ou << "NOHWSOUNDBUFFER = " << g_nohwsoundbuffer << endl;
-	ou << "TRACKERDRIVERVERSION = " << g_trackerDriverVersion << endl;
+	ou << "\n# GENERAL\n" << std::endl;
+	ou << "SCALEPERCENTAGE = " << g_scaling_percentage << std::endl;
+	ou << "TRACKLINEPRIMARYHIGHLIGHT = " << g_trackLinePrimaryHighlight << std::endl;
+	ou << "TRACKLINESECONDARYHIGHLIGHT = " << g_trackLineSecondaryHighlight << std::endl;
+	ou << "TRACKLINEALTNUMBERING = " << g_tracklinealtnumbering << std::endl;
+	ou << "DISPLAYFLATNOTES = " << g_displayflatnotes << std::endl;
+	ou << "USEGERMANNOTATION = " << g_usegermannotation << std::endl;
+	ou << "NTSC_SYSTEM = " << g_ntsc << std::endl;
+	ou << "SMOOTH_SCROLL = " << g_viewDoSmoothScrolling << std::endl;
+	ou << "NOHWSOUNDBUFFER = " << g_nohwsoundbuffer << std::endl;
+	ou << "TRACKERDRIVERVERSION = " << g_trackerDriverVersion << std::endl;
 
-	ou << "\n# KEYBOARD\n" << endl;
-	ou << "KEYBOARD_LAYOUT = " << g_keyboard_layout << endl;
-	ou << "KEYBOARD_UPDOWNCONTINUE = " << g_keyboard_updowncontinue << endl;
-	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES = " << g_keyboard_RememberOctavesAndVolumes << endl;
-	ou << "KEYBOARD_ESCRESETATARISOUND = " << g_keyboard_escresetatarisound << endl;
-	ou << "KEYBOARD_ASKWHENCONTROL_S = " << g_keyboard_askwhencontrol_s << endl;
+	ou << "\n# KEYBOARD\n" << std::endl;
+	ou << "KEYBOARD_LAYOUT = " << g_keyboard_layout << std::endl;
+	ou << "KEYBOARD_UPDOWNCONTINUE = " << g_keyboard_updowncontinue << std::endl;
+	ou << "KEYBOARD_REMEMBEROCTAVESANDVOLUMES = " << g_keyboard_RememberOctavesAndVolumes << std::endl;
+	ou << "KEYBOARD_ESCRESETATARISOUND = " << g_keyboard_escresetatarisound << std::endl;
+	ou << "KEYBOARD_ASKWHENCONTROL_S = " << g_keyboard_askwhencontrol_s << std::endl;
 
-	ou << "\n# MIDI\n" << endl;
-	ou << "MIDI_IN = " << g_Midi.GetMidiDevName() << endl;
-	ou << "MIDI_TR = " << g_Midi.m_TouchResponse << endl;
-	ou << "MIDI_VOLUMEOFFSET = " << g_Midi.m_VolumeOffset << endl;
-	ou << "MIDI_NOTEOFF = " << g_Midi.m_NoteOff << endl;
+	ou << "\n# MIDI\n" << std::endl;
+	ou << "MIDI_IN = " << g_Midi.GetMidiDevName() << std::endl;
+	ou << "MIDI_TR = " << g_Midi.m_TouchResponse << std::endl;
+	ou << "MIDI_VOLUMEOFFSET = " << g_Midi.m_VolumeOffset << std::endl;
+	ou << "MIDI_NOTEOFF = " << g_Midi.m_NoteOff << std::endl;
 
-	ou << "\n# PATHS\n" << endl;
-	ou << "PATH_DEFAULTSONGS = " << g_defaultSongsPath << endl;
-	ou << "PATH_DEFAULTINSTRUMENTS = " << g_defaultInstrumentsPath << endl;
-	ou << "PATH_DEFAULTTRACKS = " << g_defaultTracksPath << endl;
-	ou << "PATH_LASTSONGS = " << g_lastLoadPath_Songs << endl;
-	ou << "PATH_LASTINSTRUMENTS = " << g_lastLoadPath_Instruments << endl;
-	ou << "PATH_LASTTRACKS = " << g_lastLoadPath_Tracks << endl;
+	ou << "\n# PATHS\n" << std::endl;
+	ou << "PATH_DEFAULTSONGS = " << g_defaultSongsPath << std::endl;
+	ou << "PATH_DEFAULTINSTRUMENTS = " << g_defaultInstrumentsPath << std::endl;
+	ou << "PATH_DEFAULTTRACKS = " << g_defaultTracksPath << std::endl;
+	ou << "PATH_LASTSONGS = " << g_lastLoadPath_Songs << std::endl;
+	ou << "PATH_LASTINSTRUMENTS = " << g_lastLoadPath_Instruments << std::endl;
+	ou << "PATH_LASTTRACKS = " << g_lastLoadPath_Tracks << std::endl;
 
-	ou << "\n# VIEW\n" << endl;
-	ou << "VIEW_MAINTOOLBAR = " << g_viewMainToolbar << endl;
-	ou << "VIEW_BLOCKTOOLBAR = " << g_viewBlockToolbar << endl;
-	ou << "VIEW_STATUSBAR = " << g_viewStatusBar << endl;
-	ou << "VIEW_PLAYTIMECOUNTER = " << g_viewPlayTimeCounter << endl;
-	ou << "VIEW_VOLUMEANALYZER = " << g_viewVolumeAnalyzer << endl;
-	ou << "VIEW_POKEYCHIPREGISTERS = " << g_viewPokeyRegisters << endl;
-	ou << "VIEW_INSTRUMENTACTIVEHELP = " << g_viewInstrumentEditHelp << endl; 
-	ou << "VIEW_DEBUGDISPLAY = " << g_viewDebugDisplay << endl;
+	ou << "\n# VIEW\n" << std::endl;
+	ou << "VIEW_MAINTOOLBAR = " << g_viewMainToolbar << std::endl;
+	ou << "VIEW_BLOCKTOOLBAR = " << g_viewBlockToolbar << std::endl;
+	ou << "VIEW_STATUSBAR = " << g_viewStatusBar << std::endl;
+	ou << "VIEW_PLAYTIMECOUNTER = " << g_viewPlayTimeCounter << std::endl;
+	ou << "VIEW_VOLUMEANALYZER = " << g_viewVolumeAnalyzer << std::endl;
+	ou << "VIEW_POKEYCHIPREGISTERS = " << g_viewPokeyRegisters << std::endl;
+	ou << "VIEW_INSTRUMENTACTIVEHELP = " << g_viewInstrumentEditHelp << std::endl;
+	ou << "VIEW_DEBUGDISPLAY = " << g_viewDebugDisplay << std::endl;
 
 	ou.close();
 }
@@ -625,7 +625,7 @@ void CRmtView::ReadTuningConfig()
 	char line[1024];
 	char* tmp, * div, * name, * value, * value2;
 	s.Format("%s%s", g_prgpath, TUNING_FILENAME);
-	ifstream in(s);
+	std::ifstream in(s);
 	if (!in)
 	{
 		MessageBox("Could not find: '" + s + "'\n\nRMT will use the default Tuning parameters.\n", "RMT", MB_ICONEXCLAMATION);
@@ -677,38 +677,38 @@ void CRmtView::WriteTuningConfig()
 {
 	CString s;
 	s.Format("%s%s", g_prgpath, TUNING_FILENAME);
-	ofstream ou(s);
+	std::ofstream ou(s);
 	if (!ou)
 	{
 		MessageBox("Could not create: '" + s + "'\n\nThe Tuning parameters won't be saved.\n", "RMT", MB_ICONEXCLAMATION);
 		return;
 	}
 
-	ou << "# RMT CONFIGURATION FILE" << endl;
+	ou << "# RMT CONFIGURATION FILE" << std::endl;
 	CString version;
 	version.LoadString(IDS_RMTVERSION);
-	ou << "# " << version << endl;
-	ou << setprecision(16);
+	ou << "# " << version << std::endl;
+	ou << std::setprecision(16);
 
-	ou << "\n# TUNING\n" << endl;
-	ou << "TUNING = " << g_basetuning << endl;
-	ou << "BASENOTE = " << g_basenote << endl;
-	ou << "TEMPERAMENT = " << g_temperament << endl;
+	ou << "\n# TUNING\n" << std::endl;
+	ou << "TUNING = " << g_basetuning << std::endl;
+	ou << "BASENOTE = " << g_basenote << std::endl;
+	ou << "TEMPERAMENT = " << g_temperament << std::endl;
 
-	ou << "\n# RATIO\n" << endl;
-	ou << "UNISON = " << g_UNISON_L << " / " << g_UNISON_R << endl;
-	ou << "MIN_2ND = " << g_MIN_2ND_L << " / " << g_MIN_2ND_R << endl;
-	ou << "MAJ_2ND = " << g_MAJ_2ND_L << " / " << g_MAJ_2ND_R << endl;
-	ou << "MIN_3RD = " << g_MIN_3RD_L << " / " << g_MIN_3RD_R << endl;
-	ou << "MAJ_3RD = " << g_MAJ_3RD_L << " / " << g_MAJ_3RD_R << endl;
-	ou << "PERF_4TH = " << g_PERF_4TH_L << " / " << g_PERF_4TH_R << endl;
-	ou << "TRITONE = " << g_TRITONE_L << " / " << g_TRITONE_R << endl;
-	ou << "PERF_5TH = " << g_PERF_5TH_L << " / " << g_PERF_5TH_R << endl;
-	ou << "MIN_6TH = " << g_MIN_6TH_L << " / " << g_MIN_6TH_R << endl;
-	ou << "MAJ_6TH = " << g_MAJ_6TH_L << " / " << g_MAJ_6TH_R << endl;
-	ou << "MIN_7TH = " << g_MIN_7TH_L << " / " << g_MIN_7TH_R << endl;
-	ou << "MAJ_7TH = " << g_MAJ_7TH_L << " / " << g_MAJ_7TH_R << endl;
-	ou << "OCTAVE = " << g_OCTAVE_L << " / " << g_OCTAVE_R << endl;
+	ou << "\n# RATIO\n" << std::endl;
+	ou << "UNISON = " << g_UNISON_L << " / " << g_UNISON_R << std::endl;
+	ou << "MIN_2ND = " << g_MIN_2ND_L << " / " << g_MIN_2ND_R << std::endl;
+	ou << "MAJ_2ND = " << g_MAJ_2ND_L << " / " << g_MAJ_2ND_R << std::endl;
+	ou << "MIN_3RD = " << g_MIN_3RD_L << " / " << g_MIN_3RD_R << std::endl;
+	ou << "MAJ_3RD = " << g_MAJ_3RD_L << " / " << g_MAJ_3RD_R << std::endl;
+	ou << "PERF_4TH = " << g_PERF_4TH_L << " / " << g_PERF_4TH_R << std::endl;
+	ou << "TRITONE = " << g_TRITONE_L << " / " << g_TRITONE_R << std::endl;
+	ou << "PERF_5TH = " << g_PERF_5TH_L << " / " << g_PERF_5TH_R << std::endl;
+	ou << "MIN_6TH = " << g_MIN_6TH_L << " / " << g_MIN_6TH_R << std::endl;
+	ou << "MAJ_6TH = " << g_MAJ_6TH_L << " / " << g_MAJ_6TH_R << std::endl;
+	ou << "MIN_7TH = " << g_MIN_7TH_L << " / " << g_MIN_7TH_R << std::endl;
+	ou << "MAJ_7TH = " << g_MAJ_7TH_L << " / " << g_MAJ_7TH_R << std::endl;
+	ou << "OCTAVE = " << g_OCTAVE_L << " / " << g_OCTAVE_R << std::endl;
 
 	ou.close();
 }

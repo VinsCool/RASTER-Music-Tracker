@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fstream>	/* needed for Load/SaveBinaryFile */
-using namespace std;
 
 #include "Atari6502.h"
 #include "RmtAtariBinaries.h"
@@ -221,7 +220,7 @@ void Memory_Clear()
 	memset(g_atarimem,0,65536);
 }
 
-bool LoadWord(ifstream& in, WORD& w)
+bool LoadWord(std::ifstream& in, WORD& w)
 {
 	unsigned char a1, a2;
 	char db, hb;
@@ -245,7 +244,7 @@ bool LoadWord(ifstream& in, WORD& w)
 /// <param name="fromAddr">Returns the address where the binary block was loaded (FROM)</param>
 /// <param name="toAddr">Returns the end address, (first byte after the loaded block)</param>
 /// <returns>Return number of bytes read. (0 if there was some error).</returns>
-int LoadBinaryBlock(ifstream& in, unsigned char* memory, WORD& fromAddr, WORD& toAddr)
+int LoadBinaryBlock(std::ifstream& in, unsigned char* memory, WORD& fromAddr, WORD& toAddr)
 {
 	if (!LoadWord(in, fromAddr)) return 0;
 	if (fromAddr == 0xffff)
@@ -269,7 +268,7 @@ int LoadBinaryFile(char* fname, unsigned char* memory, WORD& minadr, WORD& maxad
 	
 	WORD bfrom,bto;
 
-	ifstream fin(fname, ios::binary | ios::_Nocreate);
+	std::ifstream fin(fname, std::ios::binary | std::ios::_Nocreate);
 	if (!fin) return 0;
 	fsize=0;
 	minadr = 0xffff; maxadr=0; //the opposite limits of the minimum and maximum address
@@ -323,7 +322,7 @@ int LoadDataAsBinaryFile(unsigned char *data, WORD size, unsigned char *memory,W
 /// <param name="toAddr">End address (last byte of the data)</param>
 /// <param name="withBinaryBlockHeader">True then the FROM,TO header will start with FFFF. Only required on the first block</param>
 /// <returns>Total number of bytes output</returns>
-int SaveBinaryBlock(ofstream& out, unsigned char* memory, WORD fromAddr, WORD toAddr, BOOL withBinaryBlockHeader)
+int SaveBinaryBlock(std::ofstream& out, unsigned char* memory, WORD fromAddr, WORD toAddr, BOOL withBinaryBlockHeader)
 {
 	//from "fromadr" to "toadr" inclusive
 	if (fromAddr > toAddr) return 0;

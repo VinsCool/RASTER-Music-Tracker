@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "resource.h"
 #include <fstream>
-using namespace std;
 
 #include "Atari6502.h"
 #include "IOHelpers.h"

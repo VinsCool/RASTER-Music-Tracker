@@ -84,7 +84,7 @@ int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
 }
 
 
-void TextXY(char* txt, int x, int y, int color)
+void TextXY(const char* txt, int x, int y, int color)
 {
 	char charToDraw;
 	color = color << 4;
@@ -95,7 +95,7 @@ void TextXY(char* txt, int x, int y, int color)
 	}
 }
 
-void TextXYSelN(char* txt, int n, int x, int y, int color)
+void TextXYSelN(const char* txt, int n, int x, int y, int color)
 {
 	//the index character n will have a "select" color, the rest c
 	char charToDraw;
@@ -113,7 +113,7 @@ void TextXYSelN(char* txt, int n, int x, int y, int color)
 }
 
 // Draw 8x16 chars with given color array per char position
-void TextXYCol(char* txt, int x, int y, char* col)
+void TextXYCol(const char* txt, int x, int y, char* col)
 {
 	char charToDraw;
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
@@ -123,7 +123,7 @@ void TextXYCol(char* txt, int x, int y, char* col)
 }
 
 // Draw 8x16 chars vertically (one below the other)
-void TextDownXY(char* txt, int x, int y, int color)
+void TextDownXY(const char* txt, int x, int y, int color)
 {
 	char charToDraw;
 	color = color << 4;	// 16 pixels height
@@ -133,14 +133,14 @@ void TextDownXY(char* txt, int x, int y, int color)
 	}
 }
 
-void NumberMiniXY(BYTE num, int x, int y, int color)
+void NumberMiniXY(const BYTE num, int x, int y, int color)
 {
 	color = 112 + (color << 3);
 	g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (num & 0xf0) >> 1, color, 8, 8, SRCCOPY);
 	g_mem_dc->StretchBlt(SCALE(x + 8), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (num & 0x0f) << 3, color, 8, 8, SRCCOPY);
 }
 
-void TextMiniXY(char* txt, int x, int y, int color)
+void TextMiniXY(const char* txt, int x, int y, int color)
 {
 	char charToDraw;
 	color = 112 + (color << 3);
@@ -151,7 +151,7 @@ void TextMiniXY(char* txt, int x, int y, int color)
 	}
 }
 
-void IconMiniXY(int icon, int x, int y)
+void IconMiniXY(const int icon, int x, int y)
 {
 	static int c = 128 - 6;
 	if (icon >= 1 && icon <= 4) g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(32), SCALE(6), g_gfx_dc, (icon - 1) * 32, c, 32, 6, SRCCOPY);

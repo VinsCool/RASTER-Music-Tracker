@@ -22,7 +22,6 @@
 #include <fcntl.h>
 
 #include <fstream>	/* needed for Load/SaveBinaryFile */
-using namespace std;
 
 #include "getopt.h"
 #include "stdafx.h"

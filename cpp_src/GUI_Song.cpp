@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include <fstream>
-using namespace std;
 
 #include "GuiHelpers.h"
 
@@ -858,7 +857,7 @@ void CSong::DrawSong()
 
 void CSong::DrawTracks()
 {
-	static char* tnames = "L1L2L3L4R1R2R3R4";
+	const char* tnames = "L1L2L3L4R1R2R3R4";
 	char s[16], stmp[16];
 	int i, x, y, tr, line, color;
 	int t;
@@ -1354,6 +1353,11 @@ void CSong::DrawPlayTimeCounter(CDC* pDC)
 
 BOOL CSong::InfoKey(int vk, int shift, int control)
 {
+	int i, num;
+	int volatile* infptab[] = { &m_speed, &m_mainSpeed, &m_instrumentSpeed, &g_trackLinePrimaryHighlight, &g_trackLineSecondaryHighlight };
+	int infandtab[] = { 0xFF, 0xFF, 0x08, g_Tracks.m_maxTrackLength / 2, g_Tracks.m_maxTrackLength / 2 };	//maximum current speed, main speed, instrument speed, primary and secondary line highlights
+	int volatile& infp = *infptab[m_infoact - 1];
+	int infand = infandtab[m_infoact - 1];
 	BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
 
 	if (m_infoact == INFO_ACTIVE_NAME)
@@ -1368,12 +1372,6 @@ BOOL CSong::InfoKey(int vk, int shift, int control)
 		if (EditText(vk, shift, control, m_songname, m_songnamecur, SONG_NAME_MAX_LEN)) m_infoact = INFO_ACTIVE_SPEED;
 		return 1;
 	}
-
-	int i, num;
-	int volatile* infptab[] = { &m_speed, &m_mainSpeed, &m_instrumentSpeed, &g_trackLinePrimaryHighlight, &g_trackLineSecondaryHighlight };
-	int infandtab[] = { 0xFF, 0xFF, 0x08, g_Tracks.m_maxTrackLength / 2, g_Tracks.m_maxTrackLength / 2 };	//maximum current speed, main speed, instrument speed, primary and secondary line highlights
-	int volatile& infp = *infptab[m_infoact - 1];
-	int infand = infandtab[m_infoact - 1];
 
 	if ((num = NumbKey(vk)) >= 0 && num <= infand)
 	{

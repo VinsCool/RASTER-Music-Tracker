@@ -1,5 +1,4 @@
 #include "stdafx.h"
-using namespace std;
 #include "resource.h"
 #include "General.h"
 

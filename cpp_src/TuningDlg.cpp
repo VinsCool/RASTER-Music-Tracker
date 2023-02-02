@@ -4,7 +4,6 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
-using namespace std;
 
 #include "stdafx.h"
 #include "Rmt.h"

@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "resource.h"
 #include <fstream>
-using namespace std;
 
 #include "Atari6502.h"
 
@@ -181,7 +180,7 @@ int CConvertTracks::MakeOrFindTrackShiftLR(int from, int shift, BYTE lr)
 //----------------------------------------------
 
 
-int CSong::ImportTMC(ifstream& in)
+int CSong::ImportTMC(std::ifstream& in)
 {
 	int originalg_tracks4_8 = g_tracks4_8;
 
@@ -928,7 +927,7 @@ int AtariVolume(int volume0_64)
 	return avol;
 }
 
-int CSong::ImportMOD(ifstream& in)
+int CSong::ImportMOD(std::ifstream& in)
 {
 	//deletes the current song
 	int originalg_tracks4_8 = g_tracks4_8;	//keeps the original value for Abort
@@ -951,7 +950,7 @@ int CSong::ImportMOD(ifstream& in)
 		return 0;
 	}
 
-	in.seekg(0, ios::end);
+	in.seekg(0, std::ios::end);
 	int modulelength = (int)in.tellg();
 
 	int chnls = 0;
@@ -1670,7 +1669,7 @@ int CSong::ImportMOD(ifstream& in)
 		memset(smpdata, 0, samplen);	//clear
 
 		in.clear();		//due to reaching the end when eof is set
-		in.seekg(smpfrom, ios::beg);
+		in.seekg(smpfrom, std::ios::beg);
 		if ((int)in.tellg() != smpfrom)
 		{
 			CString s;

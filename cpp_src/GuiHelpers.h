@@ -12,10 +12,10 @@
 extern void SetStatusBarText(const char* text);
 extern int EditText(int vk, int shift, int control, char* txt, int& cur, int max);
 
-extern void TextXY(char* txt, int x, int y, int color = TEXT_COLOR_WHITE);
-extern void TextXYSelN(char* txt, int n, int x, int y, int color = TEXT_COLOR_WHITE);
-extern void TextXYCol(char* txt, int x, int y, char* col);
-extern void TextDownXY(char* txt, int x, int y, int color = TEXT_COLOR_WHITE);
-extern void NumberMiniXY(BYTE num, int x, int y, int color = TEXT_MINI_COLOR_GRAY);
-extern void TextMiniXY(char* txt, int x, int y, int color = TEXT_MINI_COLOR_GRAY);
-extern void IconMiniXY(int icon, int x, int y);
+extern void TextXY(const char* txt, int x, int y, int color = TEXT_COLOR_WHITE);
+extern void TextXYSelN(const char* txt, int n, int x, int y, int color = TEXT_COLOR_WHITE);
+extern void TextXYCol(const char* txt, int x, int y, char* col);
+extern void TextDownXY(const char* txt, int x, int y, int color = TEXT_COLOR_WHITE);
+extern void NumberMiniXY(const BYTE num, int x, int y, int color = TEXT_MINI_COLOR_GRAY);
+extern void TextMiniXY(const char* txt, int x, int y, int color = TEXT_MINI_COLOR_GRAY);
+extern void IconMiniXY(const int icon, int x, int y);

@@ -1,5 +1,4 @@
 #include "stdafx.h"
-using namespace std;
 #include "resource.h"
 #include "General.h"
 
@@ -14,7 +13,7 @@ using namespace std;
 
 #include "global.h"
 
-int CTracks::SaveTrack(int track, ofstream& ou, int iotype)
+int CTracks::SaveTrack(int track, std::ofstream& ou, int iotype)
 {
 	if (track < 0 || track >= TRACKSNUM) return 0;
 
@@ -80,7 +79,7 @@ int CTracks::SaveTrack(int track, ofstream& ou, int iotype)
 					bf[9] = CharL4(speed);
 					bf[10] = 0;
 				}
-				ou << bf << endl;
+				ou << bf << std::endl;
 			}
 			ou << "\n"; //gap
 		}
@@ -89,7 +88,7 @@ int CTracks::SaveTrack(int track, ofstream& ou, int iotype)
 	return 1;
 }
 
-int CTracks::LoadTrack(int track, ifstream& in, int iotype)
+int CTracks::LoadTrack(int track, std::ifstream& in, int iotype)
 {
 	switch (iotype)
 	{
@@ -211,7 +210,7 @@ int CTracks::LoadTrack(int track, ifstream& in, int iotype)
 	return 1;
 }
 
-int CTracks::SaveAll(ofstream& ou, int iotype)
+int CTracks::SaveAll(std::ofstream& ou, int iotype)
 {
 	switch (iotype)
 	{
@@ -239,12 +238,11 @@ int CTracks::SaveAll(ofstream& ou, int iotype)
 }
 
 
-int CTracks::LoadAll(ifstream& in, int iotype)
+int CTracks::LoadAll(std::ifstream& in, int iotype)
 {
 	InitTracks();
 
 	in.read((char*)&m_maxTrackLength, sizeof(m_maxTrackLength));
-	// g_cursoractview = m_maxtracklen / 2;
 
 	for (int i = 0; i < TRACKSNUM; i++)
 	{

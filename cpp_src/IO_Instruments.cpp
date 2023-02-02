@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "resource.h"
 #include <fstream>
-using namespace std;
 
 #include "Atari6502.h"
 #include "IOHelpers.h"
@@ -13,7 +12,7 @@ using namespace std;
 #include "GuiHelpers.h"
 
 
-int CInstruments::SaveAll(ofstream& ou, int iotype)
+int CInstruments::SaveAll(std::ofstream& ou, int iotype)
 {
 	for (int i = 0; i < INSTRSNUM; i++)
 	{
@@ -23,7 +22,7 @@ int CInstruments::SaveAll(ofstream& ou, int iotype)
 	return 1;
 }
 
-int CInstruments::LoadAll(ifstream& in, int iotype)
+int CInstruments::LoadAll(std::ifstream& in, int iotype)
 {
 	for (int i = 0; i < INSTRSNUM; i++)
 	{
@@ -33,7 +32,7 @@ int CInstruments::LoadAll(ifstream& in, int iotype)
 	return 1;
 }
 
-int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
+int CInstruments::SaveInstrument(int instr, std::ofstream& ou, int iotype)
 {
 	TInstrument& ai = m_instr[instr];
 
@@ -106,7 +105,7 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 				s.Format("%02X ", ai.noteTable[j]);
 				ou << (LPCTSTR)s;
 			}
-			ou << endl;
+			ou << std::endl;
 			//envelope
 			for (k = 0; k < ENVROWS; k++)
 			{
@@ -125,7 +124,7 @@ int CInstruments::SaveInstrument(int instr, ofstream& ou, int iotype)
 	return 1;
 }
 
-int CInstruments::LoadInstrument(int instr, ifstream& in, int iotype)
+int CInstruments::LoadInstrument(int instr, std::ifstream& in, int iotype)
 {
 	switch (iotype)
 	{

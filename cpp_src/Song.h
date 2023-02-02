@@ -34,7 +34,6 @@ struct TInfo
 
 struct TExportMetadata
 {
-	//TInfo* parameter;	// Probably will just be replaced by individual parameters
 	char songname[SONG_NAME_MAX_LEN + 1];
 	CTime currentTime;
 	int instrspeed;
@@ -246,7 +245,7 @@ public:
 	bool TestBeforeFileSave();
 	int GetSubsongParts(CString& resultstr);
 
-	void ComposeRMTFEATstring(CString& dest, char* filename, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags, BOOL sfx, BOOL gvf, BOOL nos, int assemblerFormat);
+	void ComposeRMTFEATstring(CString& dest, const char* filename, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags, BOOL sfx, BOOL gvf, BOOL nos, int assemblerFormat);
 
 	BOOL BuildRelocatableAsm(CString& dest,
 		tExportDescription* exportDesc,

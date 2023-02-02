@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include <fstream>
 #include <memory.h>
-using namespace std;
 
 #include "GuiHelpers.h"
 #include "Song.h"
@@ -61,7 +60,7 @@ static void StrToAtariVideo(char* txt, int count)
 /// </summary>
 /// <param name="ou">Output stream</param>
 /// <returns>true if the file was written</returns>
-bool CSong::ExportSAP_R(ofstream& ou)
+bool CSong::ExportSAP_R(std::ofstream& ou)
 {
 	DumpSongToPokeyBuffer();
 
@@ -159,7 +158,7 @@ bool CSong::ExportSAP_R(ofstream& ou)
 /// <param name="ou">File to output the compressed data to</param>
 /// <param name="filename">Filename to output additional files, required for splitting the Intro and Loop sections of a song</param>
 /// <returns></returns>
-bool CSong::ExportLZSS(ofstream& ou, LPCTSTR filename)
+bool CSong::ExportLZSS(std::ofstream& ou, LPCTSTR filename)
 {
 	DumpSongToPokeyBuffer();
 
@@ -189,7 +188,7 @@ bool CSong::ExportLZSS(ofstream& ou, LPCTSTR filename)
 	int intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, compressedData);
 	if (intro > 16)
 	{
-		ou.open(fn + "_INTRO.lzss", ios::binary);	// Create a new file for the Intro section
+		ou.open(fn + "_INTRO.lzss", std::ios::binary);	// Create a new file for the Intro section
 		ou.write((char*)compressedData, intro);		// Write the buffer contents to the export file
 	}
 	ou.close();	// Close the file, if successful, it should not be empty 
@@ -198,7 +197,7 @@ bool CSong::ExportLZSS(ofstream& ou, LPCTSTR filename)
 	int loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, compressedData);
 	if (loop > 16)
 	{
-		ou.open(fn + "_LOOP.lzss", ios::binary);	// Create a new file for the Loop section
+		ou.open(fn + "_LOOP.lzss", std::ios::binary);	// Create a new file for the Loop section
 		ou.write((char*)compressedData, loop);		// Write the buffer contents to the export file
 	}
 	ou.close();	// Close the file, if successful, it should not be empty 
@@ -215,7 +214,7 @@ bool CSong::ExportLZSS(ofstream& ou, LPCTSTR filename)
 /// </summary>
 /// <param name="ou">Output stream</param>
 /// <returns>true if the file was written</returns>
-bool CSong::ExportLZSS_SAP(ofstream& ou)
+bool CSong::ExportLZSS_SAP(std::ofstream& ou)
 {
 	DumpSongToPokeyBuffer();
 
@@ -820,5 +819,5 @@ int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* 
 		}
 	}
 
-	return LZSS_SAP(src, srclen, dst, bestScore);
+	return LZSS_SAP(src, srclen, dst, optimal);
 }

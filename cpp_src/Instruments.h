@@ -9,14 +9,14 @@ struct Tshpar
 {
 	int paramIndex;				// Which parameter does this entry represent
 	int x, y;					// Screen display position
-	char* name;					// Name
+	const char* name;			// Name
 	int parameterAND;			// AND with a text loaded value to limit its range.  TODO: WHY??
 	int maxParameterValue;		// This is the maximum value the parameter can be
 	int displayOffset;			// Some parameters are 0..x but 1..x + 1 is displayed
 	// If the up, down, left or right keys are pressed which parameter is the next
 	// one to be edited
 	int gotoUp, gotoDown, gotoLeft, gotoRight;
-	char* fieldName;			// Name to be used in TXT instrument load/save
+	const char* fieldName;		// Name to be used in TXT instrument load/save
 };
 
 extern const Tshpar shpar[NUMBER_OF_PARAMS];
@@ -29,10 +29,10 @@ struct Tshenv
 	int pand;
 	int padd;
 	int psub;
-	char* name;
+	const char* name;
 	int xpos;
 	int ypos;
-	char* fieldName;			// Name to be used in TXT instrument load/save
+	const char* fieldName;		// Name to be used in TXT instrument load/save
 };
 
 extern const Tshenv shenv[ENVROWS];

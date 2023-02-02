@@ -24,16 +24,6 @@
 
 #define POSGROUPTYPE128_191SIZE 3
 
-/*
-struct TInfo
-{
-	char songname[SONG_NAME_MAX_LEN + 1];
-	int speed;
-	int mainspeed;
-	int instrspeed;
-	int songnamecur; //to return the cursor to the appropriate position when undo changes in the song name
-};
-*/
 
 struct TUndoEvent
 {

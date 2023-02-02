@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include <fstream>
-using namespace std;
 
 #include "GuiHelpers.h"
 #include "Song.h"

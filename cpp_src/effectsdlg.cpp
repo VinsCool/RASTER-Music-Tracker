@@ -65,13 +65,13 @@ END_MESSAGE_MAP()
 #define NUMBEROFEFFECT	6
 
 struct TEffs {
-	char *name;
-	char *p1;
-	char *e1;
-	char *p2;
-	char *e2;
-	char *p3;
-	char *e3;
+	const char* name;
+	const char* p1;
+	const char* e1;
+	const char* p2;
+	const char* e2;
+	const char* p3;
+	const char* e3;
 };
 
 TEffs effects[NUMBEROFEFFECT]={
@@ -953,7 +953,7 @@ void CInstrumentChangeDlg::OnCheckSomeChannelsOnly()
 		if (dlg.DoModal()==IDOK && dlg.m_channelyes>0)
 		{
 			m_onlychannels=dlg.m_channelyes;
-			static char* cnames[]={"L1","L2","L3","L4","R1","R2","R3","R4"};
+			const char* cnames[] = { "L1","L2","L3","L4","R1","R2","R3","R4" };
 			CString s;
 			s="Only in ";
 			int j=0;

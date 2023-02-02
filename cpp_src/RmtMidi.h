@@ -13,7 +13,7 @@ public:
 	CRmtMidi();
 	~CRmtMidi();
 
-	void SetDevice(char* devname)	{ strncpy(m_MidiInDeviceName,devname,MIDIDEVNAMELEN); };
+	void SetDevice(const char* devname) { strncpy(m_MidiInDeviceName, devname, MIDIDEVNAMELEN); };
 
 	BOOL IsOn()						{ return m_MidiIsOn; };
 

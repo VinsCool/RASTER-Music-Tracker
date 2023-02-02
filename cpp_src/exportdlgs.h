@@ -251,7 +251,7 @@ public:
 	BOOL m_noStartingSongLine;
 
 	CSong* m_song;
-	char* m_filename;
+	const char* m_filename;
 
 	BOOL m_InitPhase;
 

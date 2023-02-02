@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include <fstream>
 #include <memory.h>
-using namespace std;
 
 #include "GuiHelpers.h"
 #include "Song.h"
@@ -213,7 +212,7 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 		}
 
 		// Open the input file in binary format (even the text file)
-		ifstream in(fileToLoad, ios::binary);
+		std::ifstream in(fileToLoad, std::ios::binary);
 		if (!in)
 		{
 			MessageBox(g_hwnd, "Can't open this file: " + fileToLoad, "Open error", MB_ICONERROR);
@@ -281,7 +280,7 @@ void CSong::FileSave()
 	}
 
 	// Create the file to save, ios::binary will be assumed if the format isn't TXT
-	ofstream out(m_filename, (m_filetype == IOTYPE_TXT) ? ios::out : ios::binary);
+	std::ofstream out(m_filename, (m_filetype == IOTYPE_TXT) ? std::ios::out : std::ios::binary);
 	if (!out)
 	{
 		MessageBox(g_hwnd, "Can't create this file", "Write error", MB_ICONERROR);
@@ -480,7 +479,7 @@ void CSong::FileImport()
 
 	l_lastImportTypeIndex = type;
 
-	ifstream in(fn, ios::binary);
+	std::ifstream in(fn, std::ios::binary);
 	if (!in)
 	{
 		MessageBox(g_hwnd, "Can't open this file: " + fn, "Open error", MB_ICONERROR);
@@ -578,7 +577,7 @@ void CSong::FileExportAs()
 		g_lastLoadPath_Songs = GetFilePath(fn);
 
 		// Try and create the output file
-		ofstream out(fn, ios::binary);
+		std::ofstream out(fn, std::ios::binary);
 		if (!out)
 		{
 			MessageBox(g_hwnd, "Can't create this file: " + fn, "Export error", MB_ICONERROR);
@@ -661,7 +660,7 @@ void CSong::FileInstrumentSave()
 
 		g_lastLoadPath_Instruments = GetFilePath(fn);
 
-		ofstream ou(fn, ios::binary);
+		std::ofstream ou(fn, std::ios::binary);
 		if (!ou)
 		{
 			MessageBox(g_hwnd, "Can't create the instrument file: " + fn, "Write error", MB_ICONERROR);
@@ -702,7 +701,7 @@ void CSong::FileInstrumentLoad()
 		CString fn = dlg.GetPathName();
 		g_lastLoadPath_Instruments = GetFilePath(fn);	//direct way
 
-		ifstream in(fn, ios::binary);
+		std::ifstream in(fn, std::ios::binary);
 		if (!in)
 		{
 			MessageBox(g_hwnd, "Can't open this file: " + fn, "Open error", MB_ICONERROR);
@@ -753,7 +752,7 @@ void CSong::FileTrackSave()
 
 		g_lastLoadPath_Tracks = GetFilePath(fn);
 
-		ofstream ou(fn);	// text mode by default
+		std::ofstream ou(fn);	// text mode by default
 		if (!ou)
 		{
 			MessageBox(g_hwnd, "Can't create this file: " + fn, "Write error", MB_ICONERROR);
@@ -797,7 +796,7 @@ void CSong::FileTrackLoad()
 		CString fn = dlg.GetPathName();
 		g_lastLoadPath_Tracks = GetFilePath(fn);
 
-		ifstream in(fn);	// text mode by default
+		std::ifstream in(fn);	// text mode by default
 		if (!in)
 		{
 			MessageBox(g_hwnd, "Can't open this file: " + fn, "Open error", MB_ICONERROR);
@@ -893,11 +892,11 @@ void CSong::FileTrackLoad()
 	&m_infoact,&m_songnamecur									\
 }
 
-bool CSong::SaveRMW(ofstream& ou)
+bool CSong::SaveRMW(std::ofstream& ou)
 {
 	CString version;
 	version.LoadString(IDS_RMTVERSION);
-	ou << (unsigned char*)(LPCSTR)version << endl;
+	ou << (unsigned char*)(LPCSTR)version << std::endl;
 	//
 	ou.write((char*)m_songname, sizeof(m_songname));
 	//
@@ -918,7 +917,7 @@ bool CSong::SaveRMW(ofstream& ou)
 	return true;
 }
 
-bool CSong::LoadRMW(ifstream& in)
+bool CSong::LoadRMW(std::ifstream& in)
 {
 	ClearSong(8);	// Always clear 8 tracks 
 
@@ -955,7 +954,7 @@ bool CSong::LoadRMW(ifstream& in)
 /// </summary>
 /// <param name="ou">Output stream</param>
 /// <returns></returns>
-bool CSong::SaveTxt(ofstream& ou)
+bool CSong::SaveTxt(std::ofstream& ou)
 {
 	CString s, nambf;
 	char bf[16];
@@ -1024,7 +1023,7 @@ bool CSong::SaveTxt(ofstream& ou)
 /// </summary>
 /// <param name="in">Input stream</param>
 /// <returns>Returns true if the file was loaded, does not mean the resultant data is valid</returns>
-bool CSong::LoadTxt(ifstream& in)
+bool CSong::LoadTxt(std::ifstream& in)
 {
 	ClearSong(8);	// Always clear 8 tracks 
 
@@ -1302,7 +1301,7 @@ bool CSong::TestBeforeFileSave()
 /// <param name="iotype">requested output format</param>
 /// <param name="filename">filename of the output</param>
 /// <returns>0 if the export failed, 1 if the export is ok</returns>
-bool CSong::ExportV2(ofstream& ou, int iotype, LPCTSTR filename)
+bool CSong::ExportV2(std::ofstream& ou, int iotype, LPCTSTR filename)
 {
 	// Init the export data container
 	tExportDescription exportDesc;
@@ -1343,7 +1342,7 @@ bool CSong::ExportV2(ofstream& ou, int iotype, LPCTSTR filename)
 /// <param name="ou">Output stream</param>
 /// <param name="exportDesc">Data about the packed RMT module</param>
 /// <returns>true = saved ok</returns>
-bool CSong::ExportAsRMT(ofstream& ou, tExportDescription *exportDesc)
+bool CSong::ExportAsRMT(std::ofstream& ou, tExportDescription *exportDesc)
 {
 	// Save the 1st RMT module block: Song, Tracks & Instruments
 	SaveBinaryBlock(ou, exportDesc->mem, exportDesc->targetAddrOfModule, exportDesc->firstByteAfterModule - 1, TRUE);
@@ -1384,7 +1383,7 @@ bool CSong::ExportAsRMT(ofstream& ou, tExportDescription *exportDesc)
 /// <param name="exportStrippedDesc">Data about the packed RMT module</param>
 /// <param name="filename"></param>
 /// <returns>true is the save went ok</returns>
-bool CSong::ExportAsStrippedRMT(ofstream& ou, tExportDescription* exportStrippedDesc, LPCTSTR filename)
+bool CSong::ExportAsStrippedRMT(std::ofstream& ou, tExportDescription* exportStrippedDesc, LPCTSTR filename)
 {
 	tExportDescription exportTempDescription;
 	memset(&exportTempDescription, 0, sizeof(tExportDescription));
@@ -1455,7 +1454,7 @@ bool CSong::ExportAsStrippedRMT(ofstream& ou, tExportDescription* exportStripped
 /// </summary>
 /// <param name="in">Input stream</param>
 /// <returns>true if the load went ok</returns>
-bool CSong::LoadRMT(ifstream& in)
+bool CSong::LoadRMT(std::ifstream& in)
 {
 	unsigned char mem[65536];
 	memset(mem, 0, 65536);

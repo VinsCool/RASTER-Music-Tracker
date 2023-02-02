@@ -1,7 +1,6 @@
 #include "StdAfx.h"
 #include <fstream>
 #include <memory.h>
-using namespace std;
 
 #include "GuiHelpers.h"
 #include "Song.h"
@@ -25,7 +24,7 @@ extern CInstruments	g_Instruments;
 /// <param name="ou">Output stream</param>
 /// <param name="exportStrippedDesc">Data about the packed RMT module</param>
 /// <returns>true if the save went ok</returns>
-bool CSong::ExportAsAsm(ofstream& ou, tExportDescription* exportStrippedDesc)
+bool CSong::ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDesc)
 {
 	// Setup the ASM export dialog
 	CExportAsmDlg dlg;
@@ -135,7 +134,7 @@ bool CSong::ExportAsAsm(ofstream& ou, tExportDescription* exportStrippedDesc)
 			BYTE finished[SONGLEN];
 			memset(finished, 0, SONGLEN);
 			int sline = 0;
-			static char* cnames[] = { "L1","L2","L3","L4","R1","R2","R3","R4" };
+			const char* cnames[] = { "L1","L2","L3","L4","R1","R2","R3","R4" };
 			s.Format(";Song column %s", cnames[clm]);
 			ou << EOL << s;
 			if (!g_PrefixForAllAsmLabels.IsEmpty())
@@ -164,7 +163,7 @@ bool CSong::ExportAsAsm(ofstream& ou, tExportDescription* exportStrippedDesc)
 					int al = g_Tracks.GetLastLine(at) + 1;
 					if (al < trackslen) trackslen = al;
 				}
-				int t, i, j, not, dur, ins;
+				int t, i, j, anot, dur, ins;
 				int ova = maxova;
 				t = m_song[sline][clm];
 				if (t < 0)
@@ -226,16 +225,16 @@ bool CSong::ExportAsAsm(ofstream& ou, tExportDescription* exportStrippedDesc)
 						ou << EOL << "\tdta ";
 					}
 
-					not= tt.note[i];
-					if (not>= 0)
+					anot= tt.note[i];
+					if (anot>= 0)
 					{
 						ins = tt.instr[i];
 						if (dlg.m_notesIndexOrFreq == 1) //notes
-							not= g_Instruments.GetNote(ins, not);
+							anot= g_Instruments.GetNote(ins, anot);
 						else				//frequencies
-							not= g_Instruments.GetFrequency(ins, not);
+							anot= g_Instruments.GetFrequency(ins, anot);
 					}
-					if (not>= 0) snot.Format("$%02X", not); else snot = "XXX";
+					if (anot>= 0) snot.Format("$%02X", anot); else snot = "XXX";
 					for (dur = 1; i + dur < trackslen && tt.note[i + dur] < 0; dur++);
 					if (dlg.m_durationsType == 1)
 					{
@@ -339,9 +338,9 @@ bool CSong::ExportAsRelocatableAsmForRmtPlayer(std::ofstream& ou, tExportDescrip
 		strAsmForModule,
 		dlg.m_sfxSupport ? &exportDescWithSFX : exportDescStripped,
 		dlg.m_strAsmLabelForStartOfSong,
-		dlg.m_wantRelocatableTracks ? dlg.m_strAsmTracksLabel : "",
-		dlg.m_wantRelocatableSongLines ? dlg.m_strAsmSongLinesLabel : "",
-		dlg.m_wantRelocatableInstruments ? dlg.m_strAsmInstrumentsLabel : "",
+		dlg.m_wantRelocatableTracks ? dlg.m_strAsmTracksLabel : (CString)"",
+		dlg.m_wantRelocatableSongLines ? dlg.m_strAsmSongLinesLabel : (CString)"",
+		dlg.m_wantRelocatableInstruments ? dlg.m_strAsmInstrumentsLabel : (CString)"",
 		dlg.m_assemblerFormat,
 		dlg.m_sfxSupport,
 		dlg.m_globalVolumeFade,
@@ -409,7 +408,7 @@ BOOL CSong::BuildRelocatableAsm(
 
 	// Assembler type setup
 	BOOL hasDotLocal = 0;
-	char* _byte = "dta";
+	const char* _byte = "dta";
 	if (assemblerFormat == ASSEMBLER_FORMAT_ATASM)
 	{
 		hasDotLocal = 1;
@@ -889,7 +888,8 @@ int CSong::BuildSongData(
 /// <param name="assemblerFormat">Which assembler format is to be used ATASM or XASM</param>
 void CSong::ComposeRMTFEATstring(
 	CString& dest,
-	char* filename,
+	//char* filename,
+	const char* filename,
 	BYTE* instrumentSavedFlags,
 	BYTE* trackSavedFlags,
 	BOOL soundFXSupport,
@@ -899,7 +899,8 @@ void CSong::ComposeRMTFEATstring(
 )
 {
 	// Depending on the assembler format: equ or =
-	char* equal = "equ";
+	//char* equal = "equ";
+	const char* equal = "equ";
 	if (assemblerFormat == ASSEMBLER_FORMAT_ATASM)
 		equal = "=";
 

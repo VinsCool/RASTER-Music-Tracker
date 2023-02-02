@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include <fstream>
-using namespace std;
 
 #include "GuiHelpers.h"
 
@@ -51,7 +50,6 @@ void CALLBACK G_TimerRoutine(UINT, UINT, DWORD, DWORD, DWORD)
 	g_Song.TimerRoutine();
 	busyInTimer = 0;
 }
-
 
 // ----------------------------------------------------------------------------
 
@@ -2184,7 +2182,7 @@ void CSong::TrackInfo(int track)
 {
 	if (track < 0 || track >= TRACKSNUM) return;
 
-	static char* cnames[] = { "L1","L2","L3","L4","R1","R2","R3","R4" };
+	const char* cnames[] = { "L1","L2","L3","L4","R1","R2","R3","R4" };
 
 	int i, ch;
 	int trackusedincolumn[SONGTRACKS];

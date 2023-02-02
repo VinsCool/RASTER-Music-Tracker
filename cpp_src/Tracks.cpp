@@ -1,5 +1,4 @@
 #include "stdafx.h"
-using namespace std;
 #include "resource.h"
 #include "General.h"
 
@@ -98,7 +97,6 @@ BOOL ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, 
 CTracks::CTracks()
 {
 	m_maxTrackLength = 64;			//default value
-	// g_cursoractview = m_maxtracklen / 2;
 	InitTracks();
 }
 
