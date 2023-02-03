@@ -80,7 +80,7 @@ int Atari6502_Init()
 	return 1;
 }
 
-// Load Atari executable to memory
+// Load an Atari executable to memory
 int Atari_LoadOBX(int obx, unsigned char* mem, WORD& minadr, WORD& maxadr)
 {
 	int size;
@@ -89,8 +89,7 @@ int Atari_LoadOBX(int obx, unsigned char* mem, WORD& minadr, WORD& maxadr)
 	switch (obx)
 	{
 	case IOTYPE_LZSS_XEX:
-		bin = export_VUPlayer_LZSS;
-		size = sizeof export_VUPlayer_LZSS;
+		bin = export_VUPlayer_LZSS; size = sizeof export_VUPlayer_LZSS;
 		break;
 
 	default:
@@ -103,31 +102,42 @@ int Atari_LoadOBX(int obx, unsigned char* mem, WORD& minadr, WORD& maxadr)
 // Load RMT routine to $3400, setnoteinstrvol to $3d00, and setvol to $3e00
 int Atari_LoadRMTRoutines()
 {
-	WORD min,max;
+	WORD min, max;
+	int size;
+	unsigned char* bin;
 
 	switch (g_trackerDriverVersion)
 	{
 	case TRACKER_DRIVER_UNPATCHED:
-	case TRACKER_DRIVER_UNPATCHED_WITH_TUNING:
-		return LoadDataAsBinaryFile(tracker_Unpatched, sizeof tracker_Unpatched, g_atarimem, min, max);
+	case TRACKER_DRIVER_UNPATCHED_WITH_TUNING: 
+		bin = tracker_Unpatched; size = sizeof tracker_Unpatched; 
+		break;
 
 	case TRACKER_DRIVER_PATCH3_INSTRUMENTARIUM:
-		return LoadDataAsBinaryFile(tracker_Patch3_Instrumentarium, sizeof tracker_Patch3_Instrumentarium, g_atarimem, min, max);
+		bin = tracker_Patch3_Instrumentarium; size = sizeof tracker_Patch3_Instrumentarium;
+		break;
 
 	case TRACKER_DRIVER_PATCH6:
-		return LoadDataAsBinaryFile(tracker_Patch6, sizeof tracker_Patch6, g_atarimem, min, max);
+		bin = tracker_Patch6; size = sizeof tracker_Patch6;
+		break;
 
 	case TRACKER_DRIVER_PATCH8:
-		return LoadDataAsBinaryFile(tracker_Patch8, sizeof tracker_Patch8, g_atarimem, min, max);
+		bin = tracker_Patch8; size = sizeof tracker_Patch8;
+		break;
 
 	case TRACKER_DRIVER_PATCH16:
-		return LoadDataAsBinaryFile(tracker_Patch16, sizeof tracker_Patch16, g_atarimem, min, max);
+		bin = tracker_Patch16; size = sizeof tracker_Patch16;
+		break;
 
 	case TRACKER_DRIVER_PATCH_PRINCE_OF_PERSIA:
-		return LoadDataAsBinaryFile(tracker_PatchPoP, sizeof tracker_PatchPoP, g_atarimem, min, max);
+		bin = tracker_PatchPoP; size = sizeof tracker_PatchPoP;
+		break;
+
+	default:
+		return 0;
 	}
 
-	return 0;
+	return LoadDataAsBinaryFile(bin, size, g_atarimem, min, max);
 }
 
 int Atari_InitRMTRoutine()

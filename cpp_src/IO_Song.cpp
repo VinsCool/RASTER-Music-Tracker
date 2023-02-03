@@ -32,7 +32,7 @@ extern CXPokey g_Pokey;
 extern CRmtMidi g_Midi;
 extern CPokeyStream g_PokeyStream;
 
-void StrToAtariVideo(char* txt, int count)
+void CSong::StrToAtariVideo(char* txt, int count)
 {
 	char a;
 	for (int i = 0; i < count; i++)

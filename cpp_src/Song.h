@@ -211,6 +211,7 @@ public:
 	void FileTrackSave();
 	void FileTrackLoad();
 
+	void StrToAtariVideo(char* txt, int count);
 	int SongToAta(unsigned char* dest, int max, int adr);
 	BOOL AtaToSong(unsigned char* sour, int len, int adr);
 
@@ -235,9 +236,9 @@ public:
 
 	bool ExportSAP_R(std::ofstream& ou);
 	bool ExportLZSS(std::ofstream& ou, LPCTSTR filename);
+	bool ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename);
 	bool ExportLZSS_SAP(std::ofstream& ou);
 	bool ExportLZSS_XEX(std::ofstream& ou);
-	//bool ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename);
 
 	void DumpSongToPokeyBuffer(int playmode = MPLAY_SONG, int songline = 0, int trackline = 0);
 	int BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* dst);

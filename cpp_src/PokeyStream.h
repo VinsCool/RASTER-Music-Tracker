@@ -25,6 +25,7 @@ public:
 	void StartRecording();
 
 	inline unsigned char* GetStreamBuffer(void) { return m_StreamBuffer; }
+	inline int GetCurrentFrame(void) { return m_FrameCounter; }
 	inline int GetFirstCountPoint(void) { return m_FirstCountPoint; }
 	inline int GetSecondCountPoint(void) { return m_SecondCountPoint; }
 	inline int GetThirdCountPoint(void) { return m_ThirdCountPoint; }
