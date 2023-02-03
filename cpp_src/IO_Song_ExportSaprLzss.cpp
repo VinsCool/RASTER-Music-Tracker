@@ -577,7 +577,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 		DumpSongToPokeyBuffer(MPLAY_FROM, subtune[count], 0);
 
-		SetStatusBarText("Compressing data ...");
+		//SetStatusBarText("Compressing data ...");
 
 		// There is an Intro section 
 		if (g_PokeyStream.GetThirdCountPoint())
@@ -787,19 +787,40 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 // A dumb SAP-R LZSS optimisations bruteforcer, returns the optimal value and buffer
 int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* dst)
 {
+	MSG msg;
+	CString statusBarLog;
+	CWnd* wnd = AfxGetApp()->GetMainWnd();
+	wnd->EnableWindow(FALSE);
+
 	// Start from a high value to force the first pattern to be the best one
 	int bestScore = 0xFFFFFF;
 	int optimal = 0;
 
 	for (int i = 0; i < SAPR_OPTIMISATIONS_COUNT; i++)
 	{
+		statusBarLog.Format("Compressing %i bytes, bruteforcing optimisation pattern %i... Current best: %i bytes with optimisation pattern %i,", srclen, i, bestScore, optimal);
+		SetStatusBarText(statusBarLog);
+
 		int bruteforced = LZSS_SAP(src, srclen, dst, i);
 		if (bruteforced < bestScore)
 		{
 			bestScore = bruteforced;
 			optimal = i;
 		}
+
+		// Send pending messages to update the screen
+		if (::PeekMessage(&msg, wnd->m_hWnd, 0, 0, PM_REMOVE))
+		{
+			::TranslateMessage(&msg);
+			::DispatchMessage(&msg);
+		}
 	}
+
+	// Bruteforcing was completed, display some stats
+	statusBarLog.Format("Done... %i bytes were shrunk to %i bytes using the optimisation pattern %i", srclen, bestScore, optimal);
+	SetStatusBarText(statusBarLog);
+
+	wnd->EnableWindow();	// Turn on the window again
 
 	return LZSS_SAP(src, srclen, dst, optimal);
 }
