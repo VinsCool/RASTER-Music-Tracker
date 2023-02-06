@@ -75,9 +75,6 @@
     <ClCompile Include="ImportDlgs.cpp">
       <Filter>Source Files\Dialogs</Filter>
     </ClCompile>
-    <ClCompile Include="getopt.cpp">
-      <Filter>Source Files\Helpers</Filter>
-    </ClCompile>
     <ClCompile Include="lzss_sap.cpp">
       <Filter>Source Files\IO - Load/Save/Export/Import/Midi\SAP-R Compressor</Filter>
     </ClCompile>
@@ -192,9 +189,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="importdlgs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="getopt.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="lzss_sap.h">

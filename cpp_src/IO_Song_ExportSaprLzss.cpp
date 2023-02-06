@@ -155,6 +155,8 @@ bool CSong::ExportLZSS(std::ofstream& ou, LPCTSTR filename)
 	// Now, create LZSS files using the SAP-R dump created earlier
 	unsigned char compressedData[65536];
 
+	CCompressLzss lzssData;
+
 	// TODO: add a Dialog box for proper standalone LZSS exports
 	// This is a hacked up method that was added only out of necessity for a project making use of song sections separately
 	// I refuse to touch RMT2LZSS ever again
@@ -162,7 +164,7 @@ bool CSong::ExportLZSS(std::ofstream& ou, LPCTSTR filename)
 	fn = fn.Left(fn.GetLength() - 5);	// In order to keep the filename without the extention 
 
 	// Full tune playback up to its loop point
-	int full = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetFirstCountPoint() * frameSize, compressedData);
+	int full = lzssData.LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetFirstCountPoint() * frameSize, compressedData);
 	if (full > 16)
 	{
 		//ou.open(fn + "_FULL.lzss", ios::binary);	// Create a new file for the Full section
@@ -171,7 +173,7 @@ bool CSong::ExportLZSS(std::ofstream& ou, LPCTSTR filename)
 	ou.close();	// Close the file, if successful, it should not be empty 
 
 	// Intro section playback, up to the start of the detected loop point
-	int intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, compressedData);
+	int intro = lzssData.LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, compressedData);
 	if (intro > 16)
 	{
 		ou.open(fn + "_INTRO.lzss", std::ios::binary);	// Create a new file for the Intro section
@@ -180,7 +182,7 @@ bool CSong::ExportLZSS(std::ofstream& ou, LPCTSTR filename)
 	ou.close();	// Close the file, if successful, it should not be empty 
 
 	// Looped section playback, this part is virtually seamless to itself
-	int loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, compressedData);
+	int loop = lzssData.LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, compressedData);
 	if (loop > 16)
 	{
 		ou.open(fn + "_LOOP.lzss", std::ios::binary);	// Create a new file for the Loop section
@@ -222,6 +224,8 @@ bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 
 	// Now, create LZSS files using the SAP-R dump created earlier
 	unsigned char compressedData[65536];
+
+	CCompressLzss lzssData;
 
 	// TODO: add a Dialog box for proper standalone LZSS exports
 	CString fn = filename;
@@ -292,7 +296,7 @@ bool CSong::ExportCompactLZSS(std::ofstream& ou, LPCTSTR filename)
 		ou << ",\t Offset (real): " << PADHEX(4, g_PokeyStream.GetOffsetPerSongline(i));
 		ou << ",\t Offset (dupe): " << PADHEX(4, listOfMatches[i]);
 		ou << ",\t Bytes (uncompressed): " << PADDEC(1, g_PokeyStream.GetFramesPerSongline(i) * frameSize);
-		ou << ",\t Bytes (LZ16 compressed): " << PADDEC(1, LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetOffsetPerSongline(i) * frameSize), g_PokeyStream.GetFramesPerSongline(i) * frameSize, compressedData));
+		ou << ",\t Bytes (LZ16 compressed): " << PADDEC(1, lzssData.LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetOffsetPerSongline(i) * frameSize), g_PokeyStream.GetFramesPerSongline(i) * frameSize, compressedData));
 		ou << std::endl;
 	}
 
@@ -322,10 +326,12 @@ bool CSong::ExportLZSS_SAP(std::ofstream& ou)
 	unsigned char buff2[65536];			// they are used for parts labeled: full, intro, and loop 
 	unsigned char buff3[65536];			// a LZSS export will typically make use of intro and loop only, unless specified otherwise
 
+	CCompressLzss lzssData;
+
 	// Now, create LZSS files using the SAP-R dump created earlier
-	int full = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetFirstCountPoint() * frameSize, buff1);
-	int intro = LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2);
-	int loop = LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3);
+	int full = lzssData.LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetFirstCountPoint() * frameSize, buff1);
+	int intro = lzssData.LZSS_SAP(g_PokeyStream.GetStreamBuffer(), g_PokeyStream.GetThirdCountPoint() * frameSize, buff2);
+	int loop = lzssData.LZSS_SAP(g_PokeyStream.GetStreamBuffer() + (g_PokeyStream.GetFirstCountPoint() * frameSize), g_PokeyStream.GetSecondCountPoint() * frameSize, buff3);
 
 	g_PokeyStream.FinishedRecording();	// Clear the SAP-R dumper memory and reset RMT routines
 
@@ -792,16 +798,18 @@ int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* 
 	CWnd* wnd = AfxGetApp()->GetMainWnd();
 	wnd->EnableWindow(FALSE);
 
+	CCompressLzss lzssData;
+
 	// Start from a high value to force the first pattern to be the best one
 	int bestScore = 0xFFFFFF;
 	int optimal = 0;
 
 	for (int i = 0; i < SAPR_OPTIMISATIONS_COUNT; i++)
 	{
-		statusBarLog.Format("Compressing %i bytes, bruteforcing optimisation pattern %i... Current best: %i bytes with optimisation pattern %i,", srclen, i, bestScore, optimal);
+		statusBarLog.Format("Compressing %i bytes, bruteforcing optimisation pattern %i... Current best: %i bytes with optimisation pattern %i", srclen, i, bestScore, optimal);
 		SetStatusBarText(statusBarLog);
 
-		int bruteforced = LZSS_SAP(src, srclen, dst, i);
+		int bruteforced = lzssData.LZSS_SAP(src, srclen, dst, i);
 		if (bruteforced < bestScore)
 		{
 			bestScore = bruteforced;
@@ -822,5 +830,5 @@ int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* 
 
 	wnd->EnableWindow();	// Turn on the window again
 
-	return LZSS_SAP(src, srclen, dst, optimal);
+	return lzssData.LZSS_SAP(src, srclen, dst, optimal);
 }

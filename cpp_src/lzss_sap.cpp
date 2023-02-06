@@ -13,20 +13,20 @@
 
 #include "lzss_sap.h"
 
+CCompressLzss::CCompressLzss()
+{
+    bits_moff = 4;
+    bits_mlen = 4;
+    min_mlen = 2;
+    fmt_literal_first = 0;
+    fmt_pos_start_zero = 0;
+    stat_len = NULL;
+    stat_off = NULL;
+}
+
  ///////////////////////////////////////////////////////
  // Bit encoding functions
-struct bf
-{
-    int len;
-    uint8_t buf[65536];
-    int bnum;
-    int bpos;
-    int hpos;
-    int total;
-    unsigned char* out;
-};
-
-static void init(struct bf* x)
+void CCompressLzss::init(struct bf* x)
 {
     x->total = 0;
     x->len = 0;
@@ -35,7 +35,7 @@ static void init(struct bf* x)
     x->hpos = -1;
 }
 
-static void bflush(struct bf* x)
+void CCompressLzss::bflush(struct bf* x)
 {
     if (x->len)
         memcpy(x->out + x->total, x->buf, x->len);
@@ -46,7 +46,7 @@ static void bflush(struct bf* x)
     x->hpos = -1;
 }
 
-static void add_bit(struct bf* x, int bit)
+void CCompressLzss::add_bit(struct bf* x, int bit)
 {
     if (x->bpos < 0)
     {
@@ -66,13 +66,13 @@ static void add_bit(struct bf* x, int bit)
     }
 }
 
-static void add_byte(struct bf* x, int byte)
+void CCompressLzss::add_byte(struct bf* x, int byte)
 {
     x->buf[x->len] = byte;
     x->len++;
 }
 
-static void add_hbyte(struct bf* x, int hbyte)
+void CCompressLzss::add_hbyte(struct bf* x, int hbyte)
 {
     if (x->hpos < 0)
     {
@@ -91,12 +91,12 @@ static void add_hbyte(struct bf* x, int hbyte)
 
 ///////////////////////////////////////////////////////
 // LZSS compression functions
-static int maximum(int a, int b)
+int CCompressLzss::maximum(int a, int b)
 {
     return a > b ? a : b;
 }
 
-static int get_mlen(const uint8_t* a, const uint8_t* b, int max)
+int CCompressLzss::get_mlen(const uint8_t* a, const uint8_t* b, int max)
 {
     for (int i = 0; i < max; i++)
         if (a[i] != b[i])
@@ -104,39 +104,13 @@ static int get_mlen(const uint8_t* a, const uint8_t* b, int max)
     return max;
 }
 
-int hsh(const uint8_t* p)
+int CCompressLzss::hsh(const uint8_t* p)
 {
     size_t x = (size_t)p;
     return 0xFF & (x ^ (x >> 8) ^ (x >> 16) ^ (x >> 24));
 }
 
-static int bits_moff = 4;       // Number of bits used for OFFSET
-static int bits_mlen = 4;       // Number of bits used for MATCH
-static int min_mlen = 2;        // Minimum match length
-static int fmt_literal_first = 0; // Always include first literal in the output
-static int fmt_pos_start_zero = 0; // Match positions start at 0, else start at max
-
-#define bits_literal (1+8)      // Number of bits for encoding a literal
-#define bits_match (1 + bits_moff + bits_mlen)  // Bits for encoding a match
-
-#define max_mlen (min_mlen + (1<<bits_mlen) -1) // Maximum match length
-#define max_off (1<<bits_moff)  // Maximum offset
-
-// Statistics
-static int* stat_len;
-static int* stat_off;
-
-// Struct for LZ optimal parsing
-struct lzop
-{
-    const uint8_t* data;// The data to compress
-    int size;           // Data size
-    int* bits;          // Number of bits needed to code from position
-    int* mlen;          // Best match length at position (0 == no match);
-    int* mpos;          // Best match offset at position
-};
-
-static void lzop_init(struct lzop* lz, const uint8_t* data, int size)
+void CCompressLzss::lzop_init(struct lzop* lz, const uint8_t* data, int size)
 {
     lz->data = data;
     lz->size = size;
@@ -146,7 +120,7 @@ static void lzop_init(struct lzop* lz, const uint8_t* data, int size)
     lz->mpos = (int*)calloc(sizeof(int), size);
 }
 
-static void lzop_free(struct lzop* lz)
+void CCompressLzss::lzop_free(struct lzop* lz)
 {
     free(lz->bits);
     free(lz->mlen);
@@ -154,7 +128,7 @@ static void lzop_free(struct lzop* lz)
 }
 
 // Returns maximal match length (and match position) at pos.
-static int match(const uint8_t* data, int pos, int size, int* mpos)
+int CCompressLzss::match(const uint8_t* data, int pos, int size, int* mpos)
 {
     int mxlen = -maximum(-max_mlen, pos - size);
     int mlen = 0;
@@ -172,7 +146,7 @@ static int match(const uint8_t* data, int pos, int size, int* mpos)
 
 // Calculate optimal encoding from the end of stream.
 // if last_literal is 1, we force the last byte to be encoded as a literal.
-static void lzop_backfill(struct lzop* lz, int last_literal)
+void CCompressLzss::lzop_backfill(struct lzop* lz, int last_literal)
 {
     // If no bytes, nothing to do
     if (!lz->size)
@@ -225,7 +199,7 @@ static void lzop_backfill(struct lzop* lz, int last_literal)
 }
 
 // Returns 1 if the coded stream would end in a match
-static int lzop_last_is_match(const struct lzop* lz)
+int CCompressLzss::lzop_last_is_match(const struct lzop* lz)
 {
     int last = 0;
     for (int pos = 0; pos < lz->size; )
@@ -247,7 +221,7 @@ static int lzop_last_is_match(const struct lzop* lz)
     return last;
 }
 
-static int lzop_encode(struct bf* b, const struct lzop* lz, int pos, int lpos)
+int CCompressLzss::lzop_encode(struct bf* b, const struct lzop* lz, int pos, int lpos)
 {
     if (pos <= lpos)
         return lpos;
@@ -291,7 +265,7 @@ static int lzop_encode(struct bf* b, const struct lzop* lz, int pos, int lpos)
 }
 
 // Optimise the AUDC bytes
-static void Optimise_AUDC(uint8_t* buf)
+void CCompressLzss::Optimise_AUDC(uint8_t* buf)
 {
     for (int i = 0; i < 4; i++)
     {
@@ -312,7 +286,7 @@ static void Optimise_AUDC(uint8_t* buf)
 }
 
 // Optimise the AUDCTL bytes, based on the values of AUDC
-static void Optimise_AUDCTL(uint8_t* buf)
+void CCompressLzss::Optimise_AUDCTL(uint8_t* buf)
 {
     // CH1 is mute, disable High Pass Filter in CH1+3
     if (!(buf[1] & 0x0F)) buf[8] &= 0xFB;
@@ -334,7 +308,7 @@ static void Optimise_AUDCTL(uint8_t* buf)
 }
 
 // Optimise the AUDF bytes, based on the values of AUDCTL and AUDC
-static void Optimise_AUDF(uint8_t* buf)
+void CCompressLzss::Optimise_AUDF(uint8_t* buf)
 {
     for (int i = 0; i < 4; i++)
     {
@@ -375,7 +349,7 @@ static void Optimise_AUDF(uint8_t* buf)
 }
 
 // Hacked up version of main() by VinsCool, stripping out most options that aren't needed for RMT 
-int LZSS_SAP(unsigned char* src, int srclen, unsigned char* dst, int optimisations)
+int CCompressLzss::LZSS_SAP(unsigned char* src, int srclen, unsigned char* dst, int optimisations)
 {
     struct bf b;
     uint8_t buf[9], * data[9];
