@@ -61,8 +61,14 @@ const Tshenv shenv[ENVROWS] =
 
 CInstruments::CInstruments()
 {
+	m_instr = new TInstrument[INSTRSNUM];
+	InitInstruments();
 }
 
+CInstruments::~CInstruments()
+{
+	if (m_instr) delete m_instr;
+}
 
 /// <summary>
 /// Reset all 64 instruments to startup defaults
@@ -81,6 +87,7 @@ void CInstruments::InitInstruments()
 /// <param name="instrumentNr">Index of the instrument 0-63</param>
 void CInstruments::ClearInstrument(int instrNr)
 {
+	if (!m_instr) return;
 	Atari_InstrumentTurnOff(instrNr); //turns off this instrument on all channels
 
 	//int i, j;

@@ -96,8 +96,14 @@ BOOL ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, 
 
 CTracks::CTracks()
 {
-	m_maxTrackLength = 64;			//default value
+	m_maxTrackLength = 64;			// Default value
+	m_track = new TTrack[TRACKSNUM];
 	InitTracks();
+}
+
+CTracks::~CTracks()
+{
+	if (m_track) delete m_track;
 }
 
 void CTracks::InitTracks()
@@ -110,6 +116,7 @@ void CTracks::InitTracks()
 
 BOOL CTracks::ClearTrack(int t)
 {
+	if (!m_track) return 0;
 	if (t < 0 || t >= TRACKSNUM) return 0;
 
 	m_track[t].len = m_maxTrackLength;	//32+(rand()&0x1f);		//0;
@@ -141,6 +148,7 @@ BOOL CTracks::IsEmptyTrack(int track)
 
 BOOL CTracks::DelNoteInstrVolSpeed(int noteinstrvolspeed, int track, int line)
 {
+	if (track >= TRACKSNUM || track < 0) return 0;
 	if (line >= m_track[track].len) return 0;
 	g_Undo.ChangeTrack(track, line, UETYPE_NOTEINSTRVOLSPEED);
 	g_Undo.Separator();
@@ -153,6 +161,7 @@ BOOL CTracks::DelNoteInstrVolSpeed(int noteinstrvolspeed, int track, int line)
 
 BOOL CTracks::SetNoteInstrVol(int note, int instr, int vol, int track, int line)
 {
+	if (track >= TRACKSNUM || track < 0) return 0; 
 	if (note >= NOTESNUM || line >= m_track[track].len) return 0;
 	if (note == -1)
 	{
@@ -175,6 +184,7 @@ BOOL CTracks::SetNoteInstrVol(int note, int instr, int vol, int track, int line)
 
 BOOL CTracks::SetInstr(int instr, int track, int line)
 {
+	if (track >= TRACKSNUM || track < 0) return 0;
 	if (line >= m_track[track].len) return 0;
 	g_Undo.ChangeTrack(track, line, UETYPE_NOTEINSTRVOL);
 	m_track[track].instr[line] = instr;
@@ -183,6 +193,7 @@ BOOL CTracks::SetInstr(int instr, int track, int line)
 
 BOOL CTracks::SetVol(int vol, int track, int line)
 {
+	if (track >= TRACKSNUM || track < 0) return 0;
 	if (line >= m_track[track].len) return 0;
 	g_Undo.ChangeTrack(track, line, UETYPE_NOTEINSTRVOL);
 	m_track[track].volume[line] = vol;
@@ -191,6 +202,7 @@ BOOL CTracks::SetVol(int vol, int track, int line)
 
 BOOL CTracks::SetSpeed(int speed, int track, int line)
 {
+	if (track >= TRACKSNUM || track < 0) return 0;
 	if (line >= m_track[track].len) return 0;
 	g_Undo.ChangeTrack(track, line, UETYPE_SPEED);
 	m_track[track].speed[line] = speed;
@@ -229,6 +241,7 @@ BOOL CTracks::SetGo(int track, int line)
 
 int CTracks::GetGoLine(int track)
 {
+	if (track >= TRACKSNUM || track < 0) return 0;
 	return (track >= 0) ? m_track[track].go : -1;
 }
 

@@ -271,7 +271,7 @@ void CUndo::ChangeSong(int songline, int trackcol, int type, char separator)
 void CUndo::ChangeInstrument(int instrnum, int paridx, int type, char separator)
 {
 	if (instrnum < 0) return;
-	TInstrument* instr = &(g_Instruments.m_instr[instrnum]);
+	TInstrument* instr = g_Instruments.GetInstrument(instrnum);
 
 	//An event with the original status at a different place
 	TUndoEvent* ue = new TUndoEvent;
@@ -486,7 +486,7 @@ char CUndo::PerformEvent(int i)
 		case UETYPE_INSTRDATA: //whole instrument
 		{
 			int instrnum = ue->pos[0];
-			TInstrument* in = &(g_Instruments.m_instr[instrnum]);
+			TInstrument* in = g_Instruments.GetInstrument(instrnum);
 			TInstrument temp;
 			memcpy((void*)&temp, in, sizeof(TInstrument));
 			memcpy((void*)in, ue->data, sizeof(TInstrument));

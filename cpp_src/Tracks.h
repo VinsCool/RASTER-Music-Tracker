@@ -30,6 +30,7 @@ class CTracks
 {
 public:
 	CTracks();
+	~CTracks();
 	void InitTracks();
 	BOOL ClearTrack(int t);
 	BOOL IsEmptyTrack(int track);
@@ -79,7 +80,7 @@ public:
 	int m_maxTrackLength;
 
 private:
-	TTrack m_track[TRACKSNUM];
+	TTrack* m_track;
 };
 
 extern CTracks			g_Tracks;

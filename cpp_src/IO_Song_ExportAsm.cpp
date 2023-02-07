@@ -960,16 +960,16 @@ void CSong::ComposeRMTFEATstring(
 		if (instrumentSavedFlags[instrumentNr])
 		{
 			// Get access to the instrument
-			TInstrument& ai = g_Instruments.m_instr[instrumentNr];
+			TInstrument* ai = g_Instruments.GetInstrument(instrumentNr);
 
 			// Run over all commands that an instrument uses
-			for (int j = 0; j <= ai.parameters[PAR_ENV_LENGTH]; j++)
+			for (int j = 0; j <= ai->parameters[PAR_ENV_LENGTH]; j++)
 			{
-				int cmd = ai.envelope[j][ENV_COMMAND] & 0x07;
+				int cmd = ai->envelope[j][ENV_COMMAND] & 0x07;
 				usedCommand[cmd]++;
 				if (cmd == 7) // AUDCTL
 				{
-					if (ai.envelope[j][ENV_X] == 0x08 && ai.envelope[j][ENV_Y] == 0x00)
+					if (ai->envelope[j][ENV_X] == 0x08 && ai->envelope[j][ENV_Y] == 0x00)
 					{
 						usedCommand7_VolumeOnly++;
 						for (int channelNr = 0; channelNr < g_tracks4_8; channelNr++) 
@@ -983,10 +983,10 @@ void CSong::ComposeRMTFEATstring(
 				}
 
 				// Portamento
-				if (ai.envelope[j][ENV_PORTAMENTO]) usedPortamento++;
+				if (ai->envelope[j][ENV_PORTAMENTO]) usedPortamento++;
 
 				// Filter
-				if (ai.envelope[j][ENV_FILTER])
+				if (ai->envelope[j][ENV_FILTER])
 				{
 					usedFilter++;
 					for (int channelNr = 0; channelNr < g_tracks4_8; channelNr++) 
@@ -997,7 +997,7 @@ void CSong::ComposeRMTFEATstring(
 				}
 
 				// Bass16
-				if (ai.envelope[j][ENV_DISTORTION] == 6)
+				if (ai->envelope[j][ENV_DISTORTION] == 6)
 				{
 					usedBass16++;
 					for (int channelNr = 0; channelNr < g_tracks4_8; channelNr++) 
@@ -1009,27 +1009,27 @@ void CSong::ComposeRMTFEATstring(
 
 			}
 			// table type
-			if (ai.parameters[PAR_TBL_TYPE]) usedTableType++;
+			if (ai->parameters[PAR_TBL_TYPE]) usedTableType++;
 			// table mode
-			if (ai.parameters[PAR_TBL_MODE]) usedTableMode++;
+			if (ai->parameters[PAR_TBL_MODE]) usedTableMode++;
 			// table go
-			if (ai.parameters[PAR_TBL_GOTO]) usedTableGoto++;	//non-zero table go
+			if (ai->parameters[PAR_TBL_GOTO]) usedTableGoto++;	//non-zero table go
 			// AUDCTL manual set
-			if (ai.parameters[PAR_AUDCTL_15KHZ]
-				|| ai.parameters[PAR_AUDCTL_HPF_CH2]
-				|| ai.parameters[PAR_AUDCTL_HPF_CH1]
-				|| ai.parameters[PAR_AUDCTL_JOIN_3_4]
-				|| ai.parameters[PAR_AUDCTL_JOIN_1_2]
-				|| ai.parameters[PAR_AUDCTL_179_CH3]
-				|| ai.parameters[PAR_AUDCTL_179_CH1]
-				|| ai.parameters[PAR_AUDCTL_POLY9]) usedAudctlManualSet++;
+			if (ai->parameters[PAR_AUDCTL_15KHZ]
+				|| ai->parameters[PAR_AUDCTL_HPF_CH2]
+				|| ai->parameters[PAR_AUDCTL_HPF_CH1]
+				|| ai->parameters[PAR_AUDCTL_JOIN_3_4]
+				|| ai->parameters[PAR_AUDCTL_JOIN_1_2]
+				|| ai->parameters[PAR_AUDCTL_179_CH3]
+				|| ai->parameters[PAR_AUDCTL_179_CH1]
+				|| ai->parameters[PAR_AUDCTL_POLY9]) usedAudctlManualSet++;
 			// Volume mininum
-			if (ai.parameters[PAR_VOL_MIN]) usedVolumeMin++;
+			if (ai->parameters[PAR_VOL_MIN]) usedVolumeMin++;
 			// Effect vibrato and frequency shift
-			if (ai.parameters[PAR_DELAY]) // only when the effect delay is non-zero
+			if (ai->parameters[PAR_DELAY]) // only when the effect delay is non-zero
 			{
-				if (ai.parameters[PAR_VIBRATO]) usedEffectVibrato++;
-				if (ai.parameters[PAR_FREQ_SHIFT]) usedEffectFrequencyShift++;
+				if (ai->parameters[PAR_VIBRATO]) usedEffectVibrato++;
+				if (ai->parameters[PAR_FREQ_SHIFT]) usedEffectFrequencyShift++;
 			}
 		}
 	}

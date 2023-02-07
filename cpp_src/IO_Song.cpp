@@ -1515,9 +1515,11 @@ bool CSong::LoadRMT(std::ifstream& in)
 		{
 			// Yes its loaded, parse its name
 			for (idx = 0; idx < INSTRUMENT_NAME_MAX_LEN && (ch = mem[addrInstrumentNames + idx]); idx++)
-				g_Instruments.m_instr[i].name[idx] = ch;
+				//g_Instruments.m_instr[i].name[idx] = ch;
+				g_Instruments.GetName(i)[idx] = ch;
 
-			for (k = idx; k < INSTRUMENT_NAME_MAX_LEN; k++) g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
+			for (k = idx; k < INSTRUMENT_NAME_MAX_LEN; k++) //g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
+				g_Instruments.GetName(i)[k] = ' '; // Fill in the gaps
 
 			// Move to source of the next instrument's name
 			addrInstrumentNames += idx + 1; //+1 is zero behind the name

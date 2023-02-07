@@ -84,6 +84,7 @@ class CInstruments
 {
 public:
 	CInstruments();
+	~CInstruments();
 
 	void InitInstruments();
 	void ClearInstrument(int it);
@@ -99,7 +100,13 @@ public:
 	void RememberOctaveAndVolume(int instr, int& oct, int& vol);
 
 	BYTE GetFlag(int instr) { return m_instr[instr].displayHintFlag; };
+	BYTE GetParameter(int instr, int param) { return m_instr[instr].parameters[param]; };
+	int GetParameterNumber(int instr) { return m_instr[instr].editParameterNr; };
+	int GetActiveEditSection(int instr) { return m_instr[instr].activeEditSection; };
+	int GetNameCursorPosition(int instr) { return m_instr[instr].editNameCursorPos; };
 	char* GetName(int it) { return m_instr[it].name; };
+
+	TInstrument* GetInstrument(int instr) { return &m_instr[instr]; };
 	TInstrumentsAll* GetInstrumentsAll() { return (TInstrumentsAll*)m_instr; };
 
 	// GUI
@@ -124,9 +131,10 @@ public:
 	BOOL AtaV0ToInstr(unsigned char* ata, int instr);	//Due to the loading of the old version
 
 	// Data
-	TInstrument m_instr[INSTRSNUM];
+	//TInstrument m_instr[INSTRSNUM];
 
 private:
+	TInstrument* m_instr;
 	void DrawName(int instrNr);				// Draw the instrument name (Show edit state with cursor position)
 	void DrawParameter(int p, int instrNr);
 	void DrawEnv(int e, int instrNr);

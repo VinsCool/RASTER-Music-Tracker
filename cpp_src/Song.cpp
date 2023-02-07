@@ -1047,6 +1047,8 @@ BOOL CSong::TrackRight(BOOL column)
 
 void CSong::TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol)
 {
+	//if (track >= TRACKSNUM || track < 0) return;
+
 	//set the current visible note to a possible goto loop
 	int line, len, go;
 	len = g_Tracks.GetLastLine(track) + 1;
@@ -1055,8 +1057,11 @@ void CSong::TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& v
 		line = m_trackactiveline;
 	else
 	{
-		if (go >= 0)
-			line = (m_trackactiveline - len) % (go - len) + go;
+		int loop = (go - len) + go;
+		if (go >= 0 && loop)
+		{
+			line = (m_trackactiveline - len) % loop;
+		}
 		else
 		{
 			note = instr = vol = -1;
@@ -1091,7 +1096,7 @@ int* CSong::GetUECursor(int part)
 		{
 			cursor = new int[6];
 			cursor[0] = m_activeinstr;
-			TInstrument* in = &(g_Instruments.m_instr[m_activeinstr]);
+			TInstrument* in = g_Instruments.GetInstrument(m_activeinstr);
 			cursor[1] = in->activeEditSection;
 			cursor[2] = in->editEnvelopeX;
 			cursor[3] = in->editEnvelopeY;
@@ -1729,8 +1734,7 @@ void CSong::BlockPaste(int special)
 void CSong::InstrCopy()
 {
 	int i = GetActiveInstr();
-	TInstrument& ai = g_Instruments.m_instr[i];
-	memcpy((void*)(&m_instrclipboard), (void*)(&ai), sizeof(TInstrument));
+	memcpy(&m_instrclipboard, g_Instruments.GetInstrument(i), sizeof(TInstrument));
 }
 
 void CSong::InstrPaste(int special)
@@ -1741,7 +1745,7 @@ void CSong::InstrPaste(int special)
 
 	g_Undo.ChangeInstrument(i, 0, UETYPE_INSTRDATA, 1);
 
-	TInstrument& ai = g_Instruments.m_instr[i];
+	TInstrument* ai = g_Instruments.GetInstrument(i);
 
 	Atari_InstrumentTurnOff(i); //turns off this instrument on all channels
 
@@ -1752,8 +1756,8 @@ void CSong::InstrPaste(int special)
 	switch (special)
 	{
 		case 0: //normal paste
-			memcpy((void*)(&ai), (void*)(&m_instrclipboard), sizeof(TInstrument));
-			ai.activeEditSection = ai.editNameCursorPos = 0; //so that the cursor is at the beginning of the instrument name
+			memcpy(ai, &m_instrclipboard, sizeof(TInstrument));
+			ai->activeEditSection = ai->editNameCursorPos = 0; //so that the cursor is at the beginning of the instrument name
 			break;
 
 		case 1: //volume L/R
@@ -1770,25 +1774,25 @@ void CSong::InstrPaste(int special)
 		InstrPaste_Envelopes:
 			for (x = 0; x <= m_instrclipboard.parameters[PAR_ENV_LENGTH]; x++)
 			{
-				if (br) ai.envelope[x][ENV_VOLUMER] = m_instrclipboard.envelope[x][ENV_VOLUMER];
-				if (bl) ai.envelope[x][ENV_VOLUMEL] = m_instrclipboard.envelope[x][ENV_VOLUMEL];
-				if (bltor) ai.envelope[x][ENV_VOLUMER] = m_instrclipboard.envelope[x][ENV_VOLUMEL];
-				if (brtol) ai.envelope[x][ENV_VOLUMEL] = m_instrclipboard.envelope[x][ENV_VOLUMER];
+				if (br) ai->envelope[x][ENV_VOLUMER] = m_instrclipboard.envelope[x][ENV_VOLUMER];
+				if (bl) ai->envelope[x][ENV_VOLUMEL] = m_instrclipboard.envelope[x][ENV_VOLUMEL];
+				if (bltor) ai->envelope[x][ENV_VOLUMER] = m_instrclipboard.envelope[x][ENV_VOLUMEL];
+				if (brtol) ai->envelope[x][ENV_VOLUMEL] = m_instrclipboard.envelope[x][ENV_VOLUMER];
 				if (ep)
 				{
-					for (y = ENV_DISTORTION; y < ENVROWS; y++) ai.envelope[x][y] = m_instrclipboard.envelope[x][y];
+					for (y = ENV_DISTORTION; y < ENVROWS; y++) ai->envelope[x][y] = m_instrclipboard.envelope[x][y];
 				}
 			}
-			ai.parameters[PAR_ENV_LENGTH] = m_instrclipboard.parameters[PAR_ENV_LENGTH];
-			ai.parameters[PAR_ENV_GOTO] = m_instrclipboard.parameters[PAR_ENV_GOTO];
-			ai.editEnvelopeX = 0;
+			ai->parameters[PAR_ENV_LENGTH] = m_instrclipboard.parameters[PAR_ENV_LENGTH];
+			ai->parameters[PAR_ENV_GOTO] = m_instrclipboard.parameters[PAR_ENV_GOTO];
+			ai->editEnvelopeX = 0;
 			break;
 
 		case 5: //TABLE
-			for (x = 0; x <= m_instrclipboard.parameters[PAR_TBL_LENGTH]; x++) ai.noteTable[x] = m_instrclipboard.noteTable[x];
-			ai.parameters[PAR_TBL_LENGTH] = m_instrclipboard.parameters[PAR_TBL_LENGTH];
-			ai.parameters[PAR_TBL_GOTO] = m_instrclipboard.parameters[PAR_TBL_GOTO];
-			ai.editNoteTableCursorPos = 0;
+			for (x = 0; x <= m_instrclipboard.parameters[PAR_TBL_LENGTH]; x++) ai->noteTable[x] = m_instrclipboard.noteTable[x];
+			ai->parameters[PAR_TBL_LENGTH] = m_instrclipboard.parameters[PAR_TBL_LENGTH];
+			ai->parameters[PAR_TBL_GOTO] = m_instrclipboard.parameters[PAR_TBL_GOTO];
+			ai->editNoteTableCursorPos = 0;
 			break;
 
 		case 6: //vol+env
@@ -1803,30 +1807,30 @@ void CSong::InstrPaste(int special)
 
 		case 7: //vol+env insert to cursor
 			int sx = m_instrclipboard.parameters[PAR_ENV_LENGTH] + 1;
-			if (ai.editEnvelopeX + sx > ENVELOPE_MAX_COLUMNS) sx = ENVELOPE_MAX_COLUMNS - ai.editEnvelopeX;
-			for (x = ENVELOPE_MAX_COLUMNS - 2; x >= ai.editEnvelopeX; x--) //offset
+			if (ai->editEnvelopeX + sx > ENVELOPE_MAX_COLUMNS) sx = ENVELOPE_MAX_COLUMNS - ai->editEnvelopeX;
+			for (x = ENVELOPE_MAX_COLUMNS - 2; x >= ai->editEnvelopeX; x--) //offset
 			{
 				int i = x + sx;
 				if (i >= ENVELOPE_MAX_COLUMNS) continue;
-				for (y = 0; y < ENVROWS; y++) ai.envelope[i][y] = ai.envelope[x][y];
+				for (y = 0; y < ENVROWS; y++) ai->envelope[i][y] = ai->envelope[x][y];
 			}
 			for (x = 0; x < sx; x++) //insertion
 			{
-				int i = ai.editEnvelopeX + x;
-				for (y = 0; y < ENVROWS; y++) ai.envelope[i][y] = m_instrclipboard.envelope[x][y];
+				int i = ai->editEnvelopeX + x;
+				for (y = 0; y < ENVROWS; y++) ai->envelope[i][y] = m_instrclipboard.envelope[x][y];
 			}
-			int i = ai.parameters[PAR_ENV_LENGTH] + sx;
+			int i = ai->parameters[PAR_ENV_LENGTH] + sx;
 			if (i >= ENVELOPE_MAX_COLUMNS) i = ENVELOPE_MAX_COLUMNS - 1;
-			ai.parameters[PAR_ENV_LENGTH] = i;
-			if (ai.parameters[PAR_ENV_GOTO] > ai.editEnvelopeX)
+			ai->parameters[PAR_ENV_LENGTH] = i;
+			if (ai->parameters[PAR_ENV_GOTO] > ai->editEnvelopeX)
 			{
-				i = ai.parameters[PAR_ENV_GOTO] + sx;
+				i = ai->parameters[PAR_ENV_GOTO] + sx;
 				if (i >= ENVELOPE_MAX_COLUMNS) i = ENVELOPE_MAX_COLUMNS - 1;
-				ai.parameters[PAR_ENV_GOTO] = i;
+				ai->parameters[PAR_ENV_GOTO] = i;
 			}
-			i = ai.editEnvelopeX + sx;
+			i = ai->editEnvelopeX + sx;
 			if (i >= ENVELOPE_MAX_COLUMNS) i = ENVELOPE_MAX_COLUMNS - 1;
-			ai.editEnvelopeX = i;
+			ai->editEnvelopeX = i;
 			break;
 
 	}
@@ -2775,7 +2779,7 @@ void CSong::RenumberAllInstruments(int type)
 				//move to
 				if (i != di)
 				{
-					memcpy((void*)(&g_Instruments.m_instr[di]), (void*)(&g_Instruments.m_instr[i]), sizeof(TInstrument));
+					memcpy(g_Instruments.GetInstrument(di), g_Instruments.GetInstrument(i), sizeof(TInstrument));
 					//and delete instrument i
 					g_Instruments.ClearInstrument(i);
 				}
@@ -2795,9 +2799,9 @@ void CSong::RenumberAllInstruments(int type)
 			{
 				int n = moveinstrto[i];	//swap i <--> n
 				if (n == i) continue;
-				memcpy((void*)(&bufi), (void*)(&g_Instruments.m_instr[i]), sizeof(TInstrument)); // i -> buffer
-				memcpy((void*)(&g_Instruments.m_instr[i]), (void*)(&g_Instruments.m_instr[n]), sizeof(TInstrument)); // n -> i
-				memcpy((void*)(&g_Instruments.m_instr[n]), (void*)(&bufi), sizeof(TInstrument)); // buffer -> n
+				memcpy(&bufi, g_Instruments.GetInstrument(i), sizeof(TInstrument)); // i -> buffer
+				memcpy(g_Instruments.GetInstrument(i), g_Instruments.GetInstrument(n), sizeof(TInstrument)); // n -> i
+				memcpy(g_Instruments.GetInstrument(n), &bufi, sizeof(TInstrument)); // buffer -> n
 				//
 				for (j = i; j < order; j++)
 				{
@@ -2842,9 +2846,9 @@ void CSong::RenumberAllInstruments(int type)
 						if (swap)
 						{
 							//swap j and k
-							memcpy((void*)(&bufi), (void*)(&g_Instruments.m_instr[j]), sizeof(TInstrument)); // j -> buffer
-							memcpy((void*)(&g_Instruments.m_instr[j]), (void*)(&g_Instruments.m_instr[k]), sizeof(TInstrument)); // k -> j
-							memcpy((void*)(&g_Instruments.m_instr[k]), (void*)(&bufi), sizeof(TInstrument)); // buffer -> k
+							memcpy(&bufi, g_Instruments.GetInstrument(j), sizeof(TInstrument)); // j -> buffer
+							memcpy(g_Instruments.GetInstrument(j), g_Instruments.GetInstrument(k), sizeof(TInstrument)); // k -> j
+							memcpy(g_Instruments.GetInstrument(k), &bufi, sizeof(TInstrument)); // buffer -> k
 							//adjust table accordingly
 							int p;
 							for (p = 0; p < INSTRSNUM; p++)
