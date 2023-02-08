@@ -55,7 +55,7 @@ void CALLBACK G_TimerRoutine(UINT, UINT, DWORD, DWORD, DWORD)
 
 CSong::CSong()
 {
-	ClearSong(8);	// The default is 8 stereo tracks
+	//ClearSong(8);	// The default is 8 stereo tracks
 
 	// initialise Timer
 	m_timer = 0;

@@ -61,13 +61,15 @@ const Tshenv shenv[ENVROWS] =
 
 CInstruments::CInstruments()
 {
+	if (m_instr) delete m_instr;
 	m_instr = new TInstrument[INSTRSNUM];
-	InitInstruments();
+	//InitInstruments();
 }
 
 CInstruments::~CInstruments()
 {
 	if (m_instr) delete m_instr;
+	m_instr = NULL;
 }
 
 /// <summary>
@@ -87,83 +89,48 @@ void CInstruments::InitInstruments()
 /// <param name="instrumentNr">Index of the instrument 0-63</param>
 void CInstruments::ClearInstrument(int instrNr)
 {
-	if (!m_instr) return;
-	Atari_InstrumentTurnOff(instrNr); //turns off this instrument on all channels
-
-	//int i, j;
+	// Turn off this instrument on all channels
+	Atari_InstrumentTurnOff(instrNr);
 
 	// Clear everything/All zero
-	char* ptr = (char *)& m_instr[instrNr];
-	memset(ptr, 0, sizeof(TInstrument));
+	TInstrument* instrument = GetInstrument(instrNr);
+	memset(instrument, 0, sizeof(TInstrument));
 
-	// Init the name "Instrument XX
-	ptr = m_instr[instrNr].name;
-	memset(ptr, ' ', INSTRUMENT_NAME_MAX_LEN);
-	sprintf(ptr, "Instrument %02X", instrNr);
-	ptr[strlen(ptr)] = ' '; // Change the terminating zero into a space
+	// Init the name "Instrument XX"
+	int len = sprintf(instrument->name, "Instrument %02X", instrNr);
 
-	m_instr[instrNr].activeEditSection = INSTRUMENT_SECTION_ENVELOPE;// Activate on the Envelope, so testing instruments wouldn't cause accidental rename
-	m_instr[instrNr].editNameCursorPos = 0;					//0 character name
-	m_instr[instrNr].editParameterNr = PAR_ENV_LENGTH;		// Envelope length is the default parameter to edit
-	m_instr[instrNr].editEnvelopeX = 0;
-	m_instr[instrNr].editEnvelopeY = 1;						//volume left
-	m_instr[instrNr].editNoteTableCursorPos = 0;			//0 element in the table
+	// Replace all the remaining characters with spaces
+	memset(instrument->name + len, ' ', INSTRUMENT_NAME_MAX_LEN - len);
 
-	m_instr[instrNr].octave = 0;
-	m_instr[instrNr].volume = MAXVOLUME;
-	/*
-	for (i = 0; i < PARCOUNT; i++) m_instr[instrNr].parameters[i] = 0;
-	for (i = 0; i < ENVCOLS; i++)
-	{
-		for (j = 0; j < ENVROWS; j++) m_instr[instrNr].envelope[i][j] = 0; //rand()&0x0f;			//0;
-	}
-	for (i = 0; i < TABLEN; i++) m_instr[instrNr].noteTable[i] = 0;
-	*/
-	//m_iflag[instrNr] = 0;	//init instrument flag
+	// Set some initial values
+	instrument->activeEditSection = INSTRUMENT_SECTION_ENVELOPE;	// Activate on the Envelope, so testing instruments wouldn't cause accidental rename
+	instrument->editNameCursorPos = 0;								// 0 character name
+	instrument->editParameterNr = PAR_ENV_LENGTH;					// Envelope length is the default parameter to edit
+	instrument->editEnvelopeX = 0;
+	instrument->editEnvelopeY = 1;									// Volume left
+	instrument->editNoteTableCursorPos = 0;							// 0 element in the table
+	instrument->octave = 0;
+	instrument->volume = MAXVOLUME;
 
-	WasModified(instrNr);						//apply to Atari Mem
+	// Apply to Atari Mem
+	WasModified(instrNr);
 }
-
-/*
-void CInstruments::RandomInstrument(int it)
-{
-	ClearInstrument(it);
-	unsigned int rid = (unsigned)time( NULL );
-	srand( rid );
-	CString s;
-	s.Format("Random instrument %u",rid);	//jmeno
-	strncpy(m_instr[it].name,(LPCTSTR)s,s.GetLength());
-	int len=rand()%ENVCOLS;
-	int go=rand()%(len+1);
-	int i,j;
-	for(i=0; i<=len; i++)
-	{
-		for(j=0; j<ENVROWS-2; j++)
-		{
-			int ran = rand() & 0x0f & shenv[j].pand;
-			if (j==ENV_COMMAND) ran = 1+ (rand() % 2);	//command 1-2
-			m_instr[it].env[i][j] = ran;
-		}
-	}
-	m_instr[it].par[PAR_ENVLEN]=len;
-	m_instr[it].par[PAR_ENVGO]=go;
-
-	ModificationInstrument(it);			//promitne do Atari mem
-}
-*/
-
 
 void CInstruments::CheckInstrumentParameters(int instr)
 {
-	TInstrument& ai = m_instr[instr];
+	TInstrument* ai = GetInstrument(instr);
+
 	//ENVELOPE len-go loop control
-	if (ai.parameters[PAR_ENV_GOTO] > ai.parameters[PAR_ENV_LENGTH]) ai.parameters[PAR_ENV_GOTO] = ai.parameters[PAR_ENV_LENGTH];
+	if (ai->parameters[PAR_ENV_GOTO] > ai->parameters[PAR_ENV_LENGTH]) ai->parameters[PAR_ENV_GOTO] = ai->parameters[PAR_ENV_LENGTH];
+	
 	//TABLE len-go loop control
-	if (ai.parameters[PAR_TBL_GOTO] > ai.parameters[PAR_TBL_LENGTH]) ai.parameters[PAR_TBL_GOTO] = ai.parameters[PAR_TBL_LENGTH];
+	if (ai->parameters[PAR_TBL_GOTO] > ai->parameters[PAR_TBL_LENGTH]) ai->parameters[PAR_TBL_GOTO] = ai->parameters[PAR_TBL_LENGTH];
+	
 	//check the cursor in the envelope
-	if (ai.editEnvelopeX > ai.parameters[PAR_ENV_LENGTH]) ai.editEnvelopeX = ai.parameters[PAR_ENV_LENGTH];
+	if (ai->editEnvelopeX > ai->parameters[PAR_ENV_LENGTH]) ai->editEnvelopeX = ai->parameters[PAR_ENV_LENGTH];
+	
 	//check the cursor in the table
-	if (ai.editNoteTableCursorPos > ai.parameters[PAR_TBL_LENGTH]) ai.editNoteTableCursorPos = ai.parameters[PAR_TBL_LENGTH];
+	if (ai->editNoteTableCursorPos > ai->parameters[PAR_TBL_LENGTH]) ai->editNoteTableCursorPos = ai->parameters[PAR_TBL_LENGTH];
 	
 	//something changed => Save instrument "to Atari"
 	// NOTE: Done from the outside
@@ -177,36 +144,38 @@ void CInstruments::CheckInstrumentParameters(int instr)
 void CInstruments::RecalculateFlag(int instr)
 {
 	BYTE flag = 0;
-	TInstrument& ti = m_instr[instr];
+	TInstrument* ti = GetInstrument(instr);
 	int i;
-	int envl = ti.parameters[PAR_ENV_LENGTH];
+	int envl = ti->parameters[PAR_ENV_LENGTH];
+
 	//filter?
 	for (i = 0; i <= envl; i++)
 	{
-		if (ti.envelope[i][ENV_FILTER]) { flag |= IF_FILTER; break; }
+		if (ti->envelope[i][ENV_FILTER]) { flag |= IF_FILTER; break; }
 	}
 
 	//bass16?
 	for (i = 0; i <= envl; i++)
 	{
 		//the filter takes priority over bass16, ie if the filter is enabled as well as bass16, bass16 does not become active
-		if (ti.envelope[i][ENV_DISTORTION] == 6 && !ti.envelope[i][ENV_FILTER]) { flag |= IF_BASS16; break; }
+		if (ti->envelope[i][ENV_DISTORTION] == 6 && !ti->envelope[i][ENV_FILTER]) { flag |= IF_BASS16; break; }
 	}
 
 	//portamento?
 	for (i = 0; i <= envl; i++)
 	{
-		if (ti.envelope[i][ENV_PORTAMENTO]) { flag |= IF_PORTAMENTO; break; }
+		if (ti->envelope[i][ENV_PORTAMENTO]) { flag |= IF_PORTAMENTO; break; }
 	}
+
 	//audctl?
 	for (i = PAR_AUDCTL_15KHZ; i <= PAR_AUDCTL_POLY9; i++)
 	{
-		if (ti.parameters[i]) { flag |= IF_AUDCTL; break; }
+		if (ti->parameters[i]) { flag |= IF_AUDCTL; break; }
 	}
 	//
 	//m_iflag[instr] = flag;
 
-	m_instr[instr].displayHintFlag = flag;
+	ti->displayHintFlag = flag;
 }
 
 /// <summary>
@@ -217,19 +186,19 @@ void CInstruments::RecalculateFlag(int instr)
 /// <returns>true if the instrument has values, False if it is in default state</returns>
 BOOL CInstruments::CalculateNotEmpty(int instr)
 {
-	TInstrument& it = m_instr[instr];
+	TInstrument* ti = GetInstrument(instr);
 	int i, j;
-	int len = it.parameters[PAR_ENV_LENGTH];
+	int len = ti->parameters[PAR_ENV_LENGTH];
 	for (i = 0; i <= len; i++)
 	{
 		for (j = 0; j < ENVROWS; j++)
 		{
-			if (it.envelope[i][j] != 0) return 1;
+			if (ti->envelope[i][j] != 0) return 1;
 		}
 	}
 	for (i = 0; i < PARCOUNT; i++)
 	{
-		if (it.parameters[i] != 0) return 1;
+		if (ti->parameters[i] != 0) return 1;
 	}
 	return 0; //is empty
 }
@@ -243,13 +212,15 @@ BOOL CInstruments::CalculateNotEmpty(int instr)
 /// <param name="newVolume">volume level to set</param>
 void CInstruments::SetEnvelopeVolume(int instr, BOOL right, int px, int newVolume)
 {
+	TInstrument* ti = GetInstrument(instr);
+
 	// Validate
-	int len = m_instr[instr].parameters[PAR_ENV_LENGTH] + 1;
+	int len = ti->parameters[PAR_ENV_LENGTH] + 1;
 	if (px < 0 || px >= len) return;
 	if (newVolume < 0 || newVolume > 15) return;
 
 	int ep = (right && g_tracks4_8 > 4) ? ENV_VOLUMER : ENV_VOLUMEL;
-	m_instr[instr].envelope[px][ep] = newVolume;
+	ti->envelope[px][ep] = newVolume;
 
 	// Recalc some info about the updated instrument
 	WasModified(instr);
@@ -266,15 +237,15 @@ int CInstruments::GetFrequency(int instr, int note)
 {
 	if (instr < 0 || instr >= INSTRSNUM || note < 0 || note >= NOTESNUM) return -1;
 
-	TInstrument& tt = m_instr[instr];
-	if (tt.parameters[PAR_TBL_TYPE] == 0)  //only for NOTES table
+	TInstrument* tt = GetInstrument(instr);
+	if (tt->parameters[PAR_TBL_TYPE] == 0)  //only for NOTES table
 	{
-		int nsh = tt.noteTable[0];	//shift notes according to table 0
+		int nsh = tt->noteTable[0];	//shift notes according to table 0
 		note = (note + nsh) & 0xff;
 		if (note < 0 || note >= NOTESNUM) return -1;
 	}
 	int frq = -1;
-	int dis = tt.envelope[0][ENV_DISTORTION];
+	int dis = tt->envelope[0][ENV_DISTORTION];
 	if (dis == 0x0c) frq = g_atarimem[RMT_FRQTABLES + 64 + note];
 	else if (dis == 0x0e || dis == 0x06) frq = g_atarimem[RMT_FRQTABLES + 128 + note];
 	else
@@ -292,10 +263,10 @@ int CInstruments::GetNote(int instr, int note)
 {
 	if (instr < 0 || instr >= INSTRSNUM || note < 0 || note >= NOTESNUM) return -1;
 
-	TInstrument& tt = m_instr[instr];
-	if (tt.parameters[PAR_TBL_TYPE] == 0)  //only for NOTES table
+	TInstrument* tt = GetInstrument(instr);
+	if (tt->parameters[PAR_TBL_TYPE] == 0)  //only for NOTES table
 	{
-		int nsh = tt.noteTable[0];	//shift notes according to table 0
+		int nsh = tt->noteTable[0];	//shift notes according to table 0
 		note = (note + nsh) & 0xff;
 		if (note < 0 || note >= NOTESNUM) return -1;
 	}
@@ -312,8 +283,9 @@ void CInstruments::MemorizeOctaveAndVolume(int instr, int oct, int vol)
 {
 	if (g_keyboard_RememberOctavesAndVolumes)
 	{
-		if (oct >= 0) m_instr[instr].octave = oct;
-		if (vol >= 0) m_instr[instr].volume = vol;
+		TInstrument* ti = GetInstrument(instr);
+		if (oct >= 0) ti->octave = oct;
+		if (vol >= 0) ti->volume = vol;
 	}
 }
 
@@ -327,8 +299,9 @@ void CInstruments::RememberOctaveAndVolume(int instr, int& oct, int& vol)
 {
 	if (g_keyboard_RememberOctavesAndVolumes)
 	{
-		oct = m_instr[instr].octave;
-		vol = m_instr[instr].volume;
+		TInstrument* ti = GetInstrument(instr);
+		oct = ti->octave;
+		vol = ti->volume;
 	}
 }
 

@@ -88,7 +88,6 @@ public:
 
 	void InitInstruments();
 	void ClearInstrument(int it);
-	//void RandomInstrument(int it);	
 
 	void CheckInstrumentParameters(int instr);
 	void RecalculateFlag(int instr);
@@ -128,13 +127,10 @@ public:
 	BYTE InstrToAtaRMF(int instr, unsigned char* ata, int max);
 	BOOL AtaToInstr(unsigned char* ata, int instr);
 
-	BOOL AtaV0ToInstr(unsigned char* ata, int instr);	//Due to the loading of the old version
-
-	// Data
-	//TInstrument m_instr[INSTRSNUM];
+	BOOL AtaV0ToInstr(unsigned char* ata, int instr);	// Due to the loading of the old version
 
 private:
-	TInstrument* m_instr;
+	TInstrument* m_instr;					// Pointer to Instrument data
 	void DrawName(int instrNr);				// Draw the instrument name (Show edit state with cursor position)
 	void DrawParameter(int p, int instrNr);
 	void DrawEnv(int e, int instrNr);

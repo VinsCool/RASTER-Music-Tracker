@@ -544,7 +544,7 @@ void CInstruments::DrawEnv(int e, int it)
 /// <param name="instrNr">Which instrument</param>
 void CInstruments::DrawNoteTableValue(int noteIdx, int instrNr)
 {
-	TInstrument& data = m_instr[instrNr];
+	TInstrument* data = GetInstrument(instrNr);
 	char szBuffer[3];
 
 	// Draw the position #
@@ -554,10 +554,10 @@ void CInstruments::DrawNoteTableValue(int noteIdx, int instrNr)
 	TextMiniXY(szBuffer, INSTRS_TABLE_X + noteIdx * 24, INSTRS_TABLE_Y);
 
 	// Note Table parameter
-	sprintf(szBuffer, "%02X", data.noteTable[noteIdx]);
+	sprintf(szBuffer, "%02X", data->noteTable[noteIdx]);
 
 	int color = TEXT_COLOR_WHITE;
-	if (data.activeEditSection == INSTRUMENT_SECTION_NOTETABLE && data.editNoteTableCursorPos == noteIdx && g_activepart == PART_INSTRUMENTS)
+	if (data->activeEditSection == INSTRUMENT_SECTION_NOTETABLE && data->editNoteTableCursorPos == noteIdx && g_activepart == PART_INSTRUMENTS)
 	{
 		color = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
 	}
