@@ -45,13 +45,6 @@ struct TExportMetadata
 	char atariText[5 * 40];
 };
 
-/*
-struct TSongTrackAndTrackData
-{
-	int tracknum;
-	TTrack trackdata;
-};
-*/
 
 typedef struct
 {
@@ -346,17 +339,18 @@ public:
 	TBookmark* GetBookmark() { return &m_bookmark; };
 
 	int GetPlayMode() { return m_play; };
+	BOOL GetFollowPlayMode() { return m_followplay; };
+	void SetFollowPlayMode(BOOL follow) { m_followplay = follow; };
 
 	void GetSongInfoPars(TInfo* info) { memcpy(info->songname, m_songname, SONG_NAME_MAX_LEN); info->speed = m_speed; info->mainspeed = m_mainSpeed; info->instrspeed = m_instrumentSpeed; info->songnamecur = m_songnamecur; };
 	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONG_NAME_MAX_LEN); m_speed = info->speed; m_mainSpeed = info->mainspeed; m_instrumentSpeed = info->instrspeed; m_songnamecur = info->songnamecur; };
-
-	BOOL volatile m_followplay;
-	int volatile m_play;
 
 private:
 	int m_song[SONGLEN][SONGTRACKS];
 	int m_songgo[SONGLEN];						// If >= 0, then GO applies
 
+	BOOL volatile m_followplay;
+	int volatile m_play;
 	int m_songactiveline;
 	int volatile m_songplayline;				// Which line of the song is currently being played
 

@@ -98,14 +98,16 @@ public:
 	void MemorizeOctaveAndVolume(int instr, int oct, int vol);
 	void RememberOctaveAndVolume(int instr, int& oct, int& vol);
 
-	BYTE GetFlag(int instr) { return m_instr[instr].displayHintFlag; };
-	BYTE GetParameter(int instr, int param) { return m_instr[instr].parameters[param]; };
-	int GetParameterNumber(int instr) { return m_instr[instr].editParameterNr; };
-	int GetActiveEditSection(int instr) { return m_instr[instr].activeEditSection; };
-	int GetNameCursorPosition(int instr) { return m_instr[instr].editNameCursorPos; };
-	char* GetName(int it) { return m_instr[it].name; };
+	BOOL IsValidInstrument(int instr) { return instr >= 0 && instr < INSTRSNUM; };
 
-	TInstrument* GetInstrument(int instr) { return &m_instr[instr]; };
+	BYTE GetFlag(int instr) { return IsValidInstrument(instr) ? m_instr[instr].displayHintFlag : -1; };
+	BYTE GetParameter(int instr, int param) { return IsValidInstrument(instr) ? m_instr[instr].parameters[param] : -1; };
+	int GetParameterNumber(int instr) { return IsValidInstrument(instr) ? m_instr[instr].editParameterNr : -1; };
+	int GetActiveEditSection(int instr) { return IsValidInstrument(instr) ? m_instr[instr].activeEditSection : -1; };
+	int GetNameCursorPosition(int instr) { return IsValidInstrument(instr) ? m_instr[instr].editNameCursorPos : -1; };
+	char* GetName(int instr) { return IsValidInstrument(instr) ? m_instr[instr].name : NULL; };
+
+	TInstrument* GetInstrument(int instr) { return IsValidInstrument(instr) ? &m_instr[instr] : NULL; };
 	TInstrumentsAll* GetInstrumentsAll() { return (TInstrumentsAll*)m_instr; };
 
 	// GUI
@@ -130,9 +132,11 @@ public:
 	BOOL AtaV0ToInstr(unsigned char* ata, int instr);	// Due to the loading of the old version
 
 private:
-	TInstrument* m_instr;					// Pointer to Instrument data
+	TInstrument* m_instr;					// Pointer to TInstrument struct, used for instruments data
 	void DrawName(int instrNr);				// Draw the instrument name (Show edit state with cursor position)
 	void DrawParameter(int p, int instrNr);
 	void DrawEnv(int e, int instrNr);
 	void DrawNoteTableValue(int p, int instrNr);
 };
+
+extern CInstruments g_Instruments;

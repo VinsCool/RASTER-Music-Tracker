@@ -14,6 +14,36 @@
 #include "global.h"
 
 
+const char* notesandscales[5][40] =
+{
+	// Standard Western Notation, Sharp (#) accidentals 
+	{ "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "B-" },
+
+	// Standard Western Notation, Flat (b) accidentals 
+	{ "C-", "Db", "D-", "Eb", "E-", "F-", "Gb", "G-", "Ab", "A-", "Bb", "B-" },
+
+	// German Notation, Sharp (#) accidentals 
+	{ "C-", "C#", "D-", "D#", "E-", "F-", "F#", "G-", "G#", "A-", "A#", "H-" },
+
+	// German Notation, Flat (b) accidentals 
+	{ "C-", "Db", "D-", "Eb", "E-", "F-", "Gb", "G-", "Ab", "A-", "B-", "H-" },
+
+	// Test Notation
+	{ "1-", "2-", "3-", "4-", "5-", "6-", "7-", "8-", "9-", "A-", "B-", "C-",
+	"D-", "E-", "F-", "G-", "H-", "I-", "J-", "K-", "L-", "M-", "N-", "O-",
+	"P-", "Q-", "R-", "S-", "T-", "U-", "V-", "W-", "X-", "Y-", "Z-" }
+};
+
+//TODO: Optimise the notes arrays to be more compact, there is a lot of duplicates
+const char* notes[] =
+{ "C-1","C#1","D-1","D#1","E-1","F-1","F#1","G-1","G#1","A-1","A#1","B-1",
+  "C-2","C#2","D-2","D#2","E-2","F-2","F#2","G-2","G#2","A-2","A#2","B-2",
+  "C-3","C#3","D-3","D#3","E-3","F-3","F#3","G-3","G#3","A-3","A#3","B-3",
+  "C-4","C#4","D-4","D#4","E-4","F-4","F#4","G-4","G#4","A-4","A#4","B-4",
+  "C-5","C#5","D-5","D#5","E-5","F-5","F#5","G-5","G#5","A-5","A#5","B-5",
+  "C-6","???","???","???"
+};
+
 //highlight colours on active rows in patterns
 //	X	X	:		C	#	1		I	I		v	V		!	S	S	
 static char csel0[15] = { 6,6,6,6,6,6,6,6,6,6,6,6,6,6,6 };	//use for active lines
@@ -38,54 +68,30 @@ static char* colacprove[] =
 	cselprove1,cselprove2,cselprove3,cselprove4
 };
 
-BOOL CTracks::DrawTrackHeader(int col, int x, int y, int tr)	// , int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu)	//not needed: line_cnt, aline, cactview, pline, isactive, acu
+BOOL CTracks::DrawTrackHeader(int col, int x, int y, int tr)
 {
-	char t[16];
-	//int c, len, last, go;
-	//len = last = 0;
-	int c, len, go;
-	len = 0;
-	TTrack* tt = NULL;
-
-	//offset Y to be 1 line above
-	y -= 16;
-
-	strcpy(t, "  --  -----  ");
-	if (tr >= 0 && tr <= 253)
+	TTrack* tt;
+	char t[16] = "  --  -----  ";
+	
+	if (tt = GetTrack(tr))
 	{
-		tt = &m_track[tr];
-
 		t[2] = CharH4(tr);
 		t[3] = CharL4(tr);
 		t[4] = ':';
-
-		//len = last = tt->len;	//len a last
-		len = tt->len;
-		go = tt->go;	//go
-
-		if (IsEmptyTrack(tr))
+		if (tt->len >= 0)
 		{
-			strncpy(t + 6, "EMPTY", 5);
+			t[6] = CharH4(tt->len);
+			t[7] = CharL4(tt->len);
 		}
-		else
-		{	//non-empty track
-			if (len >= 0)
-			{
-				t[6] = CharH4(len);
-				t[7] = CharL4(len);
-			}
-			if (go >= 0)
-			{
-				t[9] = CharH4(go);
-				t[10] = CharL4(go);
-				//last = m_maxtracklen;
-			}
+		if (tt->go >= 0)
+		{
+			t[9] = CharH4(tt->go);
+			t[10] = CharL4(tt->go);
 		}
 	}
 
-	//and now draw the infos above tracks
-	c = (GetChannelOnOff(col)) ? 0 : 1;
-	TextXY(t, x + 8, TRACKS_Y + 16, c);
+	if (IsEmptyTrack(tr)) strncpy(t + 6, "EMPTY", 5);
+	TextXY(t, x + 8, TRACKS_Y + 16, GetChannelOnOff(col) ? 0 : 1);
 	return 1;
 }
 

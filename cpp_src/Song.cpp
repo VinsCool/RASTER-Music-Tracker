@@ -1483,7 +1483,7 @@ BOOL CSong::SongInsertCopyOrCloneOfSongLines(int& line)
 						clonedto[k] = d;
 						TrackCopyFromTo(k, d);
 						//edit cloned track according to dlg.m_tuning and dlg.m_volumep
-						ModifyTrack(g_Tracks.GetTrack(d), 0, TRACKLEN - 1, -1, dlg.m_tuning, 0, dlg.m_volumep);
+						g_Tracks.ModifyTrack(g_Tracks.GetTrack(d), 0, TRACKLEN - 1, -1, dlg.m_tuning, 0, dlg.m_volumep);
 					}
 					else
 					{
@@ -1963,7 +1963,7 @@ int CSong::InstrChange(int instr)
 	if (instr < 0 || instr >= INSTRSNUM) return 0;
 
 	CInstrumentChangeDlg dlg;
-	dlg.m_song = this;
+	//dlg.m_song = this;
 	dlg.m_combo9 = dlg.m_combo11 = instr;
 	dlg.m_combo10 = dlg.m_combo12 = instr;
 	dlg.m_onlytrack = SongGetActiveTrack();

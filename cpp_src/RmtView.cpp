@@ -1737,19 +1737,19 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			break;
 		}
 		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		g_Song.Play(MPLAY_SONG,g_Song.m_followplay);	//play song from start
+		g_Song.Play(MPLAY_SONG,g_Song.GetFollowPlayMode());	//play song from start
 		break;
 
 	case VK_F6:
 		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		if (g_shiftkey) g_Song.Play(MPLAY_BLOCK,g_Song.m_followplay);	//play block and follow
-		else g_Song.Play(MPLAY_TRACK,g_Song.m_followplay);				//play pattern and follow	
+		if (g_shiftkey) g_Song.Play(MPLAY_BLOCK,g_Song.GetFollowPlayMode());	//play block and follow
+		else g_Song.Play(MPLAY_TRACK,g_Song.GetFollowPlayMode());				//play pattern and follow	
 		break;
 
 	case VK_F7:
 		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		if (g_Song.IsBookmark() && g_shiftkey) g_Song.Play(MPLAY_BOOKMARK,g_Song.m_followplay);	//play song from bookmark
-		else g_Song.Play(MPLAY_FROM,g_Song.m_followplay);							//play song from current position
+		if (g_Song.IsBookmark() && g_shiftkey) g_Song.Play(MPLAY_BOOKMARK,g_Song.GetFollowPlayMode());	//play song from bookmark
+		else g_Song.Play(MPLAY_FROM,g_Song.GetFollowPlayMode());							//play song from current position
 		break;
 
 	case VK_F8:
@@ -1797,16 +1797,16 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 	case VK_MEDIA_PLAY_PAUSE:
 		if (g_Song.GetPlayMode()==0)
-		g_Song.Play(MPLAY_SONG,g_Song.m_followplay);	//play song from start
+		g_Song.Play(MPLAY_SONG,g_Song.GetFollowPlayMode());	//play song from start
 		else g_Song.Stop();								//if playing, stop
 		break;
 
 	case VK_MEDIA_NEXT_TRACK:
-		g_Song.Play(MPLAY_SEEK_NEXT,g_Song.m_followplay); //seek next and play from track
+		g_Song.Play(MPLAY_SEEK_NEXT,g_Song.GetFollowPlayMode()); //seek next and play from track
 		break;
 
 	case VK_MEDIA_PREV_TRACK:
-		g_Song.Play(MPLAY_SEEK_PREV,g_Song.m_followplay); //seek prev and play from track
+		g_Song.Play(MPLAY_SEEK_PREV,g_Song.GetFollowPlayMode()); //seek prev and play from track
 		break;
 
 	case VK_SHIFT:
@@ -2319,22 +2319,22 @@ void CRmtView::OnUpdateSongMaketracksduplicate(CCmdUI* pCmdUI)
 
 void CRmtView::OnPlay0() 
 {
-	g_Song.Play(MPLAY_BOOKMARK,g_Song.m_followplay);	//from the bookmark - with respect to followplay
+	g_Song.Play(MPLAY_BOOKMARK,g_Song.GetFollowPlayMode());	//from the bookmark - with respect to followplay
 }
 
 void CRmtView::OnPlay1() 
 {
-	g_Song.Play(MPLAY_SONG,g_Song.m_followplay);		//whole song from start - with respect to followplay
+	g_Song.Play(MPLAY_SONG,g_Song.GetFollowPlayMode());		//whole song from start - with respect to followplay
 }
 
 void CRmtView::OnPlay2() 
 {
-	g_Song.Play(MPLAY_FROM,g_Song.m_followplay);		//from the current position - with respect to followplay
+	g_Song.Play(MPLAY_FROM,g_Song.GetFollowPlayMode());		//from the current position - with respect to followplay
 }
 
 void CRmtView::OnPlay3() 
 {
-	g_Song.Play(MPLAY_TRACK,g_Song.m_followplay);		//current pattern and loop - with respect to followplay
+	g_Song.Play(MPLAY_TRACK,g_Song.GetFollowPlayMode());		//current pattern and loop - with respect to followplay
 }
 
 void CRmtView::OnPlaystop() 
@@ -2349,7 +2349,7 @@ void CRmtView::OnPlaystop()
 
 void CRmtView::OnPlayfollow() 
 {
-	g_Song.m_followplay ^= 1;
+	g_Song.SetFollowPlayMode(g_Song.GetFollowPlayMode() ^ 1);
 }
 
 void CRmtView::OnEmTracks() 
@@ -2407,7 +2407,7 @@ void CRmtView::OnUpdatePlay3(CCmdUI* pCmdUI)
 
 void CRmtView::OnUpdatePlayfollow(CCmdUI* pCmdUI) 
 {
-	int ch= (g_Song.m_followplay)? 1 : 0;
+	int ch = g_Song.GetFollowPlayMode();
 	pCmdUI->SetCheck(ch);
 }
 
@@ -2645,7 +2645,7 @@ void CRmtView::OnUpdateBlockBackup(CCmdUI* pCmdUI)
 
 void CRmtView::OnBlockPlay() 
 {
-	g_Song.Play(MPLAY_BLOCK,g_Song.m_followplay);	//selected block and loop - with respect to followplay
+	g_Song.Play(MPLAY_BLOCK,g_Song.GetFollowPlayMode());	//selected block and loop - with respect to followplay
 }
 
 void CRmtView::OnUpdateBlockPlay(CCmdUI* pCmdUI) 

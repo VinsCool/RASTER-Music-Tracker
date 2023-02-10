@@ -459,7 +459,6 @@ BOOL CTrackClipboard::BlockEffect()
 	dlg.m_bto = bto;
 	dlg.m_ainstr = ainstr;
 	dlg.m_all = m_all;
-	dlg.m_song = &g_Song;
 
 	int r = dlg.DoModal();
 

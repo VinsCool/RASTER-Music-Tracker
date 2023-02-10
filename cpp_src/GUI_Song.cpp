@@ -1296,16 +1296,6 @@ void CSong::DrawInfo()
 
 	if (flag & IF_AUDCTL)
 	{
-/*
-		int audctl = instrument->parameters[PAR_AUDCTL_15KHZ]
-			| (instrument->parameters[PAR_AUDCTL_HPF_CH2] << 1)
-			| (instrument->parameters[PAR_AUDCTL_HPF_CH1] << 2)
-			| (instrument->parameters[PAR_AUDCTL_JOIN_3_4] << 3)
-			| (instrument->parameters[PAR_AUDCTL_JOIN_1_2] << 4)
-			| (instrument->parameters[PAR_AUDCTL_179_CH3] << 5)
-			| (instrument->parameters[PAR_AUDCTL_179_CH1] << 6)
-			| (instrument->parameters[PAR_AUDCTL_POLY9] << 7);
-*/
 		int audctl = g_Instruments.GetParameter(m_activeinstr, PAR_AUDCTL_15KHZ)
 			| g_Instruments.GetParameter(m_activeinstr, PAR_AUDCTL_HPF_CH2) << 1
 			| g_Instruments.GetParameter(m_activeinstr, PAR_AUDCTL_HPF_CH1) << 2
@@ -3223,7 +3213,7 @@ TrackKeyOk:
 			}
 			break;
 
-		case 13:		//VK_ENTER:
+		case 13:		//VK_ENTER:	//FIXME: Channels are desynched when track End or Loops are detected, bad hack...
 			int instr, vol, oldline;
 			{
 				if (shift && control)
@@ -3266,9 +3256,8 @@ TrackKeyOk:
 						if (shift && !control && vol > 0) m_volume = vol; //"picks up" the volume as current (only if it is not 0)
 					}
 			}
-			oldline = m_trackactiveline;
-			TrackDown(1, 0);	//move down 1 step always
-			if (oldline == m_trackactiveline) m_trackactiveline++;	//hack, force a line move even if TrackDown prevents it after Enter called it, otherwise the last line would get stuck
+			oldline = m_trackactiveline;	//hack, force a line move even if TrackDown prevents it after Enter called it, otherwise the last line would get stuck
+			if (TrackDown(1, 0) && oldline == m_trackactiveline) m_trackactiveline++;
 			if (g_TrackClipboard.IsBlockSelected())	//if a block is selected, it moves (and plays) only in it
 			{
 				int bfro, bto;

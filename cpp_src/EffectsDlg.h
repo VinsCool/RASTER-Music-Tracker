@@ -5,12 +5,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 // EffectsDlg.h : header file
-//
-
-extern int g_tracks4_8;
-extern const char *notes[];
-class CSong;
-
 
 /////////////////////////////////////////////////////////////////////////////
 // CEffectsDlg dialog
@@ -42,8 +36,6 @@ public:
 
 	struct TTrack *m_trackptr;
 	struct TTrack *m_trackorig;
-
-	CSong *m_song;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
@@ -158,7 +150,6 @@ public:
 	int m_onlytrack;
 	int m_onlychannels;
 	int m_onlysonglinefrom,m_onlysonglineto;
-	CSong* m_song;
 
 	void SelChangeComboX();
 

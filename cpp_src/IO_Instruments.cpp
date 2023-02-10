@@ -449,9 +449,9 @@ BYTE CInstruments::InstrToAtaRMF(int instr, unsigned char* ata, int max)
 void CInstruments::WasModified(int instr)
 {
 	unsigned char* ata = g_atarimem + instr * 256 + 0x4000;
-	g_rmtroutine = 0;			//turn off RMT routines
+	//g_rmtroutine = 0;			//turn off RMT routines	// editing in real time is smoother without this switch
 	InstrToAta(instr, ata, MAXATAINSTRLEN);
-	g_rmtroutine = 1;			//RMT routines are turned on
+	//g_rmtroutine = 1;			//RMT routines are turned on
 
 	RecalculateFlag(instr);
 }

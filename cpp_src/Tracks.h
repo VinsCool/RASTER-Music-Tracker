@@ -22,9 +22,6 @@ struct TTracksAll	//for undo
 };
 
 extern const char* notes[];
-extern const char* notesandscales[5][40];
-
-extern BOOL ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, int instradd, int volumep);
 
 class CTracks
 {
@@ -32,20 +29,25 @@ public:
 	CTracks();
 	~CTracks();
 	void InitTracks();
-	BOOL ClearTrack(int t);
+	void ClearTrack(int track);
 	BOOL IsEmptyTrack(int track);
-	BOOL DrawTrackHeader(int col, int x, int y, int tr);	//, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu);
+	BOOL DrawTrackHeader(int col, int x, int y, int tr);
 	BOOL DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu, int oob);
 	BOOL DelNoteInstrVolSpeed(int noteinstrvolspeed, int track, int line);
 	BOOL SetNoteInstrVol(int note, int instr, int vol, int track, int line);
 	BOOL SetInstr(int instr, int track, int line);
 	BOOL SetVol(int vol, int track, int line);
 	BOOL SetSpeed(int speed, int track, int line);
-	int GetNote(int track, int line) { return m_track[track].note[line]; };
-	int GetInstr(int track, int line) { return m_track[track].instr[line]; };
-	int GetVol(int track, int line) { return m_track[track].volume[line]; };
-	int GetSpeed(int track, int line) { return m_track[track].speed[line]; };
-	void GetNoteInstrVolSpeed(int* buff, int track, int line) { buff[0] = m_track[track].note[line]; buff[1] = m_track[track].instr[line]; buff[2] = m_track[track].volume[line]; buff[3] = m_track[track].speed[line]; };
+
+	BOOL IsValidTrack(int track) { return track >= 0 && track < TRACKSNUM; };
+	BOOL IsValidLine(int line) { return line >= 0 && line < MAXATATRACKLEN; };
+	BOOL IsValidNote(int note) { return note >= 0 && note < NOTESNUM; };
+
+	int GetNote(int track, int line) { return IsValidTrack(track) && IsValidLine(line) ? m_track[track].note[line] : -1; };
+	int GetInstr(int track, int line) { return IsValidTrack(track) && IsValidLine(line) ? m_track[track].instr[line] : -1; };
+	int GetVol(int track, int line) { return IsValidTrack(track) && IsValidLine(line) ? m_track[track].volume[line] : -1; };
+	int GetSpeed(int track, int line) { return IsValidTrack(track) && IsValidLine(line) ? m_track[track].speed[line] : -1; };
+	void GetNoteInstrVolSpeed(int* buff, int track, int line) { if (!(IsValidTrack(track) && IsValidLine(line))) return; buff[0] = m_track[track].note[line]; buff[1] = m_track[track].instr[line]; buff[2] = m_track[track].volume[line]; buff[3] = m_track[track].speed[line]; };
 	BOOL SetEnd(int track, int line);
 	int GetLastLine(int track);
 	int GetLength(int track);
@@ -55,7 +57,7 @@ public:
 	BOOL InsertLine(int track, int line);
 	BOOL DeleteLine(int track, int line);
 
-	TTrack* GetTrack(int tr) { return &m_track[tr]; };
+	TTrack* GetTrack(int track) { return IsValidTrack(track) ? &m_track[track] : NULL; };
 	void GetTracksAll(TTracksAll* dest_ta);	//{ return (TTracksAll*)&m_track; };
 	void SetTracksAll(TTracksAll* src_ta);
 
@@ -77,10 +79,15 @@ public:
 	int TrackExpandLoop(int track);
 	int TrackExpandLoop(TTrack* ttrack);
 
+	int GetModifiedNote(int note, int tuning);
+	int GetModifiedInstr(int instr, int instradd);
+	int GetModifiedVolumeP(int volume, int percentage);
+	BOOL ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, int instradd, int volumep);
+
 	int m_maxTrackLength;
 
 private:
 	TTrack* m_track;
 };
 
-extern CTracks			g_Tracks;
+extern CTracks g_Tracks;

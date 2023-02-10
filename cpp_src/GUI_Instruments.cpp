@@ -28,6 +28,7 @@ void CInstruments::DrawInstrument(int instrNr)
 	char szBuffer[128];
 
 	TInstrument* t = GetInstrument(instrNr);
+	if (!t) return;
 
 	// Line 8.5: Instrument XX (size xx bytes)
 	sprintf(szBuffer, "INSTRUMENT %02X", instrNr);

@@ -58,14 +58,22 @@ const Tshenv shenv[ENVROWS] =
 	{   9,0x01,1,-1, "PORTAMENTO:",INSTRS_ENV_X + 0 * 8,INSTRS_ENV_Y + 14 * 16,		"ENV_PORTAMENTO:"}	//portamento *
 };
 
-
+/// <summary>
+/// CInstruments Class Object constructor
+/// The struct TInstrument will be initialised in order to use Instruments
+/// TODO: Initialise more parameters, set #define values to static constants
+/// </summary>
 CInstruments::CInstruments()
 {
 	if (m_instr) delete m_instr;
 	m_instr = new TInstrument[INSTRSNUM];
-	//InitInstruments();
 }
 
+/// <summary>
+/// CInstruments Class Object deconstructor.
+/// The struct TInstrument will be deleted here, and set to NULL
+/// A new CInstruments object must be created to use Instruments afterwards
+/// </summary>
 CInstruments::~CInstruments()
 {
 	if (m_instr) delete m_instr;
@@ -89,11 +97,13 @@ void CInstruments::InitInstruments()
 /// <param name="instrumentNr">Index of the instrument 0-63</param>
 void CInstruments::ClearInstrument(int instrNr)
 {
+	TInstrument* instrument = GetInstrument(instrNr);
+	if (!instrument) return;
+
 	// Turn off this instrument on all channels
 	Atari_InstrumentTurnOff(instrNr);
 
 	// Clear everything/All zero
-	TInstrument* instrument = GetInstrument(instrNr);
 	memset(instrument, 0, sizeof(TInstrument));
 
 	// Init the name "Instrument XX"
@@ -116,9 +126,14 @@ void CInstruments::ClearInstrument(int instrNr)
 	WasModified(instrNr);
 }
 
+/// <summary>
+/// Check the instrument parameters and adjust them to fit boundaries if needed
+/// </summary>
+/// <param name="instr"></param>
 void CInstruments::CheckInstrumentParameters(int instr)
 {
 	TInstrument* ai = GetInstrument(instr);
+	if (!ai) return;
 
 	//ENVELOPE len-go loop control
 	if (ai->parameters[PAR_ENV_GOTO] > ai->parameters[PAR_ENV_LENGTH]) ai->parameters[PAR_ENV_GOTO] = ai->parameters[PAR_ENV_LENGTH];
@@ -143,38 +158,35 @@ void CInstruments::CheckInstrumentParameters(int instr)
 /// <param name="instr"></param>
 void CInstruments::RecalculateFlag(int instr)
 {
-	BYTE flag = 0;
 	TInstrument* ti = GetInstrument(instr);
-	int i;
-	int envl = ti->parameters[PAR_ENV_LENGTH];
+	if (!ti) return;
 
-	//filter?
-	for (i = 0; i <= envl; i++)
+	BYTE flag = 0;
+
+	// Analyse the instrument envelope for the Autofilter, Bass16 and Portamento flags
+	for (int i = 0; i <= ti->parameters[PAR_ENV_LENGTH]; i++)
 	{
-		if (ti->envelope[i][ENV_FILTER]) { flag |= IF_FILTER; break; }
+		// Autofilter?
+		if (ti->envelope[i][ENV_FILTER]) flag |= IF_FILTER;
+
+		// Bass16?
+		if (ti->envelope[i][ENV_DISTORTION] == 6) flag |= IF_BASS16;
+
+		// Portamento?
+		if (ti->envelope[i][ENV_PORTAMENTO]) flag |= IF_PORTAMENTO;
 	}
 
-	//bass16?
-	for (i = 0; i <= envl; i++)
+	// Analyse the instrument parameters for the AUDCTL flag
+	for (int i = PAR_AUDCTL_15KHZ; i <= PAR_AUDCTL_POLY9; i++)
 	{
-		//the filter takes priority over bass16, ie if the filter is enabled as well as bass16, bass16 does not become active
-		if (ti->envelope[i][ENV_DISTORTION] == 6 && !ti->envelope[i][ENV_FILTER]) { flag |= IF_BASS16; break; }
+		// AUDCTL?
+		if (ti->parameters[i]) flag |= IF_AUDCTL;
 	}
 
-	//portamento?
-	for (i = 0; i <= envl; i++)
-	{
-		if (ti->envelope[i][ENV_PORTAMENTO]) { flag |= IF_PORTAMENTO; break; }
-	}
+	// Autofilter takes priority over Bass16 (RMT 1.28 driver only)
+	if (flag & IF_FILTER && flag & IF_BASS16) flag ^= IF_BASS16;
 
-	//audctl?
-	for (i = PAR_AUDCTL_15KHZ; i <= PAR_AUDCTL_POLY9; i++)
-	{
-		if (ti->parameters[i]) { flag |= IF_AUDCTL; break; }
-	}
-	//
-	//m_iflag[instr] = flag;
-
+	// Update the instrument hint flag to the new value
 	ti->displayHintFlag = flag;
 }
 
@@ -187,20 +199,20 @@ void CInstruments::RecalculateFlag(int instr)
 BOOL CInstruments::CalculateNotEmpty(int instr)
 {
 	TInstrument* ti = GetInstrument(instr);
-	int i, j;
-	int len = ti->parameters[PAR_ENV_LENGTH];
-	for (i = 0; i <= len; i++)
+	if (!ti) return 0;
+
+	for (int i = 0; i <= ti->parameters[PAR_ENV_LENGTH]; i++)
 	{
-		for (j = 0; j < ENVROWS; j++)
+		for (int j = 0; j < ENVROWS; j++)
 		{
 			if (ti->envelope[i][j] != 0) return 1;
 		}
 	}
-	for (i = 0; i < PARCOUNT; i++)
+	for (int i = 0; i < PARCOUNT; i++)
 	{
 		if (ti->parameters[i] != 0) return 1;
 	}
-	return 0; //is empty
+	return 0; // Is empty
 }
 
 /// <summary>
@@ -213,10 +225,10 @@ BOOL CInstruments::CalculateNotEmpty(int instr)
 void CInstruments::SetEnvelopeVolume(int instr, BOOL right, int px, int newVolume)
 {
 	TInstrument* ti = GetInstrument(instr);
+	if (!ti) return;
 
 	// Validate
-	int len = ti->parameters[PAR_ENV_LENGTH] + 1;
-	if (px < 0 || px >= len) return;
+	if (px < 0 || px >= ti->parameters[PAR_ENV_LENGTH] + 1) return;
 	if (newVolume < 0 || newVolume > 15) return;
 
 	int ep = (right && g_tracks4_8 > 4) ? ENV_VOLUMER : ENV_VOLUMEL;
@@ -235,22 +247,31 @@ void CInstruments::SetEnvelopeVolume(int instr, BOOL right, int px, int newVolum
 /// <returns>frequency</returns>
 int CInstruments::GetFrequency(int instr, int note)
 {
-	if (instr < 0 || instr >= INSTRSNUM || note < 0 || note >= NOTESNUM) return -1;
-
 	TInstrument* tt = GetInstrument(instr);
-	if (tt->parameters[PAR_TBL_TYPE] == 0)  //only for NOTES table
+	if (!tt) return -1;
+	
+	// Only for NOTES table
+	if (tt->parameters[PAR_TBL_TYPE] == 0)  
 	{
-		int nsh = tt->noteTable[0];	//shift notes according to table 0
-		note = (note + nsh) & 0xff;
-		if (note < 0 || note >= NOTESNUM) return -1;
+		// Shift notes according to table 0
+		note = (note + tt->noteTable[0]) & 0xff;
 	}
-	int frq = -1;
-	int dis = tt->envelope[0][ENV_DISTORTION];
-	if (dis == 0x0c) frq = g_atarimem[RMT_FRQTABLES + 64 + note];
-	else if (dis == 0x0e || dis == 0x06) frq = g_atarimem[RMT_FRQTABLES + 128 + note];
-	else
-		frq = g_atarimem[RMT_FRQTABLES + 192 + note];
-	return frq;
+
+	// The note must be within valid boundaries
+	if (note < 0 || note >= NOTESNUM) return -1;
+
+	// IMPORTANT NOTE: Tables are not set to a constant location! 
+	// The function technically returns valid data, otherwise
+	switch (tt->envelope[0][ENV_DISTORTION])
+	{
+	case 0x0C:
+		return g_atarimem[RMT_FRQTABLES + 64 + note];
+	case 0x06:
+	case 0x0E:
+		return g_atarimem[RMT_FRQTABLES + 128 + note];
+	default:
+		return g_atarimem[RMT_FRQTABLES + 192 + note];
+	}
 }
 
 /// <summary>
@@ -261,15 +282,18 @@ int CInstruments::GetFrequency(int instr, int note)
 /// <returns>note</returns>
 int CInstruments::GetNote(int instr, int note)
 {
-	if (instr < 0 || instr >= INSTRSNUM || note < 0 || note >= NOTESNUM) return -1;
-
 	TInstrument* tt = GetInstrument(instr);
-	if (tt->parameters[PAR_TBL_TYPE] == 0)  //only for NOTES table
+	if (!tt) return -1;
+
+	// Only for NOTES table
+	if (tt->parameters[PAR_TBL_TYPE] == 0)
 	{
-		int nsh = tt->noteTable[0];	//shift notes according to table 0
-		note = (note + nsh) & 0xff;
-		if (note < 0 || note >= NOTESNUM) return -1;
+		// Shift notes according to table 0
+		note = (note + tt->noteTable[0]) & 0xff;
 	}
+
+	// The note must be within valid boundaries
+	if (note < 0 || note >= NOTESNUM) return -1;
 	return note;
 }
 
@@ -281,9 +305,11 @@ int CInstruments::GetNote(int instr, int note)
 /// <param name="vol">Last used volume</param>
 void CInstruments::MemorizeOctaveAndVolume(int instr, int oct, int vol)
 {
+	TInstrument* ti = GetInstrument(instr);
+	if (!ti) return;
+
 	if (g_keyboard_RememberOctavesAndVolumes)
 	{
-		TInstrument* ti = GetInstrument(instr);
 		if (oct >= 0) ti->octave = oct;
 		if (vol >= 0) ti->volume = vol;
 	}
@@ -297,11 +323,12 @@ void CInstruments::MemorizeOctaveAndVolume(int instr, int oct, int vol)
 /// <param name="vol">Last used volume</param>
 void CInstruments::RememberOctaveAndVolume(int instr, int& oct, int& vol)
 {
+	TInstrument* ti = GetInstrument(instr);
+	if (!ti) return;
+
 	if (g_keyboard_RememberOctavesAndVolumes)
 	{
-		TInstrument* ti = GetInstrument(instr);
 		oct = ti->octave;
 		vol = ti->volume;
 	}
 }
-

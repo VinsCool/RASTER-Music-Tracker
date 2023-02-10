@@ -6,6 +6,8 @@
 #include "EffectsDlg.h"
 
 #include "Song.h"
+#include "IOHelpers.h"
+#include "global.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -13,12 +15,9 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-int Hexstr(char* txt,int len);
-BOOL ModifyTrack(TTrack *track,int from,int to,int instrnumonly,int tuning,int instradd,int volumep);
-
-extern BOOL volatile g_screenupdate;
-
 extern CInstruments	g_Instruments;
+extern CTracks g_Tracks;
+extern CSong g_Song;
 
 /////////////////////////////////////////////////////////////////////////////
 // CEffectsDlg dialog
@@ -234,11 +233,17 @@ void CEffectsDlg::OnRestore()
 
 void CEffectsDlg::OnPlaystop() 
 {
+	if (g_Song.GetPlayMode())
+		g_Song.Stop();
+	else
+		g_Song.Play(MPLAY_BLOCK, g_Song.GetFollowPlayMode());
+/*
 	int p=m_song->GetPlayMode();
 	if (p)
 		m_song->Stop();
 	else
 		m_song->Play(MPLAY_BLOCK,m_song->m_followplay);
+*/
 }
 
 void CEffectsDlg::PerformEffect()
@@ -301,7 +306,7 @@ void CEffectsDlg::PerformEffect()
 	case 1: //change notes, instruments and volumes: note+-, instr+-, volume%
 		{
 			int ai= (m_all)? -1 : m_ainstr;
-			ModifyTrack(&td,bfro,bto,ai,p1,p2,p3);
+			g_Tracks.ModifyTrack(&td,bfro,bto,ai,p1,p2,p3);
 		}
 		break;
 
@@ -768,7 +773,8 @@ void CInstrumentChangeDlg::OnDefault()
 	if (m_checkoneinstr.GetCheck() || instrto<instrfrom)	instrto=instrfrom;
 
 	TInstrInfo iinfo;
-	m_song->InstrInfo(instrfrom,&iinfo,instrto);
+	//m_song->InstrInfo(instrfrom,&iinfo,instrto);
+	g_Song.InstrInfo(instrfrom, &iinfo, instrto);
 	int count = iinfo.count;
 
 	if (!count)
@@ -821,7 +827,7 @@ void CInstrumentChangeDlg::OnFullRanges()
 	m_checkoneinstr.SetCheck(0);
 
 	TInstrInfo iinfo;
-	m_song->InstrInfo(0,&iinfo,INSTRSNUM-1);
+	g_Song.InstrInfo(0, &iinfo, INSTRSNUM - 1);
 	if (!iinfo.count)
 	{
 		((CComboBox*)GetDlgItem(IDC_COMBO1))->SetCurSel(0);
