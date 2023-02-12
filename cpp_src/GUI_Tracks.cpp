@@ -95,15 +95,13 @@ BOOL CTracks::DrawTrackHeader(int col, int x, int y, int tr)
 	return 1;
 }
 
-BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu, int oob)
+BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line, int aline, int cactview, int pline, BOOL isactive, int acu, int oob)
 {
 	char s[16];
-	int line, xline, n, color, len, last, go, endline;
+	int xline, n, color, len, last, go;
 
-	len = last = endline = 0;
+	len = last = 0;
 	TTrack* tt = NULL;
-
-	line = line_cnt;
 
 	if (tr >= 0 && tr <= 253)
 	{
@@ -113,23 +111,28 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 		if (go >= 0) last = m_maxTrackLength;
 	}
 
-	//fetch the last line infos early, so it could be drawn immediately after the track line was processed
-	if (line + 1 == last && len > 0 && last != m_maxTrackLength)
-	{
-		endline = line;
-	}
-
 	if (line >= last)
 	{
-		if (line == aline && isactive) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//blue or red
-		else if (line == pline) color = TEXT_COLOR_YELLOW;	//yellow
-		else color = TEXT_COLOR_GRAY;	//gray
-		if (oob) color = TEXT_COLOR_DARK_GRAY;	//darker gray, out of bounds
-			TextXY(" \x8\x8\x8 \x8\x8 \x8\x8 \x8\x8\x8", x, y, color);	//empty track line
+		color = TEXT_COLOR_GRAY;
+		//if (!GetChannelOnOff(col)) color = TEXT_COLOR_DARK_GRAY;
+		if (line == pline) color = TEXT_COLOR_YELLOW;
+		if (line == aline) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+		if (oob) color = TEXT_COLOR_DARK_GRAY;
+
+		strcpy(s, " \x8\x8\x8 \x8\x8 \x8\x8 \x8\x8\x8");
+
+		if (g_activepart == PART_TRACKS && (line == aline && isactive) && !oob)
+		{
+			if (g_prove) TextXYCol(s, x, y, colacprove[acu]);
+			else TextXYCol(s, x, y, colac[acu]);
+		}
+		else TextXY(s, x, y, color);
+
 		return 0;
 	}
 
 	strcpy(s, " --- -- -- ---");
+
 	if (tt)
 	{
 		if (line < len || go < 0) xline = line;
@@ -179,24 +182,25 @@ BOOL CTracks::DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int ali
 	else if (line == len - 1 && go >= 0) s[0] = '\x10'; //left-up arrow
 
 	//colours
-	if (line == aline && isactive) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//blue or red
-	else if (line == pline) color = TEXT_COLOR_YELLOW;	//yellow
-	else if (line >= len) color = TEXT_COLOR_GRAY;	//gray
-	else if ((line % g_trackLinePrimaryHighlight) == 0 || (line % g_trackLineSecondaryHighlight) == 0)
-		color = ((line % g_trackLinePrimaryHighlight) == 0) ? TEXT_COLOR_CYAN : TEXT_COLOR_GREEN;	//cyan or green
-	else color = TEXT_COLOR_WHITE;	//white
+	color = TEXT_COLOR_WHITE;
+	if (line % g_trackLineSecondaryHighlight == 0)  color = TEXT_COLOR_GREEN;
+	if (line % g_trackLinePrimaryHighlight == 0) color = TEXT_COLOR_CYAN;
+	if (line >= len) color = TEXT_COLOR_GRAY;
+	//if (!GetChannelOnOff(col)) color = TEXT_COLOR_DARK_GRAY;
+	if (line == pline) color = TEXT_COLOR_YELLOW;
+	if (line == aline) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
 	if (oob) color = TEXT_COLOR_DARK_GRAY;
 
-	if (g_activepart == PART_TRACKS && line < len && (line == aline && isactive) && !oob)
+	if (g_activepart == PART_TRACKS && (line == aline && isactive) && !oob)
 	{
 		if (g_prove) TextXYCol(s, x, y, colacprove[acu]);
 		else TextXYCol(s, x, y, colac[acu]);
 	}
 	else TextXY(s, x, y, color);
 
-	if (endline)
+	if (line + 1 == last && len > 0 && last != m_maxTrackLength)
 	{
-		TextXY("\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B", x + 7, y + 13, (oob) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_WHITE);
+		TextXY("\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B", x + 7, y + 13, (oob /* || !GetChannelOnOff(col)*/) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_WHITE);
 	}
 
 	return 1;

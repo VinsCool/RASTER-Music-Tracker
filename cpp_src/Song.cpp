@@ -1018,7 +1018,7 @@ BOOL CSong::TrackDown(int lines, BOOL stoponlastline)
 BOOL CSong::TrackLeft(BOOL column)
 {
 	g_Undo.Separator();
-	if (column || m_trackactiveline > TrackGetLastLine()) goto track_leftcolumn;
+	if (column) goto track_leftcolumn;
 	m_trackactivecur--;
 	if (m_trackactivecur < 0)
 	{
@@ -1033,7 +1033,7 @@ BOOL CSong::TrackLeft(BOOL column)
 BOOL CSong::TrackRight(BOOL column)
 {
 	g_Undo.Separator();
-	if (column || m_trackactiveline > TrackGetLastLine()) goto track_rightcolumn;
+	if (column) goto track_rightcolumn;
 	m_trackactivecur++;
 	if (m_trackactivecur > 3)	//speed column
 	{
@@ -1047,9 +1047,7 @@ BOOL CSong::TrackRight(BOOL column)
 
 void CSong::TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol)
 {
-	//if (track >= TRACKSNUM || track < 0) return;
-
-	//set the current visible note to a possible goto loop
+	// Set the current visible note to a possible goto loop
 	int line, len, go;
 	len = g_Tracks.GetLastLine(track) + 1;
 	go = g_Tracks.GetGoLine(track);

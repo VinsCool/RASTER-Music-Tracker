@@ -755,7 +755,7 @@ void CSong::DrawSong()
 		{
 			// Draw: "Go to line"
 			color = (isOutOfBounds) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_TURQUOISE;	//turquoise text, blank tiles to mask text if needed, else gray if out of bounds
-			TextXY("Go\x1fto\x1fline", SONG_OFFSET + 16, y, color);
+			TextXY("GO\x1fTO\x1fLINE", SONG_OFFSET + 16, y, color);
 
 			// Draw: "XX"
 			color = (isOutOfBounds) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_WHITE;	//white, for the number used, or gray if out of bounds
@@ -855,6 +855,235 @@ void CSong::DrawSong()
 	}
 }
 
+/*
+void CSong::DrawTracks()
+{
+	// Coordinates to draw pixels on screen
+	int x, y;
+
+	// size of elements to draw
+	int sz_x, sz_y;
+
+	// Text colour
+	int c;
+
+	// Text buffer 
+	CString s;
+
+	g_cursoractview = m_trackactiveline + 8 - g_line_y;
+	
+	sz_x = 16 * 8;
+	sz_y = 16;
+	y = TRACKS_Y;
+	x = TRACKS_X + 16 * 3;
+
+	for (int i = 0; i < g_tracks4_8; i++)
+	{
+		TTrack* tt;
+		int tr = SongGetTrack(SongGetActiveLine(), i);
+
+		s.Format("TRACK ");
+		s.AppendFormat(i > 3 ? "R" : "L");
+		s.AppendFormat("%1X", i % 4 + 1);
+
+		TextXY(s, x + i * sz_x, y, GetChannelOnOff(i) ? 0 : 1);
+
+		if (tt = g_Tracks.GetTrack(tr))
+		{
+			s.Format("  %02X: ", tr);
+			if (g_Tracks.IsEmptyTrack(tr))
+			{
+				s.AppendFormat("EMPTY");
+			}
+			else
+			{
+				s.AppendFormat(tt->len < 0 ? "---" : "%02X-", tt->len);
+				s.AppendFormat(tt->go < 0 ? "--" : "%02X", tt->go);
+			}
+		}
+		else
+			s.Format("  --  -----  ");
+
+		TextXY(s, x + i * sz_x, y + sz_y, GetChannelOnOff(i) ? 0 : 1);
+	}
+
+	sz_x = 16 * 16;
+	sz_y = 16;
+	x = TRACKS_X;
+	y = TRACKS_Y + 3 * 16;
+
+//
+	// Initialise the empty list of rows
+	s.Format("");
+
+	for (int i = 0; i < g_tracklines; i++)
+	{
+		int songLine = SongGetActiveLine();
+		int endLine = GetSmallestMaxtracklen(songLine );
+		int trackLine = g_cursoractview + i - 8;		// 8 lines from above
+
+		if (trackLine < endLine && trackLine >= 0)
+		{
+			c = '\x80';
+
+			if (trackLine % g_trackLineSecondaryHighlight == 0) c = '\x8B';
+			if (trackLine % g_trackLinePrimaryHighlight == 0) c = '\x85';
+			if (trackLine == m_trackplayline) c = '\x82';
+			if (trackLine == m_trackactiveline) c = (g_prove) ? '\x8D' : '\x86';
+
+			s.AppendFormat("%c%02X\x2", c, trackLine);
+		}
+
+		s.AppendFormat("\n");
+	}
+
+	// Dispatch the fully formatted list of rows
+	TextXYFull(s, x, y);
+//
+
+//
+	for (int r = 0; r < g_tracklines; r++, y += sz_y)
+	{
+		x = TRACKS_X;
+
+		int songLine = SongGetActiveLine();
+		int line = g_cursoractview + r - 8;		// 8 lines from above
+		int trackLine = (line + 256) % 256;
+		int endLine = GetSmallestMaxtracklen(songLine);
+
+		c = '\x80';	
+		if (trackLine % g_trackLineSecondaryHighlight == 0) c = '\x8B';	
+		if (trackLine % g_trackLinePrimaryHighlight == 0) c = '\x85';	
+		if (trackLine == m_trackplayline) c = '\x82';
+		if (trackLine == m_trackactiveline) c = (g_prove) ? '\x8D' : '\x86'; 
+
+		if (trackLine < endLine)
+		{
+			s.Format("%c%02X\x2  ", c, trackLine);
+
+			for (int i = 0; i < g_tracks4_8; i++)
+			{
+				int pattern = SongGetTrack(songLine, i);
+				TTrack* track = g_Tracks.GetTrack(pattern);
+
+				if (!track)
+				{
+					s += " \x8\x8\x8 \x8\x8 \x8\x8 \x8\x8\x8  ";
+					continue;
+				}
+
+				int note = track->note[trackLine];
+				int instr = track->instr[trackLine];
+				int vol = track->volume[trackLine];
+				int speed = track->speed[trackLine];
+				int col = c;
+				int cur = c;
+
+				//s += " --- -- -- ---  ";
+
+				if (g_activepart == PART_TRACKS && trackLine == m_trackactiveline && m_trackactivecol == i)
+				{
+					col = (g_prove) ? '\x83' : '\x89';	// COLOR_SELECTED_PROVE: COLOR_SELECTED;
+				}
+
+				cur = m_trackactivecur == 0 ? col : c;
+
+				if (note >= 0)
+				{
+					int index = 0;
+					int octave = note / g_notesperoctave + 1;
+					note = note % g_notesperoctave;
+
+					if (g_displayflatnotes) index += 1;
+					if (g_usegermannotation) index += 2;
+					if (g_notesperoctave != 12) index = 4;	// Non-12 scales don't yet have proper display
+
+					s.AppendFormat(" %c%c%c%1X", cur, notesandscales[index][note][0], notesandscales[index][note][1], octave);
+				}
+				else
+					s.AppendFormat(" %c---", cur);
+
+				cur = m_trackactivecur == 1 ? col : c;
+
+				if (instr >= 0)
+				{
+					s.AppendFormat(" %c%02X", cur, instr);
+				}
+				else
+					s.AppendFormat(" %c--", cur);
+
+				cur = m_trackactivecur == 2 ? col : c;
+
+				if (vol >= 0)
+				{
+					s.AppendFormat(" %cv%1X", cur, vol);
+				}
+				else
+					s.AppendFormat(" %c--", cur);
+
+				cur = m_trackactivecur == 3 ? col : c;
+
+				if (speed >= 0)
+				{
+					s.AppendFormat(" %cF%02X  ", cur, speed);
+				}
+				else
+					s.AppendFormat(" %c---  ", cur);
+
+			}
+
+			TextXYFull(s, x, y);
+		}
+
+	}
+//
+
+	// Coordinates for only the TRACKS width block rendering
+	sz_x = (g_tracks4_8 == 4) ? TRACKS_X + (93 - 4 * 11) * 11 - 4 : TRACKS_X + (93 + 3) * 11 - 8;
+	sz_y = 19;
+	x = TRACKS_X;
+	y = TRACKS_Y + 3 * 16 - 2 + g_line_y * 16;
+
+	// Draw the lines delimiting the active pattern track line
+	g_mem_dc->MoveTo(SCALE(x), SCALE(y));
+	g_mem_dc->LineTo(SCALE(x + sz_x), SCALE(y));
+	g_mem_dc->MoveTo(SCALE(x), SCALE(y + sz_y));
+	g_mem_dc->LineTo(SCALE(x + sz_x), SCALE(y + sz_y));
+
+	// Debug display at the bottom of the screen, this could be toggled on if needed 
+	if (g_viewDebugDisplay)
+	{
+		sz_x = 16 * 6;
+		x = TRACKS_X;
+		y = g_height - 32;
+		c = TEXT_COLOR_TURQUOISE;
+
+		// Don't draw further more than what could fit on screen
+		for (int i = 0; i < g_width / sz_x; i++)
+		{
+			switch (i)
+			{
+			case 0: s.Format("GW = %02d", g_width); break;
+			case 1: s.Format("GH = %02d", g_height); break;
+			case 2: s.Format("PX = %02d", g_mouse_px); break;
+			case 3: s.Format("PY = %02d", g_mouse_py); break;
+			case 4: s.Format("MB = %02d", g_mouselastbutt); break;
+			case 5: s.Format("CA = %02d", g_cursoractview); break;
+			case 6: s.Format("TA = %02d", m_trackactiveline); break;
+			case 7: s.Format("DY = %02d", g_mouse_py / 16); break;
+			case 8: s.Format("GTL = %02d", g_tracklines); break;
+			case 9: s.Format("OL = %02d", g_tracklines / 2); break;
+			case 10: s.Format("VK = %02X", g_lastKeyPressed); break;
+			default: continue;
+			}
+
+			TextXY(s, x + i * sz_x, y, c);
+		}
+	}
+}
+*/
+
+
 void CSong::DrawTracks()
 {
 	const char* tnames = "L1L2L3L4R1R2R3R4";
@@ -880,7 +1109,7 @@ void CSong::DrawTracks()
 	if (SongGetGo() >= 0)		//it's a GOTO line, it won't draw tracks
 	{
 		int TRACKS_OFFSET = (g_tracks4_8 == 8) ? 62 : 30;
-		TextXY("Go to line ", TRACKS_X + TRACKS_OFFSET * 8, TRACKS_Y + 8 * 16, TEXT_COLOR_TURQUOISE);
+		TextXY("GO TO LINE ", TRACKS_X + TRACKS_OFFSET * 8, TRACKS_Y + 8 * 16, TEXT_COLOR_TURQUOISE);
 		if (g_prove) color = (g_activepart == PART_TRACKS) ? COLOR_SELECTED_PROVE : TEXT_COLOR_BLUE;
 		else color = (g_activepart == PART_TRACKS) ? COLOR_SELECTED : TEXT_COLOR_RED;
 		sprintf(s, "%02X", SongGetGo());
@@ -966,12 +1195,12 @@ void CSong::DrawTracks()
 			break;
 		}
 
-		if (line == trackactiveline) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;	//red or blue
-		else if (line == trackplayline) color = TEXT_COLOR_YELLOW;	//yellow
-		else if ((line % g_trackLinePrimaryHighlight) == 0 || (line % g_trackLineSecondaryHighlight) == 0) 
-			color = ((line % g_trackLinePrimaryHighlight) == 0) ? TEXT_COLOR_CYAN : TEXT_COLOR_GREEN;	//cyan or green
-		else color = TEXT_COLOR_WHITE;	//white
-		if (oob) color = TEXT_COLOR_DARK_GRAY;	//darker gray, out of bounds
+		color = TEXT_COLOR_WHITE;
+		if (line % g_trackLineSecondaryHighlight == 0)  color = TEXT_COLOR_GREEN;
+		if (line % g_trackLinePrimaryHighlight == 0) color = TEXT_COLOR_CYAN;
+		if (line == trackplayline) color = TEXT_COLOR_YELLOW;
+		if (line == trackactiveline) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+		if (oob) color = TEXT_COLOR_DARK_GRAY;
 		TextXY(s, TRACKS_X, y, color);
 
 		for (int j = 0; j < g_tracks4_8; j++, x += 16 * 8)
@@ -1099,36 +1328,35 @@ void CSong::DrawTracks()
 		TextXY(tx, x, TRACKS_Y + (4 + g_tracklines) * 16, TEXT_COLOR_RED);
 	}
 
-	//debug display, this could be toggled on if needed 
-	if (printdebug)
+	// Debug display at the bottom of the screen, this could be toggled on if needed 
+	if (g_viewDebugDisplay)
 	{
-		//debugging the "jumpy line" 
-		sprintf(s, "Y = %02d", last_y);
-		TextXY(s, TRACKS_X, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		CString d;
 
-		//debugging the sudden breakdown of mouse clicks on tracklines directly related to the changes done for the smooth scrolling
-		sprintf(s, "PX = %02d", g_mouse_px);
-		TextXY(s, TRACKS_X + 16 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-		sprintf(s, "PY = %02d", g_mouse_py);
-		TextXY(s, TRACKS_X + 32 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-		sprintf(s, "MB = %02d", g_mouselastbutt);
-		TextXY(s, TRACKS_X + 48 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-		sprintf(s, "CA = %02d", g_cursoractview);
-		TextXY(s, TRACKS_X + 64 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-		sprintf(s, "TA = %02d", trackactiveline);
-		TextXY(s, TRACKS_X + 80 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-		sprintf(s, "DY = %02d", g_mouse_py / 16);
-		TextXY(s, TRACKS_X + 96 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-		sprintf(s, "GTL = %02d", g_tracklines);
-		TextXY(s, TRACKS_X + 112 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
-		sprintf(s, "OL = %02d", g_tracklines / 2);
-		TextXY(s, TRACKS_X + 128 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+		// Don't draw further more than what could fit on screen
+		for (int i = 0; i < g_width / (16 * 6); i++)
+		{
+			switch (i)
+			{
+			case 0: d.Format("GW = %02d", g_width); break;
+			case 1: d.Format("GH = %02d", g_height); break;
+			case 2: d.Format("PX = %02d", g_mouse_px); break;
+			case 3: d.Format("PY = %02d", g_mouse_py); break;
+			case 4: d.Format("MB = %02d", g_mouselastbutt); break;
+			case 5: d.Format("CA = %02d", g_cursoractview); break;
+			case 6: d.Format("TA = %02d", m_trackactiveline); break;
+			case 7: d.Format("DY = %02d", g_mouse_py / 16); break;
+			case 8: d.Format("GTL = %02d", g_tracklines); break;
+			case 9: d.Format("OL = %02d", g_tracklines / 2); break;
+			case 10: d.Format("VK = %02X", g_lastKeyPressed); break;
+			default: continue;
+			}
 
-		//debugging the way vk is processed for keyboard layout configuration
-		sprintf(s, "VK = %02X", g_lastKeyPressed);
-		TextXY(s, TRACKS_X + 144 * 8, TRACKS_Y + (5 + g_tracklines) * 16 - 2, TEXT_COLOR_TURQUOISE);
+			TextXY(d, TRACKS_X + i * (16 * 6), g_height - 32, TEXT_COLOR_TURQUOISE);
+		}
 	}
 }
+
 
 void CSong::DrawInstrument()
 {

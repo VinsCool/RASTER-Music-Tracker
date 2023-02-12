@@ -22,6 +22,7 @@ struct TTracksAll	//for undo
 };
 
 extern const char* notes[];
+extern const char* notesandscales[5][40];
 
 class CTracks
 {
@@ -32,7 +33,7 @@ public:
 	void ClearTrack(int track);
 	BOOL IsEmptyTrack(int track);
 	BOOL DrawTrackHeader(int col, int x, int y, int tr);
-	BOOL DrawTrackLine(int col, int x, int y, int tr, int line_cnt, int aline, int cactview, int pline, BOOL isactive, int acu, int oob);
+	BOOL DrawTrackLine(int col, int x, int y, int tr, int line, int aline, int cactview, int pline, BOOL isactive, int acu, int oob);
 	BOOL DelNoteInstrVolSpeed(int noteinstrvolspeed, int track, int line);
 	BOOL SetNoteInstrVol(int note, int instr, int vol, int track, int line);
 	BOOL SetInstr(int instr, int track, int line);

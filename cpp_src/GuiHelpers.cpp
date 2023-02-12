@@ -95,6 +95,32 @@ void TextXY(const char* txt, int x, int y, int color)
 	}
 }
 
+void TextXYFull(const char* txt, int& x, int& y)
+{
+	int color = TEXT_COLOR_WHITE << 4, ori_x = x, ori_y = y;
+
+	for (int i = 0; char charToDraw = (txt[i]); i++)
+	{
+		switch (charToDraw)
+		{
+		case '\n': x = ori_x; y += 16; continue;
+		case ' ': x += 8; continue;
+		case '\x80': color = TEXT_COLOR_WHITE << 4; continue;
+		case '\x82': color = TEXT_COLOR_YELLOW << 4; continue;
+		case '\x83': color = COLOR_SELECTED_PROVE << 4; continue;
+		case '\x85': color = TEXT_COLOR_CYAN << 4; continue;
+		case '\x86': color = TEXT_COLOR_RED << 4; continue;
+		case '\x89': color = COLOR_SELECTED << 4; continue;
+		case '\x8B': color = TEXT_COLOR_GREEN << 4; continue;
+		case '\x8C': color = TEXT_COLOR_DARK_GRAY << 4; continue;
+		case '\x8D': color = TEXT_COLOR_BLUE << 4; continue;
+		}
+
+		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, color, 8, 16, SRCCOPY);
+		x += 8;
+	}
+}
+
 void TextXYSelN(const char* txt, int n, int x, int y, int color)
 {
 	//the index character n will have a "select" color, the rest c

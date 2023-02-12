@@ -13,6 +13,7 @@ extern void SetStatusBarText(const char* text);
 extern int EditText(int vk, int shift, int control, char* txt, int& cur, int max);
 
 extern void TextXY(const char* txt, int x, int y, int color = TEXT_COLOR_WHITE);
+extern void TextXYFull(const char* txt, int& x, int& y);
 extern void TextXYSelN(const char* txt, int n, int x, int y, int color = TEXT_COLOR_WHITE);
 extern void TextXYCol(const char* txt, int x, int y, char* col);
 extern void TextDownXY(const char* txt, int x, int y, int color = TEXT_COLOR_WHITE);
