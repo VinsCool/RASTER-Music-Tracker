@@ -139,12 +139,13 @@ void TextXYSelN(const char* txt, int n, int x, int y, int color)
 }
 
 // Draw 8x16 chars with given color array per char position
-void TextXYCol(const char* txt, int x, int y, char* col)
+void TextXYCol(const char* txt, int x, int y, const char* col, int color)
 {
 	char charToDraw;
+
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
 	{
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, col[i] << 4, 8, 16, SRCCOPY);
+		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, (col[i] ? ((g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED) : color) << 4, 8, 16, SRCCOPY);
 	}
 }
 

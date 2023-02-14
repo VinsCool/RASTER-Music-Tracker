@@ -294,7 +294,7 @@ BOOL CTracks::CompareTracks(int track1, int track2)
 	// Compare the tracks and searach for a mismatched value
 	for (int i = 0; i < t1->len; i++)
 	{
-		if (t1->note[i] != t2->note[i] || t1->instr[i] != t2->instr[i] || t1->volume[i] != t2->volume[i] || t1->speed[i] != t2->speed[i] ) 
+		if (t1->note[i] != t2->note[i] || t1->instr[i] != t2->instr[i] || t1->volume[i] != t2->volume[i] || t1->speed[i] != t2->speed[i]) 
 			return 0;	// Found a difference => they are not the same
 	}
 
@@ -444,7 +444,7 @@ int CTracks::GetModifiedNote(int note, int tuning)
 
 int CTracks::GetModifiedInstr(int instr, int instradd)
 {
-	if (g_Instruments.IsValidInstrument(instr)) return -1;
+	if (!g_Instruments.IsValidInstrument(instr)) return -1;
 
 	int i = instr + instradd;
 	while (i < 0) { i += INSTRSNUM; }
