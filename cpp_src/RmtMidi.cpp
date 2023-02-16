@@ -100,8 +100,8 @@ int CRmtMidi::MidiOn()
 		if (IsOn()) MidiOff();
 		int status = midiInOpen( &m_MidiInHandle,
 					m_MidiInDeviceId,
-					(unsigned long) MidiInProc, 
-					(unsigned long) this,
+					(DWORD_PTR) MidiInProc,
+					(DWORD_PTR) this,
 					CALLBACK_FUNCTION ); 
 		if (status != MMSYSERR_NOERROR ) 
 		{

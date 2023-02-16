@@ -222,7 +222,7 @@ int CInstruments::LoadInstrument(int instr, std::ifstream& in, int iotype)
 			Trimstr(value);
 			memset(ai->name, ' ', INSTRUMENT_NAME_MAX_LEN);
 			int lname = INSTRUMENT_NAME_MAX_LEN;
-			if (strlen(value) <= INSTRUMENT_NAME_MAX_LEN) lname = strlen(value);
+			if (strlen(value) <= INSTRUMENT_NAME_MAX_LEN) lname = (int) strlen(value);
 			strncpy(ai->name, value, lname);
 
 			int v, j, k, vlen;
@@ -257,7 +257,7 @@ int CInstruments::LoadInstrument(int instr, std::ifstream& in, int iotype)
 				if (strcmp(line, "TABLE:") == 0)
 				{
 					Trimstr(value);
-					vlen = strlen(value);
+					vlen = (int) strlen(value);
 					for (j = 0; j < vlen; j += 3)
 					{
 						v = Hexstr(value + j, 2);

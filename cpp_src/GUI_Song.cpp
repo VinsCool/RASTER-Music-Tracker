@@ -1319,7 +1319,7 @@ void CSong::DrawTracks()
 
 		sprintf(tx, "%i line(s) [%s-%s] selected in the pattern track %02X", bto - bfro + 1, s1, s2, g_TrackClipboard.m_seltrack);
 		TextXY(tx, TRACKS_X + 4 * 8, TRACKS_Y + (4 + g_tracklines) * 16, TEXT_COLOR_WHITE);
-		x = TRACKS_X + 4 * 8 + strlen(tx) * 8 + 8;
+		x = TRACKS_X + 4 * 8 + (int) strlen(tx) * 8 + 8;
 
 		if (g_TrackClipboard.m_all)
 			strcpy(tx, "[edit ALL data]");

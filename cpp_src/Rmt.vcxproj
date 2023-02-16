@@ -87,6 +87,8 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules />
     <CodeAnalysisRuleAssemblies />
+    <OutDir>.\Release\</OutDir>
+    <IntDir>.\Release\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>.\Debug\</OutDir>
@@ -101,6 +103,8 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <CodeAnalysisRules />
     <CodeAnalysisRuleAssemblies />
+    <OutDir>.\Debug\</OutDir>
+    <IntDir>.\Debug\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -180,7 +184,6 @@
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
-      <AdditionalOptions>/MACHINE:I386 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>dsound.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>.\Release/Rmt.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -220,7 +223,7 @@
     <Link>
       <AdditionalOptions>/MACHINE:I386 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>dsound.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>.\Debug/Rmt.exe</OutputFile>
+      <OutputFile>.\Debug\Rmt.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\Debug/Rmt.pdb</ProgramDatabaseFile>
@@ -260,13 +263,12 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <AdditionalOptions>/MACHINE:I386 %(AdditionalOptions)</AdditionalOptions>
       <AdditionalDependencies>dsound.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <OutputFile>.\Debug/Rmt.exe</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\Debug/Rmt.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
+      <OutputFile>.\Debug\Rmt.exe</OutputFile>
     </Link>
     <Midl>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
