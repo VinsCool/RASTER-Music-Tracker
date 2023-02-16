@@ -330,10 +330,16 @@
     <CopyFileToFolders Include="..\RMT\RMT Binaries\VUPlayer (LZSS Export).obx">
       <Filter>Copy to Build Folder\RMT Binaries</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="..\RMT\sa_c6502.dll">
+    <CopyFileToFolders Include="AltirraRMT\x86\sa_c6502.dll">
       <Filter>Copy to Build Folder</Filter>
     </CopyFileToFolders>
-    <CopyFileToFolders Include="..\RMT\sa_pokey.dll">
+    <CopyFileToFolders Include="AltirraRMT\x64\sa_c6502.dll">
+      <Filter>Copy to Build Folder</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="AltirraRMT\x86\sa_pokey.dll">
+      <Filter>Copy to Build Folder</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="AltirraRMT\x64\sa_pokey.dll">
       <Filter>Copy to Build Folder</Filter>
     </CopyFileToFolders>
   </ItemGroup>
