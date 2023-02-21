@@ -460,7 +460,7 @@ BOOL CTrackClipboard::BlockEffect()
 	dlg.m_ainstr = ainstr;
 	dlg.m_all = m_all;
 
-	int r = dlg.DoModal();
+	INT_PTR r = dlg.DoModal();
 
 	return (r == IDOK);
 }

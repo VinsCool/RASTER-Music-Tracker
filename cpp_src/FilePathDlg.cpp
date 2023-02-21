@@ -87,7 +87,7 @@ void CFilePathDlg::ActiveIndex(int idx)
 	m_dirlist.ResetContent();
 	strcat(bf,"*.*");
     struct _finddata_t c_file;
-    long hFile;
+    intptr_t hFile;
     if( (hFile = _findfirst( bf, &c_file )) != -1L )
 	{
 		do

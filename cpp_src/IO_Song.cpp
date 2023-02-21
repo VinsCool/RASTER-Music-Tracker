@@ -1079,7 +1079,7 @@ bool CSong::LoadTxt(std::ifstream& in)
 					Trimstr(value);
 					memset(m_songname, ' ', SONG_NAME_MAX_LEN);
 					int lname = SONG_NAME_MAX_LEN;
-					if (strlen(value) <= SONG_NAME_MAX_LEN) lname = strlen(value);
+					if (strlen(value) <= SONG_NAME_MAX_LEN) lname = (int) strlen(value);
 					strncpy(m_songname, value, lname);
 				}
 				else

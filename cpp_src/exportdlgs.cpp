@@ -132,7 +132,7 @@ void CExportStrippedRMTDialog::ChangeParams()
 	int adr = strtoul(s, &ptrToEndInString, 16);		// Parse the HEX address
 
 	int idx = m_cmbAsmFormat.GetCurSel();
-	m_assemblerFormat = m_cmbAsmFormat.GetItemData(idx);
+	m_assemblerFormat = (int) m_cmbAsmFormat.GetItemData(idx);
 
 	m_sfxSupport = m_ctrlWithSfx.GetCheck();
 	if (!m_sfxSupport)
@@ -602,7 +602,7 @@ void CExportRelocatableAsmForRmtPlayer::ChangeParams()
 	m_c_info.SetWindowText(s);
 
 	int idx = m_cmbAsmFormat.GetCurSel();
-	m_assemblerFormat = m_cmbAsmFormat.GetItemData(idx);
+	m_assemblerFormat = (int) m_cmbAsmFormat.GetItemData(idx);
 
 	m_globalVolumeFade = m_c_gvf.GetCheck();
 	m_noStartingSongLine = m_c_nos.GetCheck();

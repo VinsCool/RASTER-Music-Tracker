@@ -277,7 +277,7 @@ void CRmtView::OnDestroy()
 	CView::OnDestroy();
 }
 
-void CRmtView::OnTimer(UINT nIDEvent) 
+void CRmtView::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == m_timeranalyzer)
 	{

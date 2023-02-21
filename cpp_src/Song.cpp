@@ -44,7 +44,7 @@ void WaitForTimerRoutineProcessed()
 
 // ----------------------------------------------------------------------------
 
-void CALLBACK G_TimerRoutine(UINT, UINT, DWORD, DWORD, DWORD)
+void CALLBACK G_TimerRoutine(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR)
 {
 	busyInTimer = 1;
 	g_Song.TimerRoutine();

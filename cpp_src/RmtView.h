@@ -65,7 +65,7 @@ public:
 	HCURSOR m_cursorDialog;
 	HCURSOR m_cursorSetPosition;
 
-	UINT m_timeranalyzer;
+	UINT_PTR m_timeranalyzer;
 
 // Operations
 public:
@@ -140,7 +140,7 @@ protected:
 	afx_msg void OnUpdatePlay3(CCmdUI* pCmdUI);
 	afx_msg void OnProvemode();
 	afx_msg void OnUpdateProvemode(CCmdUI* pCmdUI);
-	afx_msg void OnTimer(UINT nIDEvent);
+	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnDestroy();
 	afx_msg void OnViewVolumeanalyzer();
 	afx_msg void OnUpdateViewVolumeanalyzer(CCmdUI* pCmdUI);
