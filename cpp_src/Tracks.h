@@ -43,6 +43,11 @@ public:
 	BOOL IsValidTrack(int track) { return track >= 0 && track < TRACKSNUM; };
 	BOOL IsValidLine(int line) { return line >= 0 && line < MAXATATRACKLEN; };
 	BOOL IsValidNote(int note) { return note >= 0 && note < NOTESNUM; };
+	BOOL IsValidInstrument(int instr) { return instr >= 0 && instr < INSTRSNUM; };
+	BOOL IsValidVolume(int vol) { return vol >= 0 && vol <= MAXVOLUME; };
+	BOOL IsValidSpeed(int speed) { return speed >= 0 && speed < TRACKMAXSPEED; };
+	BOOL IsValidLength(int len) { return len > 0 && len <= MAXATATRACKLEN; };
+	BOOL IsValidGo(int go) { return go >= 0 && go < MAXATATRACKLEN; };
 
 	int GetNote(int track, int line) { return IsValidTrack(track) && IsValidLine(line) ? m_track[track].note[line] : -1; };
 	int GetInstr(int track, int line) { return IsValidTrack(track) && IsValidLine(line) ? m_track[track].instr[line] : -1; };
@@ -59,12 +64,12 @@ public:
 	BOOL DeleteLine(int track, int line);
 
 	TTrack* GetTrack(int track) { return IsValidTrack(track) ? &m_track[track] : NULL; };
-	void GetTracksAll(TTracksAll* dest_ta);	//{ return (TTracksAll*)&m_track; };
+	void GetTracksAll(TTracksAll* dest_ta);
 	void SetTracksAll(TTracksAll* src_ta);
 
-	int TrackToAta(int track, unsigned char* dest, int max);
-	int TrackToAtaRMF(int track, unsigned char* dest, int max);
-	BOOL AtaToTrack(unsigned char* sour, int len, int track);
+	int TrackToAta(int trackNr, unsigned char* dest, int max);
+	int TrackToAtaRMF(int trackNr, unsigned char* dest, int max);
+	BOOL AtaToTrack(unsigned char* mem, int trackLength, int trackNr);
 
 	int SaveAll(std::ofstream& ou, int iotype);
 	int LoadAll(std::ifstream& in, int iotype);

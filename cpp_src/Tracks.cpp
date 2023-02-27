@@ -421,12 +421,16 @@ int CTracks::TrackExpandLoop(TTrack* ttrack)
 
 void CTracks::GetTracksAll(TTracksAll* dest_ta)
 {
+	if (!dest_ta) return;
+
 	dest_ta->maxtracklength = m_maxTrackLength;
 	memcpy(dest_ta->tracks, &m_track, sizeof(m_track));
 }
 
 void CTracks::SetTracksAll(TTracksAll* src_ta)
 {
+	if (!src_ta) return;
+
 	m_maxTrackLength = src_ta->maxtracklength;
 	memcpy(&m_track, src_ta->tracks, sizeof(m_track));
 }
@@ -444,7 +448,7 @@ int CTracks::GetModifiedNote(int note, int tuning)
 
 int CTracks::GetModifiedInstr(int instr, int instradd)
 {
-	if (!g_Instruments.IsValidInstrument(instr)) return -1;
+	if (!IsValidInstrument(instr)) return -1;
 
 	int i = instr + instradd;
 	while (i < 0) { i += INSTRSNUM; }

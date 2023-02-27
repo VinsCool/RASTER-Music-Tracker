@@ -13,79 +13,54 @@
 
 #include "global.h"
 
+
+#define WRITEATIDX(value) { if (idx < max) { dest[idx] = value; idx++; } else return -1; }
+#define WRITEPAUSE(pause)							\
+{													\
+	if (pause >= 1 && pause <= 3)					\
+		{ WRITEATIDX(62 | (pause << 6)); }			\
+	else											\
+		{ WRITEATIDX(62); WRITEATIDX(pause); }		\
+}
+
+
 int CTracks::SaveTrack(int track, std::ofstream& ou, int iotype)
 {
-	if (track < 0 || track >= TRACKSNUM) return 0;
+	TTrack* at = GetTrack(track);
+	if (!at) return 0;
+
+	CString s;
 
 	switch (iotype)
 	{
-		case IOTYPE_RMW:
-		{
-			int j;
-			char bf[TRACKLEN];
-			TTrack& at = m_track[track];
-			ou.write((char*)&at.len, sizeof(at.len));
-			ou.write((char*)&at.go, sizeof(at.go));
-			//all
-			for (j = 0; j < m_maxTrackLength; j++) bf[j] = at.note[j];
-			ou.write(bf, m_maxTrackLength);
-			for (j = 0; j < m_maxTrackLength; j++) bf[j] = at.instr[j];
-			ou.write(bf, m_maxTrackLength);
-			for (j = 0; j < m_maxTrackLength; j++) bf[j] = at.volume[j];
-			ou.write(bf, m_maxTrackLength);
-			for (j = 0; j < m_maxTrackLength; j++) bf[j] = at.speed[j];
-			ou.write(bf, m_maxTrackLength);
-		}
-		break;
+	case IOTYPE_RMW:
+		ou.write((char*)&at->len, sizeof(at->len));
+		ou.write((char*)&at->go, sizeof(at->go));
+		for (int i = 0; i < m_maxTrackLength; i++) ou.write((char*)&at->note[i], 1);
+		for (int i = 0; i < m_maxTrackLength; i++) ou.write((char*)&at->instr[i], 1);
+		for (int i = 0; i < m_maxTrackLength; i++) ou.write((char*)&at->volume[i], 1);
+		for (int i = 0; i < m_maxTrackLength; i++) ou.write((char*)&at->speed[i], 1);
+		return 1;
 
-		case IOTYPE_TXT:
-		{
-			CString s;
-			char bf[16];
-			TTrack& at = m_track[track];
-			s.Format("[TRACK]\n");
-			ou << s;
-			strcpy(bf, "--  ----\n");
-			bf[0] = CharH4(track);
-			bf[1] = CharL4(track);
-			if (at.len > 0)
-			{
-				bf[4] = CharH4(at.len & 0xff);
-				bf[5] = CharL4(at.len & 0xff);
-			}
-			if (at.go >= 0)
-			{
-				bf[6] = CharH4(at.go);
-				bf[7] = CharL4(at.go);
-			}
-			ou << bf;
-			for (int j = 0; j < at.len; j++)
-			{
-				strcpy(bf, "--- -- -");
-				int note = at.note[j];
-				int instr = at.instr[j];
-				int volume = at.volume[j];
-				int speed = at.speed[j];
-				if (note >= 0 && note < NOTESNUM) strncpy(bf, notes[note], 3);
-				if (instr >= 0 && instr < INSTRSNUM)
-				{
-					bf[4] = CharH4(instr);
-					bf[5] = CharL4(instr);
-				}
-				if (volume >= 0 && volume <= MAXVOLUME) bf[7] = CharL4(volume);
-				if (speed >= 0 && speed <= 255)
-				{
-					bf[8] = CharH4(speed);
-					bf[9] = CharL4(speed);
-					bf[10] = 0;
-				}
-				ou << bf << std::endl;
-			}
-			ou << "\n"; //gap
+	case IOTYPE_TXT:
+		s.Format("[TRACK]\n");	// Track text header
+		s.AppendFormat(!IsValidTrack(track) ? "--  " : "%02X  ", track);
+		s.AppendFormat(!IsValidLength(at->len) ? "--" : "%02X", at->len);
+		s.AppendFormat(!IsValidGo(at->go) ? "--" : "%02X", at->go);
+		s.AppendFormat("\n");
+		for (int i = 0; i < at->len; i++)
+		{	// Track row data
+			s.AppendFormat(!IsValidNote(at->note[i]) ? "---" : notes[at->note[i]]);
+			s.AppendFormat(!IsValidInstrument(at->instr[i]) ? " --" : " %02X", at->instr[i]);
+			s.AppendFormat(!IsValidVolume(at->volume[i]) ? " -" : " %01X", at->volume[i]);
+			s.AppendFormat(!IsValidSpeed(at->speed[i]) ? "" : "%02X", at->speed[i]);
+			s.AppendFormat("\n");
 		}
-		break;
+		ou << s << std::endl;
+		return 1;
 	}
-	return 1;
+
+	return 0;
 }
 
 int CTracks::LoadTrack(int track, std::ifstream& in, int iotype)
@@ -253,35 +228,26 @@ int CTracks::LoadAll(std::ifstream& in, int iotype)
 
 int CTracks::TrackToAta(int trackNr, unsigned char* dest, int max)
 {
-
-#define WRITEATIDX(value) { if (idx<max) { dest[idx]=value; idx++; } else return -1; }
-#define WRITEPAUSE(pause)									\
-{															\
-	if (pause>=1 && pause<=3)								\
-		{ WRITEATIDX(62 | (pause<<6)); }					\
-	else													\
-		{ WRITEATIDX(62); WRITEATIDX(pause); }				\
-}
+	// Get the data that describes the track
+	TTrack* t = GetTrack(trackNr);
+	if (!t) return 0;
 
 	int note, instr, volume, speed;
 	int idx = 0;
 	int goidx = -1;
-
-	// Get the data that describes the track
-	TTrack& t = m_track[trackNr];
 	int pause = 0;
 
-	// Run over each line in the track and save its data away in
-	// the most compact form.
-	for (int i = 0; i < t.len; i++)
+	// Run over each line in the track and save its data away in the most compact form
+	for (int i = 0; i < t->len; i++)
 	{
 		// Get the track line data
-		note	= t.note[i];
-		instr	= t.instr[i];
-		volume	= t.volume[i];
-		speed	= t.speed[i];
+		note	= t->note[i];
+		instr	= t->instr[i];
+		volume	= t->volume[i];
+		speed	= t->speed[i];
 
-		if (volume >= 0 || speed >= 0 || t.go == i) //something will be there, write empty measures first
+		// Something will be there, write empty measures first
+		if (volume >= 0 || speed >= 0 || t->go == i) 
 		{
 			if (pause > 0)
 			{
@@ -290,12 +256,13 @@ int CTracks::TrackToAta(int trackNr, unsigned char* dest, int max)
 				pause = 0;
 			}
 
-			if (t.go == i) goidx = idx;	//it will jump with a go loop
+			// It will jump with a go loop
+			if (t->go == i) goidx = idx;
 
 			// Speed changes are stored BEFORE note data
 			if (speed >= 0)
 			{
-				//is speed
+				// Is speed
 				WRITEATIDX(63);		// 63 = speed change
 				WRITEATIDX(speed & 0xff);
 
@@ -338,32 +305,35 @@ int CTracks::TrackToAta(int trackNr, unsigned char* dest, int max)
 	}
 	// All notes have been processed
 
-	if (t.len < m_maxTrackLength)	//the track is shorter than the maximum length
+	// The track is shorter than the maximum length
+	if (t->len < m_maxTrackLength)
 	{
-		if (pause > 0)	//is there any pause left before the end?
+		// Is there any pause left before the end?
+		if (pause > 0)
 		{
-			// write the remaining pause beats
+			// Write the remaining pause beats
 			WRITEPAUSE(pause);
 		}
 
-		if (t.go >= 0 && goidx >= 0)	// is there a go to line loop?
+		// Is there a go to line loop?
+		if (t->go >= 0 && goidx >= 0)
 		{
-			// write the go to line loop
-			WRITEATIDX(0x80 | 63);		// go command (191)
+			// Write the go to line loop
+			WRITEATIDX(0x80 | 63);		// Go command (191)
 			WRITEATIDX(goidx);
 		}
 		else
 		{
-			// write the end marker
-			WRITEATIDX(255);			// end (0xC0 | 63)
+			// Write the end marker
+			WRITEATIDX(255);			// End (0xC0 | 63)
 		}
 	}
 	else
 	{	
-		// the track is as long as the maximum length
+		// The track is as long as the maximum length
 		if (pause > 0)
 		{
-			WRITEPAUSE(pause);	//write the remaining pause time
+			WRITEPAUSE(pause);	// Write the remaining pause time
 		}
 	}
 	return idx;
@@ -371,30 +341,23 @@ int CTracks::TrackToAta(int trackNr, unsigned char* dest, int max)
 
 int CTracks::TrackToAtaRMF(int trackNr, unsigned char* dest, int max)
 {
-
-#define WRITEATIDX(value) { if (idx<max) { dest[idx]=value; idx++; } else return -1; }
-#define WRITEPAUSE(pause)									\
-{															\
-	if (pause>=1 && pause<=3)								\
-		{ WRITEATIDX(62 | (pause<<6)); }					\
-	else													\
-		{ WRITEATIDX(62); WRITEATIDX(pause); }				\
-}
+	TTrack* t = GetTrack(trackNr);
+	if (!t) return 0;
 
 	int note, instr, volume, speed;
 	int idx = 0;
 	int goidx = -1;
-	TTrack& t = m_track[trackNr];
 	int pause = 0;
 
-	for (int i = 0; i < t.len; i++)
+	for (int i = 0; i < t->len; i++)
 	{
-		note = t.note[i];
-		instr = t.instr[i];
-		volume = t.volume[i];
-		speed = t.speed[i];
+		note = t->note[i];
+		instr = t->instr[i];
+		volume = t->volume[i];
+		speed = t->speed[i];
 
-		if (volume >= 0 || speed >= 0 || t.go == i) //something will be there, write empty measures first
+		// Something will be there, write empty measures first
+		if (volume >= 0 || speed >= 0 || t->go == i)
 		{
 			if (pause > 0)
 			{
@@ -402,71 +365,68 @@ int CTracks::TrackToAtaRMF(int trackNr, unsigned char* dest, int max)
 				pause = 0;
 			}
 
-			if (t.go == i) goidx = idx;	//it will jump with a go loop
+			// It will jump with a go loop
+			if (t->go == i) goidx = idx;
 
-			//speed is ahead of the notes
+			// Speed is ahead of the notes
 			if (speed >= 0)
 			{
-				//is speed
-				WRITEATIDX(63);		//63 = speed change
+				// Is speed
+				WRITEATIDX(63);		// 63 = speed change
 				WRITEATIDX(speed & 0xff);
-
 				pause = 0;
 			}
 		}
 
-		//what it will be
+		// What it will be
 		if (note >= 0 && instr >= 0 && volume >= 0)
 		{
-			//note,instr,vol
-			WRITEATIDX(((volume & 0x03) << 6)
-				| ((note & 0x3f))
-			);
-			WRITEATIDX(((instr & 0x3f) << 2)
-				| ((volume & 0x0c) >> 2)
-			);
+			// Note, Instrument, Volume
+			WRITEATIDX(((volume & 0x03) << 6) | ((note & 0x3f)));
+			WRITEATIDX(((instr & 0x3f) << 2) | ((volume & 0x0c) >> 2));
 			pause = 0;
 		}
-		else
-			if (volume >= 0)
-			{
-				//only volume
-				WRITEATIDX(((volume & 0x03) << 6)
-					| 61		//61 = empty note (only the volume is set)
-				);
-				WRITEATIDX((volume & 0x0c) >> 2);	//without instrument
-				pause = 0;
-			}
-			else
-				pause++;
-	}
-	//end of loop
-
-	if (t.len < m_maxTrackLength)	//the track is shorter than the maximum length
-	{
-		if (t.go >= 0 && goidx >= 0)	//is there a go loop?
+		else if (volume >= 0)
 		{
-			if (pause > 0)	//is there still a pause before the end?
+			// Only volume
+			WRITEATIDX(((volume & 0x03) << 6) | 61);	// 61 = empty note (only the volume is set)
+			WRITEATIDX((volume & 0x0c) >> 2);	// Without instrument
+			pause = 0;
+		}
+		else 
+			pause++;
+	}
+	// End of loop
+
+	// The track is shorter than the maximum length
+	if (t->len < m_maxTrackLength)
+	{
+		// Is there a go loop?
+		if (t->go >= 0 && goidx >= 0)
+		{
+			// Is there still a pause before the end?
+			if (pause > 0)
 			{
-				//write the remaining pause time
+				// Write the remaining pause time
 				WRITEPAUSE(pause);
 				pause = 0;
 			}
-			//write go loop
-			WRITEATIDX(0x80 | 63);	//go command
+
+			// Write go loop
+			WRITEATIDX(0x80 | 63);	// Go command
 			WRITEATIDX(goidx);
 		}
 		else
 		{
-			//take an endless pause
-			WRITEATIDX(255);		//RMF endless pause
+			// Take an endless pause
+			WRITEATIDX(255);		// RMF endless pause
 		}
 	}
 	else
-	{	//the track is as long as the maximum length
+	{	// The track is as long as the maximum length
 		if (pause > 0)
 		{
-			WRITEATIDX(255);		//RMF endless pause
+			WRITEATIDX(255);		// RMF endless pause
 		}
 	}
 	return idx;
@@ -481,80 +441,101 @@ int CTracks::TrackToAtaRMF(int trackNr, unsigned char* dest, int max)
 /// <returns></returns>
 BOOL CTracks::AtaToTrack(unsigned char* mem, int trackLength, int trackNr)
 {
-	TTrack& t = m_track[trackNr];
+	TTrack* t = GetTrack(trackNr);
+	if (!t) return 0;
+
 	unsigned char data, count;
 	int gotoIndex = -1;
 
 	if (trackLength >= 2)
 	{
-		//there is a go loop at the end of the track
-		if (mem[trackLength - 2] == 128 + 63) gotoIndex = mem[trackLength - 1];	//store its index
+		// There is a go loop at the end of the track
+		if (mem[trackLength - 2] == 128 + 63) gotoIndex = mem[trackLength - 1];	// Store its index
 	}
 
 	int line = 0;
 	int src = 0;
+
 	while (src < trackLength)
 	{
-		if (src == gotoIndex) t.go = line;		// jump to gotoIndex => set go to this line
+		// Jump to gotoIndex => set go to this line
+		if (src == gotoIndex) t->go = line;
 
 		data = mem[src] & 0x3f;
-		if (data >= 0 && data <= 60)	// Have Note, Instrument and volume data on this line
+
+		// Have Note, Instrument and volume data on this line
+		if (data >= 0 && data <= 60)
 		{
-			t.note[line] = data;
-			t.instr[line] = ((mem[src + 1] & 0xfc) >> 2);		//11111100
-			t.volume[line] = ( (mem[src + 1] & 0x03) << 2)		//00000011 -> 00001100
+			t->note[line] = data;
+			t->instr[line] = ((mem[src + 1] & 0xfc) >> 2);		//11111100
+			t->volume[line] = ( (mem[src + 1] & 0x03) << 2)		//00000011 -> 00001100
 							| ((mem[src] & 0xc0) >> 6);			//11000000 -> 00000011
 			src += 2;
 			line++;
 			continue;
 		}
-		else if (data == 61)			// Have Volumne only on this line
+
+		// Have Volumne only on this line
+		else if (data == 61)
 		{
-			t.volume[line] = ( (mem[src + 1] & 0x03) << 2)		//00000011 -> 00001100
+			t->volume[line] = ( (mem[src + 1] & 0x03) << 2)		//00000011 -> 00001100
 							| ((mem[src] & 0xc0) >> 6);			//11000000 -> 00000011
 			src += 2;
 			line++;
 			continue;
 		}
-		else if (data == 62)			// Pause / empty line
+
+		// Pause / empty line
+		else if (data == 62)
 		{
-			count = mem[src] & 0xc0;	// maximum 2 bits
+			// Maximum 2 bits
+			count = mem[src] & 0xc0;
+
 			if (count == 0)
 			{	
 				// Pause is 0 then the number of lines to skip is in the next byte
-				if (mem[src + 1] == 0) break;			// infinite pause => end
-				line += mem[src + 1];	// shift line
+				if (mem[src + 1] == 0) break;			// Infinite pause => end
+				line += mem[src + 1];	// Shift line
 				src += 2;
 			}
 			else
 			{	
-				// they are non-zero
+				// They are non-zero
 				line += (count >> 6);	// Upper 2 bits directly specify a pause 1-3
 				src++;
 			}
 			continue;
 		}
-		else if (data == 63)			// Speed, go loop, or end
+
+		// Speed, go loop, or end
+		else if (data == 63)
 		{
 			count = mem[src] & 0xc0;	// 11000000
-			if (count == 0)				// the highest 2 bits are 0?  (00xxxxxx)
+
+			// The highest 2 bits are 0?  (00xxxxxx)
+			if (count == 0)
 			{
 				// Speed
-				t.speed[line] = mem[src + 1];
+				t->speed[line] = mem[src + 1];
 				src += 2;
-				//without line shift
+
+				// Without line shift
 				continue;
 			}
-			else if (count == 0x80)		// highest bit = 1?   (10xxxxxx)
+
+			// Highest bit = 1?   (10xxxxxx)
+			else if (count == 0x80)
 			{
-				// go to loop
-				t.len = line;			// that's the end of the track, no more data after this
+				// Go to loop
+				t->len = line;			// That's the end of the track, no more data after this
 				break;
 			}
-			else if (count == 0xc0)		// no more than two bits = 1?  (11xxxxxx)
+
+			// No more than two bits = 1?  (11xxxxxx)
+			else if (count == 0xc0)
 			{
-				// end
-				t.len = line;			// that's the end of the track, no more data after this
+				// End
+				t->len = line;			// That's the end of the track, no more data after this
 				break;
 			}
 		}
