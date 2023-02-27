@@ -65,124 +65,107 @@ int CTracks::SaveTrack(int track, std::ofstream& ou, int iotype)
 
 int CTracks::LoadTrack(int track, std::ifstream& in, int iotype)
 {
+	TTrack* at;
+	int idx = 0;
+	int a;
+	char b;
+	char line[1025];
+
 	switch (iotype)
 	{
-		case IOTYPE_RMW:
-		{
-			if (track < 0 || track >= TRACKSNUM) return 0;
-			char bf[TRACKLEN];
-			int j;
-			ClearTrack(track);	//clear before filling with data
-			TTrack& at = m_track[track];
-			in.read((char*)&at.len, sizeof(at.len));
-			in.read((char*)&at.go, sizeof(at.go));
+	case IOTYPE_RMW:
+		ClearTrack(track);	// Clear before filling with data
+		at = GetTrack(track);
+		if (!at) return 0;
+		in.read((char*)&at->len, sizeof(at->len));
+		in.read((char*)&at->go, sizeof(at->go));
+		for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->note[i] = b; }
+		for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->instr[i] = b; }
+		for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->volume[i] = b; }
+		for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->speed[i] = b; }
+		return 1;
 
-			//everything
-			in.read(bf, m_maxTrackLength);
-			for (j = 0; j < m_maxTrackLength; j++) at.note[j] = bf[j];
-			in.read(bf, m_maxTrackLength);
-			for (j = 0; j < m_maxTrackLength; j++) at.instr[j] = bf[j];
-			in.read(bf, m_maxTrackLength);
-			for (j = 0; j < m_maxTrackLength; j++) at.volume[j] = bf[j];
-			in.read(bf, m_maxTrackLength);
-			for (j = 0; j < m_maxTrackLength; j++) at.speed[j] = bf[j];
+	case IOTYPE_TXT:
+		memset(line, 0, 16);
+		in.getline(line, 1024); // The first line of the track
+
+		// If the track is invalid, it is set to the value found in the text file
+		if (track == -1) track = Hexstr(line, 2);
+
+		// If the track is still invalid, it will be skipped
+		if (!IsValidTrack(track))
+		{
+			NextSegment(in);
+			return 1;
 		}
-		break;
 
-		case IOTYPE_TXT:
+		// Clear the track before it is filled with new data
+		ClearTrack(track);
+		at = GetTrack(track);
+		if (!at) return 0;
+
+		// Find the Track Length and Go loop first
+		a = Hexstr(line + 4, 2);
+		at->len = (!IsValidLength(a) || a > m_maxTrackLength) ? m_maxTrackLength : a;
+		a = Hexstr(line + 6, 2);
+		at->go = a > at->len ? -1 : a;
+
+		// Now, read the Track data until the end of file is reached
+		while (!in.eof())
 		{
-			int a;
-			char b;
-			char line[1025];
-			memset(line, 0, 16);
-			in.getline(line, 1024); //the first line of the track
+			in.read((char*)&b, 1);
 
-			int ttr = Hexstr(line, 2);
-			int tlen = Hexstr(line + 4, 2);
-			int tgo = Hexstr(line + 6, 2);
+			// End of track (beginning of something else)
+			if (b == '[') return 1;
 
-			if (track == -1) track = ttr;
-
-			if (track < 0 || track >= TRACKSNUM)
+			// Right at the beginning of the line is EOL, or the maximal length was reached
+			if (b == 10 || b == 13 || idx >= TRACKLEN)
 			{
 				NextSegment(in);
 				return 1;
 			}
 
-			ClearTrack(track);	//clear before filling with data
-			TTrack& at = m_track[track];
+			// Clear the memory, then read the next line
+			memset(line, 0, 16);
+			line[0] = b;
+			in.getline(line + 1, 1024);
 
-			if (tlen <= 0 || tlen > m_maxTrackLength) tlen = m_maxTrackLength;
-			at.len = tlen;
-			if (tgo >= tlen) tgo = -1;
-			at.go = tgo;
+			// If the Note is Sharp, a semitone is added to the offset
+			a = line[1] == '#' ? 1 : 0;
 
-			int idx = 0;
-			while (!in.eof())
+			// Find the Note index, invalid values will be ignored
+			switch (b)
 			{
-				in.read((char*)&b, 1);
-				if (b == '[') return 1;	//end of track (beginning of something else)
-				if (b == 10 || b == 13)		//right at the beginning of the line is EOL
-				{
-					NextSegment(in);
-					return 1;
-				}
-
-				memset(line, 0, 16);		//clear memory first
-				line[0] = b;
-				in.getline(line + 1, 1024);
-
-				int note = -1, instr = -1, volume = -1, speed = -1;
-
-				if (b == 'C') note = 0;
-				else
-				if (b == 'D') note = 2;
-				else
-				if (b == 'E') note = 4;
-				else
-				if (b == 'F') note = 5;
-				else
-				if (b == 'G') note = 7;
-				else
-				if (b == 'A') note = 9;
-				else
-				if (b == 'B') note = 11;
-
-				a = line[1];
-				if (a == '#' && note >= 0) note++;
-
-				a = line[2];
-				if (note >= 0)
-				{
-					if (a >= '1' && a <= '6')
-						note += (a - '1') * 12;
-					else
-						note = -1;
-				}
-				instr = Hexstr(line + 4, 2);
-				volume = Hexstr(line + 7, 1);
-				speed = Hexstr(line + 8, 2);
-
-				if (note >= 0 && note < NOTESNUM) at.note[idx] = note;
-				if (instr >= 0 && instr < INSTRSNUM) at.instr[idx] = instr;
-				if (volume >= 0 && volume <= MAXVOLUME) at.volume[idx] = volume;
-				if (speed > 0 && speed <= 255) at.speed[idx] = speed;
-
-				if (at.note[idx] >= 0 && at.instr[idx] < 0) at.instr[idx] = 0;	//if the note is without an instrument, then instrument 0 hits there
-				if (at.instr[idx] >= 0 && at.note[idx] < 0) at.instr[idx] = -1;	//if the instrument is without a note, then it cancels it
-				if (at.note[idx] >= 0 && at.volume[idx] < 0) at.volume[idx] = MAXVOLUME;	//if the note is non-volume, adds the maximum volume
-
-				idx++;
-				if (idx >= TRACKLEN)
-				{
-					NextSegment(in);
-					return 1;
-				}
+			case 'C': a += 0; break;
+			case 'D': a += 2; break;
+			case 'E': a += 4; break;
+			case 'F': a += 5; break;
+			case 'G': a += 7; break;
+			case 'A': a += 9; break;
+			case 'B': a += 11; break;
+			default: a = -1;
 			}
+
+			// Add the Octave to the Note for the actual index
+			b = line[2];
+			a = (a >= 0 && b >= '1' && b <= '6') ? a + (b - '1') * 12 : a;
+
+			// Process the Track data for the current line 
+			at->note[idx] = IsValidNote(a) ? a : -1;
+			at->instr[idx] = IsValidInstrument(a = Hexstr(line + 4, 2)) ? a : -1;
+			at->volume[idx] = IsValidVolume(a = Hexstr(line + 7, 1)) ? a : -1;
+			at->speed[idx] = IsValidSpeed(a = Hexstr(line + 8, 2)) ? a : -1;
+
+			if (at->note[idx] >= 0 && at->instr[idx] < 0) at->instr[idx] = 0;			// If the note is without an instrument, then instrument 0 hits there
+			if (at->instr[idx] >= 0 && at->note[idx] < 0) at->instr[idx] = -1;			// If the instrument is without a note, then it cancels it
+			if (at->note[idx] >= 0 && at->volume[idx] < 0) at->volume[idx] = MAXVOLUME;	// If the note is non-volume, adds the maximum volume
+
+			idx++;	// Increment the line index for the next iteration
 		}
-		break;
+		return 1;
 	}
-	return 1;
+
+	return 0;
 }
 
 int CTracks::SaveAll(std::ofstream& ou, int iotype)
