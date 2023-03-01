@@ -74,23 +74,25 @@ int CTracks::LoadTrack(int track, std::ifstream& in, int iotype)
 	switch (iotype)
 	{
 	case IOTYPE_RMW:
-		ClearTrack(track);	// Clear before filling with data
-		at = GetTrack(track);
-		if (!at) return 0;
-		in.read((char*)&at->len, sizeof(at->len));
-		in.read((char*)&at->go, sizeof(at->go));
-		for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->note[i] = b; }
-		for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->instr[i] = b; }
-		for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->volume[i] = b; }
-		for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->speed[i] = b; }
-		return 1;
+		if (at = GetTrack(track))
+		{
+			ClearTrack(track);	// Clear before filling with data
+			in.read((char*)&at->len, sizeof(at->len));
+			in.read((char*)&at->go, sizeof(at->go));
+			for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->note[i] = b; }
+			for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->instr[i] = b; }
+			for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->volume[i] = b; }
+			for (int i = 0; i < m_maxTrackLength; i++) { in.read((char*)&b, 1); at->speed[i] = b; }
+			return 1;
+		}
+		break;
 
 	case IOTYPE_TXT:
 		memset(line, 0, 16);
 		in.getline(line, 1024); // The first line of the track
 
 		// If the track is invalid, it is set to the value found in the text file
-		if (track == -1) track = Hexstr(line, 2);
+		if (!IsValidTrack(track)) track = Hexstr(line, 2);
 
 		// If the track is still invalid, it will be skipped
 		if (!IsValidTrack(track))
@@ -99,70 +101,72 @@ int CTracks::LoadTrack(int track, std::ifstream& in, int iotype)
 			return 1;
 		}
 
-		// Clear the track before it is filled with new data
-		ClearTrack(track);
-		at = GetTrack(track);
-		if (!at) return 0;
-
-		// Find the Track Length and Go loop first
-		a = Hexstr(line + 4, 2);
-		at->len = (!IsValidLength(a) || a > m_maxTrackLength) ? m_maxTrackLength : a;
-		a = Hexstr(line + 6, 2);
-		at->go = a > at->len ? -1 : a;
-
-		// Now, read the Track data until the end of file is reached
-		while (!in.eof())
+		if (at = GetTrack(track))
 		{
-			in.read((char*)&b, 1);
+			// Clear the track before it is filled with new data
+			ClearTrack(track);
 
-			// End of track (beginning of something else)
-			if (b == '[') return 1;
+			// Find the Track Length and Go loop first
+			a = Hexstr(line + 4, 2);
+			at->len = (!IsValidLength(a) || a > m_maxTrackLength) ? m_maxTrackLength : a;
+			a = Hexstr(line + 6, 2);
+			at->go = a > at->len ? -1 : a;
 
-			// Right at the beginning of the line is EOL, or the maximal length was reached
-			if (b == 10 || b == 13 || idx >= TRACKLEN)
+			// Now, read the Track data until the end of file is reached
+			while (!in.eof())
 			{
-				NextSegment(in);
-				return 1;
+				in.read((char*)&b, 1);
+
+				// End of track (beginning of something else)
+				if (b == '[') return 1;
+
+				// Right at the beginning of the line is EOL, or the maximal length was reached
+				if (b == 10 || b == 13 || idx >= TRACKLEN)
+				{
+					NextSegment(in);
+					return 1;
+				}
+
+				// Clear the memory, then read the next line
+				memset(line, 0, 16);
+				line[0] = b;
+				in.getline(line + 1, 1024);
+
+				// If the Note is Sharp, a semitone is added to the offset
+				a = line[1] == '#' ? 1 : 0;
+
+				// Find the Note index, invalid values will be ignored
+				switch (b)
+				{
+				case 'C': a += 0; break;
+				case 'D': a += 2; break;
+				case 'E': a += 4; break;
+				case 'F': a += 5; break;
+				case 'G': a += 7; break;
+				case 'A': a += 9; break;
+				case 'B': a += 11; break;
+				default: a = -1;
+				}
+
+				// Add the Octave to the Note for the actual index
+				b = line[2];
+				a = (a >= 0 && b >= '1' && b <= '6') ? a + (b - '1') * 12 : a;
+
+				// Process the Track data for the current line 
+				at->note[idx] = IsValidNote(a) ? a : -1;
+				at->instr[idx] = IsValidInstrument(a = Hexstr(line + 4, 2)) ? a : -1;
+				at->volume[idx] = IsValidVolume(a = Hexstr(line + 7, 1)) ? a : -1;
+				at->speed[idx] = IsValidSpeed(a = Hexstr(line + 8, 2)) ? a : -1;
+
+				if (at->note[idx] >= 0 && at->instr[idx] < 0) at->instr[idx] = 0;			// If the note is without an instrument, then instrument 0 hits there
+				if (at->instr[idx] >= 0 && at->note[idx] < 0) at->instr[idx] = -1;			// If the instrument is without a note, then it cancels it
+				if (at->note[idx] >= 0 && at->volume[idx] < 0) at->volume[idx] = MAXVOLUME;	// If the note is non-volume, adds the maximum volume
+
+				idx++;	// Increment the line index for the next iteration
 			}
-
-			// Clear the memory, then read the next line
-			memset(line, 0, 16);
-			line[0] = b;
-			in.getline(line + 1, 1024);
-
-			// If the Note is Sharp, a semitone is added to the offset
-			a = line[1] == '#' ? 1 : 0;
-
-			// Find the Note index, invalid values will be ignored
-			switch (b)
-			{
-			case 'C': a += 0; break;
-			case 'D': a += 2; break;
-			case 'E': a += 4; break;
-			case 'F': a += 5; break;
-			case 'G': a += 7; break;
-			case 'A': a += 9; break;
-			case 'B': a += 11; break;
-			default: a = -1;
-			}
-
-			// Add the Octave to the Note for the actual index
-			b = line[2];
-			a = (a >= 0 && b >= '1' && b <= '6') ? a + (b - '1') * 12 : a;
-
-			// Process the Track data for the current line 
-			at->note[idx] = IsValidNote(a) ? a : -1;
-			at->instr[idx] = IsValidInstrument(a = Hexstr(line + 4, 2)) ? a : -1;
-			at->volume[idx] = IsValidVolume(a = Hexstr(line + 7, 1)) ? a : -1;
-			at->speed[idx] = IsValidSpeed(a = Hexstr(line + 8, 2)) ? a : -1;
-
-			if (at->note[idx] >= 0 && at->instr[idx] < 0) at->instr[idx] = 0;			// If the note is without an instrument, then instrument 0 hits there
-			if (at->instr[idx] >= 0 && at->note[idx] < 0) at->instr[idx] = -1;			// If the instrument is without a note, then it cancels it
-			if (at->note[idx] >= 0 && at->volume[idx] < 0) at->volume[idx] = MAXVOLUME;	// If the note is non-volume, adds the maximum volume
-
-			idx++;	// Increment the line index for the next iteration
+			return 1;
 		}
-		return 1;
+		break;
 	}
 
 	return 0;

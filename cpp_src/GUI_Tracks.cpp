@@ -57,6 +57,7 @@ const char* colac[] = { row0, row1, row2, row3, row4 };
 BOOL CTracks::DrawTrackHeader(int col, int x, int y, int tr)
 {
 	TTrack* tt;
+	int n;
 	char t[16] = "  --  -----  ";
 	
 	if (tt = GetTrack(tr))
@@ -64,19 +65,19 @@ BOOL CTracks::DrawTrackHeader(int col, int x, int y, int tr)
 		t[2] = CharH4(tr);
 		t[3] = CharL4(tr);
 		t[4] = ':';
-		if (tt->len >= 0)
+		if (n = tt->len >= 0)
 		{
-			t[6] = CharH4(tt->len);
-			t[7] = CharL4(tt->len);
+			t[6] = CharH4(n);
+			t[7] = CharL4(n);
 		}
-		if (tt->go >= 0)
+		if (n = tt->go >= 0)
 		{
-			t[9] = CharH4(tt->go);
-			t[10] = CharL4(tt->go);
+			t[9] = CharH4(n);
+			t[10] = CharL4(n);
 		}
+		if (IsEmptyTrack(tr)) strncpy(t + 6, "EMPTY", 5);
 	}
 
-	if (IsEmptyTrack(tr)) strncpy(t + 6, "EMPTY", 5);
 	TextXY(t, x + 8, TRACKS_Y + 16, GetChannelOnOff(col) ? 0 : 1);
 	return 1;
 }

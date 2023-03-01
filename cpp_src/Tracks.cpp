@@ -464,6 +464,7 @@ int CTracks::GetModifiedVolumeP(int volume, int percentage)
 	return (v > MAXVOLUME) ? MAXVOLUME : v;
 }
 
+// TODO: edit this function to remove the need for using the TTrack pointer directly
 BOOL CTracks::ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, int instradd, int volumep)
 {
 	//instruments <0 => all instruments

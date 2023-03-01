@@ -40,6 +40,7 @@ public:
 	BOOL SetVol(int vol, int track, int line);
 	BOOL SetSpeed(int speed, int track, int line);
 
+	BOOL IsValidChannel(int channel) { return channel >= 0 && channel < SONGTRACKS; };
 	BOOL IsValidTrack(int track) { return track >= 0 && track < TRACKSNUM; };
 	BOOL IsValidLine(int line) { return line >= 0 && line < MAXATATRACKLEN; };
 	BOOL IsValidNote(int note) { return note >= 0 && note < NOTESNUM; };

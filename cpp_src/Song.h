@@ -299,6 +299,7 @@ public:
 	void TrackCut();
 	void TrackDelete();
 	void TrackCopyFromTo(int fromtrack, int totrack);
+	void TrackSwapFromTo(int fromtrack, int totrack);
 
 	void BlockPaste(int special = 0);
 

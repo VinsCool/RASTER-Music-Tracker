@@ -1704,13 +1704,25 @@ void CSong::TrackCut()
 
 void CSong::TrackCopyFromTo(int fromtrack, int totrack)
 {
-	if (fromtrack < 0 || fromtrack >= TRACKSNUM) return;
-	if (totrack < 0 || totrack >= TRACKSNUM) return;
+	TTrack* at = g_Tracks.GetTrack(fromtrack), * tot = g_Tracks.GetTrack(totrack);
 
-	TTrack& at = *g_Tracks.GetTrack(fromtrack);
-	TTrack& tot = *g_Tracks.GetTrack(totrack);
+	if (at && tot)
+	{
+		*tot = *at;
+	}
+}
 
-	memcpy((void*)(&tot), (void*)(&at), sizeof(TTrack));
+void CSong::TrackSwapFromTo(int fromtrack, int totrack)
+{
+	TTrack buf;
+	TTrack* at = g_Tracks.GetTrack(fromtrack), * tot = g_Tracks.GetTrack(totrack);
+
+	if (at && tot)
+	{
+		buf = *tot;
+		*tot = *at;
+		*at = buf;
+	}
 }
 
 void CSong::BlockPaste(int special)
@@ -2675,16 +2687,14 @@ void CSong::RenumberAllTracks(int type) //1..after columns, 2..after lines
 		}
 	}
 
-	//physical data transfer in tracks
-	TTrack buft;
+	// physical data transfer in tracks
 	for (i = 0; i < order; i++)
 	{
 		int n = movetrackto[i];	// swap i <--> n
-		if (n == i) continue;		//they are the same, so they don't have to shuffle anything
-		memcpy((void*)(&buft), (void*)(g_Tracks.GetTrack(i)), sizeof(TTrack));	// i -> buffer
-		memcpy((void*)(g_Tracks.GetTrack(i)), (void*)(g_Tracks.GetTrack(n)), sizeof(TTrack)); // n -> i
-		memcpy((void*)(g_Tracks.GetTrack(n)), (void*)(&buft), sizeof(TTrack));	// buffer -> n
-		//
+		if (n == i) continue;	// they are the same, so they don't have to shuffle anything
+
+		TrackSwapFromTo(i, n);
+
 		for (j = i; j < order; j++)
 		{
 			if (movetrackto[j] == i) movetrackto[j] = n;
