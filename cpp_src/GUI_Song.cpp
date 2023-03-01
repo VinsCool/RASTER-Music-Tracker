@@ -1238,7 +1238,7 @@ void CSong::DrawTracks()
 		//track in the current line of the song
 		tr = m_song[songactiveline][i];
 
-		g_Tracks.DrawTrackHeader(i, x, y, tr); 
+		g_Tracks.DrawTrackHeader(x + 24, TRACKS_Y + 16, tr, color); 
 	}
 
 	//lines delimiting the current line

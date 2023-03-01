@@ -54,32 +54,23 @@ const char row3[15] = { ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, RO
 const char row4[15] = { ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF };
 const char* colac[] = { row0, row1, row2, row3, row4 };
 
-BOOL CTracks::DrawTrackHeader(int col, int x, int y, int tr)
+void CTracks::DrawTrackHeader(int x, int y, int tr, int col)
 {
-	TTrack* tt;
-	int n;
-	char t[16] = "  --  -----  ";
-	
-	if (tt = GetTrack(tr))
+	TTrack* tt = GetTrack(tr);
+	CString s = "--  -----";
+
+	if (tt)
 	{
-		t[2] = CharH4(tr);
-		t[3] = CharL4(tr);
-		t[4] = ':';
-		if (n = tt->len >= 0)
+		s.Format(IsValidTrack(tr) ? "%02X: " : "--  ", tr);
+		if (IsEmptyTrack(tr)) s.AppendFormat("EMPTY");
+		else
 		{
-			t[6] = CharH4(n);
-			t[7] = CharL4(n);
+			s.AppendFormat(IsValidLength(tt->len) ? "%02X-" : "---", tt->len);
+			s.AppendFormat(IsValidGo(tt->go) ? "%02X" : "--", tt->go);
 		}
-		if (n = tt->go >= 0)
-		{
-			t[9] = CharH4(n);
-			t[10] = CharL4(n);
-		}
-		if (IsEmptyTrack(tr)) strncpy(t + 6, "EMPTY", 5);
 	}
 
-	TextXY(t, x + 8, TRACKS_Y + 16, GetChannelOnOff(col) ? 0 : 1);
-	return 1;
+	TextXY(s, x, y, col);
 }
 
 void CTracks::DrawTrackLine(int col, int x, int y, int tr, int line, int aline, int cactview, int pline, BOOL isactive, int acu, int oob)
