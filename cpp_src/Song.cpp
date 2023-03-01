@@ -1667,33 +1667,27 @@ BOOL CSong::SongMaketracksduplicate()
 
 void CSong::TrackCopy()
 {
-	int i = SongGetActiveTrack();
-	if (i < 0 || i >= TRACKSNUM) return;
+	TTrack* at = g_Tracks.GetTrack(SongGetActiveTrack()), * tot = &g_TrackClipboard.m_trackcopy;
 
-	TTrack& at = *g_Tracks.GetTrack(i);
-	TTrack& tot = g_TrackClipboard.m_trackcopy;
-
-	memcpy((void*)(&tot), (void*)(&at), sizeof(TTrack));
+	if (at && tot)
+	{
+		*tot = *at;
+	}
 }
 
 void CSong::TrackPaste()
 {
-	if (g_TrackClipboard.m_trackcopy.len <= 0) return;
-	int i = SongGetActiveTrack();
-	if (i < 0 || i >= TRACKSNUM) return;
+	TTrack* at = g_Tracks.GetTrack(SongGetActiveTrack()), * fro = &g_TrackClipboard.m_trackcopy;
 
-	TTrack& fro = g_TrackClipboard.m_trackcopy;
-	TTrack& at = *g_Tracks.GetTrack(i);
-
-	memcpy((void*)(&at), (void*)(&fro), sizeof(TTrack));
+	if (at && fro)
+	{
+		if (g_Tracks.IsValidLength(fro->len)) *at = *fro;
+	}
 }
 
 void CSong::TrackDelete()
 {
-	int i = SongGetActiveTrack();
-	if (i < 0 || i >= TRACKSNUM) return;
-
-	g_Tracks.ClearTrack(i);
+	g_Tracks.ClearTrack(SongGetActiveTrack());
 }
 
 void CSong::TrackCut()
