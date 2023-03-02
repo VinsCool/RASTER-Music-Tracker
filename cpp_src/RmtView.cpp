@@ -1856,7 +1856,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 87: //VK_W
 		if (g_controlkey && !g_shiftkey) //CTRL+W, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			g_Song.Stop();
+			//g_Song.Stop();
 			int r = MessageBox("Would you like to create a new song?", "Create new song", MB_YESNOCANCEL | MB_ICONQUESTION);
 			if (r == IDYES) g_Song.FileNew();
 		}
@@ -1867,7 +1867,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 83:	//VK_S
 		if (g_controlkey && !g_shiftkey) //CTRL+S, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			g_Song.Stop();
+			//g_Song.Stop();
 			SetStatusBarText("Save...");
 			CString filename=g_Song.GetFilename();
 			if (g_keyboard_askwhencontrol_s
@@ -1895,7 +1895,7 @@ end_save_control_s:
 	case 82:	//VK_R
 		if (g_controlkey && !g_shiftkey) //CTRL+R, or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
 		{
-			g_Song.Stop();
+			//g_Song.Stop();
 			g_Song.FileReload();	//turns out this function handles the rest already, so jump right to it instead
 		}
 		else
