@@ -1854,6 +1854,8 @@ void CSong::InstrDelete()
 
 void CSong::InstrInfo(int instr, TInstrInfo* iinfo, int instrto)
 {
+	if (!g_Instruments.IsValidInstrument(instr)) return;
+
 	TTrack* at;
 	int i, j, ain;
 	int inttrack;
@@ -1866,102 +1868,99 @@ void CSong::InstrInfo(int instr, TInstrInfo* iinfo, int instrto)
 	int minvol = 16, maxvol = -1;
 	int infrom = INSTRSNUM, into = -1;
 
-	if (g_Instruments.IsValidInstrument(instr))
+	if (instrto < instr) instrto = instr;
+
+	for (i = 0; i < TRACKSNUM; i++)
 	{
-		if (instrto < instr) instrto = instr;
-
-		for (i = 0; i < TRACKSNUM; i++)
+		inttrack = 0;
+		at = g_Tracks.GetTrack(i);
+		ain = -1;
+		for (j = 0; j < at->len; j++)
 		{
-			inttrack = 0;
-			at = g_Tracks.GetTrack(i);
-			ain = -1;
-			for (j = 0; j < at->len; j++)
+			if (at->instr[j] >= 0) ain = at->instr[j];
+			if (ain >= instr && ain <= instrto)
 			{
-				if (at->instr[j] >= 0) ain = at->instr[j];
-				if (ain >= instr && ain <= instrto)
+				inttrack = 1;
+				if (ain > into) into = ain;
+				if (ain < infrom) infrom = ain;
+				int note = at->note[j];
+				if (note >= 0 && note < NOTESNUM)
 				{
-					inttrack = 1;
-					if (ain > into) into = ain;
-					if (ain < infrom) infrom = ain;
-					int note = at->note[j];
-					if (note >= 0 && note < NOTESNUM)
+					globallytimes++; //some note with this instrument => started
+					withnote[note]++;
+					if (note > maxnote) maxnote = note;
+					if (note < minnote) minnote = note;
+				}
+				int vol = at->volume[j];
+				if (vol >= 0 && vol <= 15)
+				{
+					if (vol > maxvol) maxvol = vol;
+					if (vol < minvol) minvol = vol;
+				}
+			}
+		}
+		intrack[i] = inttrack;
+		if (inttrack) noftrack++;
+	}
+
+	if (iinfo)
+	{	//iinfo != NULL => set values
+		iinfo->count = globallytimes;
+		iinfo->usedintracks = noftrack;
+		iinfo->instrfrom = infrom;
+		iinfo->instrto = into;
+		iinfo->minnote = minnote;
+		iinfo->maxnote = maxnote;
+		iinfo->minvol = minvol;
+		iinfo->maxvol = maxvol;
+	}
+	else
+	{	//iinfo == NULL => shows dialog
+		CString s, s2;
+		s.Format("Instrument: %02X\nName: %s\nUsed in %i tracks, globally %i times.\nFrom note: %s\nTo note: %s\nMin volume: %X\nMax volume: %X",
+			instr, g_Instruments.GetName(instr), noftrack, globallytimes,
+			minnote < NOTESNUM ? notes[minnote] : "-",
+			maxnote >= 0 ? notes[maxnote] : "-",
+			minvol <= 15 ? minvol : 0,
+			maxvol >= 0 ? maxvol : 0);
+
+		if (globallytimes > 0)
+		{
+			s += "\n\nNote listing:\n";
+			int lc = 0;
+			for (i = 0; i < NOTESNUM; i++)
+			{
+				if (withnote[i])
+				{
+					s += notes[i];
+					lc++;
+					if (lc < 12)
+						s += " ";
+					else
 					{
-						globallytimes++; //some note with this instrument => started
-						withnote[note]++;
-						if (note > maxnote) maxnote = note;
-						if (note < minnote) minnote = note;
-					}
-					int vol = at->volume[j];
-					if (vol >= 0 && vol <= 15)
-					{
-						if (vol > maxvol) maxvol = vol;
-						if (vol < minvol) minvol = vol;
+						s += "\n"; lc = 0;
 					}
 				}
 			}
-			intrack[i] = inttrack;
-			if (inttrack) noftrack++;
-		}
-
-		if (iinfo)
-		{	//iinfo != NULL => set values
-			iinfo->count = globallytimes;
-			iinfo->usedintracks = noftrack;
-			iinfo->instrfrom = infrom;
-			iinfo->instrto = into;
-			iinfo->minnote = minnote;
-			iinfo->maxnote = maxnote;
-			iinfo->minvol = minvol;
-			iinfo->maxvol = maxvol;
-		}
-		else
-		{	//iinfo == NULL => shows dialog
-			CString s, s2;
-			s.Format("Instrument: %02X\nName: %s\nUsed in %i tracks, globally %i times.\nFrom note: %s\nTo note: %s\nMin volume: %X\nMax volume: %X",
-				instr, g_Instruments.GetName(instr), noftrack, globallytimes,
-				minnote < NOTESNUM ? notes[minnote] : "-",
-				maxnote >= 0 ? notes[maxnote] : "-",
-				minvol <= 15 ? minvol : 0,
-				maxvol >= 0 ? maxvol : 0);
-
-			if (globallytimes > 0)
+			s += "\n\nTrack listing:\n";
+			lc = 0;
+			for (i = 0; i < TRACKSNUM; i++)
 			{
-				s += "\n\nNote listing:\n";
-				int lc = 0;
-				for (i = 0; i < NOTESNUM; i++)
+				if (intrack[i])
 				{
-					if (withnote[i])
+					s2.Format("%02X", i);
+					s += s2;
+					lc++;
+					if (lc < 16)
+						s += " ";
+					else
 					{
-						s += notes[i];
-						lc++;
-						if (lc < 12)
-							s += " ";
-						else
-						{
-							s += "\n"; lc = 0;
-						}
-					}
-				}
-				s += "\n\nTrack listing:\n";
-				lc = 0;
-				for (i = 0; i < TRACKSNUM; i++)
-				{
-					if (intrack[i])
-					{
-						s2.Format("%02X", i);
-						s += s2;
-						lc++;
-						if (lc < 16)
-							s += " ";
-						else
-						{
-							s += "\n"; lc = 0;
-						}
+						s += "\n"; lc = 0;
 					}
 				}
 			}
-			MessageBox(g_hwnd, (LPCTSTR)s, "Instrument info", MB_ICONINFORMATION);
 		}
+		MessageBox(g_hwnd, (LPCTSTR)s, "Instrument info", MB_ICONINFORMATION);
 	}
 }
 
