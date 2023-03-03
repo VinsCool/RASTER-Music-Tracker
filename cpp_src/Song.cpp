@@ -419,6 +419,7 @@ int CSong::DecodeTuningBlock(unsigned char* mem, int addr, int endAddr)
 int CSong::MakeModule(unsigned char* mem, int addr, int iotype, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags)
 {
 	int i, j;
+	TTrack* tr;
 
 	// Returns maxadr (points to the first free address after the module) and sets the instrsaved and tracksaved fields
 	if (iotype == IOTYPE_RMF) return MakeRMFModule(mem, addr, instrumentSavedFlags, trackSavedFlags);
@@ -455,11 +456,10 @@ int CSong::MakeModule(unsigned char* mem, int addr, int iotype, BYTE* instrument
 	{
 		if (trackSavedFlags[i] > 0)
 		{
-			TTrack& tr = *g_Tracks.GetTrack(i);
-			for (j = 0; j < tr.len; j++)
+			tr = g_Tracks.GetTrack(i);
+			for (j = 0; j < tr->len; j++)
 			{
-				int ins = tr.instr[j];
-				if (ins >= 0 && ins < INSTRSNUM) instrumentSavedFlags[ins] = IF_USED;
+				if (g_Tracks.IsValidInstrument(tr->instr[j])) instrumentSavedFlags[tr->instr[j]] = IF_USED;
 			}
 		}
 	}
@@ -2470,81 +2470,93 @@ void CSong::TracksAllExpandLoops(int& tracksmodified, int& loopsexpanded)
 void CSong::SongClearUnusedTracksAndParts(int& clearedtracks, int& truncatedtracks, int& truncatedbeats)
 {
 	int i, j, ch;
+	int ttracks = 0, tbeats = 0, ctracks = 0;
 	int tracklen[TRACKSNUM];
 	BOOL trackused[TRACKSNUM];
+	TTrack* tr;
+
+	// Initialise
 	for (i = 0; i < TRACKSNUM; i++)
 	{
-		//initialise
 		tracklen[i] = -1;
 		trackused[i] = 0;
 	}
 
 	for (int sline = 0; sline < SONGLEN; sline++)
 	{
-		if (m_songgo[sline] >= 0) continue;	//goto line is ignored
+		if (IsSongGo(sline)) continue;	// Goto line is ignored
 
 		int nejkratsi = g_Tracks.m_maxTrackLength;
+
 		for (ch = 0; ch < g_tracks4_8; ch++)
 		{
 			int n = m_song[sline][ch];
-			if (n < 0 || n >= TRACKSNUM) continue;	//--
+
+			if (!g_Tracks.IsValidTrack(n)) continue;	// Invalid track is ignored
+
 			trackused[n] = 1;
-			TTrack& tr = *g_Tracks.GetTrack(n);
-			if (tr.go >= 0) continue;	//there is a loop => it has a maximum length
-			if (tr.len < nejkratsi) nejkratsi = tr.len;
+			tr = g_Tracks.GetTrack(n);
+
+			if (g_Tracks.IsValidGo(tr->go)) continue;	// There is a loop => it has a maximum length
+
+			if (tr->len < nejkratsi) nejkratsi = tr->len;
 		}
 
-		//"nejkratsi" is the shortest track in this song line
+		// "nejkratsi" is the shortest track in this song line
 		for (ch = 0; ch < g_tracks4_8; ch++)
 		{
 			int n = m_song[sline][ch];
-			if (n < 0 || n >= TRACKSNUM) continue;	//--
-			if (tracklen[n] < nejkratsi) tracklen[n] = nejkratsi; //if it needs a longer size, it will expand to the length it needs
+
+			if (!g_Tracks.IsValidTrack(n)) continue;	// Invalid track is ignored
+
+			if (tracklen[n] < nejkratsi) tracklen[n] = nejkratsi; // If it needs a longer size, it will expand to the length it needs
 		}
 	}
 
-	int ttracks = 0, tbeats = 0;
-	//and now it cuts those tracks
+	// And now it cuts those tracks
 	for (i = 0; i < TRACKSNUM; i++)
 	{
 		int nlen = tracklen[i];
-		if (nlen < 1) continue;	//if they don't have the length of at least 1 they are skipped
-		TTrack& tr = *g_Tracks.GetTrack(i);
-		if (tr.go < 0)
+
+		if (nlen < 1) continue;	// If they don't have the length of at least 1 they are skipped
+
+		tr = g_Tracks.GetTrack(i);
+
+		// There is no loop
+		if (!g_Tracks.IsValidGo(tr->go))
 		{
-			//there is no loop
-			if (nlen < tr.len)
+			if (nlen < tr->len)
 			{
-				//for what must cut, is there anything at all?
-				for (j = nlen; j < tr.len; j++)
+				// For what must cut, is there anything at all?
+				for (j = nlen; j < tr->len; j++)
 				{
-					if (tr.note[j] >= 0 || tr.instr[j] >= 0 || tr.volume[j] >= 0 || tr.speed[j] >= 0)
+					if (g_Tracks.IsValidNote(tr->note[j]) || g_Tracks.IsValidInstrument(tr->instr[j]) || g_Tracks.IsValidVolume(tr->volume[j]) || g_Tracks.IsValidSpeed(tr->speed[j]))
 					{
-						//Yeah, there's something, so cut it
+						// Yeah, there's something, so cut it
 						ttracks++;
-						tbeats += tr.len - nlen;
-						tr.len = nlen; //cut what is not needed
+						tbeats += tr->len - nlen;
+						tr->len = nlen; // Cut what is not needed
 						break;
 					}
 				}
-				//there is no break;
+				// There is no break;
 			}
 		}
+		// There is a loop
 		else
 		{
-			//there is a loop
-			if (tr.len >= nlen)	//the beginning of the loop is further than the required track length
+			// The beginning of the loop is further than the required track length
+			if (tr->len >= nlen)
 			{
 				ttracks++;
-				tbeats += tr.len - nlen;
-				tr.len = nlen;	//short track
-				tr.go = -1;		//cancel loop
+				tbeats += tr->len - nlen;
+				tr->len = nlen;	// Cut the track
+				tr->go = -1;	// Disable loop
 			}
 		}
 	}
 
-	//delete empty tracks not used in the song
-	int ctracks = 0;
+	// Delete empty tracks not used in the song
 	for (i = 0; i < TRACKSNUM; i++)
 	{
 		if (!trackused[i] && !g_Tracks.IsEmptyTrack(i))
