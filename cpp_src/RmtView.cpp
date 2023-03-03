@@ -2936,8 +2936,8 @@ void CRmtView::OnInstrumentInfo()
 
 void CRmtView::OnInstrumentChange() 
 {
-	int r=g_Song.InstrChange(g_Song.GetActiveInstr());
-	if (r) SCREENUPDATE;
+	g_Song.InstrChange(g_Song.GetActiveInstr());
+	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentClearallunusedinstruments() 

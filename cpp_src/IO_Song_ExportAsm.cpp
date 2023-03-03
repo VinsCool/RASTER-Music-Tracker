@@ -42,6 +42,8 @@ bool CSong::ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDes
 	memset(tracksFlags, 0, TRACKSNUM); // init
 	MarkTF_USED(tracksFlags);
 
+	TTrack tempTrack;	// temporary track
+
 	ou << ";ASM notation source";
 	ou << EOL << "XXX\tequ $FF\t;empty note value";
 	if (!g_PrefixForAllAsmLabels.IsEmpty())
@@ -68,10 +70,9 @@ bool CSong::ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDes
 				ou << EOL << s;
 			}
 
-			TTrack& originalTrack = *g_Tracks.GetTrack(trackNr);
-			TTrack tempTrack;	// temporary track
-			memcpy((void*)&tempTrack, (void*)&originalTrack, sizeof(TTrack)); // make a copy of origtt to tt
+			tempTrack = *g_Tracks.GetTrack(trackNr);
 			g_Tracks.TrackExpandLoop(&tempTrack); //expands tt due to GO loops
+
 			int ova = maxova;
 
 			for (int idx = 0; idx < tempTrack.len; idx++)
@@ -213,10 +214,9 @@ bool CSong::ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDes
 					ou << EOL << s;
 				}
 
-				TTrack& origtt = *g_Tracks.GetTrack(t);
-				TTrack tt; //temporary track
-				memcpy((void*)&tt, (void*)&origtt, sizeof(TTrack)); //make a copy of origtt to tt
-				g_Tracks.TrackExpandLoop(&tt); //expands tt due to GO loops
+				tempTrack = *g_Tracks.GetTrack(t);
+				g_Tracks.TrackExpandLoop(&tempTrack); //expands tt due to GO loops
+
 				for (i = 0; i < trackslen; i++)
 				{
 					if (ova >= maxova)
@@ -225,17 +225,17 @@ bool CSong::ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDes
 						ou << EOL << "\tdta ";
 					}
 
-					anot= tt.note[i];
+					anot= tempTrack.note[i];
 					if (anot>= 0)
 					{
-						ins = tt.instr[i];
+						ins = tempTrack.instr[i];
 						if (dlg.m_notesIndexOrFreq == 1) //notes
 							anot= g_Instruments.GetNote(ins, anot);
 						else				//frequencies
 							anot= g_Instruments.GetFrequency(ins, anot);
 					}
 					if (anot>= 0) snot.Format("$%02X", anot); else snot = "XXX";
-					for (dur = 1; i + dur < trackslen && tt.note[i + dur] < 0; dur++);
+					for (dur = 1; i + dur < trackslen && tempTrack.note[i + dur] < 0; dur++);
 					if (dlg.m_durationsType == 1)
 					{
 						if (ova > 0) ou << ",";

@@ -1854,9 +1854,7 @@ void CSong::InstrDelete()
 
 void CSong::InstrInfo(int instr, TInstrInfo* iinfo, int instrto)
 {
-	if (instr < 0 || instr >= INSTRSNUM) return;
-	if (instrto < instr || instr >= INSTRSNUM) instrto = instr;
-
+	TTrack* at;
 	int i, j, ain;
 	int inttrack;
 	int intrack[TRACKSNUM];
@@ -1867,306 +1865,327 @@ void CSong::InstrInfo(int instr, TInstrInfo* iinfo, int instrto)
 	int minnote = NOTESNUM, maxnote = -1;
 	int minvol = 16, maxvol = -1;
 	int infrom = INSTRSNUM, into = -1;
-	for (i = 0; i < TRACKSNUM; i++)
+
+	if (g_Instruments.IsValidInstrument(instr))
 	{
-		inttrack = 0;
-		TTrack& at = *g_Tracks.GetTrack(i);
-		ain = -1;
-		for (j = 0; j < at.len; j++)
-		{
-			if (at.instr[j] >= 0) ain = at.instr[j];
-			if (ain >= instr && ain <= instrto)
-			{
-				inttrack = 1;
-				if (ain > into) into = ain;
-				if (ain < infrom) infrom = ain;
-				int note = at.note[j];
-				if (note >= 0 && note < NOTESNUM)
-				{
-					globallytimes++; //some note with this instrument => started
-					withnote[note]++;
-					if (note > maxnote) maxnote = note;
-					if (note < minnote) minnote = note;
-				}
-				int vol = at.volume[j];
-				if (vol >= 0 && vol <= 15)
-				{
-					if (vol > maxvol) maxvol = vol;
-					if (vol < minvol) minvol = vol;
-				}
-			}
-		}
-		intrack[i] = inttrack;
-		if (inttrack) noftrack++;
-	}
+		if (instrto < instr) instrto = instr;
 
-	if (iinfo)
-	{	//iinfo != NULL => set values
-		iinfo->count = globallytimes;
-		iinfo->usedintracks = noftrack;
-		iinfo->instrfrom = infrom;
-		iinfo->instrto = into;
-		iinfo->minnote = minnote;
-		iinfo->maxnote = maxnote;
-		iinfo->minvol = minvol;
-		iinfo->maxvol = maxvol;
-	}
-	else
-	{	//iinfo == NULL => shows dialog
-		CString s, s2;
-		s.Format("Instrument: %02X\nName: %s\nUsed in %i tracks, globally %i times.\nFrom note: %s\nTo note: %s\nMin volume: %X\nMax volume: %X",
-			instr, g_Instruments.GetName(instr), noftrack, globallytimes,
-			minnote < NOTESNUM ? notes[minnote] : "-",
-			maxnote >= 0 ? notes[maxnote] : "-",
-			minvol <= 15 ? minvol : 0,
-			maxvol >= 0 ? maxvol : 0);
-
-		if (globallytimes > 0)
+		for (i = 0; i < TRACKSNUM; i++)
 		{
-			s += "\n\nNote listing:\n";
-			int lc = 0;
-			for (i = 0; i < NOTESNUM; i++)
+			inttrack = 0;
+			at = g_Tracks.GetTrack(i);
+			ain = -1;
+			for (j = 0; j < at->len; j++)
 			{
-				if (withnote[i])
+				if (at->instr[j] >= 0) ain = at->instr[j];
+				if (ain >= instr && ain <= instrto)
 				{
-					s += notes[i];
-					lc++;
-					if (lc < 12)
-						s += " ";
-					else
+					inttrack = 1;
+					if (ain > into) into = ain;
+					if (ain < infrom) infrom = ain;
+					int note = at->note[j];
+					if (note >= 0 && note < NOTESNUM)
 					{
-						s += "\n"; lc = 0;
+						globallytimes++; //some note with this instrument => started
+						withnote[note]++;
+						if (note > maxnote) maxnote = note;
+						if (note < minnote) minnote = note;
+					}
+					int vol = at->volume[j];
+					if (vol >= 0 && vol <= 15)
+					{
+						if (vol > maxvol) maxvol = vol;
+						if (vol < minvol) minvol = vol;
 					}
 				}
 			}
-			s += "\n\nTrack listing:\n";
-			lc = 0;
-			for (i = 0; i < TRACKSNUM; i++)
+			intrack[i] = inttrack;
+			if (inttrack) noftrack++;
+		}
+
+		if (iinfo)
+		{	//iinfo != NULL => set values
+			iinfo->count = globallytimes;
+			iinfo->usedintracks = noftrack;
+			iinfo->instrfrom = infrom;
+			iinfo->instrto = into;
+			iinfo->minnote = minnote;
+			iinfo->maxnote = maxnote;
+			iinfo->minvol = minvol;
+			iinfo->maxvol = maxvol;
+		}
+		else
+		{	//iinfo == NULL => shows dialog
+			CString s, s2;
+			s.Format("Instrument: %02X\nName: %s\nUsed in %i tracks, globally %i times.\nFrom note: %s\nTo note: %s\nMin volume: %X\nMax volume: %X",
+				instr, g_Instruments.GetName(instr), noftrack, globallytimes,
+				minnote < NOTESNUM ? notes[minnote] : "-",
+				maxnote >= 0 ? notes[maxnote] : "-",
+				minvol <= 15 ? minvol : 0,
+				maxvol >= 0 ? maxvol : 0);
+
+			if (globallytimes > 0)
 			{
-				if (intrack[i])
+				s += "\n\nNote listing:\n";
+				int lc = 0;
+				for (i = 0; i < NOTESNUM; i++)
 				{
-					s2.Format("%02X", i);
-					s += s2;
-					lc++;
-					if (lc < 16)
-						s += " ";
-					else
+					if (withnote[i])
 					{
-						s += "\n"; lc = 0;
+						s += notes[i];
+						lc++;
+						if (lc < 12)
+							s += " ";
+						else
+						{
+							s += "\n"; lc = 0;
+						}
+					}
+				}
+				s += "\n\nTrack listing:\n";
+				lc = 0;
+				for (i = 0; i < TRACKSNUM; i++)
+				{
+					if (intrack[i])
+					{
+						s2.Format("%02X", i);
+						s += s2;
+						lc++;
+						if (lc < 16)
+							s += " ";
+						else
+						{
+							s += "\n"; lc = 0;
+						}
 					}
 				}
 			}
+			MessageBox(g_hwnd, (LPCTSTR)s, "Instrument info", MB_ICONINFORMATION);
 		}
-		MessageBox(g_hwnd, (LPCTSTR)s, "Instrument info", MB_ICONINFORMATION);
 	}
 }
 
-int CSong::InstrChange(int instr)
+void CSong::InstrChange(int instr)
 {
-	//Change all the instrument occurences.
-	if (instr < 0 || instr >= INSTRSNUM) return 0;
+	if (!g_Instruments.IsValidInstrument(instr)) return;
 
 	CInstrumentChangeDlg dlg;
-	//dlg.m_song = this;
+
+	CString s = "";
+
+	TTrack* st;						// Pointer to original track
+	TTrack* nt;						// Pointer to new track
+	TTrack at;						// Temporary track
+
+	BYTE tracks[TRACKSNUM];			// New tracks with changes 
+	BYTE track_yn[TRACKSNUM];		// Tracks to apply changes
+
+	int track_column[TRACKSNUM];	// The first occurrence in the selected area of the song
+	int track_line[TRACKSNUM];		// The first occurrence in the selected area of the song
+	int track_changeto[TRACKSNUM];	// Changed tracks to replace in song
+
+	int onlysomething = 0;			// Only apply changes to specific things
+	int trackcreated = 0;			// Number of newly created songs
+	int songchanges = 0;			// Number of changes in the song
+
+	int i, j, k, t, r, lasti, lastn, changes, note, ins, vol;
+
+	bool error = 0;
+
 	dlg.m_combo9 = dlg.m_combo11 = instr;
 	dlg.m_combo10 = dlg.m_combo12 = instr;
 	dlg.m_onlytrack = SongGetActiveTrack();
 	dlg.m_onlysonglinefrom = dlg.m_onlysonglineto = SongGetActiveLine();
 
+	// Change all the instrument occurences
 	if (dlg.DoModal() == IDOK)
 	{
-		//hide all tracks and the whole song
+		Stop();	// Stop playing before processing further
+
+		// Hide all tracks and the whole song
 		g_Undo.ChangeTrack(0, 0, UETYPE_TRACKSALL, -1);
 		g_Undo.ChangeSong(0, 0, UETYPE_SONGDATA, 1);
 
+		// Get the parameters from the dialog box
 		int snotefrom = dlg.m_combo1;
 		int snoteto = dlg.m_combo2;
 		int svolmin = dlg.m_combo3;
 		int svolmax = dlg.m_combo4;
 		int sinstrfrom = dlg.m_combo11;
 		int sinstrto = dlg.m_combo12;
-
 		int dnotefrom = dlg.m_combo5;
 		int dnoteto = dlg.m_combo6;
 		int dvolmin = dlg.m_combo7;
 		int dvolmax = dlg.m_combo8;
 		int dinstrfrom = dlg.m_combo9;
 		int dinstrto = dlg.m_combo10;
-
-		int i, j, t, r;
-
 		int onlytrack = dlg.m_onlytrack;
-
-		//!!!!!!!!!!!!!!!!!!!!!
 		int onlychannels = dlg.m_onlychannels;
 		int onlysonglinefrom = dlg.m_onlysonglinefrom;
 		int onlysonglineto = dlg.m_onlysonglineto;
 
-		unsigned char track_yn[TRACKSNUM];
+		// Initialise memory
 		memset(track_yn, 0, TRACKSNUM);
-		int track_column[TRACKSNUM];	//the first occurrence in the selected area of the song
-		int track_line[TRACKSNUM];		//the first occurrence in the selected area of the song
-		for (i = 0; i < TRACKSNUM; i++) track_column[i] = track_line[i] = -1; //init
-
-		int onlysomething = 0;
-		int trackcreated = 0; //number of newly created songs
-		int songchanges = 0;	//number of changes in the song
+		for (i = 0; i < TRACKSNUM; i++) track_column[i] = track_line[i] = -1;
 
 		if (onlychannels >= 0 || (onlysonglinefrom >= 0 && onlysonglineto >= 0))
 		{
-			if (onlychannels <= 0) onlychannels = 0xff; //all
-			if (onlysonglinefrom < 0) onlysonglinefrom = 0; //from the beginning
-			if (onlysonglineto < 0) onlysonglineto = SONGLEN - 1; //to the end
-			onlysomething = 1;
-			unsigned char r;
+			if (onlychannels <= 0) onlychannels = 0xff;				// All channels
+			if (onlysonglinefrom < 0) onlysonglinefrom = 0;			// From the beginning
+			if (onlysonglineto < 0) onlysonglineto = SONGLEN - 1;	// To the end
+			onlysomething = 1;										// Something specific to change
+
 			for (j = 0; j < SONGLEN; j++)
 			{
-				if (m_songgo[j] >= 0) continue; //there is a goto
+				if (IsSongGo(j)) continue;
+
 				for (i = 0; i < g_tracks4_8; i++)
 				{
 					t = m_song[j][i];
-					if (t < 0 || t >= TRACKSNUM) continue;
+
+					if (!g_Tracks.IsValidTrack(t)) continue;
+
 					r = (onlychannels & (1 << i)) && j >= onlysonglinefrom && j <= onlysonglineto;
-					track_yn[t] |= (r) ? 1 : 2;	//1=yes, 2=no, 3=yesno (copy)
+					track_yn[t] |= (r) ? 1 : 2;	// 1 = yes, 2 = no, 3 = yesno (copy)
+
+					// The first occurrence in the selected area of the song
 					if (r && track_column[t] < 0)
 					{
-						//the first occurrence in the selected area of the song
 						track_column[t] = i;
 						track_line[t] = j;
 					}
 				}
 			}
 		}
-		else
-			if (onlytrack >= 0)
-			{
-				track_yn[onlytrack] = 1;	//1=yes
-				onlysomething = 1;
-			}
 
-		if (dnoteto >= NOTESNUM) dnoteto = dnotefrom + (snoteto - snotefrom);
-		if (dvolmax >= 16) dvolmax = dvolmin + (svolmax - svolmin);
-		if (dinstrto >= INSTRSNUM) dinstrto = dinstrfrom + (sinstrto - sinstrfrom);
+		else if (onlytrack >= 0)
+		{
+			track_yn[onlytrack] = 1;	// 1 = yes
+			onlysomething = 1;
+		}
 
-		double notecoef;
-		if (snoteto - snotefrom > 0)
-			notecoef = (double)(dnoteto - dnotefrom) / (snoteto - snotefrom);
-		else
-			notecoef = 0;
+		if (!g_Tracks.IsValidNote(dnoteto)) dnoteto = dnotefrom + (snoteto - snotefrom);
+		if (!g_Tracks.IsValidVolume(dvolmax)) dvolmax = dvolmin + (svolmax - svolmin);
+		if (!g_Tracks.IsValidInstrument(dinstrto)) dinstrto = dinstrfrom + (sinstrto - sinstrfrom);
 
-		double volcoef;
-		if (svolmax - svolmin > 0)
-			volcoef = (double)(dvolmax - dvolmin) / (svolmax - svolmin);
-		else
-			volcoef = 0;
-
-		double instrcoef;
-		if (sinstrto - sinstrfrom > 0)
-			instrcoef = (double)(dinstrto - dinstrfrom) / (sinstrto - sinstrfrom);
-		else
-			instrcoef = 0;
-
-		int lasti, lastn, changes;
-		int track_changeto[TRACKSNUM];
+		double notecoef = (snoteto - snotefrom > 0) ? (double)(dnoteto - dnotefrom) / (snoteto - snotefrom) : 0;
+		double volcoef = (svolmax - svolmin > 0) ? (double)(dvolmax - dvolmin) / (svolmax - svolmin) : 0;
+		double instrcoef = (sinstrto - sinstrfrom > 0) ? (double)(dinstrto - dinstrfrom) / (sinstrto - sinstrfrom) : 0;
 
 		for (i = 0; i < TRACKSNUM; i++)
 		{
-			track_changeto[i] = -1; //initialise
-			if (onlysomething && ((track_yn[i] & 1) != 1)) continue; //it wants to change only some and this one is not
+			track_changeto[i] = -1; // initialise
 
-			TTrack& st = *g_Tracks.GetTrack(i);
-			TTrack at; //destination track
-			//make a copy
-			memcpy((void*)(&at), (void*)(&st), sizeof(TTrack));
+			// It wants to change only some and this one is not
+			if (onlysomething && ((track_yn[i] & 1) != 1)) continue;
+
+			// Copy the original track to temporary track
+			st = g_Tracks.GetTrack(i);
+			at = *st;
+
 			changes = 0;
 			lasti = lastn = -1;
+
 			for (j = 0; j < at.len; j++)
 			{
-				if (at.instr[j] >= 0) lasti = at.instr[j];
-				if (at.note[j] >= 0) lastn = at.note[j];
-				if (lasti >= sinstrfrom
-					&& lasti <= sinstrto
-					&& lastn >= snotefrom
-					&& lastn <= snoteto
-					&& at.volume[j] >= svolmin
-					&& at.volume[j] <= svolmax)
+				if (g_Tracks.IsValidInstrument(at.instr[j])) lasti = at.instr[j];
+				if (g_Tracks.IsValidNote(at.note[j])) lastn = at.note[j];
+
+				if (lasti >= sinstrfrom && lasti <= sinstrto && lastn >= snotefrom && lastn <= snoteto && at.volume[j] >= svolmin && at.volume[j] <= svolmax)
 				{
-					if (at.note[j] >= 0)
+					if (g_Tracks.IsValidNote(at.note[j]))
 					{
-						int note = dnotefrom + (int)((double)(at.note[j] - snotefrom) * notecoef + 0.5);
-						while (note >= NOTESNUM) note -= 12;
+						note = dnotefrom + (int)((double)(at.note[j] - snotefrom) * notecoef + 0.5);
+						while (!g_Tracks.IsValidNote(note)) note -= 12;
 						if (note != at.note[j])
 						{
 							at.note[j] = note;
 							changes = 1;
 						}
 					}
-					if (at.instr[j] >= 0)
+
+					if (g_Tracks.IsValidInstrument(at.instr[j]))
 					{
-						int ins = dinstrfrom + (int)((double)(at.instr[j] - sinstrfrom) * instrcoef + 0.5);
-						while (ins >= INSTRSNUM) ins = INSTRSNUM - 1;
+						ins = dinstrfrom + (int)((double)(at.instr[j] - sinstrfrom) * instrcoef + 0.5);
+						if (!g_Tracks.IsValidInstrument(ins)) ins = INSTRSNUM - 1;
 						if (ins != at.instr[j])
 						{
 							at.instr[j] = ins;
 							changes = 1;
 						}
 					}
-					int vol = dvolmin + (int)((double)(at.volume[j] - svolmin) * volcoef + 0.5);
-					if (vol > 15) vol = 15;
-					if (vol != at.volume[j])
+
+					if (g_Tracks.IsValidVolume(at.volume[j]))
 					{
-						at.volume[j] = vol;
-						changes = 1;
+						vol = dvolmin + (int)((double)(at.volume[j] - svolmin) * volcoef + 0.5);
+						if (!g_Tracks.IsValidVolume(vol)) vol = MAXVOLUME;
+						if (vol != at.volume[j])
+						{
+							at.volume[j] = vol;
+							changes = 1;
+						}
 					}
 				}
 			}
-			if (changes) //made some changes
+
+			// There was something changed
+			if (changes)
 			{
+				// Create a new track if the track occurs both inside and outside the area
 				if (track_yn[i] & 2)
 				{
-					//the track occurs both inside and outside the area
-					//create a new track
-					int k;
-					BYTE tracks[TRACKSNUM];
-					memset(tracks, 0, TRACKSNUM); //init
+					memset(tracks, 0, TRACKSNUM);	// Initialise memory
 					MarkTF_USED(tracks);
 					MarkTF_NOEMPTY(tracks);
 					k = FindNearTrackBySongLineAndColumn(track_line[i], track_column[i], tracks);
+
+					// The process is aborted if there is no unused track available
 					if (k < 0)
 					{
-						MessageBox(g_hwnd, "There isn't any empty unused track in song.", "Error", MB_ICONERROR);
-						//UpdateShiftControlKeys();
-						return 0;
+						error = 1;
+						s.AppendFormat("There aren't any more empty unused tracks in song, further changes could not be applied!\n\n");
+						s.AppendFormat("Process halted in Track %02X, in Channel %u\n\n", track_line[i], track_column[i]);
+						goto abortchanges;
 					}
-					//copies the changed copy (at) to the new track (nt)
-					TTrack* nt = g_Tracks.GetTrack(k);
-					memcpy((void*)nt, (void*)(&at), sizeof(TTrack));
+
+					// Copy the changed track (at) to the new track (nt)
+					nt = g_Tracks.GetTrack(k);
+					*nt = at;
+
 					trackcreated++;
-					//at least once put it in the song (due to the search in the song used tracks)
+
+					// Put it in the song at least once (due to the search in the song used tracks)
 					m_song[track_line[i]][track_column[i]] = k;
 					songchanges++;
-					//will change all occurrences
+
+					// Will change all occurrences
 					track_changeto[i] = k;
 				}
+
+				// Copy the changed track (at) back to the original track (st)
 				else
 				{
-					//occurs only within the area to copy, the reduced copy (data) to the original track (st)
-					memcpy((void*)(&st), (void*)(&at), sizeof(TTrack));
+					*st = at;
 				}
 			}
 
 		}
-		//subsequent changes in the song
+
+		// Subsequent changes in the song
 		if (onlysomething)
 		{
 			for (j = 0; j < SONGLEN; j++)
 			{
-				if (m_songgo[j] >= 0) continue; //there is a goto
+				if (IsSongGo(j)) continue;
+
 				for (i = 0; i < g_tracks4_8; i++)
 				{
 					t = m_song[j][i];
-					if (t < 0 || t >= TRACKSNUM) continue;
+
+					if (!g_Tracks.IsValidTrack(t)) continue;
+
 					r = (onlychannels & (1 << i)) && j >= onlysonglinefrom && j <= onlysonglineto;
+
 					if (r && track_changeto[t] >= 0)
 					{
 						m_song[j][i] = track_changeto[t];
@@ -2175,15 +2194,20 @@ int CSong::InstrChange(int instr)
 				}
 			}
 		}
-		if (trackcreated > 0 || songchanges > 0)
+
+	abortchanges:
+		s.AppendFormat("Instrument changes were applied ");
+		s.AppendFormat(error ? "with errors, beware of data loss!\n\n" : "successfully!\n\n");
+
+		if (trackcreated || songchanges)
 		{
-			CString s;
-			s.Format("Instrument changes implications:\nNew tracks created: %u\nChanges in song: %u", trackcreated, songchanges);
-			MessageBox(g_hwnd, (LPCTSTR)s, "Instrument changes", MB_ICONINFORMATION);
+			s.AppendFormat("Additional actions were also performed to accommodate the chosen parameters:\n\n");
+			s.AppendFormat("New tracks created: %u\n", trackcreated);
+			s.AppendFormat("Total changes in song: %u\n", songchanges);
 		}
-		return 1;
+
+		MessageBox(g_hwnd, s, "Instrument changes", MB_ICONINFORMATION);
 	}
-	return 0;
 }
 
 void CSong::TrackInfo(int track)
