@@ -17,7 +17,7 @@ struct TTrack
 
 struct TTracksAll	//for undo
 {
-	int maxtracklength;
+	//int maxtracklength;
 	TTrack tracks[TRACKSNUM];
 };
 
@@ -65,9 +65,11 @@ public:
 	BOOL DeleteLine(int track, int line);
 
 	TTrack* GetTrack(int track) { return IsValidTrack(track) ? &m_track[track] : NULL; };
+	//TTrack* GetTracks() { return m_track; };
 	TTracksAll* GetTracksAll() { return (TTracksAll*)m_track; };
-	void GetTracksAll(TTracksAll* dest_ta);
-	void SetTracksAll(TTracksAll* src_ta);
+	
+	//void GetTracksAll(TTracksAll* dest_ta);
+	//void SetTracksAll(TTracksAll* src_ta);
 
 	int TrackToAta(int trackNr, unsigned char* dest, int max);
 	int TrackToAtaRMF(int trackNr, unsigned char* dest, int max);
