@@ -164,8 +164,8 @@ void CUndo::Separator(int sep)
 
 void CUndo::ChangeTrack(int tracknum, int trackline, int type, char separator)
 {
-	if (tracknum < 0) return;
 	TTrack* tr = g_Tracks.GetTrack(tracknum);
+	if (!tr) return;
 
 	//An event with the original status at a different place
 	TUndoEvent* ue = new TUndoEvent;

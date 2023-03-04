@@ -581,7 +581,9 @@ int CSong::MakeModule(unsigned char* mem, int addr, int iotype, BYTE* instrument
 int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tracksaved)
 {
 	//returns maxadr (points to the first available address behind the module) and sets the instrsaved and tracksaved fields
-
+	
+	TTrack* tr;
+	
 	BYTE* instrsave = instrsaved;
 	BYTE* tracksave = tracksaved;
 
@@ -602,10 +604,10 @@ int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tr
 	{
 		if (tracksave[i] > 0)
 		{
-			TTrack& tr = *g_Tracks.GetTrack(i);
-			for (j = 0; j < tr.len; j++)
+			tr = g_Tracks.GetTrack(i);
+			for (j = 0; j < tr->len; j++)
 			{
-				int ins = tr.instr[j];
+				int ins = tr->instr[j];
 				if (ins >= 0 && ins < INSTRSNUM) instrsave[ins] = IF_USED;
 			}
 		}
@@ -2414,22 +2416,24 @@ int CSong::GetSmallestMaxtracklen(int songline)
 
 void CSong::ChangeMaxtracklen(int maxtracklen)
 {
-	if (maxtracklen <= 0 || maxtracklen > TRACKLEN) return;
-	//
+	if (!g_Tracks.IsValidLength(maxtracklen)) return;
+
 	int i, j;
+	TTrack* tt;
+
 	for (i = 0; i < TRACKSNUM; i++)
 	{
-		TTrack& tt = *g_Tracks.GetTrack(i);
+		tt = g_Tracks.GetTrack(i);
 		//clear
-		for (j = tt.len; j < TRACKLEN; j++)
+		for (j = tt->len; j < TRACKLEN; j++)
 		{
-			tt.note[j] = tt.instr[j] = tt.volume[j] = tt.speed[j] = -1;
+			tt->note[j] = tt->instr[j] = tt->volume[j] = tt->speed[j] = -1;
 		}
 		//
-		if (tt.len >= maxtracklen)
+		if (tt->len >= maxtracklen)
 		{
-			tt.go = -1; //cancel GO
-			tt.len = maxtracklen; //adjust length
+			tt->go = -1; //cancel GO
+			tt->len = maxtracklen; //adjust length
 		}
 	}
 	if (m_trackactiveline >= maxtracklen) m_trackactiveline = maxtracklen - 1;
@@ -2734,17 +2738,19 @@ void CSong::RenumberAllTracks(int type) //1..after columns, 2..after lines
 int CSong::ClearAllInstrumentsUnusedInAnyTrack()
 {
 	//go through all existing tracks and find unused instruments
+
 	int i, j, t;
 	BOOL instrused[INSTRSNUM];
+	TTrack* tr;
 
 	for (i = 0; i < INSTRSNUM; i++) instrused[i] = 0;
 	for (i = 0; i < TRACKSNUM; i++)
 	{
-		TTrack& tr = *g_Tracks.GetTrack(i);
-		int nlen = tr.len;
+		tr = g_Tracks.GetTrack(i);
+		int nlen = tr->len;
 		for (j = 0; j < nlen; j++)
 		{
-			t = tr.instr[j];
+			t = tr->instr[j];
 			if (t >= 0 && t < INSTRSNUM) instrused[t] = 1;	//instrument "t" is used
 		}
 	}
@@ -2770,6 +2776,7 @@ void CSong::RenumberAllInstruments(int type)
 
 	int i, j, k, ins;
 	int moveinstrfrom[INSTRSNUM], moveinstrto[INSTRSNUM];
+	TTrack* tr;
 
 	for (i = 0; i < INSTRSNUM; i++) moveinstrfrom[i] = moveinstrto[i] = -1;
 
@@ -2778,11 +2785,11 @@ void CSong::RenumberAllInstruments(int type)
 	//analyse all tracks
 	for (i = 0; i < TRACKSNUM; i++)
 	{
-		TTrack& tr = *g_Tracks.GetTrack(i);
-		int tlen = tr.len;
+		tr = g_Tracks.GetTrack(i);
+		int tlen = tr->len;
 		for (j = 0; j < tlen; j++)
 		{
-			ins = tr.instr[j];
+			ins = tr->instr[j];
 			if (ins < 0 || ins >= INSTRSNUM) continue;
 			if (moveinstrfrom[ins] < 0)
 			{
@@ -2914,13 +2921,13 @@ void CSong::RenumberAllInstruments(int type)
 	//and now it has to be renumbered in all tracks according to the moveinstrfrom [instr] table
 	for (i = 0; i < TRACKSNUM; i++)
 	{
-		TTrack& tr = *g_Tracks.GetTrack(i);
-		int tlen = tr.len;
+		tr = g_Tracks.GetTrack(i);
+		int tlen = tr->len;
 		for (j = 0; j < tlen; j++)
 		{
-			ins = tr.instr[j];
+			ins = tr->instr[j];
 			if (ins < 0 || ins >= INSTRSNUM) continue;
-			tr.instr[j] = moveinstrfrom[ins];
+			tr->instr[j] = moveinstrfrom[ins];
 		}
 	}
 
