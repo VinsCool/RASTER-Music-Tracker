@@ -424,7 +424,9 @@ void CTracks::GetTracksAll(TTracksAll* dest_ta)
 	if (dest_ta && m_track)
 	{
 		dest_ta->maxtracklength = m_maxTrackLength;
-		*dest_ta->tracks = *m_track;
+		memcpy(dest_ta->tracks, &m_track, sizeof(m_track));
+	//	dest_ta->maxtracklength = m_maxTrackLength;
+	//	*dest_ta->tracks = *m_track;
 	}
 }
 
@@ -433,7 +435,9 @@ void CTracks::SetTracksAll(TTracksAll* src_ta)
 	if (src_ta && m_track)
 	{
 		m_maxTrackLength = src_ta->maxtracklength;
-		*m_track = *src_ta->tracks;
+		memcpy(&m_track, src_ta->tracks, sizeof(m_track));
+	//	m_maxTrackLength = src_ta->maxtracklength;
+	//	*m_track = *src_ta->tracks;
 	}
 }
 

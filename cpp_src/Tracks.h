@@ -65,6 +65,7 @@ public:
 	BOOL DeleteLine(int track, int line);
 
 	TTrack* GetTrack(int track) { return IsValidTrack(track) ? &m_track[track] : NULL; };
+	TTracksAll* GetTracksAll() { return (TTracksAll*)m_track; };
 	void GetTracksAll(TTracksAll* dest_ta);
 	void SetTracksAll(TTracksAll* src_ta);
 

@@ -209,11 +209,10 @@ void CUndo::ChangeTrack(int tracknum, int trackline, int type, char separator)
 			break;
 
 		case UETYPE_TRACKSALL: //all tracks
-		{
 			data = (int*)new TTracksAll;
+			//memcpy((TTracksAll*)&data->tracks, g_Tracks.GetTrack(0), sizeof(TTrack));
 			g_Tracks.GetTracksAll((TTracksAll*)data); //fill with data
-		}
-		break;
+			break;
 
 		default:
 			MessageBox(g_hwnd, "CUndo::ChangeTrack BAD!", "Internal error", MB_ICONERROR);

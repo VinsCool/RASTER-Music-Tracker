@@ -3047,77 +3047,85 @@ void CRmtView::OnSongExpandloopsinalltracks()
 	SCREENUPDATE;
 }
 
-void CRmtView::OnSongSizeoptimization() 
+void CRmtView::OnSongSizeoptimization()
 {
-	//ALL size optimalizations
-	g_Song.Stop();	//stop music
+	// ALL size optimalizations
+	int r = MessageBox("Are you sure you want to delete all tracks and instruments unused in song,\ntruncate unused tracks and rebuild wise tracks loops,\ndelete all duplicated tracks, renumber all tracks and instruments\nand change maximal tracks length to effective computed value?", "All size optimizations", MB_YESNOCANCEL | MB_ICONEXCLAMATION);
+	if (r != IDYES) return;
 
-	int r=MessageBox("Are you sure you want to delete all tracks and instruments unused in song,\ntruncate unused tracks and rebuild wise tracks loops,\ndelete all duplicated tracks, renumber all tracks and instruments\nand change maximal tracks length to effective computed value?","All size optimizations",MB_YESNOCANCEL | MB_ICONEXCLAMATION);
-	if (r!=IDYES) return;
+	g_Song.Stop();	// Stop music
 
-	g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
-	g_Undo.ChangeInstrument(0,0,UETYPE_INSTRSALL,-1);
-	g_Undo.ChangeSong(0,0,UETYPE_SONGDATA,1);
+	g_Undo.ChangeTrack(0, 0, UETYPE_TRACKSALL, -1);
+	g_Undo.ChangeInstrument(0, 0, UETYPE_INSTRSALL, -1);
+	g_Undo.ChangeSong(0, 0, UETYPE_SONGDATA, 1);
 
-	int chmaxtl=0;
-	//first unpack all existing loops
-	int tracksmodified=0,loopsexpanded=0;
-	g_Song.TracksAllExpandLoops(tracksmodified,loopsexpanded);
-	//find the effective length of maxtracklen and shorten it if necessary
+	int chmaxtl = 0;
+
+	// First unpack all existing loops
+	int tracksmodified = 0, loopsexpanded = 0;
+	g_Song.TracksAllExpandLoops(tracksmodified, loopsexpanded);
+
+	// Find the effective length of maxtracklen and shorten it if necessary
 	int maxtracklen = g_Tracks.m_maxTrackLength;
 	int effemaxtracklen = g_Song.GetEffectiveMaxtracklen();
-	if (effemaxtracklen<maxtracklen)
+	if (effemaxtracklen < maxtracklen)
 	{
 		g_Song.ChangeMaxtracklen(effemaxtracklen);
-		chmaxtl=1;
+		chmaxtl = 1;
 	}
-	//now it will back up
-	int optitracks=0,optibeats=0;
-	g_Song.TracksAllBuildLoops(optitracks,optibeats);
-	//and until the end, don't use the tracks and their parts
-	int clearedtracks=0,truncatedtracks=0,truncatedbeats=0;
-	g_Song.SongClearUnusedTracksAndParts(clearedtracks,truncatedtracks,truncatedbeats);
 
-	//and only now (after clearing unused tracks) it will remove unused instruments
+	// Now it will back up
+	int optitracks = 0, optibeats = 0;
+	g_Song.TracksAllBuildLoops(optitracks, optibeats);
+
+	// And until the end, don't use the tracks and their parts
+	int clearedtracks = 0, truncatedtracks = 0, truncatedbeats = 0;
+	g_Song.SongClearUnusedTracksAndParts(clearedtracks, truncatedtracks, truncatedbeats);
+
+	// And only now (after clearing unused tracks) it will remove unused instruments
 	int clearedinstruments;
 	clearedinstruments = g_Song.ClearAllInstrumentsUnusedInAnyTrack();
 
-	//and now it eliminates double tracks and corrects their occurrences in the song
-	//(may have been created by previous edits)
+	// And now it eliminates double tracks and corrects their occurrences in the song
+	// (may have been created by previous edits)
 	int duplicatedtracks;
 	duplicatedtracks = g_Song.SongClearDuplicatedTracks();
 
-	//now refines the tracks (to remove any gaps)
+	// Now refines the tracks (to remove any gaps)
 	g_Song.RenumberAllTracks(1);
 
-	//and now refines the instruments (to remove any gaps)
+	// And now refines the instruments (to remove any gaps)
 	g_Song.RenumberAllInstruments(1);
 
 	CString s;
-	s.Format("Deleted %i unused tracks, %i unused instruments,\ntruncated %i tracks (%i beats/lines),\nfound and rebuilt loops in %i tracks (%i beats/lines),\ndeleted %i duplicated tracks.",clearedtracks,clearedinstruments,truncatedtracks,truncatedbeats,optitracks,optibeats,duplicatedtracks);
+	s.Format("Deleted %i unused tracks, %i unused instruments,\ntruncated %i tracks (%i beats/lines),\nfound and rebuilt loops in %i tracks (%i beats/lines),\ndeleted %i duplicated tracks.", clearedtracks, clearedinstruments, truncatedtracks, truncatedbeats, optitracks, optibeats, duplicatedtracks);
 	if (chmaxtl)
 	{
 		CString s2;
-		s2.Format("\nMaximal length of tracks changed to %u.",effemaxtracklen);
-		s+=s2;
+		s2.Format("\nMaximal length of tracks changed to %u.", effemaxtracklen);
+		s += s2;
 	}
-	MessageBox((LPCTSTR)s,"All size optimizations",MB_OK);
+	MessageBox((LPCTSTR)s, "All size optimizations", MB_OK);
 	SCREENUPDATE;
 }
 
-void CRmtView::OnTrackRenumberalltracks() 
+void CRmtView::OnTrackRenumberalltracks()
 {
-	g_Song.Stop();
-
 	CRenumberTracksDlg dlg;
-	if (dlg.DoModal()==IDOK)
+
+	if (dlg.DoModal() == IDOK)
 	{
-		//hide the tracks and song
-		g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL,-1);
-		g_Undo.ChangeSong(0,0,UETYPE_SONGDATA,1);
-		g_Song.RenumberAllTracks( dlg.m_radio );	//type=1...order by songcolumns, type=2...order by songlines
-		SCREENUPDATE;
+		g_Song.Stop();
+
+		// Hide the tracks and song
+		g_Undo.ChangeTrack(0, 0, UETYPE_TRACKSALL, -1);
+		g_Undo.ChangeSong(0, 0, UETYPE_SONGDATA, 1);
+		
+		// Type = 1 -> Order by songcolumns, Type = 2 -> Order by songlines
+		g_Song.RenumberAllTracks(dlg.m_radio);
 	}
+
+	SCREENUPDATE;
 }
 
 void CRmtView::OnInstrumentRenumberallinstruments() 
