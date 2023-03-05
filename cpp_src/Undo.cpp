@@ -162,9 +162,9 @@ void CUndo::Separator(int sep)
 
 void CUndo::ChangeTrack(int tracknum, int trackline, int type, char separator)
 {
+	if (!g_Tracks.IsValidTrack(tracknum) || !g_Tracks.IsValidLine(trackline)) return;
+
 	TTrack* tr = g_Tracks.GetTrack(tracknum);
-	TTracksAll* tracksall = g_Tracks.GetTracksAll();
-	if (!tr || !tracksall || !g_Tracks.IsValidLine(trackline)) return;
 
 	// An event with the original status at a different place
 	TUndoEvent* ue = new TUndoEvent;
@@ -205,12 +205,12 @@ void CUndo::ChangeTrack(int tracknum, int trackline, int type, char separator)
 
 		case UETYPE_TRACKDATA: // Whole track
 			data = (int*)new TTrack;
-			memcpy(data, tr, sizeof(TTrack));
+			memcpy((void*)data, (void*)tr, sizeof(TTrack));
 			break;
 
 		case UETYPE_TRACKSALL: // All tracks
 			data = (int*)new TTracksAll;
-			memcpy(data, tracksall, sizeof(TTracksAll));
+			g_Tracks.GetTracksAll((TTracksAll*)data);
 			break;
 
 		default:
@@ -251,8 +251,8 @@ void CUndo::ChangeSong(int songline, int trackcol, int type, char separator)
 
 	case UETYPE_SONGDATA: // Whole song
 		song = new TSong;
-		memcpy(song->song, g_Song.GetSong(), sizeof(song->song));
-		memcpy(song->songgo, g_Song.GetSongGo(), sizeof(song->songgo));
+		memcpy((void*)song->song, (void*)g_Song.GetSong(), sizeof(song->song));
+		memcpy((void*)song->songgo, (void*)g_Song.GetSongGo(), sizeof(song->songgo));
 		data = (int*)song;
 		break;
 
@@ -284,12 +284,12 @@ void CUndo::ChangeInstrument(int instrnum, int paridx, int type, char separator)
 	{
 	case UETYPE_INSTRDATA:	// Whole instrument
 		data = (int*)new TInstrument;
-		memcpy(data, instr, sizeof(TInstrument));
+		memcpy((void*)data, (void*)instr, sizeof(TInstrument));
 		break;
 
 	case UETYPE_INSTRSALL: // All instruments
 		data = (int*)new TInstrumentsAll;
-		memcpy(data, insall, sizeof(TInstrumentsAll));
+		memcpy((void*)data, (void*)insall, sizeof(TInstrumentsAll));
 		break;
 
 	default:
@@ -358,7 +358,6 @@ char CUndo::PerformEvent(int i)
 	if (!ue) return 1;
 
 	TTrack* tr;
-	TTracksAll* tracksall;
 	TInstrument* in;
 	TInstrumentsAll* insall;
 	TInfo* info;
@@ -420,21 +419,19 @@ char CUndo::PerformEvent(int i)
 		tracknum = ue->pos[0];
 		tr = g_Tracks.GetTrack(tracknum);
 		data = (int*)ue->data;
-		memcpy(temp, tr, sizeof(TTrack));
-		memcpy(tr, data, sizeof(TTrack));
-		memcpy(data, temp, sizeof(TTrack));
+		memcpy((void*)temp, (void*)tr, sizeof(TTrack));
+		memcpy((void*)tr, (void*)data, sizeof(TTrack));
+		memcpy((void*)data, (void*)temp, sizeof(TTrack));
 		delete temp;
 		break;
 
 	case UETYPE_TRACKSALL: // All tracks
 		temp = (int*)new TTracksAll;
-		tracksall = g_Tracks.GetTracksAll();
+		g_Tracks.GetTracksAll((TTracksAll*)temp); //from temp
 		data = (int*)ue->data;
-		memcpy(temp, tracksall, sizeof(TTracksAll));
-		memcpy(tracksall, data, sizeof(TTracksAll));
-		memcpy(data, temp, sizeof(TTracksAll));
+		g_Tracks.SetTracksAll((TTracksAll*)data); //data to tracksall
+		memcpy((void*)data, (void*)temp, sizeof(TTracksAll));
 		delete temp;
-		if (g_Song.GetActiveLine() >= g_Tracks.m_maxTrackLength) g_Song.SetActiveLine(g_Tracks.m_maxTrackLength - 1);
 		break;
 
 	case UETYPE_SONGTRACK:
@@ -475,9 +472,9 @@ char CUndo::PerformEvent(int i)
 		instrnum = ue->pos[0];
 		in = g_Instruments.GetInstrument(instrnum);
 		data = (int*)ue->data;
-		memcpy(temp, in, sizeof(TInstrument));
-		memcpy(in, data, sizeof(TInstrument));
-		memcpy(data, temp, sizeof(TInstrument));
+		memcpy((void*)temp, (void*)in, sizeof(TInstrument));
+		memcpy((void*)in, (void*)data, sizeof(TInstrument));
+		memcpy((void*)data, (void*)temp, sizeof(TInstrument));
 		delete temp;
 		// Must save to Atari
 		g_Instruments.WasModified(instrnum);
@@ -487,9 +484,9 @@ char CUndo::PerformEvent(int i)
 		temp = (int*)new TInstrumentsAll;
 		insall = g_Instruments.GetInstrumentsAll();
 		data = (int*)ue->data;
-		memcpy(temp, insall, sizeof(TInstrumentsAll));
-		memcpy(insall, data, sizeof(TInstrumentsAll));
-		memcpy(data, temp, sizeof(TInstrumentsAll));
+		memcpy((void*)temp, (void*)insall, sizeof(TInstrumentsAll));
+		memcpy((void*)insall, (void*)data, sizeof(TInstrumentsAll));
+		memcpy((void*)data, (void*)temp, sizeof(TInstrumentsAll));
 		delete temp;
 		// Must save to Atari
 		for (i = 0; i < INSTRSNUM; i++) g_Instruments.WasModified(i);
@@ -500,9 +497,9 @@ char CUndo::PerformEvent(int i)
 		info = new TInfo;
 		g_Song.GetSongInfoPars((TInfo*)info); // Fill "in" with values taken from g_song
 		data = (int*)ue->data;
-		memcpy(temp, info, sizeof(TInfo));
-		memcpy(info, data, sizeof(TInfo));
-		memcpy(data, temp, sizeof(TInfo));
+		memcpy((void*)temp, (void*)info, sizeof(TInfo));
+		memcpy((void*)info, (void*)data, sizeof(TInfo));
+		memcpy((void*)data, (void*)temp, sizeof(TInfo));
 		g_Song.SetSongInfoPars((TInfo*)info); // Set values in g_song with values from "data"
 		delete temp;
 		delete info;
@@ -512,5 +509,6 @@ char CUndo::PerformEvent(int i)
 		MessageBox(g_hwnd, "PerformEvent BAD!", "Internal error", MB_ICONERROR);
 	}
 
+	g_Song.TrackRespectBoundaries();
 	return sep; // Returns separator
 }

@@ -419,43 +419,17 @@ int CTracks::TrackExpandLoop(TTrack* ttrack)
 	return i;	// Length of the expanded loop
 }
 
-/*
-void CTracks::GetTracksAll(TTracksAll* dest_ta)
+void CTracks::GetTracksAll(TTracksAll* toTracks)
 {
-	TTracksAll* tracks = GetTracks();
-
-	if (tracks && dest_ta)
-	{
-		dest_ta = tracks;
-	}
-
-	//if (dest_ta && m_track)
-	//{
-	//	dest_ta->maxtracklength = m_maxTrackLength;
-	//	memcpy(dest_ta->tracks, &m_track, sizeof(m_track));
-	//	dest_ta->maxtracklength = m_maxTrackLength;
-	//	*dest_ta->tracks = *m_track;
-	//}
+	toTracks->maxtracklength = m_maxTrackLength;
+	for (int i = 0; i < TRACKSNUM; i++) memcpy((void*)&toTracks->tracks[i], (void*)&m_track[i], sizeof(TTrack));
 }
 
-void CTracks::SetTracksAll(TTracksAll* src_ta)
+void CTracks::SetTracksAll(TTracksAll* fromTracks)
 {
-	TTracksAll* tracks = GetTracks();
-
-	if (tracks && src_ta)
-	{
-		tracks = src_ta;
-	}
-
-	//if (src_ta && m_track)
-	//{
-	//	m_maxTrackLength = src_ta->maxtracklength;
-	//	memcpy(&m_track, src_ta->tracks, sizeof(m_track));
-	//	m_maxTrackLength = src_ta->maxtracklength;
-	//	*m_track = *src_ta->tracks;
-	//}
+	m_maxTrackLength = fromTracks->maxtracklength;
+	for (int i = 0; i < TRACKSNUM; i++) memcpy((void*)&m_track[i], (void*)&fromTracks->tracks[i], sizeof(TTrack));
 }
-*/
 
 int CTracks::GetModifiedNote(int note, int tuning)
 {
