@@ -418,7 +418,7 @@ void CSong::FileNew()
 		return;
 	
 	// Apply the settings and reset the song data
-	g_Tracks.m_maxTrackLength = dlg.m_maxTrackLength;
+	g_Tracks.SetMaxTrackLength(dlg.m_maxTrackLength);
 
 	g_tracks4_8 = (dlg.m_comboMonoOrStereo == 0) ? 4 : 8;
 	ClearSong(g_tracks4_8);
@@ -960,7 +960,7 @@ bool CSong::SaveTxt(std::ofstream& ou)
 	char bf[16];
 	nambf = m_songname;
 	nambf.TrimRight();
-	s.Format("[MODULE]\nRMT: %X\nNAME: %s\nMAXTRACKLEN: %02X\nMAINSPEED: %02X\nINSTRSPEED: %X\nVERSION: %02X\n", g_tracks4_8, (LPCTSTR)nambf, g_Tracks.m_maxTrackLength, m_mainSpeed, m_instrumentSpeed, RMTFORMATVERSION);
+	s.Format("[MODULE]\nRMT: %X\nNAME: %s\nMAXTRACKLEN: %02X\nMAINSPEED: %02X\nINSTRSPEED: %X\nVERSION: %02X\n", g_tracks4_8, (LPCTSTR)nambf, g_Tracks.GetMaxTrackLength(), m_mainSpeed, m_instrumentSpeed, RMTFORMATVERSION);
 	ou << s << "\n"; //gap
 	ou << "[SONG]\n";
 	int i, j;
@@ -1088,7 +1088,7 @@ bool CSong::LoadTxt(std::ifstream& in)
 					// Set how long a track is: MAXTRACKLEN: 00-FF
 					int v = Hexstr(value, 2);
 					if (v == 0) v = 256;
-					g_Tracks.m_maxTrackLength = v;
+					g_Tracks.SetMaxTrackLength(v);
 					g_Tracks.InitTracks();		// Reinitialise
 				}
 				else

@@ -87,9 +87,6 @@ int g_altkey;	//unfinished implementation, doesn't work yet for some reason
 
 int g_tracks4_8;
 BOOL volatile g_screenupdate = 0;
-BOOL volatile g_invalidatebytimer = 0;
-int volatile g_screena;
-int volatile g_screenwait;
 BOOL volatile g_rmtroutine;
 BOOL volatile g_timerRoutineProcessed;
 

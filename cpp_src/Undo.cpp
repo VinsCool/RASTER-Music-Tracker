@@ -509,6 +509,5 @@ char CUndo::PerformEvent(int i)
 		MessageBox(g_hwnd, "PerformEvent BAD!", "Internal error", MB_ICONERROR);
 	}
 
-	g_Song.TrackRespectBoundaries();
 	return sep; // Returns separator
 }

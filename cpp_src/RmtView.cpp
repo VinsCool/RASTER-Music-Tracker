@@ -25,15 +25,11 @@
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 
-//using namespace std;
-
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #undef THIS_FILE
 static char THIS_FILE[] = __FILE__;
 #endif
-
-extern BOOL g_closeApplication;
 
 extern CSong	g_Song;
 extern CRmtMidi	g_Midi;
@@ -246,11 +242,8 @@ END_MESSAGE_MAP()
 
 CRmtView::CRmtView()
 {
-	g_screena = 0;
-	g_screenwait = 0;
 	m_width = 0;
 	m_height = 0;
-
 	m_pen1 = NULL;
 }
 
@@ -340,31 +333,33 @@ void CRmtView::OnDraw(CDC* pDC)
 {
 	RECT r;
 	GetClientRect(&r);
-	if (g_scaling_percentage > 300 || g_scaling_percentage < 100) g_scaling_percentage = 100;	//set the default scaling as a failsafe if the values are beyond those limits
-	bool resized = Resize(r.right - r.left + 1, r.bottom - r.top + 1);
-	if (resized || (g_screenupdate && g_invalidatebytimer))
+
+	Resize(r.right - r.left + 1, r.bottom - r.top + 1);
+
+	// Redraw the screen if needed
+	if (g_screenupdate)
 	{
-		g_screenupdate=0;
-		g_invalidatebytimer=0;
-		g_screena = g_screenwait;
+		if (g_viewDebugDisplay) GetFPS();
 		DrawAll();
+		NO_SCREENUPDATE;
 	}
+
 	pDC->BitBlt(0, 0, m_width, m_height, &m_mem_dc, 0, 0, SRCCOPY);
-	SCREENUPDATE;
 }
 
 void CRmtView::DrawAll()
 {
-	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);		// Clear the screen
+	// Clear the screen with the background colour
+	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);
 
-	if (g_viewDebugDisplay) GetFPS();	// It's crappy but it does an ok job
-
+	// Draw the secondary screen elements
 	g_Song.DrawInfo();
 	g_Song.DrawSong();
 	g_Song.DrawAnalyzer();
 	g_Song.DrawPlayTimeCounter();
 	
-	if (g_active_ti == PART_TRACKS)	// Which one is the active screen?
+	// Draw the primary screen above everything
+	if (g_active_ti == PART_TRACKS)
 	{
 		g_Song.DrawTracks();
 	}
@@ -911,37 +906,47 @@ void GetCommandLineItem(CString& commandline,int& fromidx,int& toidx)
 	}
 }
 
-//originally added in RMT 1.30, and reworked in 1.31+ 
-bool CRmtView::Resize(int width, int height)
+// Originally added in RMT 1.30, and reworked in 1.31+ 
+void CRmtView::Resize(int width, int height)
 {
-	if (width == m_width && height == m_height) return false;
-	if (m_width != 0) {
-		m_mem_dc.SelectObject((CBitmap*)0);
-		m_mem_bitmap.DeleteObject();
-		m_mem_dc.DeleteDC();		
-	}
+	// Invalid screen dimensions will be ignored
+	if (width <= 0 || height <= 0) return;
+
+	// If the current dimensions are the same, there is nothing to be done here
+	if (width == m_width && height == m_height) return;
+
+	// If the values are beyond those limits, reset the default scaling as a failsafe
+	if (g_scaling_percentage > 300 || g_scaling_percentage < 100) g_scaling_percentage = 100;
+
+	// Set the screen dimensions as well as the scaled screen dimensions
 	m_width = width;
 	m_height = height;
-	if (m_width != 0) 
-	{
-		g_width = INVERSE_SCALE(m_width);
-		g_height = INVERSE_SCALE(m_height);
-		CDC* dc = GetDC();
-		m_mem_bitmap.CreateCompatibleBitmap(dc, m_width, m_height);
-		m_mem_dc.CreateCompatibleDC(dc);
-		m_mem_dc.SelectObject(&m_mem_bitmap);
-		g_mem_dc = &m_mem_dc;
-		g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16;	//number of track lines that can be displayed based on the window height
+	g_width = INVERSE_SCALE(m_width);
+	g_height = INVERSE_SCALE(m_height);
 
-		g_line_y = ( /*(m_trackactiveline + 8) -*/ (g_tracklines / 2));
-		if (m_pen1) delete m_pen1;
-		m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);
-		m_penorig = g_mem_dc->SelectObject(m_pen1);
-		m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BLACK); //initial black background
-		ReleaseDC(dc);
-		SCREENUPDATE;
-	}
-	return true;
+	// The number of track lines that can be displayed is based on the scaled window height
+	g_tracklines = (g_height - (TRACKS_Y + 3 * 16) - 40) / 16;
+	g_line_y = g_tracklines / 2;
+
+	// Clear the current Bitmap object
+	m_mem_dc.SelectObject((CBitmap*)0);
+	m_mem_bitmap.DeleteObject();
+	m_mem_dc.DeleteDC();
+
+	// Initialise the parameters for the resized screen
+	CDC* dc = GetDC();
+	m_mem_bitmap.CreateCompatibleBitmap(dc, m_width, m_height);
+	m_mem_dc.CreateCompatibleDC(dc);
+	m_mem_dc.SelectObject(&m_mem_bitmap);
+	g_mem_dc = &m_mem_dc;
+	if (m_pen1) delete m_pen1;
+	m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);
+	m_penorig = g_mem_dc->SelectObject(m_pen1);
+	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BLACK); // Initial black background
+	ReleaseDC(dc);
+
+	// The screen will be redrawn
+	SCREENUPDATE;
 }
 
 void CRmtView::OnInitialUpdate() 
@@ -974,9 +979,21 @@ void CRmtView::OnInitialUpdate()
 			commandLineFilename = cmdl.Mid(i1, i2 - i1);
 		}
 	}
-	CDC *dc=GetDC();
+
+	CDC* dc = GetDC();
+	m_gfx_bitmap.LoadBitmap(MAKEINTRESOURCE(IDB_GFX));
+	m_gfx_dc.CreateCompatibleDC(dc);
+	m_gfx_dc.SelectObject(&m_gfx_bitmap);
+	g_gfx_dc = &m_gfx_dc;
+	g_hwnd = AfxGetApp()->GetMainWnd()->m_hWnd;
+	g_viewhwnd = this->m_hWnd;
+	ReleaseDC(dc);
+	Resize(800, 600); // Default window dimensions if RMT was never used on a system, else, it will load the last known values
+
+/*
+	CDC* dc = GetDC();
 	g_Song.SetRMTTitle();
-	Resize(800, 600); //default window dimensions if RMT was never used on a system, else, it will load the last known values
+	Resize(800, 600); // Default window dimensions if RMT was never used on a system, else, it will load the last known values
 	m_gfx_bitmap.LoadBitmap(MAKEINTRESOURCE(IDB_GFX));
 	m_gfx_dc.CreateCompatibleDC(dc);
 	m_gfx_dc.SelectObject(&m_gfx_bitmap);
@@ -989,6 +1006,7 @@ void CRmtView::OnInitialUpdate()
 	m_penorig = g_mem_dc->SelectObject(m_pen1);
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BLACK); //initial black background
 	ReleaseDC(dc);
+*/
 
 	//cursor
 	m_cursororig = LoadCursor(NULL,IDC_ARROW);
@@ -1035,6 +1053,7 @@ void CRmtView::OnInitialUpdate()
 	Memory_Clear();
 	Atari_LoadRMTRoutines();
 	Atari_InitRMTRoutine();
+	g_Song.SetRMTTitle();
 
 	g_screenupdate=1;	//first rendered
 	m_timeranalyzer=0;
@@ -1106,12 +1125,12 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 			BOOL r = g_Song.SongCursorGoto(CPoint(point.x - (SONG_OFFSET + 6 * 8), point.y - lineoffset));
 			if (r) SCREENUPDATE;
 		}
-		if (wheelzDelta!=0)
+		if (wheelzDelta != 0)
 		{
-			BOOL r=0;
-			if (wheelzDelta > 0) r = g_Song.SongKey(VK_UP,0,0);
-			else
-			if (wheelzDelta < 0) r = g_Song.SongKey(VK_DOWN,0,0);
+			//g_Song.SongJump((wheelzDelta / 256) * -1);
+			BOOL r = 0;
+			if (wheelzDelta > 0) r = g_Song.SongKey(VK_UP, 0, 0);
+			if (wheelzDelta < 0) r = g_Song.SongKey(VK_DOWN, 0, 0);
 			if (r) SCREENUPDATE;
 		}
 		return 5;
@@ -1214,7 +1233,7 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	{
 		//track line highlights
 		BOOL r = 0;
-		int ma = (g_Tracks.m_maxTrackLength) / 2;
+		int ma = g_Tracks.GetMaxTrackLength() / 2;
 		int px = (point.x - 432 - 4) / 8;
 		SetCursor(m_cursorGoto);
 		if (mousebutt & MK_LBUTTON)
@@ -1550,6 +1569,7 @@ void CRmtView::OnLButtonDown(UINT nFlags, CPoint point)
 	g_Undo.Separator();
 	g_mousebutt|=MK_LBUTTON;
 	MouseAction(point,MK_LBUTTON);
+	g_Song.RespectBoundaries();
 	CView::OnLButtonDown(nFlags, point);
 }
 
@@ -1572,6 +1592,7 @@ void CRmtView::OnRButtonDown(UINT nFlags, CPoint point)
 	g_Undo.Separator();
 	g_mousebutt|=MK_RBUTTON;
 	MouseAction(point,MK_RBUTTON);
+	g_Song.RespectBoundaries();
 	CView::OnRButtonDown(nFlags, point);
 }
 
@@ -1610,22 +1631,22 @@ const char FlaToCha[]={0x67,0x68,0x69,109,0x64,0x65,0x66,107,0x61,0x62,0x63,0x60
 const char layout2[]={VK_F5,VK_F6,VK_F7,VK_F8, VK_F3,VK_F2,VK_F4,VK_ESCAPE};
 
 //TODO: cleanup and reconfigure, since testing keys in Stereo is not working correctly due to all the shortcuts being intermixed into the inputs
-void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags) 
+void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	UINT vk = nChar;
 	UINT nfb = nFlags & 0x1ff;	//when autorepeat is set in nFlags bit 16384
 	//this seems to work around possible problems and causes no harm... so let's leave this untouched
-	if (nfb>=71 && nfb<=82) //shift + numblock 0-9 + -
+	if (nfb >= 71 && nfb <= 82) //shift + numblock 0-9 + -
 	{
-		if ((int)nChar == NChaCode[nfb-71])
+		if ((int)nChar == NChaCode[nfb - 71])
 		{
-			vk=FlaToCha[nfb-71];
+			vk = FlaToCha[nfb - 71];
 		}
 	}
 
 	if (g_viewDebugDisplay) g_lastKeyPressed = vk;	//debug key reading for setting up keyboard layouts withought having to guess which key is where
 
-	switch(vk)
+	switch (vk)
 	{
 	case 0x5A: //Z
 		if (g_controlkey && !g_shiftkey) //or do nothing when SHIFT is also held, this deliberately makes it less likely to happen by accident and conflict with every other commands
@@ -1654,21 +1675,21 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_SPACE: //SPACEBAR
 		if (g_controlkey)
 		{
-		g_Undo.Separator(); //CTRL+SPACEBAR
-		OnProvemode();
+			g_Undo.Separator(); //CTRL+SPACEBAR
+			OnProvemode();
 		}
 		goto AllModesDefaultKey;
 		break;
 
-	case VK_ESCAPE:	
+	case VK_ESCAPE:
 		g_Song.Stop();	//stops everything
 		if (g_keyboard_escresetatarisound)
 		{
 			Atari_InitRMTRoutine(); //reset RMT routines automatically
 		}
-		if (g_Song.GetPlayMode()==0) //only if the module is stopped
+		if (g_Song.GetPlayMode() == 0) //only if the module is stopped
 		{
-			g_playtime=0;
+			g_playtime = 0;
 			DrawPlaytimecounter();
 		}
 		goto AllModesDefaultKey;
@@ -1709,7 +1730,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_F1:
 		if (g_controlkey) goto AllModesDefaultKey;	//would conflict with transposition hotkeys otherwise
 		g_Undo.Separator();
-		OnEmTracks();		
+		OnEmTracks();
 		break;
 
 	case VK_F2:
@@ -1737,19 +1758,19 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			break;
 		}
 		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		g_Song.Play(MPLAY_SONG,g_Song.GetFollowPlayMode());	//play song from start
+		g_Song.Play(MPLAY_SONG, g_Song.GetFollowPlayMode());	//play song from start
 		break;
 
 	case VK_F6:
 		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		if (g_shiftkey) g_Song.Play(MPLAY_BLOCK,g_Song.GetFollowPlayMode());	//play block and follow
-		else g_Song.Play(MPLAY_TRACK,g_Song.GetFollowPlayMode());				//play pattern and follow	
+		if (g_shiftkey) g_Song.Play(MPLAY_BLOCK, g_Song.GetFollowPlayMode());	//play block and follow
+		else g_Song.Play(MPLAY_TRACK, g_Song.GetFollowPlayMode());				//play pattern and follow	
 		break;
 
 	case VK_F7:
 		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
-		if (g_Song.IsBookmark() && g_shiftkey) g_Song.Play(MPLAY_BOOKMARK,g_Song.GetFollowPlayMode());	//play song from bookmark
-		else g_Song.Play(MPLAY_FROM,g_Song.GetFollowPlayMode());							//play song from current position
+		if (g_Song.IsBookmark() && g_shiftkey) g_Song.Play(MPLAY_BOOKMARK, g_Song.GetFollowPlayMode());	//play song from bookmark
+		else g_Song.Play(MPLAY_FROM, g_Song.GetFollowPlayMode());							//play song from current position
 		break;
 
 	case VK_F8:
@@ -1758,10 +1779,10 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 
 	case VK_F9:
-		if (!g_controlkey && g_shiftkey)	
+		if (!g_controlkey && g_shiftkey)
 		{
-			SetChannelOnOff(-1,-1);		//switch all channels on or off
-		}		
+			SetChannelOnOff(-1, -1);		//switch all channels on or off
+		}
 		else if (g_controlkey)
 		{
 			int ch = g_Song.GetActiveColumn(); //solo current channel
@@ -1770,21 +1791,21 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		else
 		{
 			int ch = g_Song.GetActiveColumn(); //mute current channel
-			SetChannelOnOff(ch,-1);	
+			SetChannelOnOff(ch, -1);
 		}
 		SCREENUPDATE;
 		break;
 
-	//F10 can't be used for some reason... it seems to be binded to native Windows functions and so it would take priority instead of any shortcut I would like to use for it.
+		//F10 can't be used for some reason... it seems to be binded to native Windows functions and so it would take priority instead of any shortcut I would like to use for it.
 
-	case VK_F11:						
+	case VK_F11:
 		g_Undo.Separator();	//respect volume
-		g_respectvolume ^=1;
+		g_respectvolume ^= 1;
 		SCREENUPDATE;
 		break;
 
-	case VK_F12: 
-		if (g_controlkey) 
+	case VK_F12:
+		if (g_controlkey)
 		{
 			g_ntsc ^= 1;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
@@ -1796,17 +1817,17 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		break;
 
 	case VK_MEDIA_PLAY_PAUSE:
-		if (g_Song.GetPlayMode()==0)
-		g_Song.Play(MPLAY_SONG,g_Song.GetFollowPlayMode());	//play song from start
+		if (g_Song.GetPlayMode() == 0)
+			g_Song.Play(MPLAY_SONG, g_Song.GetFollowPlayMode());	//play song from start
 		else g_Song.Stop();								//if playing, stop
 		break;
 
 	case VK_MEDIA_NEXT_TRACK:
-		g_Song.Play(MPLAY_SEEK_NEXT,g_Song.GetFollowPlayMode()); //seek next and play from track
+		g_Song.Play(MPLAY_SEEK_NEXT, g_Song.GetFollowPlayMode()); //seek next and play from track
 		break;
 
 	case VK_MEDIA_PREV_TRACK:
-		g_Song.Play(MPLAY_SEEK_PREV,g_Song.GetFollowPlayMode()); //seek prev and play from track
+		g_Song.Play(MPLAY_SEEK_PREV, g_Song.GetFollowPlayMode()); //seek prev and play from track
 		break;
 
 	case VK_SHIFT:
@@ -1819,7 +1840,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		goto KeyDownNoUndoCheckPoint;
 		break;
 
-	//TODO: Add ALT key support for the "is held" flag, for some reason I am unable to make it work, it seems to behave like the F10 key and take priority over everything else.
+		//TODO: Add ALT key support for the "is held" flag, for some reason I am unable to make it work, it seems to behave like the F10 key and take priority over everything else.
 	case VK_LMENU:
 		g_altkey = 1;
 		goto KeyDownNoUndoCheckPoint;
@@ -1835,7 +1856,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 56:	//VK_8
 		if (g_controlkey && !g_shiftkey)	//CONTROL + 1-8
 		{
-			SetChannelOnOff(vk-49,-1);		//inverts channel status 1-8 (=> on / off)
+			SetChannelOnOff(vk - 49, -1);		//inverts channel status 1-8 (=> on / off)
 			SCREENUPDATE;
 		}
 		else
@@ -1869,23 +1890,23 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			//g_Song.Stop();
 			SetStatusBarText("Save...");
-			CString filename=g_Song.GetFilename();
+			CString filename = g_Song.GetFilename();
 			if (g_keyboard_askwhencontrol_s
-				&& (filename!="" || g_Song.GetFiletype()!=0))
+				&& (filename != "" || g_Song.GetFiletype() != 0))
 			{
 				//if a question is asked and if a file already exists
 				//(=> there will be a "Save as ..." dialog)
 				CString s;
-				s.Format("Do you want to save song file '%s'?\nIs it okay to overwrite?",filename);
-				int r=MessageBox(s,"Save song",MB_YESNOCANCEL | MB_ICONQUESTION);
-				if (r==IDNO) { OnFileSaveAs(); goto end_save_control_s; }
-				if (r!=IDYES) goto end_save_control_s;
+				s.Format("Do you want to save song file '%s'?\nIs it okay to overwrite?", filename);
+				int r = MessageBox(s, "Save song", MB_YESNOCANCEL | MB_ICONQUESTION);
+				if (r == IDNO) { OnFileSaveAs(); goto end_save_control_s; }
+				if (r != IDYES) goto end_save_control_s;
 			}
 			Sleep(128);
 			OnFileSave();
 			Sleep(128);
 
-end_save_control_s:
+		end_save_control_s:
 			SetStatusBarText("");
 		}
 		else
@@ -1904,91 +1925,94 @@ end_save_control_s:
 
 	default:
 	AllModesDefaultKey:
-			int r=0;
-			BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
-			switch (g_activepart)
+		int r = 0;
+		BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
+		switch (g_activepart)
+		{
+		case PART_INFO:
+			if (g_shiftkey && !is_editing_infos && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
+				r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Song Name field, it will be ignored
+			else if (g_shiftkey && !is_editing_infos && (NoteKey(vk) < 0))
+				if (vk == VK_TAB || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_infokey_anyway;
+				else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
+			else if (is_editing_infos && CAPSLOCK && !g_shiftkey)
 			{
-			case PART_INFO:
-				if (g_shiftkey && !is_editing_infos && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
-					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Song Name field, it will be ignored
-				else if (g_shiftkey && !is_editing_infos && (NoteKey(vk) < 0))
-					if (vk == VK_TAB || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_infokey_anyway;
-					else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
-				else if (is_editing_infos && CAPSLOCK && !g_shiftkey)
-				{
-					g_shiftkey = 1;
-					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
-					g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
-					break;
-				}
-				else if (is_editing_infos && CAPSLOCK && g_shiftkey)
-				{
-					g_shiftkey = 0;
-					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
-					g_shiftkey = 1;	//workaround: so it will *stay* locked when CAPSLOCK isn't active
-					break;
-				}
-				else 
-				{
-do_infokey_anyway:
-					if (vk == VK_PAGE_UP || vk == VK_PAGE_DOWN)
-						r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
-					else
-					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
-				}
-				break;
-
-			case PART_TRACKS:
-				if (g_prove)
-					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
-				else if (g_shiftkey && (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE))
-					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
-				else 
-					r = g_Song.TrackKey(vk,g_shiftkey,g_controlkey);
-				break;
-
-			case PART_INSTRUMENTS:
-				if (g_shiftkey && !g_isEditingInstrumentName && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
-					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Instrument Name field, it will be ignored
-				else if (g_shiftkey && !g_isEditingInstrumentName && (NoteKey(vk) < 0))
-					if (vk == VK_TAB || vk == VK_INSERT || vk == VK_DELETE || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN || vk == VK_DIVIDE || vk == VK_MULTIPLY || vk == VK_SUBTRACT || vk == VK_ADD || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_instrkey_anyway;
-					else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
-				else if (g_isEditingInstrumentName && CAPSLOCK && !g_shiftkey)
-				{
-					g_shiftkey = 1;
-					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
-					g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
-					break;
-				}
-				else if (g_isEditingInstrumentName && CAPSLOCK && g_shiftkey)
-				{
-					g_shiftkey = 0;
-					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
-					g_shiftkey = 1;	//workaround: so it will *stay* locked when CAPSLOCK isn't active
-					break;
-				}
-				else
-				{
-do_instrkey_anyway:
-					if (vk == VK_PAGE_UP || vk == VK_PAGE_DOWN)
-						r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
-					else
-					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
-				}
-				break;
-
-			case PART_SONG:
-				if (g_prove)
-					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
-				else if (g_shiftkey && (NoteKey(vk)>=0 || Numblock09Key(vk)>=0 || vk==VK_SPACE))
-					r = g_Song.ProveKey(vk,g_shiftkey,g_controlkey);
-				else 
-					r = g_Song.SongKey(vk,g_shiftkey,g_controlkey);
+				g_shiftkey = 1;
+				r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
+				g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
 				break;
 			}
+			else if (is_editing_infos && CAPSLOCK && g_shiftkey)
+			{
+				g_shiftkey = 0;
+				r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
+				g_shiftkey = 1;	//workaround: so it will *stay* locked when CAPSLOCK isn't active
+				break;
+			}
+			else
+			{
+			do_infokey_anyway:
+				if (vk == VK_PAGE_UP || vk == VK_PAGE_DOWN)
+					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
+				else
+					r = g_Song.InfoKey(vk, g_shiftkey, g_controlkey);
+			}
+			break;
+
+		case PART_TRACKS:
+			if (g_prove)
+				r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
+			else if (g_shiftkey && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
+				r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
+			else
+				r = g_Song.TrackKey(vk, g_shiftkey, g_controlkey);
+			break;
+
+		case PART_INSTRUMENTS:
+			if (g_shiftkey && !g_isEditingInstrumentName && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
+				r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);	//plays a note while the SHIFT key is held, except on the Instrument Name field, it will be ignored
+			else if (g_shiftkey && !g_isEditingInstrumentName && (NoteKey(vk) < 0))
+				if (vk == VK_TAB || vk == VK_INSERT || vk == VK_DELETE || vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN || vk == VK_DIVIDE || vk == VK_MULTIPLY || vk == VK_SUBTRACT || vk == VK_ADD || vk == VK_PAGE_UP || vk == VK_PAGE_DOWN) goto do_instrkey_anyway;
+				else break;	//prevents inputing incorrect infos by accident while testing notes holding SHIFT
+			else if (g_isEditingInstrumentName && CAPSLOCK && !g_shiftkey)
+			{
+				g_shiftkey = 1;
+				r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
+				g_shiftkey = 0;	//workaround: so it won't *stay* locked when CAPSLOCK isn't active
+				break;
+			}
+			else if (g_isEditingInstrumentName && CAPSLOCK && g_shiftkey)
+			{
+				g_shiftkey = 0;
+				r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
+				g_shiftkey = 1;	//workaround: so it will *stay* locked when CAPSLOCK isn't active
+				break;
+			}
+			else
+			{
+			do_instrkey_anyway:
+				if (vk == VK_PAGE_UP || vk == VK_PAGE_DOWN)
+					r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
+				else
+					r = g_Song.InstrKey(vk, g_shiftkey, g_controlkey);
+			}
+			break;
+
+		case PART_SONG:
+			if (g_prove)
+				r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
+			else if (g_shiftkey && (NoteKey(vk) >= 0 || Numblock09Key(vk) >= 0 || vk == VK_SPACE))
+				r = g_Song.ProveKey(vk, g_shiftkey, g_controlkey);
+			else
+				r = g_Song.SongKey(vk, g_shiftkey, g_controlkey);
+			break;
+		}
 		if (r) SCREENUPDATE;
 	}
-//UndoCheckPoint does not work if it is only a shift or just a control (to which the next key will come)
+
+	g_Song.RespectBoundaries();
+
+	//UndoCheckPoint does not work if it is only a shift or just a control (to which the next key will come)
 KeyDownNoUndoCheckPoint:
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
@@ -2990,20 +3014,20 @@ void CRmtView::OnSongSongswitch4_8()
 	SCREENUPDATE;
 }
 
-void CRmtView::OnSongSongchangemaximallengthoftracks() 
+void CRmtView::OnSongSongchangemaximallengthoftracks()
 {
 	g_Song.Stop();
 
-	int ma=g_Song.GetEffectiveMaxtracklen();
+	int ma = g_Song.GetEffectiveMaxtracklen();
 
 	CChangeMaxtracklenDlg dlg;
-	dlg.m_info.Format("Current value: %i\nComputed effective value for current song: %i",g_Tracks.m_maxTrackLength,ma);
-	dlg.m_maxtracklen=ma;
-	if (dlg.DoModal()==IDOK)
+	dlg.m_info.Format("Current value: %i\nComputed effective value for current song: %i", g_Tracks.GetMaxTrackLength(), ma);
+	dlg.m_maxtracklen = ma;
+	if (dlg.DoModal() == IDOK)
 	{
 		//Undo
-		g_Undo.ChangeTrack(0,0,UETYPE_TRACKSALL);
-		ma=dlg.m_maxtracklen;
+		g_Undo.ChangeTrack(0, 0, UETYPE_TRACKSALL);
+		ma = dlg.m_maxtracklen;
 		g_Song.ChangeMaxtracklen(ma);
 		SCREENUPDATE;
 	}
@@ -3066,7 +3090,7 @@ void CRmtView::OnSongSizeoptimization()
 	g_Song.TracksAllExpandLoops(tracksmodified, loopsexpanded);
 
 	// Find the effective length of maxtracklen and shorten it if necessary
-	int maxtracklen = g_Tracks.m_maxTrackLength;
+	int maxtracklen = g_Tracks.GetMaxTrackLength();
 	int effemaxtracklen = g_Song.GetEffectiveMaxtracklen();
 	if (effemaxtracklen < maxtracklen)
 	{
@@ -3096,6 +3120,9 @@ void CRmtView::OnSongSizeoptimization()
 
 	// And now refines the instruments (to remove any gaps)
 	g_Song.RenumberAllInstruments(1);
+
+	// Adjustments in case of being out of bounds
+	g_Song.RespectBoundaries();
 
 	CString s;
 	s.Format("Deleted %i unused tracks, %i unused instruments,\ntruncated %i tracks (%i beats/lines),\nfound and rebuilt loops in %i tracks (%i beats/lines),\ndeleted %i duplicated tracks.", clearedtracks, clearedinstruments, truncatedtracks, truncatedbeats, optitracks, optibeats, duplicatedtracks);
@@ -3152,7 +3179,6 @@ void CRmtView::OnSetFocus(CWnd* pOldWnd)
 
 void CRmtView::OnKillFocus(CWnd* pNewWnd) 
 {
-
 	CView::OnKillFocus(pNewWnd);
 	g_RmtHasFocus = 0;	// RMT main window does not have focus
 }
@@ -3163,6 +3189,7 @@ BOOL CRmtView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	::GetWindowRect(g_viewhwnd,&rec);
 	CPoint np(pt-rec.TopLeft());
 	MouseAction(np,0,zDelta);
+	g_Song.RespectBoundaries();
 	return CView::OnMouseWheel(nFlags, zDelta, pt);
 }
 

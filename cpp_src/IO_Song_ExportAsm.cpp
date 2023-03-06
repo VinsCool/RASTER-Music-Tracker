@@ -155,7 +155,7 @@ bool CSong::ExportAsAsm(std::ofstream& ou, tExportDescription* exportStrippedDes
 					ou << s;
 					continue;
 				}
-				int trackslen = g_Tracks.m_maxTrackLength;
+				int trackslen = g_Tracks.GetMaxTrackLength();
 				for (int i = 0; i < g_tracks4_8; i++)
 				{
 					int at = m_song[sline][i];

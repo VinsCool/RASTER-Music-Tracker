@@ -93,9 +93,6 @@ extern int g_altkey;	//unfinished implementation, doesn't work yet for some reas
 
 extern int g_tracks4_8;
 extern BOOL volatile g_screenupdate;
-extern BOOL volatile g_invalidatebytimer;
-extern int volatile g_screena;
-extern int volatile g_screenwait;
 extern BOOL volatile g_rmtroutine;
 extern BOOL volatile g_timerRoutineProcessed;
 

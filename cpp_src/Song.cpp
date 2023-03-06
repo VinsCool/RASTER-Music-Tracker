@@ -2,7 +2,6 @@
 #include <fstream>
 
 #include "GuiHelpers.h"
-
 #include "Song.h"
 
 // MFC interface code
@@ -12,17 +11,12 @@
 #include "EffectsDlg.h"
 #include "MainFrm.h"
 
-
 #include "Atari6502.h"
 #include "XPokey.h"
 #include "IOHelpers.h"
-
 #include "Instruments.h"
 #include "Clipboard.h"
-
-
 #include "global.h"
-
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 #include "PokeyStream.h"
@@ -36,10 +30,13 @@ extern CPokeyStream g_PokeyStream;
 
 static BOOL busyInTimer = 0;
 
+/// <summary>
+/// Wait for the Timer Routine to run at least once
+/// </summary>
 void WaitForTimerRoutineProcessed()
 {
 	g_timerRoutineProcessed = 0;
-	while (!g_timerRoutineProcessed && !g_closeApplication) Sleep(1);		// waiting
+	while (!g_timerRoutineProcessed && !g_closeApplication);	// Waiting
 }
 
 // ----------------------------------------------------------------------------
@@ -83,10 +80,8 @@ void CSong::StopTimer()
 	if (m_timer)
 	{
 		while (busyInTimer);		// Wait until not in timer handler
-		
 		timeKillEvent(m_timer);		// Kill the timer
 		m_timer = 0;
-		
 		while (busyInTimer);		// Make sure not in the timer handler
 	}
 }
@@ -108,19 +103,20 @@ void CSong::ChangeTimer(int ms)
 /// <param name="numOfTracks">How many tracks are supported 4 or 8</param>
 void CSong::ClearSong(int numOfTracks)
 {
-	g_tracks4_8 = numOfTracks;	// Track for 4/8 channels
-	g_rmtroutine = 1;			// RMT routine execution enabled
+	Stop();
+
+	g_tracks4_8 = numOfTracks;			// Track for 4/8 channels
+	g_rmtroutine = 1;					// RMT routine execution enabled
 	g_prove = 0;
 	g_respectvolume = 0;
-	g_rmtstripped_adr_module = 0x4000;	//default standard address for stripped RMT modules
-	g_rmtstripped_sfx = 0;		//is not a standard sfx variety stripped RMT
-	g_rmtstripped_gvf = 0;		//default does not use Feat GlobalVolumeFade
-	g_rmtmsxtext = "";			//clear the text for MSX export
-	g_PrefixForAllAsmLabels = "MUSIC";	//default label prefix for exporting simple ASM notation
+	g_rmtstripped_adr_module = 0x4000;	// Default standard address for stripped RMT modules
+	g_rmtstripped_sfx = 0;				// Is not a standard sfx variety stripped RMT
+	g_rmtstripped_gvf = 0;				// Default does not use Feat GlobalVolumeFade
+	g_rmtmsxtext = "";					// Clear the text for MSX export
+	g_PrefixForAllAsmLabels = "MUSIC";	// Default label prefix for exporting simple ASM notation
 
 	PlayPressedTonesInit();
 
-	m_play = MPLAY_STOP;
 	g_playtime = 0;
 	m_followplay = 1;
 	m_mainSpeed = m_speed = m_speeda = 16;
@@ -152,8 +148,8 @@ void CSong::ClearSong(int numOfTracks)
 	m_TracksOrderChange_songlinefrom = 0x00;
 	m_TracksOrderChange_songlineto = SONGLEN - 1;
 
-	//number of lines after inserting a note/space
-	g_linesafter = 1; //initial value
+	// Number of lines after inserting a note/space
+	g_linesafter = 1; // Initial value
 	CMainFrame* mf = ((CMainFrame*)AfxGetMainWnd());
 	if (mf) mf->m_comboSkipLinesAfterNoteInsert.SetCurSel(g_linesafter);
 
@@ -161,25 +157,24 @@ void CSong::ClearSong(int numOfTracks)
 	{
 		for (int j = 0; j < SONGTRACKS; j++)
 		{
-			m_song[i][j] = -1;	//TRACK --
+			m_song[i][j] = -1;	// TRACK --
 		}
-		m_songgo[i] = -1;		//is not GO
+		m_songgo[i] = -1;		// Is not GO
 	}
 
-	//empty clipboards
+	// Empty clipboards
 	g_TrackClipboard.Empty();
-	//
-	m_instrclipboard.activeEditSection = -1;			//according to -1 it knows that it is empty
-	m_songgoclipboard = -2;				//according to -2 it knows that it is empty
+	m_instrclipboard.activeEditSection = -1;	// According to -1 it knows that it is empty
+	m_songgoclipboard = -2;						// According to -2 it knows that it is empty
 
-	//delete all tracks and instruments
+	// Delete all tracks and instruments
 	g_Tracks.InitTracks();
 	g_Instruments.InitInstruments();
 
-	//Undo initialization
+	// Undo initialization
 	g_Undo.Init();
 
-	//Changes in the module
+	// Changes in the module
 	g_changes = 0;
 
 	// Initialise RMT routine, to clear anything leftover in Atari memory
@@ -436,7 +431,7 @@ int CSong::MakeModule(unsigned char* mem, int addr, int iotype, BYTE* instrument
 	// 7: RMT version (1 for now)
 	strncpy((char*)(mem + addr), "RMT", 3);	
 	mem[addr + 3] = g_tracks4_8 + '0';			// 4 or 8
-	mem[addr + 4] = g_Tracks.m_maxTrackLength & 0xff;
+	mem[addr + 4] = g_Tracks.GetMaxTrackLength() & 0xff;
 	mem[addr + 5] = m_mainSpeed & 0xff;
 	mem[addr + 6] = m_instrumentSpeed;			// 1-4 player calls per frame
 	mem[addr + 7] = RMTFORMATVERSION;			// RMT format version number
@@ -639,7 +634,7 @@ int CSong::MakeRMFModule(unsigned char* mem, int adr, BYTE* instrsaved, BYTE* tr
 	int songline_trackslen[SONGLEN];
 	for (i = 0; i < SONGLEN; i++)
 	{
-		int minlen = g_Tracks.m_maxTrackLength;	//init
+		int minlen = g_Tracks.GetMaxTrackLength();	//init
 		if (m_songgo[i] >= 0)  //Go to line 
 		{
 			songlines = i + 1;	//temporary end
@@ -813,7 +808,7 @@ int CSong::DecodeModule(unsigned char* mem, int fromAddr, int endAddr, BYTE* ins
 
 	// 5th byte: track length
 	data = mem[addr + 4];
-	g_Tracks.m_maxTrackLength = (data > 0) ? data : 256;	//0 => 256
+	g_Tracks.SetMaxTrackLength((data > 0) ? data : 256);	//0 => 256
 
 	// 6th byte: song speed
 	data = mem[addr + 5];
@@ -990,7 +985,7 @@ BOOL CSong::TrackDown(int lines, BOOL stoponlastline)
 
 	//GetSmallestMaxtracklen() seems to do a really good job for the navigation within the "compact" tracks display so far
 	int trlen = GetSmallestMaxtracklen(m_songactiveline);	//identify the true track length in song line 
-	if (!trlen) trlen = g_Tracks.m_maxTrackLength;	//in case the smallest max track length returned zero (eg from a goto line)
+	if (!trlen) trlen = g_Tracks.GetMaxTrackLength();	//in case the smallest max track length returned zero (eg from a goto line)
 
 	if (m_trackactiveline >= trlen)	//active line is equal or above max track length
 	{
@@ -1045,6 +1040,23 @@ BOOL CSong::TrackRight(BOOL column)
 		if (m_trackactivecol >= g_tracks4_8) m_trackactivecol = 0;
 	}
 	return 1;
+}
+
+void CSong::RespectBoundaries()
+{
+	int songline = SongGetActiveLine();
+
+	if (songline > SONGLEN) songline = SONGLEN - 1;
+	if (songline < 0) songline = 0;
+
+	int length = GetSmallestMaxtracklen(songline);
+	int line = GetActiveLine();
+
+	if (line > length) line = length - 1;
+	if (line < 0) line = 0;
+
+	SetActiveLine(line);
+	SongSetActiveLine(songline);
 }
 
 void CSong::TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol)
@@ -1177,7 +1189,22 @@ BOOL CSong::UECursorIsEqual(int* cursor1, int* cursor2, int part)
 
 //----------
 
+void CSong::SongJump(int lines)
+{
+	int songline = SongGetActiveLine();
+	int toline = songline + lines;
 
+	if (toline > songline)
+	{
+		SongSetActiveLine(toline - 1);
+		SongDown();
+	}
+	else
+	{
+		SongSetActiveLine(toline + 1);
+		SongUp();
+	}
+}
 
 BOOL CSong::SongUp()
 {
@@ -2371,7 +2398,7 @@ int CSong::GetEffectiveMaxtracklen()
 	for (so = 0; so < SONGLEN; so++)
 	{
 		if (m_songgo[so] >= 0) continue; //go to line is ignored
-		int min = g_Tracks.m_maxTrackLength;
+		int min = g_Tracks.GetMaxTrackLength();
 		int p = 0;
 		for (i = 0; i < g_tracks4_8; i++)
 		{
@@ -2392,7 +2419,7 @@ int CSong::GetSmallestMaxtracklen(int songline)
 	//calculate the smallest track length used in this songline
 	int so = songline;
 	int max = 256;
-	int min = g_Tracks.m_maxTrackLength;
+	int min = g_Tracks.GetMaxTrackLength();
 	int p = 0;
 
 	if (m_songgo[so] >= 0)	return 0; //go to line is ignored
@@ -2436,9 +2463,8 @@ void CSong::ChangeMaxtracklen(int maxtracklen)
 			tt->len = maxtracklen; //adjust length
 		}
 	}
-	if (m_trackactiveline >= maxtracklen) m_trackactiveline = maxtracklen - 1;
-	if (m_trackplayline >= maxtracklen) m_trackplayline = maxtracklen - 1;
-	g_Tracks.m_maxTrackLength = maxtracklen;
+
+	g_Tracks.SetMaxTrackLength(maxtracklen);
 }
 
 void CSong::TracksAllBuildLoops(int& tracksmodified, int& beatsreduced)
@@ -2490,7 +2516,7 @@ void CSong::SongClearUnusedTracksAndParts(int& clearedtracks, int& truncatedtrac
 	{
 		if (IsSongGo(sline)) continue;	// Goto line is ignored
 
-		int nejkratsi = g_Tracks.m_maxTrackLength;
+		int nejkratsi = g_Tracks.GetMaxTrackLength();
 
 		for (ch = 0; ch < g_tracks4_8; ch++)
 		{
@@ -2946,7 +2972,7 @@ void CSong::RenumberAllInstruments(int type)
 BOOL CSong::SetBookmark()
 {
 	if (m_songactiveline >= 0 && m_songactiveline < SONGLEN
-		&& m_trackactiveline >= 0 && m_trackactiveline < g_Tracks.m_maxTrackLength
+		&& m_trackactiveline >= 0 && m_trackactiveline < g_Tracks.GetMaxTrackLength()
 		&& m_speed >= 0)
 	{
 		m_bookmark.songline = m_songactiveline;
@@ -3063,14 +3089,16 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 	return 1;
 }
 
-BOOL CSong::Stop(void)
+void CSong::Stop()
 {
-	g_Undo.Separator();
-	m_play = MPLAY_STOP;
-	m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
-	SetPlayPressedTonesSilence();
-	WaitForTimerRoutineProcessed();	//The Timer Routine will run at least once
-	return 1;
+	if (GetPlayMode() != MPLAY_STOP)
+	{
+		SetPlayMode(MPLAY_STOP);
+		g_Undo.Separator();
+		m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
+		SetPlayPressedTonesSilence();
+		WaitForTimerRoutineProcessed();	// The Timer Routine will run at least once
+	}
 }
 
 BOOL CSong::SongPlayNextLine()
@@ -3192,7 +3220,7 @@ BOOL CSong::PlayVBI()
 	if (m_play == MPLAY_BLOCK && m_trackplayline > m_trackplayblockend) m_trackplayline = m_trackplayblockstart;
 
 	// If none of the tracks end with "end", then it will end when reaching m_maxtracklen
-	if (m_trackplayline >= g_Tracks.m_maxTrackLength)
+	if (m_trackplayline >= g_Tracks.GetMaxTrackLength())
 		SongPlayNextLine();
 
 	PlayBeat();	//1 pattern track line play
@@ -3268,18 +3296,13 @@ void CSong::TimerRoutine()
 		if (g_timerGlobalCount % 3 == 2) ChangeTimer(16);
 	}
 
-	//--- PICTURE DRAWING ---//
-	if (g_screena > 0)
-		g_screena--;
-	else
+	//--- Screen drawing ---//
+	if (g_hwnd && !g_closeApplication)
 	{
-		if (g_screenupdate) //Does it want to redraw?
-		{
-			g_invalidatebytimer = 1;
-			if (!g_closeApplication)
-				AfxGetApp()->GetMainWnd()->Invalidate();
-		}
+		AfxGetApp()->GetMainWnd()->Invalidate();
+		SCREENUPDATE;
 	}
-	g_timerGlobalCount++;	// increment by one each time Timer Routine was processed
+
 	g_timerRoutineProcessed = 1;	// TimerRoutine took place
+	g_timerGlobalCount++;			// Increment by one each time Timer Routine was processed
 }

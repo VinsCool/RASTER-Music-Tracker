@@ -728,7 +728,7 @@ void CSong::DrawSong()
 		// y_offset = line * 16 / track_length
 		
 		pattern_len = GetSmallestMaxtracklen(m_songplayline);
-		if (!pattern_len) pattern_len = g_Tracks.m_maxTrackLength;	//fallback to whatever is in memory instead if the value returned is invalid
+		if (!pattern_len) pattern_len = g_Tracks.GetMaxTrackLength();	//fallback to whatever is in memory instead if the value returned is invalid
 		smooth_y = (active_smooth) ? (m_trackplayline * 16 / pattern_len) - 8 : 0;
 		// TRACE("y offset = %d\n", smooth_y);
 	}
@@ -1161,7 +1161,7 @@ void CSong::DrawTracks()
 			if (!ln)
 			{
 				is_goto = 1;
-				ln = g_Tracks.m_maxTrackLength;
+				ln = g_Tracks.GetMaxTrackLength();
 			}
 
 			if (line >= ln) goto plusline;
@@ -1437,7 +1437,7 @@ void CSong::DrawInfo()
 	TextXY(szBuffer, INFO_X + 19 * 8, INFO_Y_LINE_3, (selected) ? color : TEXT_COLOR_TURQUOISE);
 
 	// Max Track Length @ 40 chars
-	sprintf(szBuffer, "%02X", g_Tracks.m_maxTrackLength);
+	sprintf(szBuffer, "%02X", g_Tracks.GetMaxTrackLength());
 	TextXY(szBuffer, INFO_X + 40 * 8, INFO_Y_LINE_3, TEXT_COLOR_TURQUOISE);
 
 	// Mono or Stereo @ 46 chars
@@ -1582,7 +1582,7 @@ BOOL CSong::InfoKey(int vk, int shift, int control)
 {
 	int i, num;
 	int volatile* infptab[] = { &m_speed, &m_mainSpeed, &m_instrumentSpeed, &g_trackLinePrimaryHighlight, &g_trackLineSecondaryHighlight };
-	int infandtab[] = { 0xFF, 0xFF, 0x08, g_Tracks.m_maxTrackLength / 2, g_Tracks.m_maxTrackLength / 2 };	//maximum current speed, main speed, instrument speed, primary and secondary line highlights
+	int infandtab[] = { 0xFF, 0xFF, 0x08, g_Tracks.GetMaxTrackLength() / 2, g_Tracks.GetMaxTrackLength() / 2 };	//maximum current speed, main speed, instrument speed, primary and secondary line highlights
 	int volatile& infp = *infptab[m_infoact - 1];
 	int infand = infandtab[m_infoact - 1];
 	BOOL CAPSLOCK = GetKeyState(20);	//VK_CAPS_LOCK
@@ -2653,7 +2653,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 		}
 		if (!control && (vk == VK_DOWN || vk == VK_PAGE_DOWN)) //GO - key down
 		{
-			m_trackactiveline = g_Tracks.m_maxTrackLength - 1;
+			m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1;
 			TrackDown(1, 0);
 			return 1;
 		}
@@ -2686,7 +2686,6 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 			if (control || g_activepart != 1)	//anywhere but tracks
 			{
 				SongUp();
-				TrackRespectBoundaries();
 			}
 			else
 			{
@@ -2700,7 +2699,6 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 			if (control || g_activepart != 1)	//anywhere but tracks
 			{
 				SongDown();
-				TrackRespectBoundaries();
 			}
 			else
 			{
@@ -2746,7 +2744,6 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 				else
 				{
 					SongUp();
-					TrackRespectBoundaries();
 				}
 				break;
 			}
@@ -2756,7 +2753,6 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					if (!shift && control)
 					{
 						SongUp();
-						TrackRespectBoundaries();
 					}
 					else
 						if (!control && shift)
@@ -2783,7 +2779,6 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 				else
 				{
 					SongDown();
-					TrackRespectBoundaries();
 				}
 				break;
 			}
@@ -2793,7 +2788,6 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					if (!shift && control)
 					{
 						SongDown();
-						TrackRespectBoundaries();
 					}
 					else
 						if (!control && shift)
@@ -2824,10 +2818,10 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 			if (g_activepart == 1)	//tracks
 			{
 				if (TrackGetGoLine() >= 0)
-					m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //last line
+					m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //last line
 				else
 					m_trackactiveline = TrackGetLastLine();	//end line
-				if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //failsafe in case the active line is out of bounds
+				if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
 			}
 			else if (g_activepart == 3)	//song lines
 			{
@@ -2915,7 +2909,7 @@ BOOL CSong::TrackKey(int vk, int shift, int control)
 		}
 		if (!control && (vk == VK_DOWN || vk == VK_PAGE_DOWN)) //GO - key down
 		{
-			m_trackactiveline = g_Tracks.m_maxTrackLength - 1;	//always reset to line 0
+			m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1;	//always reset to line 0
 			TrackDown(1, 0);
 			return 1;
 		}
@@ -3062,7 +3056,6 @@ TrackKeyOk:
 							break;
 						}
 						else SongUp();
-						TrackRespectBoundaries();
 					}
 					else
 					{
@@ -3104,7 +3097,6 @@ TrackKeyOk:
 						else
 						{
 							SongDown();
-							TrackRespectBoundaries();
 						}
 					}
 					else
@@ -3184,7 +3176,6 @@ TrackKeyOk:
 			{
 				BLOCKDESELECT;
 				SongUp();
-				TrackRespectBoundaries();
 			}
 			else
 				if (!control && shift)
@@ -3210,7 +3201,6 @@ TrackKeyOk:
 			{
 				BLOCKDESELECT;
 				SongDown();
-				TrackRespectBoundaries();
 			}
 			else
 				if (!control && shift)
@@ -3407,13 +3397,13 @@ TrackKeyOk:
 				{
 					BLOCKSETBEGIN;
 					if (TrackGetGoLine() >= 0)
-						m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //last line
+						m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //last line
 					else
 						m_trackactiveline = TrackGetLastLine();	//end line
 					BLOCKSETEND;
 					if (m_trackactiveline < 0)
 					{
-						m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //failsafe in case the active line is out of bounds
+						m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
 						BLOCKDESELECT;	//prevents selecting invalid data
 					}
 				}
@@ -3432,9 +3422,9 @@ TrackKeyOk:
 						if (i != m_trackactiveline)
 						{
 							m_trackactiveline = i;	//at the end of the GO loop or end line
-							if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //failsafe in case the active line is out of bounds
+							if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
 						}
-						else m_trackactiveline = g_Tracks.m_maxTrackLength - 1; //last line
+						else m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //last line
 						BLOCKDESELECT;
 					}
 				}
@@ -3694,13 +3684,11 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 		case VK_UP:
 			BLOCKDESELECT;
 			SongUp();
-			TrackRespectBoundaries();
 			break;
 
 		case VK_DOWN:
 			BLOCKDESELECT;
 			SongDown();
-			TrackRespectBoundaries();
 			break;
 
 		case VK_LEFT:
@@ -3811,9 +3799,7 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 			else
 			{
 				SongUp();
-				TrackRespectBoundaries();
 			}
-
 			break;
 
 		case VK_PAGE_DOWN:
@@ -3822,7 +3808,6 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 			else
 			{
 				SongDown();
-				TrackRespectBoundaries();
 			}
 			break;
 
@@ -3888,6 +3873,5 @@ BOOL CSong::SongCursorGoto(CPoint point)
 		return 0;
 	m_trackactivecol = xch;
 	g_activepart = PART_SONG;
-	TrackRespectBoundaries();
 	return 1;
 }

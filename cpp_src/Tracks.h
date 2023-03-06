@@ -92,9 +92,12 @@ public:
 	int GetModifiedVolumeP(int volume, int percentage);
 	BOOL ModifyTrack(TTrack* track, int from, int to, int instrnumonly, int tuning, int instradd, int volumep);
 
-	int m_maxTrackLength;
+	//int m_maxTrackLength;
+	int GetMaxTrackLength() { return m_maxTrackLength; };
+	void SetMaxTrackLength(int length) { if (IsValidLength(length)) m_maxTrackLength = length; };
 
 private:
+	int m_maxTrackLength;
 	TTrack* m_track;
 };
 

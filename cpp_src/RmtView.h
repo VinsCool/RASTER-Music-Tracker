@@ -45,8 +45,8 @@ public:
 	int MouseAction(CPoint point,UINT mousebutt,short wheelzDelta);
 	void ChangeViewElements(BOOL writeconfig=1);
 
-	//used to handle the window size and most dynamic elements related to it
-	bool Resize(int width, int height);
+	// Used to handle the window size and most dynamic elements related to it
+	void Resize(int width, int height);
 	int  m_width;
 	int  m_height;
 

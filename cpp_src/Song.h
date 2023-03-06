@@ -94,7 +94,9 @@ public:
 	int GetActiveInstr() { return m_activeinstr; };
 	int GetActiveColumn() { return m_trackactivecol; };
 	int GetActiveLine() { return m_trackactiveline; };
+	int GetPlayLine() { return m_trackplayline; };
 	void SetActiveLine(int line) { m_trackactiveline = line; };
+	void SetPlayLine(int line) { m_trackplayline = line; };
 
 	BOOL CursorToSpeedColumn();
 	BOOL ProveKey(int vk, int shift, int control);
@@ -118,8 +120,7 @@ public:
 	int TrackGetLastLine() { return g_Tracks.GetLastLine(SongGetActiveTrack()); };
 	BOOL TrackSetGo() { return g_Tracks.SetGo(SongGetActiveTrack(), m_trackactiveline); };
 	int TrackGetGoLine() { return g_Tracks.GetGoLine(SongGetActiveTrack()); };
-	void TrackRespectBoundaries() { if (m_trackactiveline < 0) { m_trackactiveline = 0; } if (m_trackactiveline > GetSmallestMaxtracklen(m_songactiveline) - 1) { m_trackactiveline = GetSmallestMaxtracklen(m_songactiveline) - 1; } };
-
+	void RespectBoundaries();
 	void TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol);
 
 	int* GetUECursor(int part);
@@ -145,7 +146,9 @@ public:
 	int SongGetTrack(int songline, int trackcol) { return (m_songgo[songline] >= 0) ? -1 : m_song[songline][trackcol]; };
 	int SongGetActiveTrackInColumn(int column) { return m_song[m_songactiveline][column]; };
 	int SongGetActiveLine() { return m_songactiveline; };
+	int SongGetPlayLine() { return m_songplayline; };
 	void SongSetActiveLine(int line) { m_songactiveline = line; };
+	void SongSetPlayLine(int line) { m_songplayline = line; };
 
 	BOOL SongTrackGoOnOff();
 	int SongGetGo() { return m_songgo[m_songactiveline]; };
@@ -168,11 +171,11 @@ public:
 	BOOL VolumeDown() { if (m_volume > 0) { m_volume--; return 1; } else return 0; };
 
 	void ClearBookmark() { m_bookmark.songline = m_bookmark.trackline = m_bookmark.speed = -1; };
-	BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.m_maxTrackLength); };
+	BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.GetMaxTrackLength()); };
 	BOOL SetBookmark();
 
 	BOOL Play(int mode, BOOL follow, int special = 0);
-	BOOL Stop(void);
+	void Stop();
 	BOOL SongPlayNextLine();
 
 	BOOL PlayBeat();
@@ -340,6 +343,7 @@ public:
 	TBookmark* GetBookmark() { return &m_bookmark; };
 
 	int GetPlayMode() { return m_play; };
+	void SetPlayMode(int mode) { m_play = mode; };
 	BOOL GetFollowPlayMode() { return m_followplay; };
 	void SetFollowPlayMode(BOOL follow) { m_followplay = follow; };
 
@@ -348,6 +352,8 @@ public:
 
 	BOOL IsValidSongline(int songline) { return songline >= 0 && songline < SONGLEN; };
 	BOOL IsSongGo(int songline) { return IsValidSongline(songline) ? m_songgo[songline] >= 0 : 0; };
+
+	void SongJump(int lines);
 
 private:
 	int m_song[SONGLEN][SONGTRACKS];

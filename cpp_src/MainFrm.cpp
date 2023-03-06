@@ -17,7 +17,6 @@
 static char THIS_FILE[] = __FILE__;
 #endif
 
-extern BOOL g_closeApplication;
 extern CSong g_Song;
 
 /////////////////////////////////////////////////////////////////////////////

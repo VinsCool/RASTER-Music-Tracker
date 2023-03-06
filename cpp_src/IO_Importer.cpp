@@ -186,7 +186,7 @@ int CSong::ImportTMC(std::ifstream& in)
 
 	//delete the current song
 	g_tracks4_8 = 8;					//standard TMC is 8 tracks
-	g_Tracks.m_maxTrackLength = 64;	//track length is 64
+	g_Tracks.SetMaxTrackLength(64);	//track length is 64
 	ClearSong(g_tracks4_8);			//clear everything
 
 	unsigned char mem[65536];
@@ -932,7 +932,7 @@ int CSong::ImportMOD(std::ifstream& in)
 	//deletes the current song
 	int originalg_tracks4_8 = g_tracks4_8;	//keeps the original value for Abort
 	g_tracks4_8 = 8;					//prepares 8 channels
-	g_Tracks.m_maxTrackLength = 64;	//track length 64
+	g_Tracks.SetMaxTrackLength(64);	//track length 64
 	ClearSong(g_tracks4_8);			//clear existing data
 
 	int i, j;
