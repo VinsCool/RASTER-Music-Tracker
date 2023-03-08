@@ -340,6 +340,7 @@ void CRmtView::OnDraw(CDC* pDC)
 	if (g_screenupdate)
 	{
 		if (g_viewDebugDisplay) GetFPS();
+		g_Song.RespectBoundaries();
 		DrawAll();
 		NO_SCREENUPDATE;
 	}
@@ -1569,7 +1570,6 @@ void CRmtView::OnLButtonDown(UINT nFlags, CPoint point)
 	g_Undo.Separator();
 	g_mousebutt|=MK_LBUTTON;
 	MouseAction(point,MK_LBUTTON);
-	g_Song.RespectBoundaries();
 	CView::OnLButtonDown(nFlags, point);
 }
 
@@ -1592,7 +1592,6 @@ void CRmtView::OnRButtonDown(UINT nFlags, CPoint point)
 	g_Undo.Separator();
 	g_mousebutt|=MK_RBUTTON;
 	MouseAction(point,MK_RBUTTON);
-	g_Song.RespectBoundaries();
 	CView::OnRButtonDown(nFlags, point);
 }
 
@@ -2010,9 +2009,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		if (r) SCREENUPDATE;
 	}
 
-	g_Song.RespectBoundaries();
-
-	//UndoCheckPoint does not work if it is only a shift or just a control (to which the next key will come)
+	// UndoCheckPoint does not work if it is only a shift or just a control (to which the next key will come)
 KeyDownNoUndoCheckPoint:
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
@@ -3121,9 +3118,6 @@ void CRmtView::OnSongSizeoptimization()
 	// And now refines the instruments (to remove any gaps)
 	g_Song.RenumberAllInstruments(1);
 
-	// Adjustments in case of being out of bounds
-	g_Song.RespectBoundaries();
-
 	CString s;
 	s.Format("Deleted %i unused tracks, %i unused instruments,\ntruncated %i tracks (%i beats/lines),\nfound and rebuilt loops in %i tracks (%i beats/lines),\ndeleted %i duplicated tracks.", clearedtracks, clearedinstruments, truncatedtracks, truncatedbeats, optitracks, optibeats, duplicatedtracks);
 	if (chmaxtl)
@@ -3189,7 +3183,6 @@ BOOL CRmtView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	::GetWindowRect(g_viewhwnd,&rec);
 	CPoint np(pt-rec.TopLeft());
 	MouseAction(np,0,zDelta);
-	g_Song.RespectBoundaries();
 	return CView::OnMouseWheel(nFlags, zDelta, pt);
 }
 
