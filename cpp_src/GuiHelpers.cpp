@@ -83,6 +83,13 @@ int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
 	return 0;
 }
 
+BOOL IsHoveredXY(int x, int y, int xLength, int yLength)
+{
+	int px = g_mouseLastPointX, py = g_mouseLastPointY;
+	int xTo = x + xLength, yTo = y + yLength;
+
+	return (px >= x && px < xTo) && (py >= y && py < yTo);
+}
 
 void TextXY(const char* txt, int x, int y, int color)
 {
@@ -123,29 +130,45 @@ void TextXYFull(const char* txt, int& x, int& y)
 
 void TextXYSelN(const char* txt, int n, int x, int y, int color)
 {
-	//the index character n will have a "select" color, the rest c
-	char charToDraw;
-	color = color << 4;
+	color <<= 4;
 
-	int col = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
+	int col = (g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED) << 4;
+	int cur = COLOR_HOVERED << 4;
 
-	int i;
-	for (i = 0; charToDraw = (txt[i]); i++, x += 8)
+	// The characters 'n' will use the "select" color, everything else will use the 'color' parameter, unless they are hovered by the mouse cursor
+	for (int i = 0; char charToDraw = txt[i]; i++, x += 8)
 	{
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, (i == n) ? col * 16 : color, 8, 16, SRCCOPY);
+		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7F) << 3, IsHoveredXY(x, y, 8, 16) ? cur : i == n ? col : color, 8, 16, SRCCOPY);
 	}
-	if (i == n) //the first character after the end of the string
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, 32 << 3, col * 16, 8, 16, SRCCOPY);
 }
 
 // Draw 8x16 chars with given color array per char position
-void TextXYCol(const char* txt, int x, int y, const char* col, int color)
+//void TextXYCol(const char* txt, int x, int y, const char* col, int color)
+void TextXYCol(const char* txt, int x, int y, int acu, int color)
 {
-	char charToDraw;
+	color <<= 4;
 
-	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
+	int num = 0, curnum = 0, curoff = 0;
+	int col = (g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED) << 4;
+	int cur = COLOR_HOVERED << 4;
+
+	switch (acu)
 	{
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, (col[i] ? ((g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED) : color) << 4, 8, 16, SRCCOPY);
+	case 0: acu = 1; num = 3; break;	// Note
+	case 1: acu = 5; num = 2; break;	// Instrument
+	case 2: acu = 8; num = 2; break;	// Volume
+	case 3: acu = 11; num = 3; break;	// Effect(s)
+	default: acu = -1;
+	}
+
+	for (int i = 0; char charToDraw = txt[i]; i++, x += 8)
+	{
+		//g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, (col[i] ? ((g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED) : color) << 4, 8, 16, SRCCOPY);
+
+		if (charToDraw == 32) continue;	// Don't draw the space
+
+		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7F) << 3, 
+			IsHoveredXY(x, y, 8, 16) ? cur : i >= acu && i < acu + num ? col : color, 8, 16, SRCCOPY);
 	}
 }
 

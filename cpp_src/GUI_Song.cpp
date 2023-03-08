@@ -1233,12 +1233,14 @@ void CSong::DrawTracks()
 		s[9] = tnames[i * 2 + 1];
 
 		color = (GetChannelOnOff(i)) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;	//channels off are in gray
-		TextXY(s, x + 12, TRACKS_Y, color);
+		//TextXY(s, x + 12, TRACKS_Y, color);
+		TextXY(s, x, TRACKS_Y, color);
 
 		//track in the current line of the song
 		tr = m_song[songactiveline][i];
 
-		g_Tracks.DrawTrackHeader(x + 24, TRACKS_Y + 16, tr, color); 
+		//g_Tracks.DrawTrackHeader(x + 24, TRACKS_Y + 16, tr, color);
+		g_Tracks.DrawTrackHeader(x + 8, TRACKS_Y + 16, tr, color);
 	}
 
 	//lines delimiting the current line
@@ -1340,15 +1342,16 @@ void CSong::DrawTracks()
 			{
 			case 0: d.Format("GW = %02d", g_width); break;
 			case 1: d.Format("GH = %02d", g_height); break;
-			case 2: d.Format("PX = %02d", g_mouse_px); break;
-			case 3: d.Format("PY = %02d", g_mouse_py); break;
-			case 4: d.Format("MB = %02d", g_mouselastbutt); break;
+			case 2: d.Format("PX = %02d", g_mouseLastPointX); break;
+			case 3: d.Format("PY = %02d", g_mouseLastPointY); break;
+			case 4: d.Format("MB = %02d", g_mouseLastButton); break;
 			case 5: d.Format("CA = %02d", g_cursoractview); break;
 			case 6: d.Format("TA = %02d", m_trackactiveline); break;
-			case 7: d.Format("DY = %02d", g_mouse_py / 16); break;
+			case 7: d.Format("DY = %02d", g_mouseLastPointY / 16); break;
 			case 8: d.Format("GTL = %02d", g_tracklines); break;
 			case 9: d.Format("OL = %02d", g_tracklines / 2); break;
 			case 10: d.Format("VK = %02X", g_lastKeyPressed); break;
+			case 11: d.Format("WD = %02d", g_mouseLastWheelDelta); break;
 			default: continue;
 			}
 

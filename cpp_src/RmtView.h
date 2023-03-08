@@ -41,7 +41,8 @@ public:
 	void DrawAnalyzer();
 	void DrawPlaytimecounter();
 	void GetFPS();
-	void GetMouseXY(int px, int py, int mousebutt);	//debug function, to get the pointer coordinates
+	void GetMouseXY(int px, int py, int mousebutt, short wheelzDelta);
+	BOOL IsHoveredXY(int x, int y, int xLength, int yLength);
 	int MouseAction(CPoint point,UINT mousebutt,short wheelzDelta);
 	void ChangeViewElements(BOOL writeconfig=1);
 

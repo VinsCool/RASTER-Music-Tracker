@@ -160,9 +160,12 @@ extern int g_timerGlobalCount;	// Initialised once, ticking forever
 extern long g_playtime;				//1 yes, 0 no
 
 extern UINT g_mousebutt;			//mouse button
-extern int g_mouselastbutt;
-extern int g_mouse_px;
-extern int g_mouse_py;
+
+extern int g_mouseLastPointX;
+extern int g_mouseLastPointY;
+extern int g_mouseLastButton;
+extern int g_mouseLastWheelDelta;
+
 extern int g_lastKeyPressed;		//for debugging vk input
 
 extern CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)

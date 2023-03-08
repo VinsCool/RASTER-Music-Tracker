@@ -44,6 +44,7 @@ const char* notes[] =
   "C-6","???","???","???"
 };
 
+/*
 #define ROW_ON	'\xFF'
 #define ROW_OFF	'\x00'
 
@@ -53,6 +54,7 @@ const char row2[15] = { ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, RO
 const char row3[15] = { ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_ON, ROW_ON, ROW_ON, ROW_OFF };
 const char row4[15] = { ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF };
 const char* colac[] = { row0, row1, row2, row3, row4 };
+*/
 
 void CTracks::DrawTrackHeader(int x, int y, int tr, int col)
 {
@@ -71,6 +73,8 @@ void CTracks::DrawTrackHeader(int x, int y, int tr, int col)
 	}
 
 	TextXY(s, x, y, col);
+	TextXYSelN("<>", -1, x + 8 * 11, y, col);
+	TextMiniXY("FX1", x + 8 * 10, y - 8);
 }
 
 void CTracks::DrawTrackLine(int col, int x, int y, int tr, int line, int aline, int cactview, int pline, BOOL isactive, int acu, int oob)
@@ -142,7 +146,8 @@ void CTracks::DrawTrackLine(int col, int x, int y, int tr, int line, int aline, 
 	if (oob) color = TEXT_COLOR_DARK_GRAY;
 
 	// Output the constructed row once it's ready, using the cursor position for highlighted column 
-	TextXYCol(s, x, y, colac[isactive && line == aline && !oob ? acu : 4], color);
+	//TextXYCol(s, x, y, colac[g_activepart == PART_TRACKS && (isactive && line == aline && !oob) ? acu : 4], color);
+	TextXYCol(s, x, y, g_activepart == PART_TRACKS && (isactive && line == aline && !oob) ? acu : -1, color);
 
 	// Mark the end of a pattern here, if it ends on the next line
 	if (line + 1 == last && len > 0 && last != m_maxTrackLength)

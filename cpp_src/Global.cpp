@@ -156,9 +156,12 @@ int g_timerGlobalCount = 0;	// Initialised once, ticking forever
 long g_playtime = 1;	//1 yes, 0 no
 
 UINT g_mousebutt = 0;			//mouse button
-int g_mouselastbutt = 0;
-int g_mouse_px = 0;
-int g_mouse_py = 0;
+
+int g_mouseLastPointX = 0;
+int g_mouseLastPointY = 0;
+int g_mouseLastButton = 0;
+int g_mouseLastWheelDelta = 0;
+
 int g_lastKeyPressed = 0;		//for debugging vk input
 
 CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)

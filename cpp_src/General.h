@@ -19,8 +19,9 @@
 #define TEXT_COLOR_BLUE 13
 #define TEXT_COLOR_TURQUOISE 14
 
-#define COLOR_SELECTED			TEXT_COLOR_INVERSE_RED	//highlight colour
-#define COLOR_SELECTED_PROVE	TEXT_COLOR_INVERSE_BLUE	//highlight colour in PROVE mode
+#define COLOR_SELECTED			TEXT_COLOR_INVERSE_RED		// Highlight colour
+#define COLOR_SELECTED_PROVE	TEXT_COLOR_INVERSE_BLUE		// Highlight colour in PROVE mode
+#define COLOR_HOVERED			TEXT_COLOR_INVERSE_WHITE	// Highlight colour from cursor hover
 
 #define TEXT_MINI_COLOR_GRAY 0
 #define TEXT_MINI_COLOR_BLUE 1
