@@ -218,10 +218,7 @@ void CMainFrame::OnRestoreFocusToMainWindow()
 
 void CMainFrame::OnGetMinMaxInfo(MINMAXINFO* lpMMI)
 {
-	//not perfect... manual resizing is required if the window is smaller than minimal
-	int minx = (g_tracks4_8 == 8) ? 1120 : 800;
-	int miny = 600;
-
-	lpMMI->ptMinTrackSize.x = SCALE(minx);
-	lpMMI->ptMinTrackSize.y = SCALE(miny);
+	// Not perfect... manual resizing is required if the window is smaller than minimal
+	lpMMI->ptMinTrackSize.x = (g_tracks4_8 == 8) ? 1120 : 800;
+	lpMMI->ptMinTrackSize.y = 600;
 }

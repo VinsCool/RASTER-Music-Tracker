@@ -17,7 +17,6 @@ extern BOOL IsHoveredXY(int x, int y, int xLength, int yLength);
 extern void TextXY(const char* txt, int x, int y, int color = TEXT_COLOR_WHITE);
 extern void TextXYFull(const char* txt, int& x, int& y);
 extern void TextXYSelN(const char* txt, int n, int x, int y, int color = TEXT_COLOR_WHITE);
-//extern void TextXYCol(const char* txt, int x, int y, const char* col, int color = TEXT_COLOR_WHITE);
 extern void TextXYCol(const char* txt, int x, int y, int acu, int color = TEXT_COLOR_WHITE);
 extern void TextDownXY(const char* txt, int x, int y, int color = TEXT_COLOR_WHITE);
 extern void NumberMiniXY(const BYTE num, int x, int y, int color = TEXT_MINI_COLOR_GRAY);

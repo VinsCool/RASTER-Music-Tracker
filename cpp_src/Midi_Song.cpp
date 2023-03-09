@@ -141,7 +141,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					if (m_vol_slider == 0) m_vol_slider++;
 					if (m_vol_slider > 15) m_vol_slider = 15;
 					m_volume = m_vol_slider;
-					SCREENUPDATE;
 					break;
 
 				case 115:	//LOOP key
@@ -175,7 +174,6 @@ void CSong::MidiEvent(DWORD dwParam)
 						else
 							g_prove = PROVE_MIDI_CH15_MODE;						//special mode exclusive to MIDI CH15
 					}
-					SCREENUPDATE;
 					break;
 
 				case 123:
@@ -195,7 +193,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					g_atarimem[0x3178 + o] |= pr2 << 4;
 
 					//g_pokey.MemToPokey(g_tracks4_8);
-					SCREENUPDATE;
 					break;
 
 				case 72: //Knob C2, AUDF1/AUDF3 upper 4 bits
@@ -203,7 +200,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					//g_atarimem[0xD202] |= pr2 << 4;
 					g_atarimem[0x3179 + o] &= 0x0F;
 					g_atarimem[0x3179 + o] |= pr2 << 4;
-					SCREENUPDATE;
 					break;
 
 				case 73: //Knob C3, AUDC0/AUDC2 volume
@@ -211,7 +207,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					//g_atarimem[0xD201] |= pr2;
 					g_atarimem[0x3180 + o] &= 0xF0;
 					g_atarimem[0x3180 + o] |= pr2;
-					SCREENUPDATE;
 					break;
 
 				case 74: //Knob C4, AUDC1/AUDC3 volume
@@ -219,7 +214,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					//g_atarimem[0xD203] |= pr2;
 					g_atarimem[0x3181 + o] &= 0xF0;
 					g_atarimem[0x3181 + o] |= pr2;
-					SCREENUPDATE;
 					break;
 
 				case 75: //Knob C5, AUDF0/AUDF2 lower 4 bits
@@ -227,7 +221,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					//g_atarimem[0xD200] |= pr2;
 					g_atarimem[0x3178 + o] &= 0xF0;
 					g_atarimem[0x3178 + o] |= pr2;
-					SCREENUPDATE;
 					break;
 
 				case 76: //Knob C6, AUDF1/AUDF3 lower 4 bits
@@ -235,7 +228,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					//g_atarimem[0xD202] |= pr2;
 					g_atarimem[0x3179 + o] &= 0xF0;
 					g_atarimem[0x3179 + o] |= pr2;
-					SCREENUPDATE;
 					break;
 
 				case 77: //Knob C7, AUDC0/AUDC2 distortion
@@ -243,7 +235,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					//g_atarimem[0xD201] |= (pr2 * 2) << 4;
 					g_atarimem[0x3180 + o] &= 0x0F;
 					g_atarimem[0x3180 + o] |= (pr2 * 2) << 4;
-					SCREENUPDATE;
 					break;
 
 				case 78: //Knob C8, AUDC1/AUDC3 distortion
@@ -251,7 +242,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					//g_atarimem[0xD203] |= (pr2 * 2) << 4;
 					g_atarimem[0x3181 + o] &= 0x0F;
 					g_atarimem[0x3181 + o] |= (pr2 * 2) << 4;
-					SCREENUPDATE;
 					break;
 					}
 
@@ -269,25 +259,21 @@ void CSong::MidiEvent(DWORD dwParam)
 				case 60:	//drumpad 1, toggle High Pass Filter in ch1+3
 					if (!pr2) break;	//no key press
 					g_atarimem[0x3C69] ^= 0x04;
-					SCREENUPDATE;
 					break;
 
 				case 62:	//drumpad 2, toggle High Pass Filter in ch2+4
 					if (!pr2) break;	//no key press
 					g_atarimem[0x3C69] ^= 0x02;
-					SCREENUPDATE;
 					break;
 
 				case 66:	//drumpad 3, toggle 1.79mHz mode in the respective channels
 					if (!pr2) break;	//no key press
 					g_atarimem[0x3C69] ^= (m_ch_offset) ? 0x20 : 0x40;
-					SCREENUPDATE;
 					break;
 
 				case 70:	//drumpad 4, toggle Join 16-bit mode in the respective channels
 					if (!pr2) break;	//no key press
 					g_atarimem[0x3C69] ^= (m_ch_offset) ? 0x08 : 0x10;
-					SCREENUPDATE;
 					break;
 
 				case 74:	//drumpad 5, select the POKEY channels 1 and 2 or 3 and 4
@@ -300,20 +286,17 @@ void CSong::MidiEvent(DWORD dwParam)
 					if (!pr2) break;	//no key press
 					g_atarimem[0x3CD3] = 0x03;	//SKCTL
 					g_atarimem[0x3C69] = 0x00;	//AUDCTL
-					SCREENUPDATE;
 					break;
 
 				case 75:	//drumpad 7, toggle Two-Tone filter
 					if (!pr2) break;	//no key press
 					if (g_atarimem[0x3CD3] == 0x03) g_atarimem[0x3CD3] = 0x8B;
 					else g_atarimem[0x3CD3] = 0x03;
-					SCREENUPDATE;
 					break;
 
 				case 73:	//drumpad 8, toggle 15kHz mode
 					if (!pr2) break;	//no key press
 					g_atarimem[0x3C69] ^= 0x01;
-					SCREENUPDATE;
 					break;
 
 				default:
@@ -368,7 +351,6 @@ void CSong::MidiEvent(DWORD dwParam)
 						else
 							if (vol > 15) vol = 15;
 
-						if (m_volume != vol) g_screenupdate = 1;
 						m_volume = vol;
 					}
 					else
@@ -428,7 +410,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					{
 					NextLine_midi_test:
 						if (!(m_play && m_followplay)) TrackDown(g_linesafter);	//scrolls only when there is no followplay
-						g_screenupdate = 1;
 					Prove_midi_test:
 						//SetPlayPressedTonesTNIV(m_trackactivecol, note, m_activeinstr, vol);
 						SetPlayPressedTonesTNIV(atc, note, m_activeinstr, vol);
@@ -476,7 +457,6 @@ void CSong::MidiEvent(DWORD dwParam)
 						break;
 					}
 				}
-				SCREENUPDATE;
 			}
 
 			//MIDI NOTE ON events
@@ -495,7 +475,6 @@ void CSong::MidiEvent(DWORD dwParam)
 						break;
 					}
 				}
-				SCREENUPDATE;
 			}
 
 			//TESTING HARDCODED DATA, THIS MUST NOT BE THE WAY TO GO!
@@ -622,7 +601,6 @@ void CSong::MidiEvent(DWORD dwParam)
 					else
 						if (vol > 15) vol = 15;
 
-					if (m_volume != vol) g_screenupdate = 1;
 					m_volume = vol;
 				}
 				else
@@ -677,7 +655,6 @@ void CSong::MidiEvent(DWORD dwParam)
 				{
 				NextLine_midi:
 					if (!(m_play && m_followplay)) TrackDown(g_linesafter);	//scrolls only when there is no followplay
-					g_screenupdate = 1;
 				Prove_midi:
 					SetPlayPressedTonesTNIV(m_trackactivecol, note, m_activeinstr, vol);
 					if ((g_prove == PROVE_JAM_STEREO_MODE || g_controlkey) && g_tracks4_8 > 4)
@@ -696,7 +673,6 @@ void CSong::MidiEvent(DWORD dwParam)
 			if (pr1 >= 0 && pr1 < INSTRSNUM)
 			{
 				ActiveInstrSet(pr1);
-				g_screenupdate = 1;
 			}
 		}
 }

@@ -75,8 +75,10 @@ public:
 	void DrawTracks();
 	void DrawInstrument();
 	void DrawInfo();			//top left corner
-	void DrawAnalyzer(CDC* pDC = NULL);
-	void DrawPlayTimeCounter(CDC* pDC = NULL);
+	void DrawAnalyzer();
+	void DrawPlayTimeCounter();
+	//void DrawAnalyzer(CDC* pDC = NULL);
+	//void DrawPlayTimeCounter(CDC* pDC = NULL);
 
 	BOOL InfoKey(int vk, int shift, int control);
 	BOOL InfoCursorGotoSongname(int x);

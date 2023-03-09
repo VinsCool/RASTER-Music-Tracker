@@ -228,7 +228,6 @@ void CEffectsDlg::OnTry()
 void CEffectsDlg::OnRestore() 
 {
 	memcpy(m_trackptr,m_trackorig,sizeof(TTrack));
-	g_screenupdate=1;	//SCREENUPDATE;
 }
 
 void CEffectsDlg::OnPlaystop() 
@@ -237,13 +236,6 @@ void CEffectsDlg::OnPlaystop()
 		g_Song.Stop();
 	else
 		g_Song.Play(MPLAY_BLOCK, g_Song.GetFollowPlayMode());
-/*
-	int p=m_song->GetPlayMode();
-	if (p)
-		m_song->Stop();
-	else
-		m_song->Play(MPLAY_BLOCK,m_song->m_followplay);
-*/
 }
 
 void CEffectsDlg::PerformEffect()
@@ -449,7 +441,6 @@ void CEffectsDlg::PerformEffect()
 
 	//copies to the actual track
 	memcpy(m_trackptr,&td,sizeof(TTrack));
-	g_screenupdate=1;	//SCREENUPDATE;
 }
 
 /////////////////////////////////////////////////////////////////////////////

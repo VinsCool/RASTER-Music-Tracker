@@ -49,8 +49,8 @@ void CInstruments::DrawInstrument(int instrNr)
 	// Draw envelope volume markers
 	TextDownXY("\x0e\x0e\x0e\x0e", INSTRS_ENV_X + 11 * 8 - 1, INSTRS_ENV_Y + 3 * 16, TEXT_COLOR_GRAY);
 	//delimitation of space for Envelope VOLUME
-	g_mem_dc->MoveTo(SCALE(INSTRS_ENV_X + 12 * 8 - 1), SCALE(INSTRS_ENV_Y + 7 * 16 - 1));
-	g_mem_dc->LineTo(SCALE(INSTRS_ENV_X + 12 * 8 + ENVELOPE_MAX_COLUMNS * 8), SCALE(INSTRS_ENV_Y + 7 * 16 - 1));
+	g_mem_dc->MoveTo(INSTRS_ENV_X + 12 * 8 - 1, INSTRS_ENV_Y + 7 * 16 - 1);
+	g_mem_dc->LineTo(INSTRS_ENV_X + 12 * 8 + ENVELOPE_MAX_COLUMNS * 8, INSTRS_ENV_Y + 7 * 16 - 1);
 
 	if (t->activeEditSection == INSTRUMENT_SECTION_ENVELOPE)
 	{
@@ -71,8 +71,8 @@ void CInstruments::DrawInstrument(int instrNr)
 	{
 		TextXY(shenv[0].name, shenv[0].xpos, shenv[0].ypos, TEXT_COLOR_WHITE); //"VOLUME R:"
 		TextDownXY("\x0e\x0e\x0e\x0e", INSTRS_ENV_X + 11 * 8 - 1, INSTRS_ENV_Y - 2 * 16, TEXT_COLOR_GRAY);
-		g_mem_dc->MoveTo(SCALE(INSTRS_ENV_X + 12 * 8 - 1), SCALE(INSTRS_ENV_Y + 2 * 16 - 1));
-		g_mem_dc->LineTo(SCALE(INSTRS_ENV_X + 12 * 8 + ENVELOPE_MAX_COLUMNS * 8), SCALE(INSTRS_ENV_Y + 2 * 16 - 1));
+		g_mem_dc->MoveTo(INSTRS_ENV_X + 12 * 8 - 1, INSTRS_ENV_Y + 2 * 16 - 1);
+		g_mem_dc->LineTo(INSTRS_ENV_X + 12 * 8 + ENVELOPE_MAX_COLUMNS * 8, INSTRS_ENV_Y + 2 * 16 - 1);
 	}
 
 	for (i = 0; i < NUMBER_OF_PARAMS; i++) DrawParameter(i, instrNr);
@@ -270,20 +270,16 @@ void CInstruments::DrawName(int instrNr)
 /// <param name="instrNr"></param>
 void CInstruments::DrawParameter(int p, int instrNr)
 {
-	char s[2];
-	s[1] = 0;
-	const char* txt = shpar[p].name;
+	CString s = shpar[p].name;
 	int x = shpar[p].x;
 	int y = shpar[p].y;
-
-	char a;
+	int showpar = GetParameter(instrNr, p) + shpar[p].displayOffset;
 	int color = TEXT_COLOR_WHITE;
 
-	for (int i = 0; a = txt[i]; i++, x += 8)
-	{
-		// Necessary! this is a custom textxy function for displaying instruments...
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (a & 0x7f) << 3, color, 8, 16, SRCCOPY);
-	}
+	TextXY(s, x, y, color);
+
+	// Offset x to the end of parameter name after it was drawn
+	x += 8 * (s.GetLength() + 1);
 
 	// If the cursor is on the main parameters
 	if (g_activepart == PART_INSTRUMENTS && GetActiveEditSection(instrNr) == INSTRUMENT_SECTION_PARAMETERS && GetParameterNumber(instrNr) == p)
@@ -291,21 +287,10 @@ void CInstruments::DrawParameter(int p, int instrNr)
 		color = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
 	}
 
-	x += 8;
-	int showpar = GetParameter(instrNr, p) + shpar[p].displayOffset;	// Some parameters are 0..x but 1..x + 1 is displayed
-
-	if (shpar[p].maxParameterValue + shpar[p].displayOffset > 0x0f)
-	{
-		s[0] = CharH4(showpar);
-		TextXY(s, x, y, color);
-	}
-
-	x += 8;
-	s[0] = CharL4(showpar);
-	TextXY(s, x, y, color);
+	// Some parameters are 0..x but 1..x + 1 is displayed
+	s.Format(shpar[p].maxParameterValue + shpar[p].displayOffset > 0x0F ? "%02X" : " %01X", showpar);
+	TextXYSelN(s, -1, x, y, color);
 }
-
-
 
 BOOL CInstruments::CursorGoto(int instrNr, CPoint point, int pzone)
 {
@@ -506,9 +491,9 @@ void CInstruments::DrawEnv(int e, int it)
 		RGB(128, 255, 255) : RGB(255, 255, 255);
 
 	// Volume column
-	if (volL) g_mem_dc->FillSolidRect(SCALE(x), SCALE(INSTRS_ENV_Y + 3 * 16 + 4 + 4 * (15 - volL)), SCALE(8), SCALE(volL * 4), fillColor);
+	if (volL) g_mem_dc->FillSolidRect(x, INSTRS_ENV_Y + 3 * 16 + 4 + 4 * (15 - volL), 8, volL * 4, fillColor);
 
-	if (g_tracks4_8 > 4 && volR) g_mem_dc->FillSolidRect(SCALE(x), SCALE(INSTRS_ENV_Y - 2 * 16 + 4 + 4 * (15 - volR)), SCALE(8), SCALE(volR * 4), fillColor);
+	if (g_tracks4_8 > 4 && volR) g_mem_dc->FillSolidRect(x, INSTRS_ENV_Y - 2 * 16 + 4 + 4 * (15 - volR), 8, volR * 4, fillColor);
 
 	for (int j = 0; j < 8; j++)
 	{

@@ -38,16 +38,13 @@ public:
 	void WriteTuningConfig();
 
 	void DrawAll();
-	void DrawAnalyzer();
-	void DrawPlaytimecounter();
 	void GetFPS();
 	void GetMouseXY(int px, int py, int mousebutt, short wheelzDelta);
-	BOOL IsHoveredXY(int x, int y, int xLength, int yLength);
 	int MouseAction(CPoint point,UINT mousebutt,short wheelzDelta);
 	void ChangeViewElements(BOOL writeconfig=1);
 
 	// Used to handle the window size and most dynamic elements related to it
-	void Resize(int width, int height);
+	void Resize();
 	int  m_width;
 	int  m_height;
 
@@ -67,6 +64,8 @@ public:
 	HCURSOR m_cursorSetPosition;
 
 	UINT_PTR m_timeranalyzer;
+	BYTE m_timerclock;
+	BYTE m_timertick[3] = { 16, 16, 15 };
 
 // Operations
 public:

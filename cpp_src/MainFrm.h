@@ -9,8 +9,6 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-extern BOOL g_viewBlockToolbar;
-extern int g_linesafter;
 
 class CMainFrame : public CFrameWnd
 {

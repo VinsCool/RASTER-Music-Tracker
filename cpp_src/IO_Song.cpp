@@ -247,7 +247,6 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 			// Something in the Load... function failed
 			ClearSong(g_tracks4_8);		// Erases everything
 			SetRMTTitle();
-			SCREENUPDATE;			// Must refresh
 			return;
 		}
 
@@ -255,7 +254,6 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 		m_speed = m_mainSpeed;			// Init speed
 		SetRMTTitle();					// Window name
 		SetChannelOnOff(-1, 1);			// All channels ON (unmute all) -1 = all, 1 = on
-		SCREENUPDATE;
 	}
 }
 
@@ -435,9 +433,6 @@ void CSong::FileNew()
 
 	// Delete undo history
 	g_Undo.Clear();
-
-	// Refresh the screen 
-	g_screenupdate = 1;
 }
 
 /// <summary>
@@ -515,7 +510,6 @@ void CSong::FileImport()
 
 	// Initialise RMT routine
 	Atari_InitRMTRoutine();
-	SCREENUPDATE;
 }
 
 /// <summary>
@@ -710,7 +704,6 @@ void CSong::FileInstrumentLoad()
 
 		int loadState = g_Instruments.LoadInstrument(m_activeinstr, in, IOINSTR_RTI);
 		in.close();
-		g_screenupdate = 1;
 
 		if (!loadState)
 		{
@@ -850,7 +843,6 @@ void CSong::FileTrackLoad()
 							break;
 						}
 					}
-					g_screenupdate = 1;
 				}
 			}
 			else

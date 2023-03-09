@@ -98,7 +98,7 @@ void TextXY(const char* txt, int x, int y, int color)
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
 	{
 		if (charToDraw == 32) continue;	// Don't draw the space
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, color, 8, 16, SRCCOPY);
+		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7f) << 3, color, SRCCOPY);
 	}
 }
 
@@ -123,7 +123,7 @@ void TextXYFull(const char* txt, int& x, int& y)
 		case '\x8D': color = TEXT_COLOR_BLUE << 4; continue;
 		}
 
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, color, 8, 16, SRCCOPY);
+		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7f) << 3, color, SRCCOPY);
 		x += 8;
 	}
 }
@@ -138,12 +138,11 @@ void TextXYSelN(const char* txt, int n, int x, int y, int color)
 	// The characters 'n' will use the "select" color, everything else will use the 'color' parameter, unless they are hovered by the mouse cursor
 	for (int i = 0; char charToDraw = txt[i]; i++, x += 8)
 	{
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7F) << 3, IsHoveredXY(x, y, 8, 16) ? cur : i == n ? col : color, 8, 16, SRCCOPY);
+		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7F) << 3, IsHoveredXY(x, y, 8, 16) ? cur : i == n ? col : color, SRCCOPY);
 	}
 }
 
 // Draw 8x16 chars with given color array per char position
-//void TextXYCol(const char* txt, int x, int y, const char* col, int color)
 void TextXYCol(const char* txt, int x, int y, int acu, int color)
 {
 	color <<= 4;
@@ -163,12 +162,9 @@ void TextXYCol(const char* txt, int x, int y, int acu, int color)
 
 	for (int i = 0; char charToDraw = txt[i]; i++, x += 8)
 	{
-		//g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, (col[i] ? ((g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED) : color) << 4, 8, 16, SRCCOPY);
-
 		if (charToDraw == 32) continue;	// Don't draw the space
 
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7F) << 3, 
-			IsHoveredXY(x, y, 8, 16) ? cur : i >= acu && i < acu + num ? col : color, 8, 16, SRCCOPY);
+		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7F) << 3, IsHoveredXY(x, y, 8, 16) ? cur : i >= acu && i < acu + num ? col : color, SRCCOPY);
 	}
 }
 
@@ -179,15 +175,15 @@ void TextDownXY(const char* txt, int x, int y, int color)
 	color = color << 4;	// 16 pixels height
 	for (int i = 0; charToDraw = (txt[i]); i++, y += 16)
 	{
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(16), g_gfx_dc, (charToDraw & 0x7f) << 3, color, 8, 16, SRCCOPY);
+		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7f) << 3, color, SRCCOPY);
 	}
 }
 
 void NumberMiniXY(const BYTE num, int x, int y, int color)
 {
 	color = 112 + (color << 3);
-	g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (num & 0xf0) >> 1, color, 8, 8, SRCCOPY);
-	g_mem_dc->StretchBlt(SCALE(x + 8), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (num & 0x0f) << 3, color, 8, 8, SRCCOPY);
+	g_mem_dc->BitBlt(x, y, 8, 8, g_gfx_dc, (num & 0xf0) >> 1, color, SRCCOPY);
+	g_mem_dc->BitBlt(x + 8, y, 8, 8, g_gfx_dc, (num & 0x0f) << 3, color, SRCCOPY);
 }
 
 void TextMiniXY(const char* txt, int x, int y, int color)
@@ -197,12 +193,15 @@ void TextMiniXY(const char* txt, int x, int y, int color)
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
 	{
 		if (charToDraw == 32) continue;
-		g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(8), SCALE(8), g_gfx_dc, (charToDraw & 0x7f) << 3, color, 8, 8, SRCCOPY);
+		g_mem_dc->BitBlt(x, y, 8, 8, g_gfx_dc, (charToDraw & 0x7f) << 3, color, SRCCOPY);
 	}
 }
 
 void IconMiniXY(const int icon, int x, int y)
 {
 	static int c = 128 - 6;
-	if (icon >= 1 && icon <= 4) g_mem_dc->StretchBlt(SCALE(x), SCALE(y), SCALE(32), SCALE(6), g_gfx_dc, (icon - 1) * 32, c, 32, 6, SRCCOPY);
+	if (icon >= 1 && icon <= 4)
+	{
+		g_mem_dc->BitBlt(x, y, 32, 6, g_gfx_dc, (icon - 1) * 32, c, SRCCOPY);
+	}
 }

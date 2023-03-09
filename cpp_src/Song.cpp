@@ -3010,7 +3010,6 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 			{
 				m_play = MPLAY_FROM;
 				m_followplay = follow;
-				//g_screenupdate=1;
 				return 1;
 			}
 			m_songplayline = m_songactiveline;
@@ -3074,7 +3073,6 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 
 	WaitForTimerRoutineProcessed();
 	m_followplay = follow;
-	g_screenupdate = 1;
 	PlayBeat();						//sets m_speeda
 	m_speeda++;						//(Original comment by Raster, April 27, 2003) adds 1 to m_speed, for what the real thing will take place in Init
 	if (m_followplay)	//cursor following the player
@@ -3257,8 +3255,6 @@ BOOL CSong::PlayVBI()
 		//end of Q
 	}
 
-	g_screenupdate = 1;
-
 	return 1;
 }
 
@@ -3294,13 +3290,6 @@ void CSong::TimerRoutine()
 		
 		if (g_timerGlobalCount % 3 == 0) ChangeTimer(17);
 		if (g_timerGlobalCount % 3 == 2) ChangeTimer(16);
-	}
-
-	//--- Screen drawing ---//
-	if (g_hwnd && !g_closeApplication)
-	{
-		AfxGetApp()->GetMainWnd()->Invalidate();
-		SCREENUPDATE;
 	}
 
 	g_timerRoutineProcessed = 1;	// TimerRoutine took place
