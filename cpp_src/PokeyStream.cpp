@@ -79,9 +79,11 @@ int CPokeyStream::SwitchIntoRecording()
 
 int CPokeyStream::SwitchIntoStop()
 {
-	m_recordState = STOP;
+	m_recordState = STREAM_STATE::STOP;
 	m_SecondCountPoint = m_FrameCounter - m_FirstCountPoint;
+	if (m_SecondCountPoint < 0) m_SecondCountPoint = 0;
 	m_ThirdCountPoint = m_FirstCountPoint - m_SecondCountPoint;
+	if (m_ThirdCountPoint < 0) m_ThirdCountPoint = 0;
 	return m_SecondCountPoint;
 }
 

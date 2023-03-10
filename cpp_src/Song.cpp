@@ -52,24 +52,18 @@ void CALLBACK G_TimerRoutine(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR)
 
 CSong::CSong()
 {
-	//ClearSong(8);	// The default is 8 stereo tracks
-
-	// initialise Timer
-	m_timer = 0;
+	// Initialise Timer
+	m_timerRoutine = 0;
 	g_timerRoutineProcessed = 0;
 
 	m_quantization_note = -1; // init
 	m_quantization_instr = -1;
 	m_quantization_vol = -1;
-
-	// Timer 1/50s = 20ms, 1/60s ~ 16/17ms
-	// Pal or NTSC
-	ChangeTimer(g_ntsc ? 17 : 20);
 }
 
 CSong::~CSong()
 {
-	//if (m_timer) { timeKillEvent(m_timer); m_timer = 0; }
+	//KillTimer();
 }
 
 /// <summary>
@@ -77,13 +71,9 @@ CSong::~CSong()
 /// </summary>
 void CSong::StopTimer()
 {
-	if (m_timer)
-	{
-		while (busyInTimer);		// Wait until not in timer handler
-		timeKillEvent(m_timer);		// Kill the timer
-		m_timer = 0;
-		while (busyInTimer);		// Make sure not in the timer handler
-	}
+	while (busyInTimer);			// Wait until not in timer handler
+	KillTimer();					// Kill the timer
+	while (busyInTimer);			// Make sure not in the timer handler
 }
 
 /// <summary>
@@ -93,8 +83,20 @@ void CSong::StopTimer()
 /// <param name="ms">ms between calls (17=NTSC, 20=PAL)</param>
 void CSong::ChangeTimer(int ms)
 {
-	if (m_timer) { timeKillEvent(m_timer); m_timer = 0; }
-	m_timer = timeSetEvent(ms, 0, G_TimerRoutine, (ULONG)(NULL), TIME_PERIODIC);
+	KillTimer();
+	m_timerRoutine = timeSetEvent(ms, 0, G_TimerRoutine, (ULONG)(NULL), TIME_PERIODIC);
+}
+
+/// <summary>
+/// Immediately kill the timer event
+/// </summary>
+void CSong::KillTimer()
+{
+	if (m_timerRoutine) 
+	{ 
+		timeKillEvent(m_timerRoutine); 
+		m_timerRoutine = 0;
+	}
 }
 
 /// <summary>
@@ -1210,18 +1212,31 @@ BOOL CSong::SongUp()
 {
 	BLOCKDESELECT;
 	g_Undo.Separator();
+
 	m_songactiveline--;
-	if (m_songactiveline < 0)	//below zero => roll back to 255
+
+	if (!IsValidSongline(m_songactiveline))
 		m_songactiveline = SONGLEN - 1;
 
 	if (m_play && m_followplay)
 	{
-		int isgo = (m_songgo[m_songactiveline] >= 0) ? 1 : 0;
-		int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;	//play track in loop, else, play from cursor position
+		// Play track in loop, else, play from cursor position
+		int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;
 		Stop();
-		m_songplayline = m_songactiveline -= isgo;
+
+		// This is a Gotoline, skip another line above it
+		if (IsSongGo(m_songactiveline))
+			m_songactiveline--;
+
+		// If the line is no longer valid, force it to the last line instead
+		if (!IsValidSongline(m_songactiveline))
+			m_songactiveline = SONGLEN - 1;
+
+		m_songplayline = m_songactiveline;
 		m_trackplayline = m_trackactiveline = 0;
-		Play(mode, m_followplay); // continue playing using the correct parameters
+		
+		// Continue playing using the correct parameters
+		Play(mode, m_followplay);
 	}
 	return 1;
 }
@@ -1230,18 +1245,31 @@ BOOL CSong::SongDown()
 {
 	BLOCKDESELECT;
 	g_Undo.Separator();
+
 	m_songactiveline++;
-	if (m_songactiveline >= SONGLEN)	//above 255 => roll back from 0 
+
+	if (!IsValidSongline(m_songactiveline))
 		m_songactiveline = 0;
 
 	if (m_play && m_followplay)
 	{
-		int isgo = (m_songgo[m_songactiveline] >= 0) ? 1 : 0;
-		int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;	//play track in loop, else, play from cursor position
+		// Play track in loop, else, play from cursor position
+		int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;
 		Stop();
-		m_songplayline = m_songactiveline += isgo;
+
+		// This is a Gotoline, skip another line below it
+		if (IsSongGo(m_songactiveline))
+			m_songactiveline++;
+
+		// If the line is no longer valid, force it to the first line instead
+		if (!IsValidSongline(m_songactiveline))
+			m_songactiveline = 0;
+
+		m_songplayline = m_songactiveline;
 		m_trackplayline = m_trackactiveline = 0;
-		Play(mode, m_followplay); // continue playing using the correct parameters
+
+		// Continue playing using the correct parameters
+		Play(mode, m_followplay);
 	}
 	return 1;
 }
@@ -3118,7 +3146,6 @@ BOOL CSong::SongPlayNextLine()
 	if (g_PokeyStream.TrackSongLine(m_songplayline) == true)
 	{
 		// Song is done, so stop the play back
-		ChangeTimer((g_ntsc) ? 17 : 20);		// Reset the timer in case it was set to a different value
 		m_play = MPLAY_STOP;					// Stop the player
 	}
 	return 1;
@@ -3142,9 +3169,9 @@ TrackLine:
 
 	for (t = 0; t < g_tracks4_8; t++)
 	{
-		tt = m_song[m_songplayline][t];
-		if (tt < 0) continue; //--
+		tt = SongGetTrack(m_songplayline, t);
 		tr = g_Tracks.GetTrack(tt);
+		if (!tr) continue;	// Invalid track pointer
 		len = tr->len;
 		go = tr->go;
 		if (m_trackplayline >= len)
@@ -3197,7 +3224,6 @@ TrackLine:
 		if (g_PokeyStream.CallFromPlayBeat(m_trackplayline) == true)
 		{
 			// Song is done, so stop the play back
-			ChangeTimer((g_ntsc) ? 17 : 20);		// Reset the timer in case it was set to a different value
 			m_play = MPLAY_STOP;					// Stop the player
 		}
 	}
@@ -3279,19 +3305,14 @@ void CSong::TimerRoutine()
 	}
 
 	//--- NTSC timing hack during playback ---//
-	if (g_ntsc)
-	{
-		// The NTSC timing cannot be divided to an integer
-		// the optimal timing would be 16.666666667ms, which is typically rounded to 17
-		// unfortunately, things run too slow with 17, or too fast 16
-		// a good enough compromise for now is to make use of a '17-17-16' miliseconds "groove"
-		// this isn't proper, but at least, this makes the timing much closer to the actual thing
-		// the only issue with this is that the sound will have very slight jitters during playback 
-		
-		if (g_timerGlobalCount % 3 == 0) ChangeTimer(17);
-		if (g_timerGlobalCount % 3 == 2) ChangeTimer(16);
-	}
+	// The NTSC timing cannot be divided to an integer
+	// the optimal timing would be 16.666666667ms, which is typically rounded to 17
+	// unfortunately, things run too slow with 17, or too fast 16
+	// a good enough compromise for now is to make use of a '17-17-16' miliseconds "groove"
+	// this isn't proper, but at least, this makes the timing much closer to the actual thing
+	// the only issue with this is that the sound will have very slight jitters during playback 
+	ChangeTimer(g_ntsc ? m_timerRoutineTick[g_timerGlobalCount % 3] : 20);
 
-	g_timerRoutineProcessed = 1;	// TimerRoutine took place
 	g_timerGlobalCount++;			// Increment by one each time Timer Routine was processed
+	g_timerRoutineProcessed = 1;	// TimerRoutine took place
 }

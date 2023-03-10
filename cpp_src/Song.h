@@ -65,8 +65,9 @@ public:
 	~CSong();
 
 	void StopTimer();
-
 	void ChangeTimer(int ms);
+	void KillTimer();
+
 	void ClearSong(int numoftracks);
 
 	void MidiEvent(DWORD dwParam);
@@ -77,8 +78,6 @@ public:
 	void DrawInfo();			//top left corner
 	void DrawAnalyzer();
 	void DrawPlayTimeCounter();
-	//void DrawAnalyzer(CDC* pDC = NULL);
-	//void DrawPlayTimeCounter(CDC* pDC = NULL);
 
 	BOOL InfoKey(int vk, int shift, int control);
 	BOOL InfoCursorGotoSongname(int x);
@@ -145,7 +144,7 @@ public:
 	BOOL SongTrackInc();
 	BOOL SongTrackEmpty();
 	int SongGetActiveTrack() { return (m_songgo[m_songactiveline] >= 0) ? -1 : m_song[m_songactiveline][m_trackactivecol]; };
-	int SongGetTrack(int songline, int trackcol) { return (m_songgo[songline] >= 0) ? -1 : m_song[songline][trackcol]; };
+	int SongGetTrack(int songline, int trackcol) { return IsValidSongline(songline) && !IsSongGo(songline) ? m_song[songline][trackcol] : -1; };
 	int SongGetActiveTrackInColumn(int column) { return m_song[m_songactiveline][column]; };
 	int SongGetActiveLine() { return m_songactiveline; };
 	int SongGetPlayLine() { return m_songplayline; };
@@ -420,7 +419,8 @@ private:
 	int m_songlineclipboard[SONGTRACKS];
 	int m_songgoclipboard;
 
-	UINT m_timer;
+	UINT m_timerRoutine;
+	const BYTE m_timerRoutineTick[3] = { 17, 17, 16 };
 
 	CString m_filename;
 	int m_filetype;

@@ -63,9 +63,8 @@ public:
 	HCURSOR m_cursorDialog;
 	HCURSOR m_cursorSetPosition;
 
-	UINT_PTR m_timeranalyzer;
-	BYTE m_timerclock;
-	BYTE m_timertick[3] = { 16, 16, 15 };
+	UINT_PTR m_timerDisplay;
+	const BYTE m_timerDisplayTick[3] = { 16, 16, 15 };
 
 // Operations
 public:

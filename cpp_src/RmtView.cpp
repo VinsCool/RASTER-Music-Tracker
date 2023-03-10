@@ -253,7 +253,7 @@ CRmtView::~CRmtView()
 	if (m_pen1) delete m_pen1;							//unloaded m_pen1
 }
 
-void CRmtView::OnDestroy() 
+void CRmtView::OnDestroy()
 {
 	// Unload Pokey DLL
 	g_Pokey.DeInitSound();
@@ -262,23 +262,20 @@ void CRmtView::OnDestroy()
 	Atari6502_DeInit();
 
 	// Turn off the timer
-	if (m_timeranalyzer) 
+	if (m_timerDisplay)
 	{
-		KillTimer(m_timeranalyzer);
-		m_timeranalyzer=0;
+		KillTimer(m_timerDisplay);
+		m_timerDisplay = 0;
 	}
 	CView::OnDestroy();
 }
 
 void CRmtView::OnTimer(UINT_PTR nIDEvent)
 {
-	if (nIDEvent == m_timeranalyzer)
+	if (nIDEvent == m_timerDisplay)
 	{
-		if (g_viewDebugDisplay) GetFPS();
-
-		KillTimer(m_timeranalyzer);
-		m_timeranalyzer = SetTimer(1, m_timertick[m_timerclock % 3], NULL);
-		m_timerclock++;
+		KillTimer(m_timerDisplay);
+		m_timerDisplay = SetTimer(1, m_timerDisplayTick[g_timerGlobalCount % 3], NULL);
 
 		if (g_hwnd && !g_closeApplication)
 		{
@@ -344,6 +341,7 @@ void CRmtView::OnDraw(CDC* pDC)
 	// Redraw the screen if needed
 	if (g_screenupdate)
 	{
+		if (g_viewDebugDisplay) GetFPS();
 		Resize();
 		g_Song.RespectBoundaries();
 		DrawAll();
@@ -747,7 +745,6 @@ void CRmtView::OnViewConfiguration()
 			// PAL or NTSC
 			g_ntsc = dlg.m_ntsc;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
-			g_Song.ChangeTimer((g_ntsc) ? 17 : 20);
 			Atari_InitRMTRoutine(); //reset RMT routines
 		}
 		g_ntsc = dlg.m_ntsc;
@@ -1018,8 +1015,7 @@ void CRmtView::OnInitialUpdate()
 	g_Song.SetRMTTitle();
 
 	// RMTView Timer Initialisation
-	m_timerclock = 0;
-	m_timeranalyzer = SetTimer(1,16, NULL);
+	m_timerDisplay = SetTimer(1,16, NULL);
 
 	//Displays the ABOUT dialog if there is no Pokey or 6502 initialized...
 	if (!g_Pokey.IsSoundDriverLoaded() || !g_is6502)
@@ -1172,7 +1168,6 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 		{
 			g_ntsc ^=1;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
-			g_Song.ChangeTimer((g_ntsc)? 17 : 20);
 			Atari_InitRMTRoutine(); //reset RMT routines
 		}
 		return 6;
@@ -1676,18 +1671,15 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 			g_prove = PROVE_POKEY_EXPLORER_MODE;	//POKEY EXPLORER MODE -- KEYBOARD INPUT AND FORMULAE DISPLAY
 			break;
 		}
-		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
 		g_Song.Play(MPLAY_SONG, g_Song.GetFollowPlayMode());	//play song from start
 		break;
 
 	case VK_F6:
-		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
 		if (g_shiftkey) g_Song.Play(MPLAY_BLOCK, g_Song.GetFollowPlayMode());	//play block and follow
 		else g_Song.Play(MPLAY_TRACK, g_Song.GetFollowPlayMode());				//play pattern and follow	
 		break;
 
 	case VK_F7:
-		g_Song.ChangeTimer((g_ntsc) ? 17 : 20);	//reset the timer in case it was set to a different value
 		if (g_Song.IsBookmark() && g_shiftkey) g_Song.Play(MPLAY_BOOKMARK, g_Song.GetFollowPlayMode());	//play song from bookmark
 		else g_Song.Play(MPLAY_FROM, g_Song.GetFollowPlayMode());							//play song from current position
 		break;
@@ -1726,7 +1718,6 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		{
 			g_ntsc ^= 1;
 			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
-			g_Song.ChangeTimer((g_ntsc) ? 17 : 20);
 			Atari_InitRMTRoutine(); //reset RMT routines
 		}
 		else OnPlayfollow(); //toggle follow position
