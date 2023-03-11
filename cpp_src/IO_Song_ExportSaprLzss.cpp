@@ -728,7 +728,9 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 /// <returns></returns>
 void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 {
-	Stop();
+	CString statusBarLog;
+
+	Stop();					// Make sure RMT is stopped 
 	Atari_InitRMTRoutine();	// Reset the RMT routines 
 	SetChannelOnOff(-1, 0);	// Switch all channels off 
 
@@ -741,12 +743,7 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	Play(playmode, m_followplay);
 
 	// Wait in a tight loop pumping messages until the playback stops
-	MSG msg;
-	CString statusBarLog;
-	CWnd* wnd = AfxGetApp()->GetMainWnd();
-
-	wnd->EnableWindow(FALSE);
-	wnd->BeginWaitCursor();
+	EnableWindow(g_hwnd, FALSE);
 
 	// The SAP-R dumper is running during that time...
 	while (m_play != MPLAY_STOP)
@@ -770,21 +767,12 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 
 		// Update the screen only once every few frames
 		// Displaying everything in real time slows things down considerably!
-		if (g_timerGlobalCount % 8 != 0) 
+		if (!RefreshScreen(1))
 			continue;
-
-		SCREENUPDATE;
 
 		// Display the number of frames dumped so far
 		statusBarLog.Format("Generating Pokey stream, playing song in quick mode... %i frames recorded", g_PokeyStream.GetCurrentFrame());
 		SetStatusBarText(statusBarLog);
-
-		// Send pending messages to update the screen
-		if (::PeekMessage(&msg, wnd->m_hWnd, 0, 0, PM_REMOVE))
-		{
-			::TranslateMessage(&msg);
-			::DispatchMessage(&msg);
-		}
 	}
 
 	// End playback now, the SAP-R data should have been dumped successfully!
@@ -793,25 +781,20 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	statusBarLog.Format("Done... %i frames recorded in total, Loop point found at frame %i", g_PokeyStream.GetCurrentFrame(), g_PokeyStream.GetFirstCountPoint());
 	SetStatusBarText(statusBarLog);
 
-	wnd->EndWaitCursor();
-	wnd->EnableWindow();	// Turn on the window again
+	EnableWindow(g_hwnd, TRUE);
 }
 
 // A dumb SAP-R LZSS optimisations bruteforcer, returns the optimal value and buffer
 int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* dst)
 {
-	MSG msg;
 	CString statusBarLog;
-	CWnd* wnd = AfxGetApp()->GetMainWnd();
-
-	wnd->EnableWindow(FALSE);
-	wnd->BeginWaitCursor();
-
 	CCompressLzss lzssData;
 
 	// Start from a high value to force the first pattern to be the best one
 	int bestScore = 0xFFFFFF;
 	int optimal = 0;
+
+	EnableWindow(g_hwnd, FALSE);
 
 	for (int i = 0; i < SAPR_OPTIMISATIONS_COUNT; i++)
 	{
@@ -823,23 +806,18 @@ int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* 
 			optimal = i;
 		}
 
+		// Always refresh the screen after each iteration
+		RefreshScreen();
+
 		statusBarLog.Format("Compressing %i bytes, bruteforcing optimisation pattern %i... Current best: %i bytes with optimisation pattern %i", srclen, i, bestScore, optimal);
 		SetStatusBarText(statusBarLog);
-
-		// Send pending messages to update the screen
-		if (::PeekMessage(&msg, wnd->m_hWnd, 0, 0, PM_REMOVE))
-		{
-			::TranslateMessage(&msg);
-			::DispatchMessage(&msg);
-		}
 	}
 
 	// Bruteforcing was completed, display some stats
 	statusBarLog.Format("Done... %i bytes were shrunk to %i bytes using the optimisation pattern %i", srclen, bestScore, optimal);
 	SetStatusBarText(statusBarLog);
 
-	wnd->EndWaitCursor();
-	wnd->EnableWindow();	// Turn on the window again
+	EnableWindow(g_hwnd, TRUE);
 
 	return lzssData.LZSS_SAP(src, srclen, dst, optimal);
 }

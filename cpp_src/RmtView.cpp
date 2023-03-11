@@ -276,12 +276,7 @@ void CRmtView::OnTimer(UINT_PTR nIDEvent)
 	{
 		KillTimer(m_timerDisplay);
 		m_timerDisplay = SetTimer(1, m_timerDisplayTick[g_timerGlobalCount % 3], NULL);
-
-		if (g_hwnd && !g_closeApplication)
-		{
-			AfxGetApp()->GetMainWnd()->Invalidate();
-			SCREENUPDATE;
-		}
+		RefreshScreen();
 	}
 
 	CView::OnTimer(nIDEvent);

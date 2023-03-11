@@ -13,6 +13,38 @@ void SetStatusBarText(const char* text)
 	sb.SetWindowText(text);
 }
 
+static int lastTick;
+
+BOOL RefreshScreen(int frameskip)
+{
+	// Bail out of this function if it couldn't be performed
+	if (!g_hwnd || !g_viewhwnd || g_closeApplication)
+		return 0;
+
+	// Frameskip of 1 or higher
+	if (frameskip > 0)
+	{
+		// Frame was already processed
+		if (lastTick == g_timerGlobalCount)
+			return 0;
+
+		// Skip frame with modulo
+		if ((g_timerGlobalCount % frameskip))
+			return 0;
+
+		// Remember the last time a frame was processed
+		lastTick = g_timerGlobalCount;
+	}
+
+	// Force a screen update if the condition is met for it
+	AfxGetApp()->GetMainWnd()->Invalidate();
+	SCREENUPDATE;
+	UpdateWindow(g_viewhwnd);
+
+	// Screen was refreshed
+	return 1;
+}
+
 int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
 {
 	//returns 1 if TAB or ENTER was pressed
