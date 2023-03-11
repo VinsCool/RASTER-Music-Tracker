@@ -571,7 +571,8 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 	// Create the export metadata for songname, Atari text, parameters, etc
 	TExportMetadata metadata;
-	CreateExportMetadata(IOTYPE_LZSS_XEX, &metadata);
+	if (!CreateExportMetadata(IOTYPE_LZSS_XEX, &metadata))
+		return false;
 
 	while (count < subsongs)
 	{
