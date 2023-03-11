@@ -168,6 +168,8 @@
 #define IOTYPE_LZSS_SAP		12
 #define IOTYPE_LZSS_XEX		13
 
+#define IOTYPE_WAV			20
+
 #define IOTYPE_TMC			101		//import TMC
 
 #define IOINSTR_RTI			1		//corresponding IOTYPE_RMT
@@ -311,6 +313,7 @@
 		"SAP file + LZSS driver (*.sap)|*.sap|" \
 		"XEX Atari executable + LZSS driver (*.xex)|*.xex|" \
 		"Relocatable ASM for RMTPlayer (*.asm)|*.asm|" \
+		"WAV audio file (*.wav)|*.wav|" \
 		"|"
 #define FILE_EXPORT_FILTER_IDX_STRIPPED_RMT 1
 #define FILE_EXPORT_FILTER_IDX_SIMPLE_ASM 2
@@ -318,11 +321,17 @@
 #define FILE_EXPORT_FILTER_IDX_LZSS 4
 #define FILE_EXPORT_FILTER_IDX_SAP 5
 #define FILE_EXPORT_FILTER_IDX_XEX 6
+//#define FILE_EXPORT_FILTER_IDX_RELOC_ASM 7
+//#define FILE_EXPORT_FILTER_IDX_MIN FILE_EXPORT_FILTER_IDX_STRIPPED_RMT
+//#define FILE_EXPORT_FILTER_IDX_MAX FILE_EXPORT_FILTER_IDX_RELOC_ASM
+//#define FILE_EXPORT_EXTENSIONS_ARRAY { ".rmt",".asm",".sapr",".lzss",".sap",".xex",".asm" };
+//#define FILE_EXPORT_EXTENSIONS_LENGTH_ARRAY { 4, 4, 5, 5, 4, 4, 4}
 #define FILE_EXPORT_FILTER_IDX_RELOC_ASM 7
+#define FILE_EXPORT_FILTER_IDX_WAV 8
 #define FILE_EXPORT_FILTER_IDX_MIN FILE_EXPORT_FILTER_IDX_STRIPPED_RMT
-#define FILE_EXPORT_FILTER_IDX_MAX FILE_EXPORT_FILTER_IDX_RELOC_ASM
-#define FILE_EXPORT_EXTENSIONS_ARRAY { ".rmt",".asm",".sapr",".lzss",".sap",".xex",".asm" };
-#define FILE_EXPORT_EXTENSIONS_LENGTH_ARRAY { 4, 4, 5, 5, 4, 4, 4}
+#define FILE_EXPORT_FILTER_IDX_MAX FILE_EXPORT_FILTER_IDX_WAV
+#define FILE_EXPORT_EXTENSIONS_ARRAY { ".rmt",".asm",".sapr",".lzss",".sap",".xex",".asm",".wav" };
+#define FILE_EXPORT_EXTENSIONS_LENGTH_ARRAY { 4, 4, 5, 5, 4, 4, 4, 4}
 
 // ----------------------------------------------------------------------------
 // Pokey play to buffer

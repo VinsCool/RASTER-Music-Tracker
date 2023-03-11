@@ -213,6 +213,34 @@ BOOL CXPokey::RenderSound1_50(int instrspeed)
 	return 0;
 }
 
+// Initial WAV recorder process
+// NOTE: This does NOT work with the Altirra plugin due to it hijacking the soundbuffer with its own thing...
+void CXPokey::RenderSoundV2(int instrspeed, BYTE* buffer, int& length)
+{
+	int rendersize = CHUNK_SIZE;
+	int renderpartsize = 0;
+	int renderoffset = 0;
+
+	for (; instrspeed > 0; instrspeed--)
+	{
+		Atari_SetPokey();
+		MemToPokey();
+		renderpartsize = (rendersize / instrspeed) & 0xfffe;
+
+		switch (m_soundDriverId)
+		{
+		case SOUND_DRIVER_SA_POKEY:
+			Pokey_Process(buffer + renderoffset, (unsigned short)renderpartsize);
+			rendersize -= renderpartsize;
+			renderoffset += renderpartsize;
+			break;
+		}
+	}
+
+	// Copy the actually generated sample data to buffer
+	length = renderoffset;
+}
+
 BOOL CXPokey::InitSound()
 {
 	if (m_soundDriverId || m_pokey_dll) DeInitSound();	// Just in case, everything must be cleared before initialising

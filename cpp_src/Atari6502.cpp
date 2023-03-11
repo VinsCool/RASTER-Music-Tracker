@@ -169,6 +169,16 @@ void Atari_PlayRMT()
 	C6502_JSR(&adr,&a,&x,&y,&cycles);			//adr,A,X,Y
 }
 
+void Atari_SetPokey()
+{
+	if (!g_is6502) return;
+
+	WORD adr = RMT_SETPOKEY;
+	BYTE a = 0, x = 0, y = 0;
+	int cycles = (g_ntsc) ? MAXSCREENCYCLES_NTSC : MAXSCREENCYCLES_PAL;
+	C6502_JSR(&adr, &a, &x, &y, &cycles);
+}
+
 void Atari_Silence()
 {
 	if (!g_is6502) return;

@@ -35,6 +35,7 @@ public:
 	BOOL DeInitSound();
 	BOOL ReInitSound();
 	BOOL RenderSound1_50(int instrspeed);
+	void RenderSoundV2(int instrspeed, BYTE* buffer, int& length);
 	void MemToPokey();
 	bool IsSoundDriverLoaded() { return m_soundDriverId; }
 

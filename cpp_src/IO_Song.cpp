@@ -26,6 +26,8 @@
 #include "ChannelControl.h"
 #include "RmtMidi.h"
 
+#include "Wavefile.h"
+
 extern CInstruments	g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
 extern CXPokey g_Pokey;
@@ -548,6 +550,7 @@ void CSong::FileExportAs()
 	if (m_lastExportType == IOTYPE_LZSS_SAP) dlg.m_ofn.nFilterIndex = FILE_EXPORT_FILTER_IDX_SAP;
 	if (m_lastExportType == IOTYPE_LZSS_XEX) dlg.m_ofn.nFilterIndex = FILE_EXPORT_FILTER_IDX_XEX;
 	if (m_lastExportType == IOTYPE_ASM_RMTPLAYER) dlg.m_ofn.nFilterIndex = FILE_EXPORT_FILTER_IDX_RELOC_ASM;
+	if (m_lastExportType == IOTYPE_WAV) dlg.m_ofn.nFilterIndex = FILE_EXPORT_FILTER_IDX_WAV;
 
 	// If not ok, nothing will be saved
 	if (dlg.DoModal() == IDOK)
@@ -608,6 +611,11 @@ void CSong::FileExportAs()
 			case FILE_EXPORT_FILTER_IDX_RELOC_ASM:	// Relocatable ASM for RMTPlayer
 				m_lastExportType = IOTYPE_ASM_RMTPLAYER;
 				break;
+
+			case FILE_EXPORT_FILTER_IDX_WAV:
+				m_lastExportType = IOTYPE_WAV;
+				break;
+
 		}
 
 		// Save the file using the set parameters 
@@ -1314,14 +1322,9 @@ bool CSong::ExportV2(std::ofstream& ou, int iotype, LPCTSTR filename)
 		case IOTYPE_ASM_RMTPLAYER: return ExportAsRelocatableAsmForRmtPlayer(ou, &exportDesc);
 		case IOTYPE_SAPR: return ExportSAP_R(ou);
 		case IOTYPE_LZSS: return ExportLZSS(ou, filename);
-/*
-			if (MessageBox(g_hwnd, "Process using ExportCompactLZSS?\nMany files will be created at once.", "ExportLZSS", MB_YESNO | MB_ICONINFORMATION) == IDYES)
-				return ExportCompactLZSS(ou, filename);	// This is used for experimental stuff, however it does output valid LZSS data if needed
-			else 
-				return ExportLZSS(ou, filename);	// Original LZSS export method
-*/
 		case IOTYPE_LZSS_SAP: return ExportLZSS_SAP(ou);
 		case IOTYPE_LZSS_XEX: return ExportLZSS_XEX(ou);
+		case IOTYPE_WAV: return ExportWav(ou, filename);
 	}
 
 	return false;	// Failed
@@ -1593,6 +1596,81 @@ bool CSong::WriteToXEX(struct TExportMetadata* metadata)
 	metadata->rasterbarColour = dlg.m_metercolor;
 	metadata->displayRasterbar = dlg.m_meter;
 	metadata->autoRegion = dlg.m_region_auto;
+
+	return true;
+}
+
+bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
+{
+	CWaveFile wavefile{};
+
+	BYTE* buffer = NULL;
+	BYTE* streambuffer = NULL;
+	int length = 0, frames = 0, offset = 0;
+	int frameSize = (g_tracks4_8 == 8) ? 18 : 9;	// SAP-R bytes to copy, Stereo doubles the number
+
+	ou.close();	// hack, just to be able to actually use the filename for now...
+
+	if (!wavefile.OpenFile((LPTSTR)filename, OUTPUTFREQ, BITRESOLUTION, CHANNELS))
+	{
+		MessageBox(g_hwnd, "Wav file could not be created!", "ExportWav", MB_ICONWARNING);
+		return false;
+	}
+
+	// Dump the POKEY registers from full song playback
+	DumpSongToPokeyBuffer();
+
+	Atari_InitRMTRoutine();	// Reset the Atari memory 
+	SetChannelOnOff(-1, 1);	// Unmute all channels
+
+	// Create the sound buffer to copy from and to
+	buffer = new BYTE[BUFFER_SIZE];
+	memset(buffer, 0x80, BUFFER_SIZE);
+
+	// Busy writing! TODO: Fix the timing overlap causing conflicts
+	g_PokeyStream.SetState(g_PokeyStream.STREAM_STATE::WRITE);
+
+	while (frames < g_PokeyStream.GetFirstCountPoint())
+	{
+		// Copy the SAP-R bytes to g_atarimem for this frame
+		streambuffer = g_PokeyStream.GetStreamBuffer() + frames * frameSize;
+
+		//for (int i = 0; i < frameSize; i++)
+		//{
+		//	g_atarimem[0xd200 + i] = streambuffer[i];
+		//}
+
+		g_atarimem[RMTPLAYR_TRACKN_AUDF + 0] = streambuffer[0x00];
+		g_atarimem[RMTPLAYR_TRACKN_AUDF + 1] = streambuffer[0x02];
+		g_atarimem[RMTPLAYR_TRACKN_AUDF + 2] = streambuffer[0x04];
+		g_atarimem[RMTPLAYR_TRACKN_AUDF + 3] = streambuffer[0x06];
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + 0] = streambuffer[0x01];
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + 1] = streambuffer[0x03];
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + 2] = streambuffer[0x05];
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + 3] = streambuffer[0x07];
+		g_atarimem[RMTPLAYR_V_AUDCTL] = streambuffer[0x08];
+
+		// Fill the POKEY buffer with 1 rendered chunk
+		g_Pokey.RenderSoundV2(m_instrumentSpeed, buffer, length);
+
+		//Sleep(16);
+
+		// Write the buffer to WAV file
+		wavefile.WriteWave(buffer, length);
+
+		// Update the PokeyStream offset for the next frame
+		//frames += frameSize;
+		frames++;
+	}
+
+	// Clear the SAP-R dumper memory and reset RMT routines
+	g_PokeyStream.FinishedRecording();
+
+	// Finished doing WAV things...
+	wavefile.CloseFile();
+
+	// Also make sure to delete the buffer once it's no longer needed
+	delete buffer;
 
 	return true;
 }
