@@ -1606,12 +1606,19 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 
 	BYTE* buffer = NULL;
 	BYTE* streambuffer = NULL;
+	WAVEFORMATEX* wfm = NULL;
 	int length = 0, frames = 0, offset = 0;
 	int frameSize = (g_tracks4_8 == 8) ? 18 : 9;	// SAP-R bytes to copy, Stereo doubles the number
 
 	ou.close();	// hack, just to be able to actually use the filename for now...
 
-	if (!wavefile.OpenFile((LPTSTR)filename, OUTPUTFREQ, BITRESOLUTION, CHANNELS))
+	if (!(wfm = g_Pokey.GetSoundFormat()))
+	{
+		MessageBox(g_hwnd, "Could not get sound format!", "ExportWav", MB_ICONWARNING);
+		return false;
+	}
+
+	if (!wavefile.OpenFile((LPTSTR)filename, wfm->nSamplesPerSec, wfm->wBitsPerSample, wfm->nChannels))
 	{
 		MessageBox(g_hwnd, "Wav file could not be created!", "ExportWav", MB_ICONWARNING);
 		return false;
@@ -1620,15 +1627,15 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 	// Dump the POKEY registers from full song playback
 	DumpSongToPokeyBuffer();
 
+	// Busy writing! TODO: Fix the timing overlap causing conflicts
+	g_PokeyStream.SetState(CPokeyStream::WRITE);
+
 	Atari_InitRMTRoutine();	// Reset the Atari memory 
 	SetChannelOnOff(-1, 1);	// Unmute all channels
 
 	// Create the sound buffer to copy from and to
 	buffer = new BYTE[BUFFER_SIZE];
 	memset(buffer, 0x80, BUFFER_SIZE);
-
-	// Busy writing! TODO: Fix the timing overlap causing conflicts
-	g_PokeyStream.SetState(g_PokeyStream.STREAM_STATE::WRITE);
 
 	while (frames < g_PokeyStream.GetFirstCountPoint())
 	{
@@ -1653,13 +1660,10 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 		// Fill the POKEY buffer with 1 rendered chunk
 		g_Pokey.RenderSoundV2(m_instrumentSpeed, buffer, length);
 
-		//Sleep(16);
-
 		// Write the buffer to WAV file
 		wavefile.WriteWave(buffer, length);
 
 		// Update the PokeyStream offset for the next frame
-		//frames += frameSize;
 		frames++;
 	}
 

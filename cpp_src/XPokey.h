@@ -38,12 +38,13 @@ public:
 	void RenderSoundV2(int instrspeed, BYTE* buffer, int& length);
 	void MemToPokey();
 	bool IsSoundDriverLoaded() { return m_soundDriverId; }
+	WAVEFORMATEX* GetSoundFormat() { return &m_SoundFormat; };
 
 private:
 	int volatile		m_soundDriverId;
 	HINSTANCE			m_pokey_dll;
 	DWORD				m_LoadPos;
-	WAVEFORMATEX*		m_SoundFormat;
+	WAVEFORMATEX		m_SoundFormat;
 	DWORD				m_LoadSize;
 	DSBUFFERDESC        dsbdesc;
 	LPDIRECTSOUNDBUFFER m_SoundBuffer;

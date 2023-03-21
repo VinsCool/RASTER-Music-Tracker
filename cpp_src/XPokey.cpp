@@ -1,6 +1,7 @@
 // Original code by Raster, 2002-2009
-// Experimental changes and additions by VinsCool, 2021-2022
-// TODO: fix apokeysnd support
+// Experimental changes and additions by VinsCool, 2021-2023
+// TODO: Replace the plugin interface with a permanent emulation core
+// FIXME: Use a better backend (DirectSound is outdated...)
 
 #include "stdafx.h"
 #include "Rmt.h"
@@ -262,17 +263,15 @@ BOOL CXPokey::InitSound()
 	numTracksSetOnDriver = g_tracks4_8;
 	ntscRegionSetOnDriver = g_ntsc;
 
-	WAVEFORMATEX wfm;
-
 	// Set primary buffer format
-	ZeroMemory(&wfm, sizeof(WAVEFORMATEX));
-	wfm.wFormatTag = WAVE_FORMAT_PCM;
-	wfm.nChannels = CHANNELS;			//2
-	wfm.nSamplesPerSec = OUTPUTFREQ;	//44100
-	wfm.wBitsPerSample = BITRESOLUTION;	//8 
-	wfm.nBlockAlign = wfm.wBitsPerSample / 8 * wfm.nChannels;
-	wfm.nAvgBytesPerSec = wfm.nSamplesPerSec * wfm.nBlockAlign;
-	wfm.cbSize = 0;
+	ZeroMemory(&m_SoundFormat, sizeof(WAVEFORMATEX));
+	m_SoundFormat.wFormatTag = WAVE_FORMAT_PCM;
+	m_SoundFormat.nChannels = CHANNELS;			//2
+	m_SoundFormat.nSamplesPerSec = OUTPUTFREQ;	//44100
+	m_SoundFormat.wBitsPerSample = BITRESOLUTION;	//8 
+	m_SoundFormat.nBlockAlign = m_SoundFormat.wBitsPerSample / 8 * m_SoundFormat.nChannels;
+	m_SoundFormat.nAvgBytesPerSec = m_SoundFormat.nSamplesPerSec * m_SoundFormat.nBlockAlign;
+	m_SoundFormat.cbSize = 0;
 
 	// Create primary buffer.
 	ZeroMemory(&dsbdesc, sizeof(DSBUFFERDESC));
@@ -285,7 +284,7 @@ BOOL CXPokey::InitSound()
 		return FALSE;
 	}
 
-	if (g_lpdsbPrimary->SetFormat(&wfm) != DS_OK)
+	if (g_lpdsbPrimary->SetFormat(&m_SoundFormat) != DS_OK)
 	{
 		MessageBox(g_hwnd, "Error: SetFormat", "DirectSound Error!", MB_OK | MB_ICONSTOP);
 		return FALSE;
@@ -295,7 +294,7 @@ BOOL CXPokey::InitSound()
 	dsbdesc.dwSize = sizeof(DSBUFFERDESC);
 	dsbdesc.dwFlags = DSBCAPS_GETCURRENTPOSITION2 | DSBCAPS_LOCHARDWARE | DSBCAPS_GLOBALFOCUS | DSBCAPS_STICKYFOCUS;
 	dsbdesc.dwBufferBytes = BUFFER_SIZE;
-	dsbdesc.lpwfxFormat = &wfm;
+	dsbdesc.lpwfxFormat = &m_SoundFormat;
 
 	if (g_nohwsoundbuffer ||
 		g_lpds->CreateSoundBuffer(&dsbdesc, &m_SoundBuffer, NULL) != DS_OK)
