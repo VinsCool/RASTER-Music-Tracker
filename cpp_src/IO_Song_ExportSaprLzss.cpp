@@ -538,6 +538,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	CString s, t;
 
 	WORD addressFrom, addressTo;
+	BYTE* buff2, * buff3;
 
 	int subsongs = GetSubsongParts(t);
 	int count = 0;
@@ -574,13 +575,17 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	if (!CreateExportMetadata(IOTYPE_LZSS_XEX, &metadata))
 		return false;
 
+	// LZSS buffers for each ones of the tune parts being reconstructed
+	buff2 = new BYTE[0xFFFFF];
+	buff3 = new BYTE[0xFFFFF];
+
 	while (count < subsongs)
 	{
 		// a LZSS export will typically make use of intro and loop only, unless specified otherwise
 		int intro = 0, loop = 0;
 
 		// LZSS buffers for each ones of the tune parts being reconstructed
-		unsigned char buff2[65536], buff3[65536];
+		//unsigned char buff2[65536], buff3[65536];
 
 		DumpSongToPokeyBuffer(MPLAY_FROM, subtune[count], 0);
 
@@ -717,6 +722,10 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 
 	// Overwrite the LZSS data region with both the pointers for subtunes index, and the actual LZSS streams until the end of file
 	SaveBinaryBlock(ou, mem, LZSS_POINTER, lzss_total, 0);
+
+	// Delete buffers
+	delete buff2;
+	delete buff3;
 
 	return true;
 }

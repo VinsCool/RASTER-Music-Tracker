@@ -34,7 +34,7 @@ struct lzop
 struct bf
 {
     int len;
-    uint8_t buf[65536];
+    uint8_t buf[128 * 1024];
     int bnum;
     int bpos;
     int hpos;

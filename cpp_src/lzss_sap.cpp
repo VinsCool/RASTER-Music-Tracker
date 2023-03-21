@@ -354,7 +354,7 @@ int CCompressLzss::LZSS_SAP(unsigned char* src, int srclen, unsigned char* dst, 
     struct bf b;
     uint8_t buf[9], * data[9];
     int lpos[9];
-    int show_stats = 0;
+    int show_stats = 2; // Full Verbose for debugging purposes
     int bits_mtotal = bits_moff + bits_mlen;
     int bits_set = 0;
     int force_last_literal = 1;
