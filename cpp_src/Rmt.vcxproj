@@ -420,6 +420,7 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BrowseInformation>
     </ClCompile>
     <ClCompile Include="Midi_Song.cpp" />
+    <ClCompile Include="ModuleV2.cpp" />
     <ClCompile Include="PokeyStream.cpp" />
     <ClCompile Include="Rmt.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
@@ -537,6 +538,7 @@
     <ClInclude Include="Atari6502.h" />
     <ClInclude Include="Clipboard.h" />
     <ClInclude Include="ConfigDlg.h" />
+    <ClInclude Include="ModuleV2.h" />
     <ClInclude Include="RmtAtariBinaries.h" />
     <ClInclude Include="EffectsDlg.h" />
     <ClInclude Include="ExportDlgs.h" />

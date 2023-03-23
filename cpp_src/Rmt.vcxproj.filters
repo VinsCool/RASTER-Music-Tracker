@@ -168,6 +168,9 @@
     <ClCompile Include="WaveFile.cpp">
       <Filter>Source Files\Sound Generator</Filter>
     </ClCompile>
+    <ClCompile Include="ModuleV2.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ConfigDlg.h">
@@ -268,6 +271,9 @@
     </ClInclude>
     <ClInclude Include="WaveFile.h">
       <Filter>Source Files\Sound Generator</Filter>
+    </ClInclude>
+    <ClInclude Include="ModuleV2.h">
+      <Filter>Source Files\Data</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

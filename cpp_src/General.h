@@ -4,60 +4,60 @@
 // GUI color setup
 // The text is defined in IDB_GFX as bitmap font in various colours
 // Text color is defined as a vertical offset in the bitmap font file
-
-#define TEXT_COLOR_WHITE 0
-#define TEXT_COLOR_GRAY 1
-#define TEXT_COLOR_YELLOW 2
-#define TEXT_COLOR_INVERSE_BLUE 3
-#define TEXT_COLOR_INVERSE_WHITE 4
-#define TEXT_COLOR_CYAN 5
-#define TEXT_COLOR_RED 6
-#define TEXT_COLOR_INVERSE_RED 9
-#define TEXT_COLOR_EXTRA 10
-#define TEXT_COLOR_GREEN 11
-#define TEXT_COLOR_DARK_GRAY 12
-#define TEXT_COLOR_BLUE 13
-#define TEXT_COLOR_TURQUOISE 14
-
-#define COLOR_SELECTED			TEXT_COLOR_INVERSE_RED		// Highlight colour
-#define COLOR_SELECTED_PROVE	TEXT_COLOR_INVERSE_BLUE		// Highlight colour in PROVE mode
-#define COLOR_HOVERED			TEXT_COLOR_INVERSE_WHITE	// Highlight colour from cursor hover
-
-#define TEXT_MINI_COLOR_GRAY 0
-#define TEXT_MINI_COLOR_BLUE 1
-#define TEXT_MINI_COLOR_WHITE 2
-#define TEXT_MINI_COLOR_YELLOW 3
-
-
+//
+#define TEXT_COLOR_WHITE			0
+#define TEXT_COLOR_GRAY				1
+#define TEXT_COLOR_YELLOW			2
+#define TEXT_COLOR_INVERSE_BLUE		3
+#define TEXT_COLOR_INVERSE_WHITE	4
+#define TEXT_COLOR_CYAN				5
+#define TEXT_COLOR_RED				6
+#define TEXT_COLOR_INVERSE_RED		9
+#define TEXT_COLOR_EXTRA			10
+#define TEXT_COLOR_GREEN			11
+#define TEXT_COLOR_DARK_GRAY		12
+#define TEXT_COLOR_BLUE				13
+#define TEXT_COLOR_TURQUOISE		14
+#define COLOR_SELECTED				TEXT_COLOR_INVERSE_RED		// Highlight colour
+#define COLOR_SELECTED_PROVE		TEXT_COLOR_INVERSE_BLUE		// Highlight colour in PROVE mode
+#define COLOR_HOVERED				TEXT_COLOR_INVERSE_WHITE	// Highlight colour from cursor hover
+#define TEXT_MINI_COLOR_GRAY		0
+#define TEXT_MINI_COLOR_BLUE		1
+#define TEXT_MINI_COLOR_WHITE		2
+#define TEXT_MINI_COLOR_YELLOW		3
 
 // ---------------------
 // Analyser and other RGB colors
-#define COL_BLOCK		56
-#define RGB_MUTE		RGB(120,160,240)		// Channel is muted
-#define RGB_NORMAL		RGB(255,255,255)		// Volume bar in white
-#define RGB_VOLUME_ONLY	RGB(128,255,255)		// Turquoise for volume only channel
-#define RGB_TWO_TONE	RGB(128,255,0)			// Green for two tone channel
-#define RGB_BACKGROUND	RGB(34,50,80)			// Dark blue
-#define RGB_LINES		RGB(149,194,240)		// Blue gray
-#define RGB_BLACK		RGB(0,0,0)				// Black
+//
+#define COL_BLOCK					56
+#define RGB_MUTE					RGB(120, 160, 240)			// Channel is muted
+#define RGB_NORMAL					RGB(255, 255, 255)			// Volume bar in white
+#define RGB_VOLUME_ONLY				RGB(128, 255, 255)			// Turquoise for volume only channel
+#define RGB_TWO_TONE				RGB(128, 255, 0)			// Green for two tone channel
+#define RGB_BACKGROUND				RGB(34, 50, 80)				// Dark blue
+#define RGB_LINES					RGB(149, 194, 240)			// Blue gray
+#define RGB_BLACK					RGB(0, 0, 0)				// Black
 
 // ----------------------------------------------------------------------------
 // GUI edit modes
-#define PROVE_EDIT_MODE				0		// Hit the Jam mode button to switch between
-#define PROVE_JAM_MONO_MODE			1		// the first three modes
-#define PROVE_JAM_STEREO_MODE		2		// Can only get here in stereo mode
-#define PROVE_EDIT_AND_JAM_MODES	3		// < this is edit and jam
-#define PROVE_MIDI_CH15_MODE		3		// Hit RECORD key in Midi channel 15 to cycle to this mode
-#define PROVE_POKEY_EXPLORER_MODE	4		// Ctrl + Shift + F5
-#define PROVE_MODE_MAX				4		// <-- Adjust as you add/remove modes
+//
+#define PROVE_EDIT_MODE				0							// Hit the Jam mode button to switch between
+#define PROVE_JAM_MONO_MODE			1							// the first three modes
+#define PROVE_JAM_STEREO_MODE		2							// Can only get here in stereo mode
+#define PROVE_EDIT_AND_JAM_MODES	3							// < this is edit and jam
+#define PROVE_MIDI_CH15_MODE		3							// Hit RECORD key in Midi channel 15 to cycle to this mode
+#define PROVE_POKEY_EXPLORER_MODE	4							// Ctrl + Shift + F5
+#define PROVE_MODE_MAX				4							// <-- Adjust as you add/remove modes
 
 // ----------------------------------------------------------------------------
 // Keyboard layouts that may be used with RMT for Notes input
-#define KEYBOARD_QWERTY	0
-#define KEYBOARD_AZERTY	1
+//
+#define KEYBOARD_QWERTY				0
+#define KEYBOARD_AZERTY				1
 
 // ----------------------------------------------------------------------------
 // TODO: add more keys definition to simplify things
+//
 #define VK_BACKSPACE	8
 #define VK_ENTER		13
 #define VK_PAGE_UP		33
@@ -66,7 +66,7 @@
 #define CONFIG_FILENAME "rmt.ini"
 #define TUNING_FILENAME "tuning.ini"
 
-#define EOL "\x0d\x0a"			//Carriage Return (\r) and Line Feed (\n), for strings used during Exports
+#define EOL "\x0d\x0a"			// Carriage Return (\r) and Line Feed (\n), for strings used during Exports
 
 // This macro was shamelessly stolen from this stackoverflow post: https://stackoverflow.com/a/42450151 
 #define PADHEX(width, val) "0x"  << std::setfill('0') << std::setw(width) << std::hex << std::uppercase << (unsigned)val
@@ -110,49 +110,47 @@
 #define INSTRUMENT_SECTION_ENVELOPE		2
 #define INSTRUMENT_SECTION_NOTETABLE	3
 
+// ----------------------------------------------------------------------------
+// RMT file format, used for reference to legacy module specifications
+//
+#define RMTFORMATVERSION			1						// Module Version number, the highest value is always assumed to be the most recent
+#define TRACKLEN					256						// 0-255 inclusive, Row index used in Pattern
+#define TRACKSNUM					254						// 0-253 inclusive, Pattern index used in Song
+#define SONGLEN						256						// 0-255 inclusive, Songline index used in Song
+#define SONGTRACKS					8						// 0-7 inclusive, 2 POKEY soundchips, each using 4 Channels, a typical Stereo configuration
+#define INSTRSNUM					64						// 0-63 inclusive, Instrument index used in Pattern
+#define NOTESNUM					61						// 0-60 inclusive, Note index used in Pattern
+#define MAXVOLUME					15						// 0-15 inclusive, Volume index used in Pattern
+#define PARCOUNT					24						// 0-23 inclusive, Instrument parameter
+#define ENVELOPE_MAX_COLUMNS		48						// 0-47 inclusive, Instrument envelope
+#define ENVROWS						8						// 0-7 inclusive, Instrument envelope parameter
+#define NOTE_TABLE_MAX_LEN			32						// 0-31 inclusive, Instrument note/freq table index
+#define INSTRUMENT_NAME_MAX_LEN		32						// Maximum length of Instrument name
+#define SONG_NAME_MAX_LEN			64						// Maximum length of Song name
+#define TRACKMAXSPEED				256						// Maximum speed values, highest is the slowest
+#define MAXATAINSTRLEN				256						// Atari Instrument has a maximum of 16 parameters + 32 * 3 bytes envelope
+#define MAXATATRACKLEN				256						// Atari Track has maximum 256 bytes (Track index is 0-255)
+#define MAXATASONGLEN				(SONGTRACKS * SONGLEN)	// Maximum size for atari song data
 
 // ----------------------------------------------------------------------------
-// RMT file format
+// RMT Player and UI specifications
 //
-#define RMTFORMATVERSION	1	//the version number that is saved into modules, highest means more recent
-#define TRACKLEN	256			//drive 128
-#define TRACKSNUM	254			//0-253
-#define SONGLEN		256
-#define SONGTRACKS	8
-#define INSTRSNUM	64
-#define NOTESNUM	61			//notes 0-60 inclusive
-#define MAXVOLUME	15			//maximum volume
-#define PARCOUNT	24			//24 instrument parameters
-#define ENVELOPE_MAX_COLUMNS	48			// 48 columns in envelope (drive 32) (48 from version 1.25)
-#define ENVROWS		8			//8 line (parameter) in the envelope
-#define NOTE_TABLE_MAX_LEN		32		// maximum 32 steps in the note table
-
-#define INSTRUMENT_NAME_MAX_LEN	32		// maximum length of instrument name
-#define SONG_NAME_MAX_LEN		64		// maximum length of song name
-#define TRACKMAXSPEED	256		//maximum speed values, highest the slowest
-
-#define MAXATAINSTRLEN	256		//16+(ENVCOLS*3)	//atari instrument has a maximum of 16 parameters + 32 * 3 bytes envelope
-#define MAXATATRACKLEN	256		//atari track has maximum 256 bytes (track index is 0-255)
-#define MAXATASONGLEN	SONGTRACKS*SONGLEN	//maximum data size atari song part
-
-
-
 #define MPLAY_STOP	0
 #define MPLAY_SONG	1
 #define MPLAY_FROM	2
 #define MPLAY_TRACK	3
 #define MPLAY_BLOCK	4
 #define MPLAY_BOOKMARK 5
-#define MPLAY_SEEK_NEXT	6	//added for Media keys
-#define MPLAY_SEEK_PREV	7	//added for Media keys
+#define MPLAY_SEEK_NEXT	6		// Added for Media keys
+#define MPLAY_SEEK_PREV	7		// Added for Media keys
 
-#define MPLAY_SAPR_SONG		255	//SAPR dump from song start
-#define MPLAY_SAPR_FROM		254	//SAPR dump from song cursor position
-#define MPLAY_SAPR_TRACK	253	//SAPR dump from track (loop optional)
-#define MPLAY_SAPR_BLOCK	252	//SAPR dump from selection block (loop optional)
-#define MPLAY_SAPR_BOOKMARK	251	//SAPR dump from bookmak position
+#define MPLAY_SAPR_SONG		255	// SAPR dump from song start
+#define MPLAY_SAPR_FROM		254	// SAPR dump from song cursor position
+#define MPLAY_SAPR_TRACK	253	// SAPR dump from track (loop optional)
+#define MPLAY_SAPR_BLOCK	252	// SAPR dump from selection block (loop optional)
+#define MPLAY_SAPR_BOOKMARK	251	// SAPR dump from bookmak position
 
-#define IOTYPE_NONE			0			// No export has been done yet
+#define IOTYPE_NONE			0	// No export has been done yet
 #define IOTYPE_RMT			1
 #define IOTYPE_RMW			2
 #define IOTYPE_RMTSTRIPPED	3
@@ -321,25 +319,12 @@
 #define FILE_EXPORT_FILTER_IDX_LZSS 4
 #define FILE_EXPORT_FILTER_IDX_SAP 5
 #define FILE_EXPORT_FILTER_IDX_XEX 6
-//#define FILE_EXPORT_FILTER_IDX_RELOC_ASM 7
-//#define FILE_EXPORT_FILTER_IDX_MIN FILE_EXPORT_FILTER_IDX_STRIPPED_RMT
-//#define FILE_EXPORT_FILTER_IDX_MAX FILE_EXPORT_FILTER_IDX_RELOC_ASM
-//#define FILE_EXPORT_EXTENSIONS_ARRAY { ".rmt",".asm",".sapr",".lzss",".sap",".xex",".asm" };
-//#define FILE_EXPORT_EXTENSIONS_LENGTH_ARRAY { 4, 4, 5, 5, 4, 4, 4}
 #define FILE_EXPORT_FILTER_IDX_RELOC_ASM 7
 #define FILE_EXPORT_FILTER_IDX_WAV 8
 #define FILE_EXPORT_FILTER_IDX_MIN FILE_EXPORT_FILTER_IDX_STRIPPED_RMT
 #define FILE_EXPORT_FILTER_IDX_MAX FILE_EXPORT_FILTER_IDX_WAV
 #define FILE_EXPORT_EXTENSIONS_ARRAY { ".rmt",".asm",".sapr",".lzss",".sap",".xex",".asm",".wav" };
 #define FILE_EXPORT_EXTENSIONS_LENGTH_ARRAY { 4, 4, 5, 5, 4, 4, 4, 4}
-
-// ----------------------------------------------------------------------------
-// Pokey play to buffer
-// 
-#define POKEY2BUFFER_STOP		0
-#define POKEY2BUFFER_RECORD		1
-#define POKEY2BUFFER_WRITE		2
-#define POKEY2BUFFER_START		3		// Start the Pokey 2 buffer recording process
 
 // ----------------------------------------------------------------------------
 // SAP-R optimisations pattern, for optimal data compression to LZSS 
