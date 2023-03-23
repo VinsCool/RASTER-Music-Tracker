@@ -10,10 +10,10 @@
 // Data boundaries constant
 //
 #define INVALID							-1								// Failsafe value for invalid data
-#define BYTE_MIN						0x00							// BYTE Minimum
-#define BYTE_MAX						0xFF							// BYTE Maximum
-#define WORD_MIN						0x0000							// WORD Minimum
-#define WORD_MAX						0xFFFF							// WORD Maximum
+//#define BYTE_MIN						0x00							// BYTE Minimum
+//#define BYTE_MAX						0xFF							// BYTE Maximum
+//#define WORD_MIN						0x0000							// WORD Minimum
+//#define WORD_MAX						0xFFFF							// WORD Maximum
 
 // ----------------------------------------------------------------------------
 // Module Header definition
@@ -59,9 +59,9 @@
 //
 #define INSTRUMENT_NAME_MAX				64								// Maximum length of instrument name
 #define INSTRUMENT_PARAMETER_MAX		24								// Instrument parameter 0-23, inclusive
+#define INSTRUMENT_TABLE_INDEX_MAX		32								// Instrument note/freq table 0-31, inclusive
 #define ENVELOPE_INDEX_MAX				48								// Instrument envelope 0-47, inclusive
 #define ENVELOPE_PARAMETER_MAX			8								// Instrument envelope parameter 0-7, inclusive
-#define TABLE_INDEX_MAX					32								// Instrument note/freq table 0-31, inclusive
 
 // ----------------------------------------------------------------------------
 // Effect Command definition
@@ -73,27 +73,68 @@
 #define NOTE_RELEASE					(PATTERN_NOTE_MAX + 1)			// The Note Command === will release the last played note in the Track Channel
 #define NOTE_RETRIGGER					(PATTERN_NOTE_MAX + 2)			// The Note Command ~~~ will retrigger the last played note in the Track Channel
 
-struct Song
+// ----------------------------------------------------------------------------
+// RMTE Module structs
+//
+struct TRow
 {
-	// TODO
+	WORD note;
+	WORD instrument;
+	WORD volume;
+	WORD cmd0;
+	WORD cmd1;
+	WORD cmd2;
+	WORD cmd3;
 };
 
-struct Pattern
+struct TPattern
 {
-	// TODO
+	TRow row[TRACK_LENGTH_MAX];				// Row data is contained withn its associated Pattern index
 };
 
-struct Row
+struct TIndex
 {
-	// TODO
+	BYTE activeEffectCommand;				// Number of Effect Commands enabled for the Track Channel
+	WORD songline[SONGLINE_MAX];			// Pattern Index for each songline within the Track Channel
+	TPattern pattern[TRACK_PATTERN_MAX];	// Pattern Data for the Track Channel
 };
 
-struct Instrument
+struct TInstrument
 {
-	// TODO
+	BYTE name[INSTRUMENT_NAME_MAX];
+	BYTE envelopeLength;
+	BYTE tableLength;
+	BYTE volumeEnvelope[ENVELOPE_INDEX_MAX];
+	BYTE distortionEnvelope[ENVELOPE_INDEX_MAX];
+	BYTE audctlEnvelope[ENVELOPE_INDEX_MAX];
+	BYTE noteTable[INSTRUMENT_TABLE_INDEX_MAX];
+	BYTE freqTable[INSTRUMENT_TABLE_INDEX_MAX];
 };
 
-struct Parameter
+// ----------------------------------------------------------------------------
+// RMTE Module class
+//
+class CModule
 {
-	// TODO
+public:
+	CModule();
+	~CModule();
+
+	void InitialiseModule();
+	void ClearModule();
+	void ImportLegacyRMT();
+
+	bool IsModuleInitialised() { return m_initialised; };
+
+	WORD GetNote(int channel, int pattern, int row) { return m_index[channel].pattern[pattern].row[row].note; };
+
+private:
+	TIndex* m_index;
+	TInstrument* m_instrument;
+
+	int m_songLength;
+	int m_trackLength;
+	int m_trackChannelCount;
+
+	bool m_initialised;
 };
