@@ -96,9 +96,11 @@ void GetAtariMemHexStr(int adr, int len)
 	}
 }
 
+// TODO: update this function for simplified changes
 void CSong::SetRMTTitle()
 {
 	CString s, s1, s2;
+
 	if (m_filename == "")
 	{
 		if (g_changes)
@@ -112,12 +114,14 @@ void CSong::SetRMTTitle()
 			s.Format("%s, %s", s1, s2);
 		}
 	}
+
 	else
 	{
 		s = m_filename;
 		if (g_changes) s += " *";
 	}
-	AfxGetApp()->GetMainWnd()->SetWindowText(s);
+
+	SetWindowText(g_hwnd, s);
 }
 
 int CSong::WarnUnsavedChanges()

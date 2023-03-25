@@ -295,10 +295,15 @@
 
 // ----------------------------------------------------------------------------
 // File import dialog format selections
-#define FILE_IMPORT_FILTERS "ProTracker Modules (*.mod)|*.mod|TMC song files (*.tmc,*.tm8)|*.tmc;*.tm8||"
-#define FILE_IMPORT_FILTER_IDX_MOD 1
-#define FILE_IMPORT_FILTER_IDX_TMC 2
-#define FILE_IMPORT_FILTER_IDX_MIN FILE_IMPORT_FILTER_IDX_MOD
+#define FILE_IMPORT_FILTERS \
+		"Legacy RMT song file (*.rmt)|*.rmt|" \
+		"ProTracker Modules (*.mod)|*.mod|" \
+		"TMC song files (*.tmc,*.tm8)|*.tmc;*.tm8|" \
+		"|"
+#define FILE_IMPORT_FILTER_IDX_RMT 1
+#define FILE_IMPORT_FILTER_IDX_MOD 2
+#define FILE_IMPORT_FILTER_IDX_TMC 3
+#define FILE_IMPORT_FILTER_IDX_MIN FILE_IMPORT_FILTER_IDX_RMT
 #define FILE_IMPORT_FILTER_IDX_MAX FILE_IMPORT_FILTER_IDX_TMC
 
 // ----------------------------------------------------------------------------

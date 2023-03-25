@@ -182,13 +182,6 @@ int CConvertTracks::MakeOrFindTrackShiftLR(int from, int shift, BYTE lr)
 
 int CSong::ImportTMC(std::ifstream& in)
 {
-	int originalg_tracks4_8 = g_tracks4_8;
-
-	//delete the current song
-	g_tracks4_8 = 8;					//standard TMC is 8 tracks
-	g_Tracks.SetMaxTrackLength(64);	//track length is 64
-	ClearSong(g_tracks4_8);			//clear everything
-
 	unsigned char mem[65536];
 	memset(mem, 0, 65536);
 	WORD bfrom, bto;
@@ -226,6 +219,12 @@ int CSong::ImportTMC(std::ifstream& in)
 	BOOL x_optimizeloops = importdlg.m_check6;
 	BOOL x_truncateunusedparts = importdlg.m_check7;
 
+	int originalg_tracks4_8 = g_tracks4_8;
+
+	//delete the current song
+	g_tracks4_8 = 8;					//standard TMC is 8 tracks
+	g_Tracks.SetMaxTrackLength(64);	//track length is 64
+	ClearSong(g_tracks4_8);			//clear everything
 
 	WORD instr_ptr[64], track_ptr[128];
 	BOOL instr_used[64];
@@ -929,12 +928,6 @@ int AtariVolume(int volume0_64)
 
 int CSong::ImportMOD(std::ifstream& in)
 {
-	//deletes the current song
-	int originalg_tracks4_8 = g_tracks4_8;	//keeps the original value for Abort
-	g_tracks4_8 = 8;					//prepares 8 channels
-	g_Tracks.SetMaxTrackLength(64);	//track length 64
-	ClearSong(g_tracks4_8);			//clear existing data
-
 	int i, j;
 	BYTE a;
 	BYTE head[1085];
@@ -1086,7 +1079,11 @@ int CSong::ImportMOD(std::ifstream& in)
 	BOOL x_truncateunusedparts = importdlg.m_check7;
 	BOOL x_fourier = importdlg.m_check8;
 
+	int originalg_tracks4_8 = g_tracks4_8;	//keeps the original value for Abort
+
 	g_tracks4_8 = rmttype;	//produce RMT4 or RMT8
+	ClearSong(g_tracks4_8);			//clear existing data
+	g_Tracks.SetMaxTrackLength(64);	//track length 64
 
 	//song name
 	for (j = 0; j < 20 && (a = mem[j]); j++) m_songname[j] = a;

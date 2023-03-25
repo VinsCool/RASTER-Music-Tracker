@@ -45,14 +45,29 @@
 #define SUBTUNE_NAME_MAX				64								// Maximum length of Subtune name
 #define SONGLINE_MAX					256								// 0-255 inclusive, Songline index used in Song
 #define TRACK_CHANNEL_MAX				8								// 0-7 inclusive, 2 POKEY soundchips, each using 4 Channels, a typical Stereo configuration
-#define TRACK_LENGTH_MAX				256								// 0-255 inclusive, Row index used in Pattern
+#define TRACK_ROW_MAX					256								// 0-255 inclusive, Row index used in Pattern
 #define TRACK_PATTERN_MAX				256								// 0-255 inclusive, Pattern index used in Song
 #define PATTERN_COLUMN_MAX				8								// 0-7 inclusive, Pattern column index used for Note, Instrument, Volume, and Effect Commands
 #define PATTERN_ACTIVE_EFFECT_MAX		4								// 0-3 inclusive, Number of Active Effect columns in Track Channel
-#define PATTERN_NOTE_MAX				96								// 0-95 inclusive, Note index used in Pattern
-#define PATTERN_INSTRUMENT_MAX			64								// 0-63 inclusive, Instrument index used in Pattern
-#define PATTERN_VOLUME_MAX				16								// 0-15 inclusive, Volume index used in Pattern
-#define PATTERN_EFFECT_MAX				16								// 0-15 inclusive, Effect index used in Pattern
+
+#define PATTERN_NOTE_COUNT				96								// 0-95 inclusive, Note index used in Pattern
+#define PATTERN_NOTE_EMPTY				PATTERN_NOTE_COUNT				// There is no Note in the Pattern Row
+#define PATTERN_NOTE_OFF				PATTERN_NOTE_COUNT + 1			// The Note Command OFF will stop the last played note in the Track Channel
+#define PATTERN_NOTE_RELEASE			PATTERN_NOTE_COUNT + 2			// The Note Command === will release the last played note in the Track Channel
+#define PATTERN_NOTE_RETRIGGER			PATTERN_NOTE_COUNT + 3			// The Note Command ~~~ will retrigger the last played note in the Track Channel
+#define PATTERN_NOTE_MAX				PATTERN_NOTE_COUNT + 4			// Total for Note index integrity
+
+#define PATTERN_INSTRUMENT_COUNT		64								// 0-63 inclusive, Instrument index used in Pattern
+#define PATTERN_INSTRUMENT_EMPTY		PATTERN_INSTRUMENT_COUNT		// There is no Instrument in the Pattern Row
+#define	PATTERN_INSTRUMENT_MAX			PATTERN_INSTRUMENT_COUNT + 1	// Total for Instrument index integrity
+
+#define PATTERN_VOLUME_COUNT			16								// 0-15 inclusive, Volume index used in Pattern
+#define PATTERN_VOLUME_EMPTY			PATTERN_VOLUME_COUNT			// There is no Volume in the Pattern Row
+#define PATTERN_VOLUME_MAX				PATTERN_VOLUME_COUNT + 1		// Total for Volume index integrity
+
+#define PATTERN_EFFECT_COUNT			16								// 0-15 inclusive, Effect index used in Pattern
+#define PATTERN_EFFECT_EMPTY			PATTERN_EFFECT_COUNT			// There is no Effect Command in the Pattern Row
+#define PATTERN_EFFECT_MAX				PATTERN_EFFECT_COUNT + 1		// Total for Effect Command index integrity
 
 // ----------------------------------------------------------------------------
 // Instrument definition
@@ -69,50 +84,57 @@
 #define EFFECT_PARAMETER_MAX			256								// 0-255 inclusive, Effect $XY Parameter used in Pattern
 #define EFFECT_PARAMETER_MIN			0x00							// The $XY Parameter of 0 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_DEFAULT		0x80							// The $XY Parameter of 128 may be used to disable certain Effect Commands
-#define NOTE_OFF						PATTERN_NOTE_MAX				// The Note Command OFF will stop the last played note in the Track Channel
-#define NOTE_RELEASE					(PATTERN_NOTE_MAX + 1)			// The Note Command === will release the last played note in the Track Channel
-#define NOTE_RETRIGGER					(PATTERN_NOTE_MAX + 2)			// The Note Command ~~~ will retrigger the last played note in the Track Channel
 
 // ----------------------------------------------------------------------------
-// RMTE Module structs
+// RMTE Module Structs
 //
+
+// Row Data, used within Pattern data, designed to be easy to manage, following a Row by Row approach
 struct TRow
 {
-	WORD note;
-	WORD instrument;
-	WORD volume;
-	WORD cmd0;
-	WORD cmd1;
-	WORD cmd2;
-	WORD cmd3;
+	BYTE note;										// Note index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
+	BYTE instrument;								// Instrument index
+	BYTE volume;									// Volume index
+	WORD cmd0;										// Effect Command, toggled from the Active Effect Columns in Track Channels
+	WORD cmd1;										// All 4 Commands could be used at once in order to run multiple Effects in the same row
+	WORD cmd2;										// Certain Effects may not compatible together, however, and could cause priority conflicts
+	WORD cmd3;										// Making sure some commands take priority over the others would help working around issues
 };
 
+// Pattern Data, indexed by the TRow Struct
 struct TPattern
 {
-	TRow row[TRACK_LENGTH_MAX];				// Row data is contained withn its associated Pattern index
+	TRow row[TRACK_ROW_MAX];						// Row data is contained withn its associated Pattern index
 };
 
+// Module Index, used for indexing the Songline and Pattern data, similar to the CSong Class
 struct TIndex
 {
-	BYTE activeEffectCommand;				// Number of Effect Commands enabled for the Track Channel
-	WORD songline[SONGLINE_MAX];			// Pattern Index for each songline within the Track Channel
-	TPattern pattern[TRACK_PATTERN_MAX];	// Pattern Data for the Track Channel
+	BYTE activeEffectCommand;						// Number of Effect Commands enabled for the Track Channel
+	BYTE songline[SONGLINE_MAX];					// Pattern Index for each songline within the Track Channel
+	TPattern pattern[TRACK_PATTERN_MAX];			// Pattern Data for the Track Channel
 };
 
-struct TInstrument
+// Instrument Data, due to the Legacy TInstrument struct, this is temporarily defined as TInstrumentV2
+struct TInstrumentV2
 {
-	BYTE name[INSTRUMENT_NAME_MAX];
-	BYTE envelopeLength;
-	BYTE tableLength;
-	BYTE volumeEnvelope[ENVELOPE_INDEX_MAX];
-	BYTE distortionEnvelope[ENVELOPE_INDEX_MAX];
-	BYTE audctlEnvelope[ENVELOPE_INDEX_MAX];
-	BYTE noteTable[INSTRUMENT_TABLE_INDEX_MAX];
-	BYTE freqTable[INSTRUMENT_TABLE_INDEX_MAX];
+	char name[INSTRUMENT_NAME_MAX];					// Instrument name
+	BYTE envelopeLength;							// Envelope Length, in frames
+	BYTE envelopeLoop;								// Envelope Loop point, in frames
+	BYTE envelopeRelease;							// Envelope Release point, in frames
+	BYTE tableLength;								// Table Length, in frames
+	BYTE tableLoop;									// Table Loop point, in frames
+	BYTE tableRelease;								// Table Release point, in frames
+	BYTE tableMode;									// Table Mode, Absolute or Relative
+	BYTE volumeEnvelope[ENVELOPE_INDEX_MAX];		// Volume Envelope
+	BYTE distortionEnvelope[ENVELOPE_INDEX_MAX];	// Distortion Envelope
+	BYTE audctlEnvelope[ENVELOPE_INDEX_MAX];		// AUDCTL Envelope, may vary between Track Channels
+	BYTE noteTable[INSTRUMENT_TABLE_INDEX_MAX];		// Note Table
+	BYTE freqTable[INSTRUMENT_TABLE_INDEX_MAX];		// Freq Table
 };
 
 // ----------------------------------------------------------------------------
-// RMTE Module class
+// RMTE Module Class
 //
 class CModule
 {
@@ -124,17 +146,76 @@ public:
 	void ClearModule();
 	void ImportLegacyRMT();
 
+	// Booleans for Module index and data integrity
 	bool IsModuleInitialised() { return m_initialised; };
+	bool IsValidChannel(int channel) { return channel > INVALID && channel < TRACK_CHANNEL_MAX; };
+	bool IsValidSongline(int songline) { return songline > INVALID && songline < SONGLINE_MAX; };
+	bool IsValidPattern(int pattern) { return pattern > INVALID && pattern < TRACK_PATTERN_MAX; };
+	bool IsValidRow(int row) { return row > INVALID && row < TRACK_ROW_MAX; };
+	bool IsValidNote(int note) { return note > INVALID && note < PATTERN_NOTE_MAX; };
+	bool IsValidInstrument(int instrument) { return instrument > INVALID && instrument < PATTERN_INSTRUMENT_MAX; };
+	bool IsValidVolume(int volume) { return volume > INVALID && volume < PATTERN_VOLUME_MAX; };
+	bool IsValidCommand(int command) { return command > INVALID && command < PATTERN_EFFECT_MAX; };
+	bool IsValidPatternRowIndex(int channel, int pattern, int row) { return IsValidChannel(channel) && IsValidPattern(pattern) && IsValidRow(row); };
 
-	WORD GetNote(int channel, int pattern, int row) { return m_index[channel].pattern[pattern].row[row].note; };
+	// Pointers to Module Structs
+	TIndex* GetChannelIndex(int channel) { return IsValidChannel(channel) ? &m_index[channel] : NULL; };
+	BYTE* GetSonglineIndex(int channel) { return IsValidChannel(channel) ? m_index[channel].songline : NULL; };
+	TPattern* GetPattern(int channel, int pattern) { return IsValidChannel(channel) && IsValidPattern(pattern) ? &m_index[channel].pattern[pattern] : NULL; };
+	TPattern* GetIndexedPattern(int channel, int songline) { return GetPattern(channel, GetPatternInSongline(channel, songline)); };
+	TRow* GetRow(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? &m_index[channel].pattern[pattern].row[row] : NULL; };
+	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? &m_instrument[instrument] : NULL; };
+
+	// Getters for Pattern data
+	const BYTE GetPatternInSongline(int channel, int songline) { return IsValidChannel(channel) && IsValidSongline(songline) ? m_index[channel].songline[songline] : INVALID; };
+	const BYTE GetPatternRowNote(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? m_index[channel].pattern[pattern].row[row].note : INVALID; };
+	const BYTE GetPatternRowInstrument(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? m_index[channel].pattern[pattern].row[row].instrument : INVALID; };
+	const BYTE GetPatternRowVolume(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? m_index[channel].pattern[pattern].row[row].volume : INVALID; };
+	const WORD GetPatternRowCommand(int channel, int pattern, int row, int column)
+	{
+		if (IsValidPatternRowIndex(channel, pattern, row))
+			switch (column)
+			{
+			case 0: return m_index[channel].pattern[pattern].row[row].cmd0;
+			case 1: return m_index[channel].pattern[pattern].row[row].cmd1;
+			case 2: return m_index[channel].pattern[pattern].row[row].cmd2;
+			case 3: return m_index[channel].pattern[pattern].row[row].cmd3;
+			}
+		return INVALID;
+	};
+
+	// Getters for Instrument data
+	const char* GetInstrumentName(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].name : "INVALID INSTRUMENT"; };
+	const BYTE GetInstrumentEnvelopeLength(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].envelopeLength : INVALID; };
+	const BYTE GetInstrumentEnvelopeLoop(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].envelopeLoop : INVALID; };
+	const BYTE GetInstrumentEnvelopeRelease(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].envelopeRelease : INVALID; };
+	const BYTE GetInstrumentTableLength(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].tableLength : INVALID; };
+	const BYTE GetInstrumentTableLoop(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].tableLoop : INVALID; };
+	const BYTE GetInstrumentTableRelease(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].tableRelease : INVALID; };
+	const BYTE GetInstrumentTableMode(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].tableMode : INVALID; };
+	const BYTE* GetInstrumentVolumeEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].volumeEnvelope : NULL; };
+	const BYTE* GetInstrumentDistortionEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].distortionEnvelope : NULL; };
+	const BYTE* GetInstrumentAudctlEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].audctlEnvelope : NULL; };
+	const BYTE* GetInstrumentNoteTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].noteTable : NULL; };
+	const BYTE* GetInstrumentFreqTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].freqTable : NULL; };
+
+	// Getters for Module parameters
+	const BYTE GetSongLength() { return m_songLength; };
+	const BYTE GetTrackLength() { return m_trackLength; };
+	const BYTE GetChannelCount() { return m_channelCount; };
+
+	// Setters for Module parameters
+	void SetSongLength(int length) { if (length > 0 && length <= SONGLINE_MAX) m_songLength = length; };
+	void SetTrackLength(int length) { if (length > 0 && length <= TRACK_ROW_MAX) m_trackLength = length; };
+	void SetChannelCount(int count) { if (count > 0 && count <= TRACK_CHANNEL_MAX) m_channelCount = count; };
 
 private:
 	TIndex* m_index;
-	TInstrument* m_instrument;
+	TInstrumentV2* m_instrument;
 
-	int m_songLength;
-	int m_trackLength;
-	int m_trackChannelCount;
+	BYTE m_songLength;
+	BYTE m_trackLength;
+	BYTE m_channelCount;
 
 	bool m_initialised;
 };

@@ -157,9 +157,9 @@ extern BOOL g_viewInstrumentEditHelp;	//1 yes, 0 no
 
 extern int g_trackerDriverVersion;
 extern int g_timerGlobalCount;	// Initialised once, ticking forever
-extern long g_playtime;				//1 yes, 0 no
+extern int g_playtime;				//1 yes, 0 no
 
-extern UINT g_mousebutt;			//mouse button
+extern int g_mousebutt;			//mouse button
 
 extern int g_mouseLastPointX;
 extern int g_mouseLastPointY;
@@ -169,6 +169,7 @@ extern int g_mouseLastWheelDelta;
 extern int g_lastKeyPressed;		//for debugging vk input
 
 extern CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
+
 extern CString g_lastLoadPath_Songs;		//the path of the last song loaded
 extern CString g_lastLoadPath_Instruments; //the path of the last instrument loaded
 extern CString g_lastLoadPath_Tracks;		//the path of the last track loaded
@@ -176,6 +177,8 @@ extern CString g_lastLoadPath_Tracks;		//the path of the last track loaded
 extern CString g_defaultSongsPath;		//default path for songs
 extern CString g_defaultInstrumentsPath;	//default path for instruments
 extern CString g_defaultTracksPath;		//default path for tracks
+
+extern int g_lastImportTypeIndex;
 
 extern int g_keyboard_layout;			//Keyboard layout is used by RMT. eg: QWERTY, AZERTY, etc
 extern BOOL g_keyboard_swapenter;		//1 yes, 0 no, probably not needed anymore but will be kept for now

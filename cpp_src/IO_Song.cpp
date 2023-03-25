@@ -28,6 +28,8 @@
 
 #include "Wavefile.h"
 
+#include "ModuleV2.h"
+
 extern CInstruments	g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
 extern CXPokey g_Pokey;
@@ -438,80 +440,290 @@ void CSong::FileNew()
 }
 
 /// <summary>
-/// Import Protracker modules or TMC song files
+/// Import Legacy RMT song files, Protracker modules or TMC song files
 /// </summary>
 void CSong::FileImport()
 {
-	static int l_lastImportTypeIndex = -1;		// Save the import setting for the next import so that the pre-selected type is preselected
-	
-	// Stop the music first
-	//Stop();
+	// If unsaved changes are pending, nothing will be imported
+	if (WarnUnsavedChanges()) 
+		return;
 
-	if (WarnUnsavedChanges()) return;
+	std::ifstream in;
+	CString s, fn;
+	bool successful;
 
-	CFileDialog dlg(TRUE,
-		NULL,
-		NULL,
-		OFN_HIDEREADONLY,
-		FILE_IMPORT_FILTERS
-	);
+	// Create the Import Dialog for the desired formats and configuration
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY, FILE_IMPORT_FILTERS);
+
+	// Set the dialog box title as well
 	dlg.m_ofn.lpstrTitle = "Import song file";
 
+	// Either use the last Songs path if it is non-empty
 	if (!g_lastLoadPath_Songs.IsEmpty())
 		dlg.m_ofn.lpstrInitialDir = g_lastLoadPath_Songs;
+
+	// Or use the default Songs path if it is non-empty
 	else if (!g_defaultSongsPath.IsEmpty()) 
 		dlg.m_ofn.lpstrInitialDir = g_defaultSongsPath;
 
-	if (l_lastImportTypeIndex >= 0) dlg.m_ofn.nFilterIndex = l_lastImportTypeIndex;		// Restore the last imported file type
+	// Use the last imported file type if it is non-empty
+	if (g_lastImportTypeIndex >= 0)
+		dlg.m_ofn.nFilterIndex = g_lastImportTypeIndex;
 
 	// If not ok, nothing will be imported
 	if (dlg.DoModal() != IDOK)
 		return;
 
-	CString fn = dlg.GetPathName();
-	g_lastLoadPath_Songs = GetFilePath(fn);	//direct way
+	// Get the path name for file to import
+	fn = dlg.GetPathName();
 
-	int type = dlg.m_ofn.nFilterIndex;
-	if (type < FILE_IMPORT_FILTER_IDX_MIN || type > FILE_IMPORT_FILTER_IDX_MAX) return;
+	// Open the file once it is ready to be processed
+	in.open(fn, std::ios::binary);
 
-	l_lastImportTypeIndex = type;
-
-	std::ifstream in(fn, std::ios::binary);
+	// If opening the file failed, no import will be done
 	if (!in)
 	{
 		MessageBox(g_hwnd, "Can't open this file: " + fn, "Open error", MB_ICONERROR);
 		return;
 	}
 
-	int importResult = 0;
-	switch (type)
+	// Update the last visited Songs path (without the filename)
+	g_lastLoadPath_Songs = GetFilePath(fn);
+
+	// Set the last imported file type for future imports
+	g_lastImportTypeIndex = dlg.m_ofn.nFilterIndex;
+
+	// Delete the current song before loading new data
+	ClearSong(g_tracks4_8);
+
+	// Filter the file type to import, and see if it is successful
+	switch (g_lastImportTypeIndex)
 	{
-		case FILE_IMPORT_FILTER_IDX_MOD: // MOD choice in Dialog
-			importResult = ImportMOD(in);
-			break;
-		case FILE_IMPORT_FILTER_IDX_TMC: // TMC choice in Dialog
-			importResult = ImportTMC(in);
-			break;
+	case FILE_IMPORT_FILTER_IDX_RMT:
+		if (successful = LoadRMT(in))
+		{
+			// This is for tests related to the upcoming Module V2 format import...
+			SetWindowText(g_hwnd, "Imported: Legacy RMT " + fn);
+
+			// Expand all tracks
+			for (int i = 0; i < TRACKSNUM; i++)
+				g_Tracks.TrackExpandLoop(i);
+
+			// Create a new module first
+			CModule* module = new CModule;
+
+			s.Format("\n\n* Raster Music Tracker Extended *\n* RMTE Module Version 0 *\n\n");
+			s.AppendFormat(module->IsModuleInitialised() ? "Module is initialised!\n\n" : "Module is NOT initialised, FIXME!\n\n");
+
+/*
+			s.AppendFormat("Instrument $00 '");
+			s.AppendFormat(module->GetInstrumentName(0));
+			s.AppendFormat("' is ready to use!\n");
+
+			s.AppendFormat("Instrument $FFFFFFFF '");
+			s.AppendFormat(module->GetInstrumentName(-1));
+			s.AppendFormat("' definitely shouldn't be a thing here!\n");
+*/
+
+			// Print out what is being read, hopefully with success...
+			std::cout << s << std::endl;
+
+			// Pattern 0, in Track Channel 0
+			TPattern* p = module->GetPattern(0, 0);
+
+/*
+			s.Format("Now, let's try to decode a single pattern, which was freshly initialised...\n\n");
+
+			for (int i = 0; i < module->GetTrackLength(); i++)
+			{
+				s.AppendFormat("Row = %02X ", i);
+				s.AppendFormat("Note = %02X ", p->row[i].note);
+				s.AppendFormat("Instrument = %02X ", p->row[i].instrument);
+				s.AppendFormat("Volume = %02X ", p->row[i].volume);
+				s.AppendFormat("CMD0 = %03X ", p->row[i].cmd0);
+				s.AppendFormat("CMD1 = %03X ", p->row[i].cmd1);
+				s.AppendFormat("CMD2 = %03X ", p->row[i].cmd2);
+				s.AppendFormat("CMD3 = %03X ", p->row[i].cmd3);
+				s.AppendFormat("\n");
+			}
+
+			s.AppendFormat("Normally, this should be all set to EMPTY values...\n");
+
+			// Print out what is being read, hopefully with success...
+			std::cout << s << std::endl;
+*/
+
+			s.Format("Now, let's try to import a single pattern, from the data loaded using LoadRMT()... ");
+
+			// Pattern 0
+			TTrack* t = g_Tracks.GetTrack(0);
+
+			for (int i = 0; i < module->GetTrackLength(); i++)
+			{
+				// If the pattern to import is shorter, set our pattern length to it, then bail out
+				if (i > g_Tracks.GetMaxTrackLength())
+				{
+					module->SetTrackLength(g_Tracks.GetMaxTrackLength());
+					break;
+				}
+
+				int note = t->note[i];
+				int instr = t->instr[i];
+				int volume = t->volume[i];
+				int speed = t->speed[i];
+
+				if (g_Tracks.IsValidNote(note))
+					p->row[i].note = note;
+
+				if (g_Tracks.IsValidInstrument(instr))
+					p->row[i].instrument = instr;
+
+				if (g_Tracks.IsValidVolume(volume))
+					p->row[i].volume = volume;
+
+				if (g_Tracks.IsValidSpeed(speed))
+					p->row[i].cmd0 = 0x0F00 | speed;
+			}
+
+			s.AppendFormat("Done!\n");
+
+			// Print out what is being read, hopefully with success...
+			std::cout << s << std::endl;
+
+			s.Format("Now, let's try to decode the pattern filled with the imported data...\n\n");
+
+			for (int i = 0; i < module->GetTrackLength(); i++)
+			{
+				int note = p->row[i].note;
+				int instrument = p->row[i].instrument;
+				int volume = p->row[i].volume;
+				int cmd0 = p->row[i].cmd0;
+				
+				s.AppendFormat("|%02X| ", i);	// Row
+
+				switch (note)
+				{
+				case INVALID:
+					s.AppendFormat("??? ");
+					break;
+
+				case PATTERN_NOTE_EMPTY:
+					s.AppendFormat("--- ");
+					break;
+
+				case PATTERN_NOTE_OFF:
+					s.AppendFormat("OFF ");
+					break;
+
+				case PATTERN_NOTE_RELEASE:
+					s.AppendFormat("=== ");
+					break;
+
+				case PATTERN_NOTE_RETRIGGER:
+					s.AppendFormat("~~~ ");
+					break;
+
+				default:
+				{
+					int index = 0;	// Standard notation
+					int octave = (note / g_notesperoctave) + 1;	// +0x30;	// Due to ASCII characters
+					note = note % g_notesperoctave;
+
+					if (g_displayflatnotes) index += 1;
+					if (g_usegermannotation) index += 2;
+					if (g_notesperoctave != 12) index = 4;	// Non-12 scales don't yet have proper display
+
+					s.AppendFormat(notesandscales[index][note]);
+					s.AppendFormat("%01X ", octave);
+				}
+
+				}
+
+				switch (instrument)
+				{
+				case INVALID:
+					s.AppendFormat("?? ");
+					break;
+
+				case PATTERN_INSTRUMENT_EMPTY:
+					s.AppendFormat("-- ");
+					break;
+
+				default:
+					s.AppendFormat("%02X ", instrument);
+				}
+
+				switch (volume)
+				{
+				case INVALID:
+					s.AppendFormat("?? ");
+					break;
+
+				case PATTERN_VOLUME_EMPTY:
+					s.AppendFormat("-- ");
+					break;
+
+				default:
+					s.AppendFormat("v%01X ", volume);
+				}
+
+				switch (cmd0)
+				{
+				case INVALID:
+					s.AppendFormat("??? ");
+					break;
+
+				case PATTERN_EFFECT_EMPTY:
+					s.AppendFormat("--- ");
+					break;
+
+				default:
+					s.AppendFormat("%03X ", cmd0);
+				}
+
+				s.AppendFormat("\n");
+
+			}
+
+			s.AppendFormat("\nNormally, this should display the new values...\n");
+
+			// Print out what is being read, hopefully with success...
+			std::cout << s << std::endl;
+
+			// Delete the module once it's no longer needed
+			delete module;
+		}
+		break;
+
+	case FILE_IMPORT_FILTER_IDX_MOD:
+		if (successful = ImportMOD(in))
+			SetWindowText(g_hwnd, "Imported: Protracker MOD " + fn);
+		break;
+
+	case FILE_IMPORT_FILTER_IDX_TMC:
+		if (successful = ImportTMC(in))
+			SetWindowText(g_hwnd, "Imported: TMC Module " + fn);
+		break;
+
+	default:
+		successful = false;
 	}
 
+	// Close the file once it is no longer needed
 	in.close();
-	m_filename = "";
 
-	if (importResult == 0)				// Import failed?
-		ClearSong(g_tracks4_8);			// Delete everything
-	else
+	// If the import failed, delete everything that may have been loaded
+	if (!successful)
 	{
-		m_speed = m_mainSpeed;			// Init speed
-
-		//window name
-		AfxGetApp()->GetMainWnd()->SetWindowText("Imported " + fn);
-		//SetRMTTitle();
+		MessageBox(g_hwnd, "Could not import this file: " + fn, "Import error", MB_ICONERROR);
+		ClearSong(g_tracks4_8);
+		SetRMTTitle();	// Will set the default text
+		return;
 	}
-	// All channels ON (unmute all)
-	SetChannelOnOff(-1, 1);		// -1 = all, 1 = on
 
-	// Initialise RMT routine
-	Atari_InitRMTRoutine();
+	m_filename = fn;
+	m_speed = m_mainSpeed;	// Init speed
+	SetChannelOnOff(-1, 1);	// All channels ON (unmute all) -1 = all, 1 = on
 }
 
 /// <summary>

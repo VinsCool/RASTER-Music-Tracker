@@ -892,7 +892,8 @@ int CSong::DecodeModule(unsigned char* mem, int fromAddr, int endAddr, BYTE* ins
 	// Decoded song
 	if (!AtaToSong(mem + ptrSong, lengthSong, ptrSong)) return 0; //some problem with the song => END
 
-	return version;
+	//return version;	// BUG: RMT Module Version 0 is incorrectly returning error while it is valid!
+	return 1;
 }
 
 //---

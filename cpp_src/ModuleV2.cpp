@@ -20,57 +20,64 @@ void CModule::InitialiseModule()
 {
 	// Create new module data if it doesn't exist
 	if (!m_index) m_index = new TIndex[TRACK_CHANNEL_MAX];
-	if (!m_instrument) m_instrument = new TInstrument[PATTERN_INSTRUMENT_MAX];
+	if (!m_instrument) m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_MAX];
 
-	// Set all data to invalid, which will be assumed as empty	
+	// Clear all data, and set default values
 	for (int i = 0; i < TRACK_CHANNEL_MAX; i++)
 	{
+		// Set all indexed Patterns to 0
 		for (int j = 0; j < SONGLINE_MAX; j++)
-		{
-			m_index[i].songline[j] = INVALID;
-			m_index[i].activeEffectCommand = 1;
-		}
+			m_index[i].songline[j] = 0;
 
+		// Set all indexed Rows in Patterns to empty values
 		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
 		{
-			for (int k = 0; k < TRACK_LENGTH_MAX; k++)
+			for (int k = 0; k < TRACK_ROW_MAX; k++)
 			{
-				m_index[i].pattern[j].row[k].note = INVALID;
-				m_index[i].pattern[j].row[k].instrument = INVALID;
-				m_index[i].pattern[j].row[k].volume = INVALID;
-				m_index[i].pattern[j].row[k].cmd0 = INVALID;
-				m_index[i].pattern[j].row[k].cmd1 = INVALID;
-				m_index[i].pattern[j].row[k].cmd2 = INVALID;
-				m_index[i].pattern[j].row[k].cmd3 = INVALID;
+				m_index[i].pattern[j].row[k].note = PATTERN_NOTE_EMPTY;
+				m_index[i].pattern[j].row[k].instrument = PATTERN_INSTRUMENT_EMPTY;
+				m_index[i].pattern[j].row[k].volume = PATTERN_VOLUME_EMPTY;
+				m_index[i].pattern[j].row[k].cmd0 = PATTERN_EFFECT_EMPTY;
+				m_index[i].pattern[j].row[k].cmd1 = PATTERN_EFFECT_EMPTY;
+				m_index[i].pattern[j].row[k].cmd2 = PATTERN_EFFECT_EMPTY;
+				m_index[i].pattern[j].row[k].cmd3 = PATTERN_EFFECT_EMPTY;
 			}
 		}
+
+		// By default, only 1 Effect Command is enabled in all Track Channels
+		m_index[i].activeEffectCommand = 1;
 	}
 
 	// Also clear all instruments in the module
 	for (int i = 0; i < PATTERN_INSTRUMENT_MAX; i++)
 	{
-		*m_instrument[i].name = (BYTE)"New Instrument";
-		m_instrument[i].envelopeLength= 1;
-		m_instrument[i].tableLength = 1;
+		strcpy(m_instrument[i].name, "New Instrument");
+		m_instrument[i].envelopeLength = 1;
+		m_instrument[i].envelopeLoop = 0;
+		m_instrument[i].envelopeRelease = 0;
+		m_instrument[i].tableLength = 0;
+		m_instrument[i].tableLoop = 0;
+		m_instrument[i].tableRelease = 0;
+		m_instrument[i].tableMode = 0;
 
 		for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
 		{
-			m_instrument[i].volumeEnvelope[j];
-			m_instrument[i].distortionEnvelope[j];
-			m_instrument[i].audctlEnvelope[j];
+			m_instrument[i].volumeEnvelope[j] = 0;
+			m_instrument[i].distortionEnvelope[j] = 0;
+			m_instrument[i].audctlEnvelope[j] = 0;
 		}
 
 		for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
 		{
-			m_instrument[i].noteTable[j];
-			m_instrument[i].freqTable[j];
+			m_instrument[i].noteTable[j] = 0;
+			m_instrument[i].freqTable[j] = 0;
 		}
 	}
 
 	// Set default module parameters
 	m_songLength = MODULE_SONG_LENGTH;
 	m_trackLength = MODULE_TRACK_LENGTH;
-	m_trackChannelCount = MODULE_STEREO;
+	m_channelCount = MODULE_STEREO;
 
 	// Module was initialised
 	m_initialised = TRUE;

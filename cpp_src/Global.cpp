@@ -152,34 +152,38 @@ BOOL g_viewDoSmoothScrolling = 1;	// True then the track and song line data is s
 BOOL g_viewDebugDisplay = 1;		// Display Debug informations on screen if enabled 
 
 int g_trackerDriverVersion = TRACKER_DRIVER_PATCH16;
-int g_timerGlobalCount = 0;	// Initialised once, ticking forever
-long g_playtime = 1;	//1 yes, 0 no
 
-UINT g_mousebutt = 0;			//mouse button
+int g_timerGlobalCount = 0;			// Initialised once, ticking forever
+int g_playtime = 0;					// 1 yes, 0 no
 
+int g_lastKeyPressed = 0;			// For debugging vk input
+int g_mousebutt = 0;				// Mouse button
 int g_mouseLastPointX = 0;
 int g_mouseLastPointY = 0;
 int g_mouseLastButton = 0;
 int g_mouseLastWheelDelta = 0;
 
-int g_lastKeyPressed = 0;		//for debugging vk input
 
-CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
-CString g_lastLoadPath_Songs;		// Path of the last song loaded
-CString g_lastLoadPath_Instruments; //the path of the last instrument loaded
-CString g_lastLoadPath_Tracks;		//the path of the last track loaded
 
-CString g_defaultSongsPath;				// Default path for songs
-CString g_defaultInstrumentsPath;		// Default path for instruments
-CString g_defaultTracksPath;			// Default path for tracks
+CString g_prgpath;								// Path to the directory from which the program was started (including a slash at the end)
 
-int g_keyboard_layout = 1;	//Keyboard layout is used by RMT. eg: QWERTY, AZERTY, etc
-BOOL g_keyboard_swapenter = 0;	//1 yes, 0 no, probably not needed anymore but will be kept for now
-BOOL g_keyboard_playautofollow = 1;	//1 yes, 0 no
-BOOL g_keyboard_updowncontinue = 1;	//1 yes, 0 no
+CString g_lastLoadPath_Songs;					// Path of the last song loaded
+CString g_lastLoadPath_Instruments;				// Path of the last instrument loaded
+CString g_lastLoadPath_Tracks;					// Path of the last track loaded
+
+CString g_defaultSongsPath;						// Default path for songs
+CString g_defaultInstrumentsPath;				// Default path for instruments
+CString g_defaultTracksPath;					// Default path for tracks
+
+int g_lastImportTypeIndex = -1;
+
+int g_keyboard_layout = 1;						// Keyboard layout is used by RMT. eg: QWERTY, AZERTY, etc
+BOOL g_keyboard_swapenter = 0;					// 1 yes, 0 no, probably not needed anymore but will be kept for now
+BOOL g_keyboard_playautofollow = 1;				// 1 yes, 0 no
+BOOL g_keyboard_updowncontinue = 1;				// 1 yes, 0 no
 BOOL g_keyboard_RememberOctavesAndVolumes = 1;	// 1 yes, 0 no, the last used octave and volume are stored in the instrument data
-BOOL g_keyboard_escresetatarisound = 1;	//1 yes, 0 no
-BOOL g_keyboard_askwhencontrol_s = 1;	//1 yes, 0 no
+BOOL g_keyboard_escresetatarisound = 1;			// 1 yes, 0 no
+BOOL g_keyboard_askwhencontrol_s = 1;			// 1 yes, 0 no
 
 // ----------------------------------------------------------------------------
 // Here are the main global objects that make up 99% of RMT.
