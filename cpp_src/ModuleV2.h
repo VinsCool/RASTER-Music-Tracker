@@ -144,7 +144,7 @@ public:
 
 	void InitialiseModule();
 	void ClearModule();
-	void ImportLegacyRMT();
+	void ImportLegacyRMT(std::ifstream& in);
 
 	// Booleans for Module index and data integrity
 	bool IsModuleInitialised() { return m_initialised; };
@@ -200,11 +200,13 @@ public:
 	const BYTE* GetInstrumentFreqTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].freqTable : NULL; };
 
 	// Getters for Module parameters
+	const char* GetSongName() { return m_songName; };
 	const BYTE GetSongLength() { return m_songLength; };
 	const BYTE GetTrackLength() { return m_trackLength; };
 	const BYTE GetChannelCount() { return m_channelCount; };
 
 	// Setters for Module parameters
+	void SetSongName(const char* songname) { strcpy(m_songName, songname); };
 	void SetSongLength(int length) { if (length > 0 && length <= SONGLINE_MAX) m_songLength = length; };
 	void SetTrackLength(int length) { if (length > 0 && length <= TRACK_ROW_MAX) m_trackLength = length; };
 	void SetChannelCount(int count) { if (count > 0 && count <= TRACK_CHANNEL_MAX) m_channelCount = count; };
@@ -213,9 +215,13 @@ private:
 	TIndex* m_index;
 	TInstrumentV2* m_instrument;
 
+	char m_songName[MODULE_TITLE_NAME_MAX];
+
 	BYTE m_songLength;
 	BYTE m_trackLength;
 	BYTE m_channelCount;
+	BYTE m_songSpeed;
+	BYTE m_instrumentSpeed;
 
 	bool m_initialised;
 };
