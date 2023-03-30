@@ -500,262 +500,235 @@ void CSong::FileImport()
 	switch (g_lastImportTypeIndex)
 	{
 	case FILE_IMPORT_FILTER_IDX_RMT:
-		//if (successful = LoadRMT(in))
 		{
 			// This is for tests related to the upcoming Module V2 format import...
 			SetWindowText(g_hwnd, "Imported: Legacy RMT " + fn);
 
-			// Expand all tracks
-			//for (int i = 0; i < TRACKSNUM; i++)
-			//	g_Tracks.TrackExpandLoop(i);
-
 			// Create a new module first
 			CModule* module = new CModule;
 
-			s.Format("\n\n* Raster Music Tracker Extended *\n* RMTE Module Version 0 *\n\n");
-			s.AppendFormat(module->IsModuleInitialised() ? "Module is initialised!\n\n" : "Module is NOT initialised, FIXME!\n\n");
+			// Also create a new text file for making debugging much easier...
+			std::ofstream out(fn + ".txt", std::ios::binary);
 
-/*
-			s.AppendFormat("Instrument $00 '");
-			s.AppendFormat(module->GetInstrumentName(0));
-			s.AppendFormat("' is ready to use!\n");
+			s.Format("* Raster Music Tracker Extended *\n* RMTE Module Version 0 *\n\n");
+			s.AppendFormat(module->IsModuleInitialised() ? "Module is initialised!\n" : "Module is NOT initialised, FIXME!\n");
+			out << s << std::endl;
 
-			s.AppendFormat("Instrument $FFFFFFFF '");
-			s.AppendFormat(module->GetInstrumentName(-1));
-			s.AppendFormat("' definitely shouldn't be a thing here!\n");
-*/
-
-			// Print out what is being read, hopefully with success...
-			//std::cout << s << std::endl;
-
-			// Pattern 0, in Track Channel 0
-//			TPattern* p = module->GetPattern(0, 0);
-
-/*
-			s.Format("Now, let's try to decode a single pattern, which was freshly initialised...\n\n");
-
-			for (int i = 0; i < module->GetTrackLength(); i++)
-			{
-				s.AppendFormat("Row = %02X ", i);
-				s.AppendFormat("Note = %02X ", p->row[i].note);
-				s.AppendFormat("Instrument = %02X ", p->row[i].instrument);
-				s.AppendFormat("Volume = %02X ", p->row[i].volume);
-				s.AppendFormat("CMD0 = %03X ", p->row[i].cmd0);
-				s.AppendFormat("CMD1 = %03X ", p->row[i].cmd1);
-				s.AppendFormat("CMD2 = %03X ", p->row[i].cmd2);
-				s.AppendFormat("CMD3 = %03X ", p->row[i].cmd3);
-				s.AppendFormat("\n");
-			}
-
-			s.AppendFormat("Normally, this should be all set to EMPTY values...\n");
-
-			// Print out what is being read, hopefully with success...
-			std::cout << s << std::endl;
-*/
-
-			s.Format("Now, let's try to import a complete module using ImportLegacyRMT()... ");
+			s.Format("Importing RMT to RMTE using ImportLegacyRMT()... ");
 
 			module->ImportLegacyRMT(in);
 
-/*
-			// Pattern 0
-			TTrack* t = g_Tracks.GetTrack(0);
-
-			for (int i = 0; i < module->GetTrackLength(); i++)
-			{
-				// If the pattern to import is shorter, set our pattern length to it, then bail out
-				if (i > g_Tracks.GetMaxTrackLength())
-				{
-					module->SetTrackLength(g_Tracks.GetMaxTrackLength());
-					break;
-				}
-
-				int note = t->note[i];
-				int instr = t->instr[i];
-				int volume = t->volume[i];
-				int speed = t->speed[i];
-
-				if (g_Tracks.IsValidNote(note))
-					p->row[i].note = note;
-
-				if (g_Tracks.IsValidInstrument(instr))
-					p->row[i].instrument = instr;
-
-				if (g_Tracks.IsValidVolume(volume))
-					p->row[i].volume = volume;
-
-				if (g_Tracks.IsValidSpeed(speed))
-					p->row[i].cmd0 = 0x0F00 | speed;
-			}
-*/
 			s.AppendFormat("Done!\n");
+			out << s << std::endl;
 
-			// Print out what is being read, hopefully with success...
-			std::cout << s << std::endl;
+			s.Format("Imported module parameters:\nSonglength: %02X, Tracklength: %02X, Channels: %01X\n", module->GetSongLength(), module->GetTrackLength(), module->GetChannelCount());
+			out << s << std::endl;
 
-			s.Format("Now, let's try to decode all patterns filled with the imported data!\n\n");
+			s.Format("All imported songlines will be displayed below...\n");
+			out << s << std::endl;
 
-			// Print out what is being read, hopefully with success...
-			std::cout << s << std::endl;
-
-			for (int i = 0; i < TRACK_PATTERN_MAX; i++)
+			for (int i = 0; i < module->GetSongLength(); i++)
 			{
-				TPattern* p = module->GetPattern(0, i);
-				s.Format("* Channel %02X, Pattern %02X *\n\n", 0, i);
+				// Songline index
+				s.Format("%02X: ", i);
 
-				for (int j = 0; j < module->GetTrackLength(); j++)
+				for (int j = 0; j < module->GetChannelCount(); j++)
 				{
-					int note = p->row[j].note;
-					int instrument = p->row[j].instrument;
-					int volume = p->row[j].volume;
-					int cmd0 = p->row[j].cmd0;
-					int cmd1 = p->row[j].cmd1;
-					int cmd2 = p->row[j].cmd2;
-					int cmd3 = p->row[j].cmd3;
-
-					s.AppendFormat("|%02X| ", j);	// Row
-
-					switch (note)
-					{
-					case INVALID:
-						s.AppendFormat("??? ");
-						break;
-
-					case PATTERN_NOTE_EMPTY:
-						s.AppendFormat("--- ");
-						break;
-
-					case PATTERN_NOTE_OFF:
-						s.AppendFormat("OFF ");
-						break;
-
-					case PATTERN_NOTE_RELEASE:
-						s.AppendFormat("=== ");
-						break;
-
-					case PATTERN_NOTE_RETRIGGER:
-						s.AppendFormat("~~~ ");
-						break;
-
-					default:
-					{
-						int index = 0;	// Standard notation
-						int octave = (note / g_notesperoctave) + 1;	// +0x30;	// Due to ASCII characters
-						note = note % g_notesperoctave;
-
-						if (g_displayflatnotes) index += 1;
-						if (g_usegermannotation) index += 2;
-						if (g_notesperoctave != 12) index = 4;	// Non-12 scales don't yet have proper display
-
-						s.AppendFormat(notesandscales[index][note]);
-						s.AppendFormat("%01X ", octave);
-					}
-
-					}
-
-					switch (instrument)
-					{
-					case INVALID:
-						s.AppendFormat("?? ");
-						break;
-
-					case PATTERN_INSTRUMENT_EMPTY:
-						s.AppendFormat("-- ");
-						break;
-
-					default:
-						s.AppendFormat("%02X ", instrument);
-					}
-
-					switch (volume)
-					{
-					case INVALID:
-						s.AppendFormat("?? ");
-						break;
-
-					case PATTERN_VOLUME_EMPTY:
-						s.AppendFormat("-- ");
-						break;
-
-					default:
-						s.AppendFormat("v%01X ", volume);
-					}
-
-					switch (cmd0)
-					{
-					case INVALID:
-						s.AppendFormat("??? ");
-						break;
-
-					case PATTERN_EFFECT_EMPTY:
-						s.AppendFormat("--- ");
-						break;
-
-					default:
-						s.AppendFormat("%03X ", cmd0);
-					}
-
-					switch (cmd1)
-					{
-					case INVALID:
-						s.AppendFormat("??? ");
-						break;
-
-					case PATTERN_EFFECT_EMPTY:
-						s.AppendFormat("--- ");
-						break;
-
-					default:
-						s.AppendFormat("%03X ", cmd1);
-					}
-
-					switch (cmd2)
-					{
-					case INVALID:
-						s.AppendFormat("??? ");
-						break;
-
-					case PATTERN_EFFECT_EMPTY:
-						s.AppendFormat("--- ");
-						break;
-
-					default:
-						s.AppendFormat("%03X ", cmd2);
-					}
-
-					switch (cmd3)
-					{
-					case INVALID:
-						s.AppendFormat("??? ");
-						break;
-
-					case PATTERN_EFFECT_EMPTY:
-						s.AppendFormat("--- ");
-						break;
-
-					default:
-						s.AppendFormat("%03X ", cmd3);
-					}
-
-					s.AppendFormat("\n");
-
-					// End pattern command, there is nothing else to display after it
-					if (cmd1 == 0x0D00)
-						break;
+					s.AppendFormat("%02X ", module->GetPatternInSongline(j, i));
 				}
 
 				// Print out what is being read, hopefully with success...
-				std::cout << s << std::endl;
+				out << s << std::endl;
 			}
 
-			s.Format("\nNormally, this should have displayed all patterns!\n");
+			s.Format("\nNormally, this should have displayed all songlines!\n");
+			out << s << std::endl;
 
-			// Print out what is being read, hopefully with success...
-			std::cout << s << std::endl;
+			s.Format("All imported patterns will be displayed below...\n");
+			out << s << std::endl;
+
+			// This will print out all the pattern data from all channels
+			for (int channel = 0; channel < module->GetChannelCount(); channel++)
+			{
+				s.Format("**********************\n");
+				s.AppendFormat("* Index of Channel %01X *\n", channel + 1);
+				s.AppendFormat("**********************\n");
+				out << s << std::endl;
+
+				for (int i = 0; i < TRACK_PATTERN_MAX; i++)
+				{
+					TPattern* p = module->GetPattern(channel, i);
+					s.Format("*************************\n");
+					s.AppendFormat("* Channel %01X, Pattern %02X *\n", channel + 1, i);
+					s.AppendFormat("*************************\n\n");
+
+					for (int j = 0; j < module->GetTrackLength(); j++)
+					{
+						int note = p->row[j].note;
+						int instrument = p->row[j].instrument;
+						int volume = p->row[j].volume;
+						int cmd0 = p->row[j].cmd0;
+						int cmd1 = p->row[j].cmd1;
+						int cmd2 = p->row[j].cmd2;
+						//int cmd3 = p->row[j].cmd3;
+
+						// Effect commands Bxx and Dxx may be used to end a pattern early
+						bool endPattern = false;
+
+						// Row index
+						s.AppendFormat("|%02X| ", j);
+
+						switch (note)
+						{
+						case INVALID:
+							s.AppendFormat("??? ");
+							break;
+
+						case PATTERN_NOTE_EMPTY:
+							s.AppendFormat("--- ");
+							break;
+
+						case PATTERN_NOTE_OFF:
+							s.AppendFormat("OFF ");
+							break;
+
+						case PATTERN_NOTE_RELEASE:
+							s.AppendFormat("=== ");
+							break;
+
+						case PATTERN_NOTE_RETRIGGER:
+							s.AppendFormat("~~~ ");
+							break;
+
+						default:
+						{
+							int index = 0;	// Standard notation
+							int octave = (note / g_notesperoctave) + 1;	// +0x30;	// Due to ASCII characters
+							note = note % g_notesperoctave;
+
+							if (g_displayflatnotes) index += 1;
+							if (g_usegermannotation) index += 2;
+							if (g_notesperoctave != 12) index = 4;	// Non-12 scales don't yet have proper display
+
+							s.AppendFormat(notesandscales[index][note]);
+							s.AppendFormat("%01X ", octave);
+						}
+
+						}
+
+						switch (instrument)
+						{
+						case INVALID:
+							s.AppendFormat("?? ");
+							break;
+
+						case PATTERN_INSTRUMENT_EMPTY:
+							s.AppendFormat("-- ");
+							break;
+
+						default:
+							s.AppendFormat("%02X ", instrument);
+						}
+
+						switch (volume)
+						{
+						case INVALID:
+							s.AppendFormat("?? ");
+							break;
+
+						case PATTERN_VOLUME_EMPTY:
+							s.AppendFormat("-- ");
+							break;
+
+						default:
+							s.AppendFormat("v%01X ", volume);
+						}
+
+						switch (cmd0)
+						{
+						case INVALID:
+							s.AppendFormat("??? ");
+							break;
+
+						case PATTERN_EFFECT_EMPTY:
+							s.AppendFormat("--- ");
+							break;
+
+						default:
+							s.AppendFormat("%03X ", cmd0);
+							if (!endPattern)
+								endPattern = (cmd0 >> 8 == 0x0D || cmd0 >> 8 == 0x0B);
+						}
+
+						switch (cmd1)
+						{
+						case INVALID:
+							s.AppendFormat("??? ");
+							break;
+
+						case PATTERN_EFFECT_EMPTY:
+							s.AppendFormat("--- ");
+							break;
+
+						default:
+							s.AppendFormat("%03X ", cmd1);
+							if (!endPattern)
+								endPattern = (cmd1 >> 8 == 0x0D || cmd1 >> 8 == 0x0B);
+						}
+
+						switch (cmd2)
+						{
+						case INVALID:
+							s.AppendFormat("??? ");
+							break;
+
+						case PATTERN_EFFECT_EMPTY:
+							s.AppendFormat("--- ");
+							break;
+
+						default:
+							s.AppendFormat("%03X ", cmd2);
+							if (!endPattern)
+								endPattern = (cmd2 >> 8 == 0x0D || cmd2 >> 8 == 0x0B);
+						}
+
+						//switch (cmd3)
+						//{
+						//case INVALID:
+						//	s.AppendFormat("??? ");
+						//	break;
+
+						//case PATTERN_EFFECT_EMPTY:
+						//	s.AppendFormat("--- ");
+						//	break;
+
+						//default:
+						//	s.AppendFormat("%03X ", cmd3);
+						//	if (!endPattern)
+						//		endPattern = (cmd3 >> 8 == 0x0D || cmd3 >> 8 == 0x0B);
+						//}
+
+						s.AppendFormat("\n");
+
+						// If a End Pattern or Goto Songline command was detected, there is nothing else to display for this pattern
+						if (endPattern)
+							break;
+					}
+
+					// Print out what is being read, hopefully with success...
+					out << s << std::endl;
+				}
+			}
+			s.Format("\nNormally, this should have displayed all patterns!");
+			out << s << std::endl;
 
 			// Delete the module once it's no longer needed
 			delete module;
+
+			// Also close the text file once it's filled
+			out.close();
 		}
+		// Success is assumed by default for the time being...
 		successful = true;
 		break;
 

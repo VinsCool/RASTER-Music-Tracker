@@ -124,7 +124,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	InitialiseModule();
 
 	// 4th byte: # of channels (4 or 8)
-	m_channelCount = mem[fromAddr + 3];
+	m_channelCount = mem[fromAddr + 3] & 0x0F;
 
 	// 5th byte: track length
 	m_trackLength = mem[fromAddr + 4];
@@ -145,9 +145,9 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	WORD ptrSong = mem[fromAddr + 14] + (mem[fromAddr + 15] << 8);			// Get ptr to track list (the song)
 
 	// Calculate how long each of the sections are
-	BYTE numInstruments = (ptrTracksLow - ptrInstruments) / 2;				// Number of instruments
-	BYTE numTracks = ptrTracksHigh - ptrTracksLow;							// Number of tracks
-	BYTE lengthSong = toAddr + 1 - ptrSong;									// Number of songlines
+	WORD numInstruments = (ptrTracksLow - ptrInstruments) / 2;				// Number of instruments
+	WORD numTracks = ptrTracksHigh - ptrTracksLow;							// Number of tracks
+	WORD lengthSong = toAddr + 1 - ptrSong;									// Number of songlines
 
 	// Decoding of individual instruments
 	// Instruments from RMT V0 only have few differences, so decoding its data using the same procedure might be possible(?)
@@ -236,6 +236,8 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		}
 	}
 
+	BYTE patternCount = 0;
+
 	// Decoding individual tracks
 	for (int i = 0; i < numTracks; i++)
 	{
@@ -255,8 +257,11 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		for (int j = i; j < numTracks; j++)
 		{
 			// Get the next track's address, unless it is the last track, which will use the Song pointer address due to not having a definite end
-			if (!(ptrTrackEnd = (j + 1 == numTracks) ? ptrSong : mem[ptrTracksLow + j + 1] + (mem[ptrTracksHigh + j + 1] << 8)))
-				i++;	// if the next track is empty, skip over it and continue seeking for the address until something is found
+			if ((ptrTrackEnd = (j + 1 == numTracks) ? ptrSong : mem[ptrTracksLow + j + 1] + (mem[ptrTracksHigh + j + 1] << 8)))
+				break;
+
+			// if the next track is empty, skip over it and continue seeking for the address until something is found
+			i++;
 		}
 
 		int trackLength = ptrTrackEnd - ptrOneTrack;
@@ -266,9 +271,9 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		TPattern* t = GetPattern(0, trackNr);
 
 		WORD src = 0;
+		WORD gotoIndex = INVALID;
+		WORD smartLoop = INVALID;
 
-		BYTE gotoIndex = INVALID;
-		BYTE smartLoop = INVALID;
 		BYTE data, count;
 		BYTE line = 0;
 
@@ -351,7 +356,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		// The Pattern must to be "expanded" to be fully compatible since no such thing as smart loop is supported by the RMTE format (yet)
 		if (IsValidRow(smartLoop))
 		{
-			for (int j = 0; smartLoop + j < m_trackLength; j++)
+			for (int j = 0; line + j < m_trackLength; j++)
 			{
 				int k = line + j;
 				int l = smartLoop + j;
@@ -361,85 +366,204 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 				t->row[k].cmd0 = t->row[l].cmd0;
 			}
 		}
+
+		// Increment the total count of patterns that were imported for the following blocks below 
+		patternCount++;
 	}
 
-	// Decoded song
-	//if (!AtaToSong(mem + ptrSong, lengthSong, ptrSong)) return;	// 0; //some problem with the song => END
+	// Variables for processing songline data
+	BYTE* memSong = mem + ptrSong;
+	BYTE channel = 0;
+	BYTE line = 0;
+	WORD src = 0;
 
-/*
-	if (!LoadBinaryBlock(in, mem, fromAddr, toAddr))
+	// This will provide access to the Module Index directly
+	TIndex* index = GetIndex();
+
+	// Decoding Songlines Index
+	while (src < lengthSong)
 	{
-		CString msg;
-		msg.Format("This file appears to be a stripped RMT module.\nThe song and instruments names are missing.\n\nMemory addresses: $%04X - $%04X.", fromAddr, toAddr);
-		MessageBox(g_hwnd, (LPCTSTR)msg, "Info", MB_ICONINFORMATION);
-		return;
-	}
+		BYTE data = memSong[src];
 
-	BYTE ch;
-	int idx;
-
-	// Parse the song name (until we hit the terminating zero)
-	for (idx = 0; idx < MODULE_TITLE_NAME_MAX && (ch = mem[fromAddr + idx]); idx++)
-		m_songName[idx] = ch;
-
-	//for (k = idx; k < SONG_NAME_MAX_LEN; k++) m_songName[k] = ' '; // fill in the gaps
-
-	int addrInstrumentNames = fromAddr + idx + 1; // +1 that's the zero behind the name
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
-	{
-		// Check if this instrument has been loaded
-		if (instrumentLoadedFlags[i])
+		// Process the Pattern index in the songline indexed by the channel number
+		switch (data)
 		{
-			// Yes its loaded, parse its name
-			for (idx = 0; idx < INSTRUMENT_NAME_MAX_LEN && (ch = mem[addrInstrumentNames + idx]); idx++)
-				g_Instruments.GetName(i)[idx] = ch;
+		case 0xFE:	// Goto Songline commands are only valid from the first channel, but we know it's never used anywhere else
+			index[channel].songline[line] = data;
+			index[channel + 1].songline[line] = memSong[src + 1];	// Set the songline index number in Channel 2
+			index[channel + 2].songline[line] = INVALID;	// The Goto songline address isn't needed
+			index[channel + 3].songline[line] = INVALID;	// Set the remaining channels to INVALID
+			channel = m_channelCount;	// Set the channel index to the channel count to trigger the condition below
+			src += m_channelCount;	// The number of bytes processed is equal to the number of channels
+			break;
 
-			for (int k = idx; k < INSTRUMENT_NAME_MAX_LEN; k++) //g_Instruments.m_instr[i].name[k] = ' '; //fill in the gaps
-				g_Instruments.GetName(i)[k] = ' '; // Fill in the gaps
+		default:	// An empty pattern at 0xFF is also valid for the RMTE format
+			index[channel].songline[line] = data;
+			channel++;	// 1 pattern per channel, for each indexed songline
+			src++;	// 1 byte was processed
+		}
 
-			// Move to source of the next instrument's name
-			addrInstrumentNames += idx + 1; //+1 is zero behind the name
+		// 1 songline was processed when the channel count is equal to the number of channels
+		if (channel >= m_channelCount)
+		{
+			channel = 0;	// Reset the channel index
+			line++;	// Increment the songline count by 1
+		}
+		
+		// Break out of the loop if the maximum number of songlines was processed
+		if (line > SONGLINE_MAX)
+			break;
+	}
+
+	// Set the songlength to the number of decoded songlines
+	m_songLength = line;
+
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Re-organise the Songline and Pattern index due to the differences with the RMTE format
+	// TODO: cleanup, split to more simple generic functions that could be useful for other things later...
+	///////////////////////////////////////////////////////////////////////////////////////////////////////
+	
+
+	// Copy all of the imported patterns to every channels, so they all share identical data
+	for (int i = 0; i < m_channelCount; i++)
+	{
+		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+		{
+			TPattern* source = GetPattern(0, j);
+			TPattern* destination = GetPattern(i, j);
+			*destination = *source;
 		}
 	}
-*/
 
-}
+	// Attempt to find the Goto Songline Commands and replace them with Bxx commands in the last Row found in the Songline just before it...
+	for (int j = 0; j < m_songLength; j++)
+	{
+		for (int i = 0; i < m_channelCount; i++)
+		{
+			BYTE pattern = index[i].songline[j];
+			
+			// Goto Songline Command, valid only in Songlines above 0, and Channel 1
+			if (i == 0 && j > 0 && pattern == 0xFE)
+			{
+				BYTE sourcePattern = index[i].songline[j - 1];
+				BYTE destinationPattern = index[i + 1].songline[j];
+				//BYTE effectiveTracklength = m_trackLength - 1;
+				BYTE effectiveTracklength = GetShortestPatternLength(j - 1);
+				bool isUsedAlready = false;
+
+				// Search for patterns that were previously used in Channel 1
+				for (int k = 0; k < m_songLength; k++)
+				{
+					// Ignore the same Songline, and the Songline before it, both the Goto Songline Command and the Pattern itself were loaded from them 
+					if (k == j || k == j - 1)
+						continue;
+
+					// At least another instance of the same pattern was used, flag it to know it's already used
+					if (index[i].songline[k] == sourcePattern)
+					{
+						isUsedAlready = true;
+						break;
+					}
+				}
+
+				// If the same pattern was used anywhere else for this Channel, duplicate it to a new unused pattern index
+				if (isUsedAlready)
+				{
+					// Duplicate the source pattern to the index of the pattern count as a new pattern index
+					TPattern* source = GetPattern(i, sourcePattern);
+					TPattern* destination = GetPattern(i, patternCount);
+					*destination = *source;
+
+					// Assign the new pattern index to the original Songline Index, effectively replacing it
+					index[i].songline[j - 1] = patternCount;
+
+					// Increment the total number of patterns counted once this was done
+					patternCount++;
+				}
 
 /*
-// Prototype code for making use of the new format...
-	module = new Module;
-	module->ClearModule();		// Initialise the module
-	module->ImportLegacyRMT();	// Import legacy module if loaded in memory
+				// Identify the shortest pattern length relative to the ones used in the same Songline
+				for (int k = 0; k < m_channelCount; k++)
+				{
+					// Get the Pattern Index in the Songline before the Goto Songline Command
+					BYTE effectivePattern = index[k].songline[j - 1];
 
-...
+					// Check for each Row that could be used within the Effective Tracklength
+					for (int l = 0; l < effectiveTracklength; l++)
+					{
+						// Get the Effect Command Identifier value
+						BYTE effectiveCommand = index[k].pattern[effectivePattern].row[l].cmd1 >> 8;
 
-// Process pattern data here, you get the idea
-	note = module->Song[songline][channel]->Pattern[row]->Row[0]->Note;
+						// If a match is found for the CMD Dxx, set the Effective Tracklength to the current Row Index
+						if (effectiveCommand == 0x0D)
+						{
+							// Only if the Effective Tracklength is not already the shortest common Tracklength, otherwise, it will be ignored
+							if (effectiveTracklength >= l)
+							{
+								effectiveTracklength = l;
+								break;
+							}
+						}
+					}
+				}
+*/
 
-	switch (note)
-	{
-	case INVALID:	// No data, nothing to do here
-		break;
+				// Set a Bxx Command, in the Channel 1's Pattern Index, on the Row relative to Effective Tracklength, using the target Songline as its parameter
+				sourcePattern = index[i].songline[j - 1];
+				index[i].pattern[sourcePattern].row[effectiveTracklength].cmd2 = 0x0B00 | destinationPattern;
 
-	case NOTE_OFF:	// Note Off command, the Track Channel must be stopped and reset
-		ResetChannel(*module, channel);
-		break;
-
-	case NOTE_RELEASE:	// Note Release command, the last played Note will be released
-		ReleaseNote(*module, note, channel);
-		break;
-
-	case NOTE_RETRIGGER:	// Note Retrigger command, the last played Note will be retriggered
-		RetriggerNote(*module, note, channel);
-		break;
-
-	default:	// Play a new note
-		PlayNote(*module, note, channel);
+				// Finally, set all the Patterns Index found in the Songline from which the Goto Songline was found to Empty, Since they are no longer needed here
+				for (int k = 0; k < m_channelCount; k++)
+				{
+					index[k].songline[j] = INVALID;
+				}
+			}
+		}
 	}
 
-...
-
-// Etc, etc :D
+	// What could be done right now?
 
 }
-*/
+
+
+// ----------------------------------------------------------------------------
+// Functions related to Pattern Data editing, aimed at bulk operations and/or repetitive procedures
+// These are broken down into generic functions, to make recycling for other uses fairly easy
+//
+
+
+// Identify the shortest pattern length relative to the other ones used in the same Songline
+BYTE CModule::GetShortestPatternLength(BYTE songline)
+{
+	// Subtract 1 to offset to the last Row Index actually used
+	BYTE patternLength = GetTrackLength() - 1;
+
+	// All channels will be processed in order to identify the shortest Pattern
+	for (int i = 0; i < GetChannelCount(); i++)
+	{
+		// Get the Pattern Index used in the Songline first
+		BYTE pattern = GetPatternInSongline(i, songline);
+
+		// Check for each Row that could be used within the shortest Pattern
+		for (int j = 0; j < patternLength; j++)
+		{
+			// Check for all Effect Commands used in each Row
+			for (int k = 0; k < PATTERN_ACTIVE_EFFECT_MAX; k++)
+			{
+				// Get the Effect Command Identifier, the Parameter is not needed here
+				BYTE command = GetPatternRowCommand(i, pattern, j, k) >> 8;
+
+				// Set the Pattern Length to the current Row Index if a match is found
+				if (command == 0x0B || command == 0x0D)
+				{
+					if (patternLength >= j)
+						patternLength = j;
+				}
+			}
+		}
+	}
+
+	// The shortest Pattern Length will be returned if successful
+	return patternLength;
+}
