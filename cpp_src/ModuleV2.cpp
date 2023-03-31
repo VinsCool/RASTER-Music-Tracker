@@ -428,11 +428,11 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		}
 	}
 
-	// Apply preliminary optimisations to the data imported from Legacy RMT Module
-	RenumberIndexedPatterns();
-	MergeDuplicatedPatterns();
-	ClearUnusedPatterns();
-	ConcatenateIndexedPatterns();
+	// Apply preliminary optimisations to the data imported from the Legacy RMT Module
+	AllSizeOptimisations();
+
+	// Then... not a lot would be left to do here...
+	// The entire RMTE Module could virtually be used right away from this point onward...
 }
 
 
@@ -493,6 +493,21 @@ bool CModule::IsUnusedPattern(int channel, int pattern)
 	return true;
 }
 
+// Return True if a Pattern is used at least once within a Songline Index
+bool CModule::IsUnusedPattern(TIndex* index, int pattern)
+{
+	// All Songlines in the Channel Index will be processed
+	for (int i = 0; i < GetSongLength(); i++)
+	{
+		// As soon as a match is found, we know for sure the Pattern is used at least once
+		if (index->songline[i] == pattern)
+			return false;
+	}
+
+	// Otherwise, the Pattern is most likely unused
+	return true;
+}
+
 // Return True if a Pattern is Empty
 bool CModule::IsEmptyPattern(int channel, int pattern)
 {
@@ -526,6 +541,10 @@ bool CModule::IsEmptyPattern(int channel, int pattern)
 // Return True if a Pattern is Empty
 bool CModule::IsEmptyPattern(TPattern* pattern)
 {
+	// Make sure the Pattern is not Null a pointer
+	if (!pattern)
+		return false;
+
 	// All Rows in the Pattern Index will be processed
 	for (int i = 0; i < TRACK_ROW_MAX; i++)
 	{
@@ -791,5 +810,72 @@ void CModule::ClearUnusedPatterns()
 // Renumber all Patterns from first to last Songlines, and optimise them by concatenation
 void CModule::ConcatenateIndexedPatterns()
 {
-	// TODO
+	// Process all Channels within the Module Index
+	for (int i = 0; i < GetChannelCount(); i++)
+	{
+		// Create a Temporary Index that will be used as a buffer
+		TIndex* backupIndex = new TIndex;
+
+		// Get the current Channel Index
+		TIndex* channelIndex = GetChannelIndex(i);
+
+		// Copy the original data to the Temporary Index first
+		CopyIndex(channelIndex, backupIndex);
+
+		// Concatenate the Indexed Patterns to remove gaps between them
+		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+		{
+			// If a Pattern is used at least once, see if it could also be concatenated further back
+			if (!IsUnusedPattern(backupIndex, j))
+			{
+				// Find the first empty and unused Pattern that is available
+				for (int k = 0; k < j; k++)
+				{
+					TPattern* source = &backupIndex->pattern[j];
+					TPattern* destination = &backupIndex->pattern[k];
+
+					// If the Pattern is empty and unused, it will be replaced
+					if (IsUnusedPattern(backupIndex, k) && IsEmptyPattern(destination))
+					{
+						// Copy the Pattern from J to K
+						CopyPattern(source, destination);
+
+						// Clear the Pattern from J, since it won't be needed anymore
+						ClearPattern(source);
+
+						// Replace the Pattern used in the Songline Index with the new one
+						for (int l = 0; l < GetSongLength(); l++)
+						{
+							if (backupIndex->songline[l] == j)
+								backupIndex->songline[l] = k;
+						}
+					}
+				}
+			}
+		}
+
+		// Copy the re-organised data back to the original Channel Index
+		CopyIndex(backupIndex, channelIndex);
+
+		// Delete the Temporary Index once it's no longer needed
+		delete backupIndex;
+	}
+}
+
+// Optimise the RMTE Module, by re-organising everything within the Indexed Structures, in order to remove most of the unused/duplicated data efficiently
+void CModule::AllSizeOptimisations()
+{
+	// First, renumber all Patterns
+	RenumberIndexedPatterns();
+
+	// Next, merge all duplicated Patterns
+	MergeDuplicatedPatterns();
+
+	// Then, Clear all unused Patterns
+	ClearUnusedPatterns();
+
+	// Finally, concatenate all Patterns
+	ConcatenateIndexedPatterns();
+
+	// And then...? Most likely a lot more... That's for another day...
 }

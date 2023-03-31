@@ -266,6 +266,7 @@ public:
 
 	bool DuplicatePatternInSongline(int channel, int songline, int pattern);
 	bool IsUnusedPattern(int channel, int pattern);
+	bool IsUnusedPattern(TIndex* index, int pattern);
 	bool IsEmptyPattern(int channel, int pattern);
 	bool IsEmptyPattern(TPattern* pattern);
 	bool IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationPattern);
@@ -277,6 +278,7 @@ public:
 	void RenumberIndexedPatterns();
 	void ClearUnusedPatterns();
 	void ConcatenateIndexedPatterns();
+	void AllSizeOptimisations();
 
 private:
 	TIndex* m_index;
