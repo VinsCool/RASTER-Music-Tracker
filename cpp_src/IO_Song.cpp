@@ -558,6 +558,11 @@ void CSong::FileImport()
 				for (int i = 0; i < TRACK_PATTERN_MAX; i++)
 				{
 					TPattern* p = module->GetPattern(channel, i);
+					
+					// Unused Patterns won't be displayed in order to make the output easier to analyse
+					if (module->IsUnusedPattern(channel, i))
+						continue;
+
 					s.Format("*************************\n");
 					s.AppendFormat("* Channel %01X, Pattern %02X *\n", channel + 1, i);
 					s.AppendFormat("*************************\n\n");

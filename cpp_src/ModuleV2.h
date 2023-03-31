@@ -267,9 +267,16 @@ public:
 	bool DuplicatePatternInSongline(int channel, int songline, int pattern);
 	bool IsUnusedPattern(int channel, int pattern);
 	bool IsEmptyPattern(int channel, int pattern);
+	bool IsEmptyPattern(TPattern* pattern);
+	bool IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationPattern);
 	bool CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern);
+	bool ClearPattern(TPattern* destinationPattern);
 	bool CopyIndex(TIndex* sourceIndex, TIndex* destinationIndex);
 	bool DuplicatePatternIndex(int sourceIndex, int destinationIndex);
+	int MergeDuplicatedPatterns();
+	void RenumberIndexedPatterns();
+	void ClearUnusedPatterns();
+	void ConcatenateIndexedPatterns();
 
 private:
 	TIndex* m_index;

@@ -32,18 +32,7 @@ void CModule::InitialiseModule()
 
 		// Set all indexed Rows in Patterns to empty values
 		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-		{
-			for (int k = 0; k < TRACK_ROW_MAX; k++)
-			{
-				m_index[i].pattern[j].row[k].note = PATTERN_NOTE_EMPTY;
-				m_index[i].pattern[j].row[k].instrument = PATTERN_INSTRUMENT_EMPTY;
-				m_index[i].pattern[j].row[k].volume = PATTERN_VOLUME_EMPTY;
-				m_index[i].pattern[j].row[k].cmd0 = PATTERN_EFFECT_EMPTY;
-				m_index[i].pattern[j].row[k].cmd1 = PATTERN_EFFECT_EMPTY;
-				m_index[i].pattern[j].row[k].cmd2 = PATTERN_EFFECT_EMPTY;
-				m_index[i].pattern[j].row[k].cmd3 = PATTERN_EFFECT_EMPTY;
-			}
-		}
+			ClearPattern(GetPattern(i, j));
 
 		// By default, only 1 Effect Command is enabled in all Track Channels
 		m_index[i].activeEffectCommand = 1;
@@ -438,6 +427,12 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			}
 		}
 	}
+
+	// Apply preliminary optimisations to the data imported from Legacy RMT Module
+	RenumberIndexedPatterns();
+	MergeDuplicatedPatterns();
+	ClearUnusedPatterns();
+	ConcatenateIndexedPatterns();
 }
 
 
@@ -502,7 +497,7 @@ bool CModule::IsUnusedPattern(int channel, int pattern)
 bool CModule::IsEmptyPattern(int channel, int pattern)
 {
 	// All Rows in the Pattern Index will be processed
-	for (int i = 0; i < GetPatternLength(); i++)
+	for (int i = 0; i < TRACK_ROW_MAX; i++)
 	{
 		// If there is a Note, it's not empty
 		if (GetPatternRowNote(channel, pattern, i) != PATTERN_NOTE_EMPTY)
@@ -525,6 +520,82 @@ bool CModule::IsEmptyPattern(int channel, int pattern)
 	}
 
 	// Otherwise, the Pattern is most likely empty
+	return true;
+}
+
+// Return True if a Pattern is Empty
+bool CModule::IsEmptyPattern(TPattern* pattern)
+{
+	// All Rows in the Pattern Index will be processed
+	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	{
+		// If there is a Note, it's not empty
+		if (pattern->row[i].note != PATTERN_NOTE_EMPTY)
+			return false;
+
+		// If there is an Instrument, it's not empty
+		if (pattern->row[i].instrument != PATTERN_INSTRUMENT_EMPTY)
+			return false;
+
+		// If there is a Volume, it's not empty
+		if (pattern->row[i].volume != PATTERN_VOLUME_EMPTY)
+			return false;
+
+		// If there is an Effect Command, it's not empty
+		if (pattern->row[i].cmd0 != PATTERN_EFFECT_EMPTY)
+			return false;
+
+		if (pattern->row[i].cmd1 != PATTERN_EFFECT_EMPTY)
+			return false;
+
+		if (pattern->row[i].cmd2 != PATTERN_EFFECT_EMPTY)
+			return false;
+
+		if (pattern->row[i].cmd3 != PATTERN_EFFECT_EMPTY)
+			return false;
+	}
+
+	// Otherwise, the Pattern is most likely empty
+	return true;
+}
+
+// Compare 2 Patterns for identical data, Return True if successful
+bool CModule::IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationPattern)
+{
+	// Make sure both the Patterns from source and destination are not Null pointers
+	if (!sourcePattern || !destinationPattern)
+		return false;
+
+	// All Rows in the Pattern Index will be processed
+	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	{
+		// If there is a different Note, it's not identical
+		if (sourcePattern->row[i].note != destinationPattern->row[i].note)
+			return false;
+
+		// If there is a different Instrument, it's not identical
+		if (sourcePattern->row[i].instrument != destinationPattern->row[i].instrument)
+			return false;
+
+		// If there is a different Volume, it's not identical
+		if (sourcePattern->row[i].volume != destinationPattern->row[i].volume)
+			return false;
+
+		// If there is a different Effect Command, it's not identical
+		if (sourcePattern->row[i].cmd0 != destinationPattern->row[i].cmd0)
+			return false;
+
+		if (sourcePattern->row[i].cmd1 != destinationPattern->row[i].cmd1)
+			return false;
+
+		if (sourcePattern->row[i].cmd2 != destinationPattern->row[i].cmd2)
+			return false;
+
+		if (sourcePattern->row[i].cmd3 != destinationPattern->row[i].cmd3)
+			return false;
+	}
+
+	// Otherwise, the Pattern is most likely identical
 	return true;
 }
 
@@ -554,7 +625,6 @@ bool CModule::DuplicatePatternInSongline(int channel, int songline, int pattern)
 			// Pattern duplication was completed successfully
 			return true;
 		}
-
 	}
 
 	// Could not create a Pattern duplicate, no data was edited
@@ -572,6 +642,29 @@ bool CModule::CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern)
 	*destinationPattern = *sourcePattern;
 
 	// Pattern data should have been copied successfully
+	return true;
+}
+
+// Clear data from Pattern, Return True if successful
+bool CModule::ClearPattern(TPattern* destinationPattern)
+{
+	// Make sure the Pattern is not Null a pointer
+	if (!destinationPattern)
+		return false;
+
+	// Set all indexed Rows in the Pattern to empty values
+	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	{
+		destinationPattern->row[i].note = PATTERN_NOTE_EMPTY;
+		destinationPattern->row[i].instrument = PATTERN_INSTRUMENT_EMPTY;
+		destinationPattern->row[i].volume = PATTERN_VOLUME_EMPTY;
+		destinationPattern->row[i].cmd0 = PATTERN_EFFECT_EMPTY;
+		destinationPattern->row[i].cmd1 = PATTERN_EFFECT_EMPTY;
+		destinationPattern->row[i].cmd2 = PATTERN_EFFECT_EMPTY;
+		destinationPattern->row[i].cmd3 = PATTERN_EFFECT_EMPTY;
+	}
+
+	// Pattern data should have been cleared successfully
 	return true;
 }
 
@@ -605,4 +698,98 @@ bool CModule::DuplicatePatternIndex(int sourceIndex, int destinationIndex)
 
 	// Pattern Index should have been copied successfully
 	return true;
+}
+
+// Find and merge duplicated Patterns, and adjust the Songline Index accordingly
+int CModule::MergeDuplicatedPatterns()
+{
+	int mergedPatterns = 0;
+
+	for (int i = 0; i < GetChannelCount(); i++)
+	{
+		for (int j = 0; j < GetSongLength(); j++)
+		{
+			// Get the Pattern from which comparisons will be made
+			BYTE reference = GetPatternInSongline(i, j);
+
+			// Compare to every Patterns found in the Channel Index, unused Patterns will be ignored
+			for (int k = 0; k < GetSongLength(); k++)
+			{
+				// Get the Pattern that will be compared to the reference Pattern
+				BYTE compared = GetPatternInSongline(i, k);
+
+				// Comparing a Pattern to itself is pointless
+				if (compared == reference)
+					continue;
+
+				// Get the pointers to Pattern data
+				TPattern* source = GetPattern(i, reference);
+				TPattern* destination = GetPattern(i, compared);
+
+				// Compare the Patterns, and update the Songline Index if they are identical
+				if (IsIdenticalPattern(source, destination))
+				{
+					SetPatternInSongline(i, k, reference);
+					mergedPatterns++;
+				}
+			}
+		}
+	}
+
+	// Return the number of merged patterns, if any change was made
+	return mergedPatterns;
+}
+
+// Renumber all Patterns from first to last Songlines, without optimisations
+void CModule::RenumberIndexedPatterns()
+{
+	// Process all Channels within the Module Index
+	for (int i = 0; i < GetChannelCount(); i++)
+	{
+		// Create a Temporary Index that will be used as a buffer
+		TIndex* backupIndex = new TIndex;
+
+		// Get the current Channel Index
+		TIndex* channelIndex = GetChannelIndex(i);
+
+		// Copy all Indexed Patterns to single Songline entries, effectively duplicating all Patterns used in multiple Songlines
+		for (int j = 0; j < SONGLINE_MAX; j++)
+		{
+			backupIndex->songline[j] = j;
+			CopyPattern(GetIndexedPattern(i, j), &backupIndex->pattern[j]);
+		}
+
+		// Set the maximum number of Active Effect Commands by Default
+		backupIndex->activeEffectCommand = PATTERN_ACTIVE_EFFECT_MAX;
+
+		// Copy the re-organised data back to the original Channel Index
+		CopyIndex(backupIndex, channelIndex);
+
+		// Delete the Temporary Index once it's no longer needed
+		delete backupIndex;
+	}
+}
+
+// Clear all unused Indexed Patterns
+void CModule::ClearUnusedPatterns()
+{
+	// Process all Channels within the Module Index
+	for (int i = 0; i < GetChannelCount(); i++)
+	{
+		// Search for all unused indexed Patterns
+		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+		{
+			// If the Pattern is not used anywhere, it will be deleted
+			if (IsUnusedPattern(i, j))
+			{
+				ClearPattern(GetPattern(i, j));
+			}
+		}
+	}
+}
+
+// Renumber all Patterns from first to last Songlines, and optimise them by concatenation
+void CModule::ConcatenateIndexedPatterns()
+{
+	// TODO
 }
