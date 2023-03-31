@@ -521,7 +521,7 @@ void CSong::FileImport()
 			s.AppendFormat("Done!\n");
 			out << s << std::endl;
 
-			s.Format("Imported module parameters:\nSonglength: %02X, Tracklength: %02X, Channels: %01X\n", module->GetSongLength(), module->GetTrackLength(), module->GetChannelCount());
+			s.Format("Imported module parameters:\nSonglength: %02X, Tracklength: %02X, Channels: %01X\n", module->GetSongLength(), module->GetPatternLength(), module->GetChannelCount());
 			out << s << std::endl;
 
 			s.Format("All imported songlines will be displayed below...\n");
@@ -562,7 +562,7 @@ void CSong::FileImport()
 					s.AppendFormat("* Channel %01X, Pattern %02X *\n", channel + 1, i);
 					s.AppendFormat("*************************\n\n");
 
-					for (int j = 0; j < module->GetTrackLength(); j++)
+					for (int j = 0; j < module->GetPatternLength(); j++)
 					{
 						int note = p->row[j].note;
 						int instrument = p->row[j].instrument;

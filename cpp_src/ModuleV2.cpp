@@ -78,7 +78,7 @@ void CModule::InitialiseModule()
 	// Set default module parameters
 	strcpy(m_songName, "Noname Song");
 	m_songLength = MODULE_SONG_LENGTH;
-	m_trackLength = MODULE_TRACK_LENGTH;
+	m_patternLength = MODULE_TRACK_LENGTH;
 	m_channelCount = MODULE_STEREO;
 
 	// Module was initialised
@@ -127,7 +127,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	m_channelCount = mem[fromAddr + 3] & 0x0F;
 
 	// 5th byte: track length
-	m_trackLength = mem[fromAddr + 4];
+	m_patternLength = mem[fromAddr + 4];
 
 	// 6th byte: song speed
 	m_songSpeed = mem[fromAddr + 5];
@@ -235,8 +235,6 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			//ai->portamentoEnvelope[j] = envelopeCommand & 0x01;
 		}
 	}
-
-	BYTE patternCount = 0;
 
 	// Decoding individual tracks
 	for (int i = 0; i < numTracks; i++)
@@ -356,7 +354,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		// The Pattern must to be "expanded" to be fully compatible since no such thing as smart loop is supported by the RMTE format (yet)
 		if (IsValidRow(smartLoop))
 		{
-			for (int j = 0; line + j < m_trackLength; j++)
+			for (int j = 0; line + j < m_patternLength; j++)
 			{
 				int k = line + j;
 				int l = smartLoop + j;
@@ -366,9 +364,6 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 				t->row[k].cmd0 = t->row[l].cmd0;
 			}
 		}
-
-		// Increment the total count of patterns that were imported for the following blocks below 
-		patternCount++;
 	}
 
 	// Variables for processing songline data
@@ -409,121 +404,40 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			channel = 0;	// Reset the channel index
 			line++;	// Increment the songline count by 1
 		}
-		
+
 		// Break out of the loop if the maximum number of songlines was processed
 		if (line > SONGLINE_MAX)
 			break;
 	}
 
 	// Set the songlength to the number of decoded songlines
-	m_songLength = line;
+	SetSongLength(line);
 
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////
-	// Re-organise the Songline and Pattern index due to the differences with the RMTE format
-	// TODO: cleanup, split to more simple generic functions that could be useful for other things later...
-	///////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-
-	// Copy all of the imported patterns to every channels, so they all share identical data
-	for (int i = 0; i < m_channelCount; i++)
+	// Copy all of the imported patterns to every Channels, so they all share identical data for the next part
+	for (int i = 0; i < GetChannelCount(); i++)
 	{
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-		{
-			TPattern* source = GetPattern(0, j);
-			TPattern* destination = GetPattern(i, j);
-			*destination = *source;
-		}
+		DuplicatePatternIndex(0, i);
 	}
 
-	// Attempt to find the Goto Songline Commands and replace them with Bxx commands in the last Row found in the Songline just before it...
-	for (int j = 0; j < m_songLength; j++)
+	// Search for Goto Songline Commands in Channel 1, and replace them with Bxx commands on the previous Songline
+	for (int i = 0; i < GetSongLength(); i++)
 	{
-		for (int i = 0; i < m_channelCount; i++)
+		//If a Goto Songline "Pattern" is found, process further
+		if (GetPatternInSongline(CH1, i) == 0xFE)
 		{
-			BYTE pattern = index[i].songline[j];
-			
-			// Goto Songline Command, valid only in Songlines above 0, and Channel 1
-			if (i == 0 && j > 0 && pattern == 0xFE)
+			// Duplicate the Pattern before editing, just in case it was used multiple times in the Songline Index
+			DuplicatePatternInSongline(CH1, i - 1, GetPatternInSongline(CH1, i - 1));
+
+			// Set the Bxx Command on the last Row Index relative to the shortest Pattern length, using the destination Songline as the Command Parameter
+			SetPatternRowCommand(CH1, GetPatternInSongline(CH1, i - 1), GetShortestPatternLength(i - 1) - 1, CMD2, PATTERN_EFFECT_BXX | GetPatternInSongline(CH2, i));
+
+			// Finally, set all the Patterns Index found in the Songline from which the Goto Songline was found to Empty, Since they are no longer needed here
+			for (int j = 0; j < GetChannelCount(); j++)
 			{
-				BYTE sourcePattern = index[i].songline[j - 1];
-				BYTE destinationPattern = index[i + 1].songline[j];
-				//BYTE effectiveTracklength = m_trackLength - 1;
-				BYTE effectiveTracklength = GetShortestPatternLength(j - 1);
-				bool isUsedAlready = false;
-
-				// Search for patterns that were previously used in Channel 1
-				for (int k = 0; k < m_songLength; k++)
-				{
-					// Ignore the same Songline, and the Songline before it, both the Goto Songline Command and the Pattern itself were loaded from them 
-					if (k == j || k == j - 1)
-						continue;
-
-					// At least another instance of the same pattern was used, flag it to know it's already used
-					if (index[i].songline[k] == sourcePattern)
-					{
-						isUsedAlready = true;
-						break;
-					}
-				}
-
-				// If the same pattern was used anywhere else for this Channel, duplicate it to a new unused pattern index
-				if (isUsedAlready)
-				{
-					// Duplicate the source pattern to the index of the pattern count as a new pattern index
-					TPattern* source = GetPattern(i, sourcePattern);
-					TPattern* destination = GetPattern(i, patternCount);
-					*destination = *source;
-
-					// Assign the new pattern index to the original Songline Index, effectively replacing it
-					index[i].songline[j - 1] = patternCount;
-
-					// Increment the total number of patterns counted once this was done
-					patternCount++;
-				}
-
-/*
-				// Identify the shortest pattern length relative to the ones used in the same Songline
-				for (int k = 0; k < m_channelCount; k++)
-				{
-					// Get the Pattern Index in the Songline before the Goto Songline Command
-					BYTE effectivePattern = index[k].songline[j - 1];
-
-					// Check for each Row that could be used within the Effective Tracklength
-					for (int l = 0; l < effectiveTracklength; l++)
-					{
-						// Get the Effect Command Identifier value
-						BYTE effectiveCommand = index[k].pattern[effectivePattern].row[l].cmd1 >> 8;
-
-						// If a match is found for the CMD Dxx, set the Effective Tracklength to the current Row Index
-						if (effectiveCommand == 0x0D)
-						{
-							// Only if the Effective Tracklength is not already the shortest common Tracklength, otherwise, it will be ignored
-							if (effectiveTracklength >= l)
-							{
-								effectiveTracklength = l;
-								break;
-							}
-						}
-					}
-				}
-*/
-
-				// Set a Bxx Command, in the Channel 1's Pattern Index, on the Row relative to Effective Tracklength, using the target Songline as its parameter
-				sourcePattern = index[i].songline[j - 1];
-				index[i].pattern[sourcePattern].row[effectiveTracklength].cmd2 = 0x0B00 | destinationPattern;
-
-				// Finally, set all the Patterns Index found in the Songline from which the Goto Songline was found to Empty, Since they are no longer needed here
-				for (int k = 0; k < m_channelCount; k++)
-				{
-					index[k].songline[j] = INVALID;
-				}
+				SetPatternInSongline(j, i, INVALID);
 			}
 		}
 	}
-
-	// What could be done right now?
-
 }
 
 
@@ -534,10 +448,10 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 
 
 // Identify the shortest pattern length relative to the other ones used in the same Songline
-BYTE CModule::GetShortestPatternLength(BYTE songline)
+BYTE CModule::GetShortestPatternLength(int songline)
 {
-	// Subtract 1 to offset to the last Row Index actually used
-	BYTE patternLength = GetTrackLength() - 1;
+	// Get the current Pattern Length first
+	BYTE patternLength = GetPatternLength();
 
 	// All channels will be processed in order to identify the shortest Pattern
 	for (int i = 0; i < GetChannelCount(); i++)
@@ -557,8 +471,9 @@ BYTE CModule::GetShortestPatternLength(BYTE songline)
 				// Set the Pattern Length to the current Row Index if a match is found
 				if (command == 0x0B || command == 0x0D)
 				{
-					if (patternLength >= j)
-						patternLength = j;
+					// Add 1 to match the actual number of Rows per Pattern
+					if (patternLength > j + 1)
+						patternLength = j + 1;
 				}
 			}
 		}
@@ -566,4 +481,128 @@ BYTE CModule::GetShortestPatternLength(BYTE songline)
 
 	// The shortest Pattern Length will be returned if successful
 	return patternLength;
+}
+
+// Return True if a Pattern is used at least once within a Songline Index
+bool CModule::IsUnusedPattern(int channel, int pattern)
+{
+	// All Songlines in the Channel Index will be processed
+	for (int i = 0; i < GetSongLength(); i++)
+	{
+		// As soon as a match is found, we know for sure the Pattern is used at least once
+		if (GetPatternInSongline(channel, i) == pattern)
+			return false;
+	}
+
+	// Otherwise, the Pattern is most likely unused
+	return true;
+}
+
+// Return True if a Pattern is Empty
+bool CModule::IsEmptyPattern(int channel, int pattern)
+{
+	// All Rows in the Pattern Index will be processed
+	for (int i = 0; i < GetPatternLength(); i++)
+	{
+		// If there is a Note, it's not empty
+		if (GetPatternRowNote(channel, pattern, i) != PATTERN_NOTE_EMPTY)
+			return false;
+
+		// If there is an Instrument, it's not empty
+		if (GetPatternRowInstrument(channel, pattern, i) != PATTERN_INSTRUMENT_EMPTY)
+			return false;
+
+		// If there is a Volume, it's not empty
+		if (GetPatternRowVolume(channel, pattern, i) != PATTERN_VOLUME_EMPTY)
+			return false;
+
+		// If there is an Effect Command, it's not empty
+		for (int k = 0; k < PATTERN_ACTIVE_EFFECT_MAX; k++)
+		{
+			if (GetPatternRowCommand(channel, pattern, i, k) != PATTERN_EFFECT_EMPTY)
+				return false;
+		}
+	}
+
+	// Otherwise, the Pattern is most likely empty
+	return true;
+}
+
+// Duplicate a Pattern used in a Songline, Return True if successful
+bool CModule::DuplicatePatternInSongline(int channel, int songline, int pattern)
+{
+	// Find the first empty and unused Pattern that is available
+	for (int i = 0; i < TRACK_PATTERN_MAX; i++)
+	{
+		// Ignore the Pattern that is being duplicated
+		if (i == pattern)
+			continue;
+
+		// If the Pattern is empty and unused, it will be used for the duplication
+		if (IsUnusedPattern(channel, i) && IsEmptyPattern(channel, i))
+		{
+			TPattern* source = GetPattern(channel, pattern);
+			TPattern* destination = GetPattern(channel, i);
+
+			// If the Pattern duplication failed, nothing will be changed
+			if (!CopyPattern(source, destination))
+				break;
+
+			// Replace the Pattern used in the Songline Index with the new one
+			SetPatternInSongline(channel, songline, i);
+
+			// Pattern duplication was completed successfully
+			return true;
+		}
+
+	}
+
+	// Could not create a Pattern duplicate, no data was edited
+	return false;
+}
+
+// Copy data from source Pattern to destination Pattern, Return True if successful
+bool CModule::CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern)
+{
+	// Make sure both the Patterns from source and destination are not Null pointers
+	if (!sourcePattern || !destinationPattern)
+		return false;
+	
+	// Otherwise, copying Pattern data is pretty straightforward
+	*destinationPattern = *sourcePattern;
+
+	// Pattern data should have been copied successfully
+	return true;
+}
+
+// Copy data from source Index to destination Index, Return True if successful
+bool CModule::CopyIndex(TIndex* sourceIndex, TIndex* destinationIndex)
+{
+	// Make sure both the Indexes from source and destination are not Null pointers
+	if (!sourceIndex || !destinationIndex)
+		return false;
+
+	// Otherwise, copying Index data is pretty straightforward
+	*destinationIndex = *sourceIndex;
+
+	// Index data should have been copied successfully
+	return true;
+}
+
+// Duplicate a Pattern Index from source Channel Index to destination Channel Index, Return True if successful
+bool CModule::DuplicatePatternIndex(int sourceIndex, int destinationIndex)
+{
+	// Process all Patterns within the Index, regardless of them being unused or empty
+	for (int i = 0; i < TRACK_PATTERN_MAX; i++)
+	{
+		TPattern* source = GetPattern(sourceIndex, i);
+		TPattern* destination = GetPattern(destinationIndex, i);
+
+		// If the Pattern duplication failed, abort the procedure immediately
+		if (!CopyPattern(source, destination))
+			return false;
+	}
+
+	// Pattern Index should have been copied successfully
+	return true;
 }

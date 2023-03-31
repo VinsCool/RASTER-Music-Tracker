@@ -47,7 +47,17 @@
 #define TRACK_CHANNEL_MAX				8									// 0-7 inclusive, 2 POKEY soundchips, each using 4 Channels, a typical Stereo configuration
 #define TRACK_ROW_MAX					256									// 0-255 inclusive, Row index used in Pattern
 #define TRACK_PATTERN_MAX				256									// 0-255 inclusive, Pattern index used in Song
+
+#define CH1								0									// POKEY Channel identifier for Pattern Column 1
+#define CH2								1									// POKEY Channel identifier for Pattern Column 2
+#define CH3								2									// POKEY Channel identifier for Pattern Column 3
+#define CH4								3									// POKEY Channel identifier for Pattern Column 4
+#define CH5								4									// POKEY Channel identifier for Pattern Column 5
+#define CH6								5									// POKEY Channel identifier for Pattern Column 6
+#define CH7								6									// POKEY Channel identifier for Pattern Column 7
+#define CH8								7									// POKEY Channel identifier for Pattern Column 8
 #define PATTERN_COLUMN_MAX				8									// 0-7 inclusive, Pattern column index used for Note, Instrument, Volume, and Effect Commands
+
 #define PATTERN_ACTIVE_EFFECT_MAX		4									// 0-3 inclusive, Number of Active Effect columns in Track Channel
 
 #define PATTERN_NOTE_COUNT				96									// 0-95 inclusive, Note index used in Pattern
@@ -69,6 +79,11 @@
 #define PATTERN_EFFECT_EMPTY			(PATTERN_EFFECT_COUNT << 8)			// There is no Effect Command in the Pattern Row
 #define PATTERN_EFFECT_MAX				((PATTERN_EFFECT_COUNT << 8) + 1)	// Total for Effect Command index integrity
 
+//
+#define PATTERN_EFFECT_BXX				(0x0B << 8)							// Effect Command Bxx -> Goto Songline $xx
+#define PATTERN_EFFECT_DXX				(0x0D << 8)							// Effect Command Dxx -> End Pattern (no parameter needed)
+//
+
 // ----------------------------------------------------------------------------
 // Instrument definition
 //
@@ -84,6 +99,10 @@
 #define EFFECT_PARAMETER_MAX			256									// 0-255 inclusive, Effect $XY Parameter used in Pattern
 #define EFFECT_PARAMETER_MIN			0x00								// The $XY Parameter of 0 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_DEFAULT		0x80								// The $XY Parameter of 128 may be used to disable certain Effect Commands
+#define CMD0							0									// Effect Command identifier for Effect Column 1
+#define CMD1							1									// Effect Command identifier for Effect Column 2
+#define CMD2							2									// Effect Command identifier for Effect Column 3
+#define CMD3							3									// Effect Command identifier for Effect Column 4
 
 // ----------------------------------------------------------------------------
 // RMTE Module Structs
@@ -177,12 +196,42 @@ public:
 		if (IsValidPatternRowIndex(channel, pattern, row))
 			switch (column)
 			{
-			case 0: return m_index[channel].pattern[pattern].row[row].cmd0;
-			case 1: return m_index[channel].pattern[pattern].row[row].cmd1;
-			case 2: return m_index[channel].pattern[pattern].row[row].cmd2;
-			case 3: return m_index[channel].pattern[pattern].row[row].cmd3;
+			case CMD0: return m_index[channel].pattern[pattern].row[row].cmd0;
+			case CMD1: return m_index[channel].pattern[pattern].row[row].cmd1;
+			case CMD2: return m_index[channel].pattern[pattern].row[row].cmd2;
+			case CMD3: return m_index[channel].pattern[pattern].row[row].cmd3;
 			}
 		return INVALID;
+	};
+
+	// Setters for Pattern data
+	void SetPatternInSongline(int channel, int songline, int pattern)
+	{
+		if (IsValidChannel(channel) && IsValidSongline(songline))
+			m_index[channel].songline[songline] = IsValidPattern(pattern) ? pattern : INVALID;
+	};
+
+	void SetPatternRowCommand(int channel, int pattern, int row, int column, WORD effectCommand)
+	{
+		if (IsValidPatternRowIndex(channel, pattern, row))
+			switch (column)
+			{
+			case CMD0:
+				m_index[channel].pattern[pattern].row[row].cmd0 = effectCommand;
+				break;
+
+			case CMD1:
+				m_index[channel].pattern[pattern].row[row].cmd1 = effectCommand;
+				break;
+
+			case CMD2:
+				m_index[channel].pattern[pattern].row[row].cmd2 = effectCommand;
+				break;
+
+			case CMD3:
+				m_index[channel].pattern[pattern].row[row].cmd3 = effectCommand;
+				break;
+			}
 	};
 
 	// Getters for Instrument data
@@ -203,17 +252,24 @@ public:
 	// Getters for Module parameters
 	const char* GetSongName() { return m_songName; };
 	const BYTE GetSongLength() { return m_songLength; };
-	const BYTE GetTrackLength() { return m_trackLength; };
+	const BYTE GetPatternLength() { return m_patternLength; };
 	const BYTE GetChannelCount() { return m_channelCount; };
 
 	// Setters for Module parameters
-	void SetSongName(const char* songname) { strcpy(m_songName, songname); };
-	void SetSongLength(int length) { if (length > 0 && length <= SONGLINE_MAX) m_songLength = length; };
-	void SetTrackLength(int length) { if (length > 0 && length <= TRACK_ROW_MAX) m_trackLength = length; };
-	void SetChannelCount(int count) { if (count > 0 && count <= TRACK_CHANNEL_MAX) m_channelCount = count; };
+	void SetSongName(const char* songname) { strcpy(m_songName, songname); };	// Unsafe
+	void SetSongLength(int length) { m_songLength = length; };
+	void SetPatternLength(int length) { m_patternLength = length; };
+	void SetChannelCount(int count) { m_channelCount = count; };
 
 	// Functions related to Pattern Data editing, and other unsorted things added in the process
-	BYTE GetShortestPatternLength(BYTE songline);
+	BYTE GetShortestPatternLength(int songline);
+
+	bool DuplicatePatternInSongline(int channel, int songline, int pattern);
+	bool IsUnusedPattern(int channel, int pattern);
+	bool IsEmptyPattern(int channel, int pattern);
+	bool CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern);
+	bool CopyIndex(TIndex* sourceIndex, TIndex* destinationIndex);
+	bool DuplicatePatternIndex(int sourceIndex, int destinationIndex);
 
 private:
 	TIndex* m_index;
@@ -222,7 +278,7 @@ private:
 	char m_songName[MODULE_TITLE_NAME_MAX];
 
 	BYTE m_songLength;
-	BYTE m_trackLength;
+	BYTE m_patternLength;
 	BYTE m_channelCount;
 	BYTE m_songSpeed;
 	BYTE m_instrumentSpeed;
