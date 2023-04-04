@@ -175,6 +175,7 @@ public:
 	bool IsValidInstrument(int instrument) { return instrument > INVALID && instrument < PATTERN_INSTRUMENT_MAX; };
 	bool IsValidVolume(int volume) { return volume > INVALID && volume < PATTERN_VOLUME_MAX; };
 	bool IsValidCommand(int command) { return command > INVALID && command < PATTERN_EFFECT_MAX; };
+	bool IsValidCommandColumn(int column) { return column > INVALID && column <= PATTERN_ACTIVE_EFFECT_MAX; };
 	bool IsValidPatternRowIndex(int channel, int pattern, int row) { return IsValidChannel(channel) && IsValidPattern(pattern) && IsValidRow(row); };
 
 	// Pointers to Module Structs
@@ -187,6 +188,7 @@ public:
 	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? &m_instrument[instrument] : NULL; };
 
 	// Getters for Pattern data
+	const BYTE GetActiveEffectCommand(int channel) { return IsValidChannel(channel) ? m_index[channel].activeEffectCommand : INVALID; };
 	const BYTE GetPatternInSongline(int channel, int songline) { return IsValidChannel(channel) && IsValidSongline(songline) ? m_index[channel].songline[songline] : INVALID; };
 	const BYTE GetPatternRowNote(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? m_index[channel].pattern[pattern].row[row].note : INVALID; };
 	const BYTE GetPatternRowInstrument(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? m_index[channel].pattern[pattern].row[row].instrument : INVALID; };
@@ -205,6 +207,7 @@ public:
 	};
 
 	// Setters for Pattern data
+	void SetActiveEffectCommand(int channel, int column) { if (IsValidChannel(channel) && IsValidCommandColumn(column)) m_index[channel].activeEffectCommand = column; };
 	void SetPatternInSongline(int channel, int songline, int pattern)
 	{
 		if (IsValidChannel(channel) && IsValidSongline(songline))
@@ -279,6 +282,7 @@ public:
 	void ClearUnusedPatterns();
 	void ConcatenateIndexedPatterns();
 	void AllSizeOptimisations();
+	int GetSubtuneFromLegacyRMT(CString& resultstr);
 
 private:
 	TIndex* m_index;

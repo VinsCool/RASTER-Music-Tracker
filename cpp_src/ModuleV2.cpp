@@ -472,8 +472,22 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	// Apply preliminary optimisations to the data imported from the Legacy RMT Module
 	AllSizeOptimisations();
 
+	// Set the Active Effect Command Columns for each channels
+	for (int i = 0; i < GetChannelCount(); i++)
+	{
+		SetActiveEffectCommand(i, i == CH1 ? 2 : 1);
+	}
+
 	// Then... not a lot would be left to do here...
 	// The entire RMTE Module could virtually be used right away from this point onward...
+
+	CString s;
+	CString subtuneCount;
+	int count = GetSubtuneFromLegacyRMT(subtuneCount);
+
+	s.Format("%i subtunes detected, each starting on Songline:\n", count);
+
+	MessageBox(g_hwnd, s + subtuneCount, "Import Legacy RMT", MB_ICONINFORMATION);
 }
 
 
@@ -919,4 +933,96 @@ void CModule::AllSizeOptimisations()
 	ConcatenateIndexedPatterns();
 
 	// And then...? Most likely a lot more... That's for another day...
+}
+
+// Find all individual Subtunes from imported Legacy RMT data, in order to reconstruct them later
+int CModule::GetSubtuneFromLegacyRMT(CString& resultstr)
+{
+	int apos = 0;
+	int asub = 0;
+
+	bool ok = false;
+
+	WORD songp[SONGLINE_MAX];
+	memset(songp, INVALID, SONGLINE_MAX);
+
+	CString s;
+	resultstr = "";
+
+	// Process all indexed Songlines until all Subtunes are identified
+	for (int i = 0; i < GetSongLength(); i++)
+	{
+		// If the Indexed Songline was not already processed...
+		if (!IsValidSongline(songp[i]))
+		{
+			// Set the current offset to the Songline Index
+			apos = i;
+
+			// Analyse all of the Songlines until a loop is detected
+			while (!IsValidSongline(songp[apos]))
+			{
+				songp[apos] = asub;
+
+				// Jump to another line
+				if ((GetPatternRowCommand(CH1, GetPatternInSongline(CH1, apos), GetShortestPatternLength(apos) - 1, CMD2) & 0xFF00) == PATTERN_EFFECT_BXX)
+				{
+					int tmp = apos;
+					apos = GetPatternRowCommand(CH1, GetPatternInSongline(CH1, apos), GetShortestPatternLength(apos) - 1, CMD2) & 0xFF;
+
+					// If a Songline is recursive with Bxx... it will be missed unless it's specifically tested against itself here
+					if (apos == tmp)
+					{
+						// We need to break out of the while() loop directly, so a goto label could not be used here!
+						s.Format("%02X ", apos);
+						resultstr += s;
+						ok = true;
+						break;
+					}
+				}
+				else
+				{
+					if (!ok)
+					{	
+						// Has not found any tracks in this subsong yet
+						for (int j = 0; j < GetChannelCount(); j++)
+						{
+							if (!IsEmptyPattern(j, GetPatternInSongline(j, apos)))
+							{
+								// If then found, this will be the beginning of the subsong
+								s.Format("%02X ", apos);
+								resultstr += s;
+
+								// The beginning of this subsong is already written
+								ok = true;
+								break;
+							}
+
+						}
+
+					}
+
+					// Move to the next Songline
+					apos++;
+
+					// If the maximum number of Songlines were processed, there is nothing else to do here
+					if (apos >= SONGLINE_MAX) 
+						break;
+
+				}
+
+			}
+
+			// Will move to the next if the subsong contains anything at all
+			if (ok) 
+				asub++;
+
+			// Initialization for further search
+			ok = false;
+
+		}
+
+	}
+
+	// Return the number of Subtunes detected
+	return asub;
 }

@@ -638,7 +638,7 @@ void CSong::FileImport()
 					}
 
 					// Command(s)
-					for (int l = 0; l < PATTERN_ACTIVE_EFFECT_MAX - 1; l++)
+					for (int l = 0; l < module->GetActiveEffectCommand(k); l++)
 					{
 						int cmd = module->GetPatternRowCommand(k, module->GetPatternInSongline(k, i), j, l);
 
