@@ -99,10 +99,10 @@
 #define EFFECT_PARAMETER_MAX			256									// 0-255 inclusive, Effect $XY Parameter used in Pattern
 #define EFFECT_PARAMETER_MIN			0x00								// The $XY Parameter of 0 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_DEFAULT		0x80								// The $XY Parameter of 128 may be used to disable certain Effect Commands
-#define CMD0							0									// Effect Command identifier for Effect Column 1
-#define CMD1							1									// Effect Command identifier for Effect Column 2
-#define CMD2							2									// Effect Command identifier for Effect Column 3
-#define CMD3							3									// Effect Command identifier for Effect Column 4
+#define CMD1							0									// Effect Command identifier for Effect Column 1
+#define CMD2							1									// Effect Command identifier for Effect Column 2
+#define CMD3							2									// Effect Command identifier for Effect Column 3
+#define CMD4							3									// Effect Command identifier for Effect Column 4
 
 // ----------------------------------------------------------------------------
 // RMTE Module Structs
@@ -196,10 +196,10 @@ public:
 		if (IsValidPatternRowIndex(channel, pattern, row))
 			switch (column)
 			{
-			case CMD0: return m_index[channel].pattern[pattern].row[row].cmd0;
-			case CMD1: return m_index[channel].pattern[pattern].row[row].cmd1;
-			case CMD2: return m_index[channel].pattern[pattern].row[row].cmd2;
-			case CMD3: return m_index[channel].pattern[pattern].row[row].cmd3;
+			case CMD1: return m_index[channel].pattern[pattern].row[row].cmd0;
+			case CMD2: return m_index[channel].pattern[pattern].row[row].cmd1;
+			case CMD3: return m_index[channel].pattern[pattern].row[row].cmd2;
+			case CMD4: return m_index[channel].pattern[pattern].row[row].cmd3;
 			}
 		return INVALID;
 	};
@@ -216,19 +216,19 @@ public:
 		if (IsValidPatternRowIndex(channel, pattern, row))
 			switch (column)
 			{
-			case CMD0:
+			case CMD1:
 				m_index[channel].pattern[pattern].row[row].cmd0 = effectCommand;
 				break;
 
-			case CMD1:
+			case CMD2:
 				m_index[channel].pattern[pattern].row[row].cmd1 = effectCommand;
 				break;
 
-			case CMD2:
+			case CMD3:
 				m_index[channel].pattern[pattern].row[row].cmd2 = effectCommand;
 				break;
 
-			case CMD3:
+			case CMD4:
 				m_index[channel].pattern[pattern].row[row].cmd3 = effectCommand;
 				break;
 			}

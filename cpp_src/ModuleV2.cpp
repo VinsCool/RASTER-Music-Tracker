@@ -399,14 +399,19 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			break;
 	}
 
-	// Set the songlength to the number of decoded songlines
+	// Set the Songlength to the number of decoded songlines
 	SetSongLength(line);
 
 	// Copy all of the imported patterns to every Channels, so they all share identical data for the next part
 	for (int i = 0; i < GetChannelCount(); i++)
 	{
+		// The Songline Index won't be overwritten in the process, since we will need it in its current form!
 		DuplicatePatternIndex(0, i);
 	}
+
+	// Ideally... Right "here" would be the best place to actually "Renumber Patterns", so they become all unique entries
+	// Unfortunately, the procedure involved would apply changes to everything, regardless of the data we might want to use
+	// The compromise is simply... to not bother with that, because all Patterns will be re-ordered after this part anyway
 
 	// Search for Goto Songline Commands in Channel 1, and replace them with Bxx commands on the previous Songline
 	for (int i = 0; i < GetSongLength(); i++)
@@ -424,6 +429,42 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			for (int j = 0; j < GetChannelCount(); j++)
 			{
 				SetPatternInSongline(j, i, INVALID);
+			}
+		}
+	}
+
+	// Since the last Songline is always used as a Goto Songline command, Set the Songlength again to the number of decoded lines, minus 1 this time
+	SetSongLength(line - 1);
+
+	// Re-arrange all Patterns to make them unique entries for every Songline, so editing them will not overwrite anything intended to be used differently
+	RenumberIndexedPatterns();
+
+	// In order to merge all of the Bxx and Dxx Commands, find all Dxx Commands that were used, and move them to Channel 1, unless a Bxx Command was already used there
+	for (int i = 0; i < GetSongLength(); i++)
+	{
+		// If a Bxx command was already used in Channel 1, don't waste any time here, continue with the next Songline
+		if ((GetPatternRowCommand(CH1, GetPatternInSongline(CH1, i), GetShortestPatternLength(i) - 1, CMD2) & 0xFF00) == PATTERN_EFFECT_BXX)
+			continue;
+
+		// If the Shortest Pattern Length is below actual Pattern Length, a Dxx Command was already used somewhere, and must be replaced
+		if (GetShortestPatternLength(i) < GetPatternLength())
+			SetPatternRowCommand(CH1, GetPatternInSongline(CH1, i), GetShortestPatternLength(i) - 1, CMD2, PATTERN_EFFECT_DXX);
+	}
+
+	// Clear all Dxx Commands from all Channels, except for Channel 1, which will be used for all of the remaining Bxx and Dxx Commands
+	for (int i = 0; i < GetSongLength(); i++)
+	{
+		// Skip CH1, since it was already processed above
+		for (int j = CH2; j < GetChannelCount(); j++)
+		{
+			// All Pattern Rows will be edited, regardless of their contents
+			for (int k = 0; k < TRACK_ROW_MAX; k++)
+			{
+				// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
+				for (int l = CMD2; l < PATTERN_ACTIVE_EFFECT_MAX; l++)
+				{
+					SetPatternRowCommand(j, GetPatternInSongline(j, i), k, l, PATTERN_EFFECT_EMPTY);
+				}
 			}
 		}
 	}
