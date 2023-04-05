@@ -274,6 +274,7 @@ public:
 	bool IsEmptyPattern(TPattern* pattern);
 	bool IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationPattern);
 	bool CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern);
+	bool ClearPattern(int channel, int pattern);
 	bool ClearPattern(TPattern* destinationPattern);
 	bool CopyIndex(TIndex* sourceIndex, TIndex* destinationIndex);
 	bool DuplicatePatternIndex(int sourceIndex, int destinationIndex);
@@ -282,7 +283,7 @@ public:
 	void ClearUnusedPatterns();
 	void ConcatenateIndexedPatterns();
 	void AllSizeOptimisations();
-	int GetSubtuneFromLegacyRMT(CString& resultstr);
+	int GetSubtuneFromLegacyRMT(int startSongline, CString& resultstr);
 
 private:
 	TIndex* m_index;

@@ -413,17 +413,28 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	// Unfortunately, the procedure involved would apply changes to everything, regardless of the data we might want to use
 	// The compromise is simply... to not bother with that, because all Patterns will be re-ordered after this part anyway
 
+	// Workaround: due to the Songline 00 data causing some conflicts in the Subtune detection procedure, manually set it before the bigger optimisations
+	BYTE startSongline = 0;
+
 	// Search for Goto Songline Commands in Channel 1, and replace them with Bxx commands on the previous Songline
 	for (int i = 0; i < GetSongLength(); i++)
 	{
 		//If a Goto Songline "Pattern" is found, process further
 		if (GetPatternInSongline(CH1, i) == 0xFE)
 		{
-			// Duplicate the Pattern before editing, just in case it was used multiple times in the Songline Index
-			DuplicatePatternInSongline(CH1, i - 1, GetPatternInSongline(CH1, i - 1));
+			// Special case for Songline 00: its Destination Songline will be used as the Start Songline, to simulate the effects of the original Goto Songline Command
+			if (i == 0)
+				startSongline = GetPatternInSongline(CH2, i);
+			
+			// Otherwise, follow the same procedure for everything else
+			else
+			{
+				// Duplicate the Pattern before editing, just in case it was used multiple times in the Songline Index
+				DuplicatePatternInSongline(CH1, i - 1, GetPatternInSongline(CH1, i - 1));
 
-			// Set the Bxx Command on the last Row Index relative to the shortest Pattern length, using the destination Songline as the Command Parameter
-			SetPatternRowCommand(CH1, GetPatternInSongline(CH1, i - 1), GetShortestPatternLength(i - 1) - 1, CMD2, PATTERN_EFFECT_BXX | GetPatternInSongline(CH2, i));
+				// Set the Bxx Command on the last Row Index relative to the shortest Pattern length, using the destination Songline as the Command Parameter
+				SetPatternRowCommand(CH1, GetPatternInSongline(CH1, i - 1), GetShortestPatternLength(i - 1) - 1, CMD2, PATTERN_EFFECT_BXX | GetPatternInSongline(CH2, i));
+			}
 
 			// Finally, set all the Patterns Index found in the Songline from which the Goto Songline was found to Empty, Since they are no longer needed here
 			for (int j = 0; j < GetChannelCount(); j++)
@@ -483,7 +494,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 
 	CString s;
 	CString subtuneCount;
-	int count = GetSubtuneFromLegacyRMT(subtuneCount);
+	int count = GetSubtuneFromLegacyRMT(startSongline, subtuneCount);
 
 	s.Format("%i subtunes detected, each starting on Songline:\n", count);
 
@@ -536,21 +547,16 @@ BYTE CModule::GetShortestPatternLength(int songline)
 // Return True if a Pattern is used at least once within a Songline Index
 bool CModule::IsUnusedPattern(int channel, int pattern)
 {
-	// All Songlines in the Channel Index will be processed
-	for (int i = 0; i < GetSongLength(); i++)
-	{
-		// As soon as a match is found, we know for sure the Pattern is used at least once
-		if (GetPatternInSongline(channel, i) == pattern)
-			return false;
-	}
-
-	// Otherwise, the Pattern is most likely unused
-	return true;
+	return IsUnusedPattern(GetChannelIndex(channel), pattern);
 }
 
 // Return True if a Pattern is used at least once within a Songline Index
 bool CModule::IsUnusedPattern(TIndex* index, int pattern)
 {
+	// Make sure the Index is not a Null pointer
+	if (!index)
+		return false;
+
 	// All Songlines in the Channel Index will be processed
 	for (int i = 0; i < GetSongLength(); i++)
 	{
@@ -566,37 +572,13 @@ bool CModule::IsUnusedPattern(TIndex* index, int pattern)
 // Return True if a Pattern is Empty
 bool CModule::IsEmptyPattern(int channel, int pattern)
 {
-	// All Rows in the Pattern Index will be processed
-	for (int i = 0; i < TRACK_ROW_MAX; i++)
-	{
-		// If there is a Note, it's not empty
-		if (GetPatternRowNote(channel, pattern, i) != PATTERN_NOTE_EMPTY)
-			return false;
-
-		// If there is an Instrument, it's not empty
-		if (GetPatternRowInstrument(channel, pattern, i) != PATTERN_INSTRUMENT_EMPTY)
-			return false;
-
-		// If there is a Volume, it's not empty
-		if (GetPatternRowVolume(channel, pattern, i) != PATTERN_VOLUME_EMPTY)
-			return false;
-
-		// If there is an Effect Command, it's not empty
-		for (int k = 0; k < PATTERN_ACTIVE_EFFECT_MAX; k++)
-		{
-			if (GetPatternRowCommand(channel, pattern, i, k) != PATTERN_EFFECT_EMPTY)
-				return false;
-		}
-	}
-
-	// Otherwise, the Pattern is most likely empty
-	return true;
+	return IsEmptyPattern(GetPattern(channel, pattern));
 }
 
 // Return True if a Pattern is Empty
 bool CModule::IsEmptyPattern(TPattern* pattern)
 {
-	// Make sure the Pattern is not Null a pointer
+	// Make sure the Pattern is not a Null pointer
 	if (!pattern)
 		return false;
 
@@ -720,9 +702,15 @@ bool CModule::CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern)
 }
 
 // Clear data from Pattern, Return True if successful
+bool CModule::ClearPattern(int channel, int pattern)
+{
+	return ClearPattern(GetPattern(channel, pattern));
+}
+
+// Clear data from Pattern, Return True if successful
 bool CModule::ClearPattern(TPattern* destinationPattern)
 {
-	// Make sure the Pattern is not Null a pointer
+	// Make sure the Pattern is not a Null pointer
 	if (!destinationPattern)
 		return false;
 
@@ -935,8 +923,9 @@ void CModule::AllSizeOptimisations()
 	// And then...? Most likely a lot more... That's for another day...
 }
 
-// Find all individual Subtunes from imported Legacy RMT data, in order to reconstruct them later
-int CModule::GetSubtuneFromLegacyRMT(CString& resultstr)
+// Find all individual Subtunes from imported Legacy RMT data, in order to reconstruct all the Subtunes later
+// FIXME: in order to support the Bxx Commands properly, this function must be rewritten with a different approach in mind!
+int CModule::GetSubtuneFromLegacyRMT(int startSongline, CString& resultstr)
 {
 	int apos = 0;
 	int asub = 0;
@@ -950,7 +939,7 @@ int CModule::GetSubtuneFromLegacyRMT(CString& resultstr)
 	resultstr = "";
 
 	// Process all indexed Songlines until all Subtunes are identified
-	for (int i = 0; i < GetSongLength(); i++)
+	for (int i = startSongline; i < GetSongLength(); i++)
 	{
 		// If the Indexed Songline was not already processed...
 		if (!IsValidSongline(songp[i]))
@@ -966,18 +955,8 @@ int CModule::GetSubtuneFromLegacyRMT(CString& resultstr)
 				// Jump to another line
 				if ((GetPatternRowCommand(CH1, GetPatternInSongline(CH1, apos), GetShortestPatternLength(apos) - 1, CMD2) & 0xFF00) == PATTERN_EFFECT_BXX)
 				{
-					int tmp = apos;
+					// If the Destination Songline is recursive, we know it is a valid Songline by default... Oh, Mama Mia, we have delicious spaghettis for dinner!
 					apos = GetPatternRowCommand(CH1, GetPatternInSongline(CH1, apos), GetShortestPatternLength(apos) - 1, CMD2) & 0xFF;
-
-					// If a Songline is recursive with Bxx... it will be missed unless it's specifically tested against itself here
-					if (apos == tmp)
-					{
-						// We need to break out of the while() loop directly, so a goto label could not be used here!
-						s.Format("%02X ", apos);
-						resultstr += s;
-						ok = true;
-						break;
-					}
 				}
 				else
 				{
