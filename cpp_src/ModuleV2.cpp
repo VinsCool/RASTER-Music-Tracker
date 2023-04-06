@@ -20,22 +20,39 @@ CModule::~CModule()
 void CModule::InitialiseModule()
 {
 	// Create new module data if it doesn't exist
-	if (!m_index) m_index = new TIndex[TRACK_CHANNEL_MAX];
+	if (!m_index) m_index = new TSubtune[SUBTUNE_MAX];
 	if (!m_instrument) m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_MAX];
+
+	// Set default module parameters
+	SetSongName("Noname Song");
+	SetSubtuneName(MODULE_DEFAULT_SUBTUNE, "");
+	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
+	SetSubtuneCount(MODULE_SUBTUNE_COUNT);
+	SetSongLength(MODULE_SONG_LENGTH);
+	SetPatternLength(MODULE_TRACK_LENGTH);
+	SetChannelCount(MODULE_STEREO);
+	SetSongSpeed(MODULE_SONG_SPEED);
+	SetInstrumentSpeed(MODULE_VBI_SPEED);
 
 	// Clear all data, and set default values
 	for (int i = 0; i < TRACK_CHANNEL_MAX; i++)
 	{
 		// Set all indexed Patterns to 0
 		for (int j = 0; j < SONGLINE_MAX; j++)
-			m_index[i].songline[j] = 0;
+			SetPatternInSongline(i, j, 0);
 
 		// Set all indexed Rows in Patterns to empty values
 		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
 			ClearPattern(GetPattern(i, j));
 
 		// By default, only 1 Effect Command is enabled in all Track Channels
-		m_index[i].activeEffectCommand = 1;
+		SetEffectCommandCount(i, 1);
+	}
+
+	// Clear all Subtunes using the Active Subtune values
+	for (int i = 1; i < SUBTUNE_MAX; i++)
+	{
+		CopySubtune(GetSubtuneIndex(GetActiveSubtune()), GetSubtuneIndex(i));
 	}
 
 	// Also clear all instruments in the module
@@ -64,14 +81,8 @@ void CModule::InitialiseModule()
 		}
 	}
 
-	// Set default module parameters
-	strcpy(m_songName, "Noname Song");
-	m_songLength = MODULE_SONG_LENGTH;
-	m_patternLength = MODULE_TRACK_LENGTH;
-	m_channelCount = MODULE_STEREO;
-
 	// Module was initialised
-	m_initialised = TRUE;
+	SetModuleStatus(TRUE);
 }
 
 void CModule::ClearModule()
@@ -85,7 +96,7 @@ void CModule::ClearModule()
 	m_instrument = NULL;
 
 	// Module was cleared, and must be initialised before it could be used again
-	m_initialised = FALSE;
+	SetModuleStatus(FALSE);
 }
 
 void CModule::ImportLegacyRMT(std::ifstream& in)
@@ -113,16 +124,16 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	InitialiseModule();
 
 	// 4th byte: # of channels (4 or 8)
-	m_channelCount = mem[fromAddr + 3] & 0x0F;
+	SetChannelCount(mem[fromAddr + 3] & 0x0F);
 
 	// 5th byte: track length
-	m_patternLength = mem[fromAddr + 4];
+	SetPatternLength(mem[fromAddr + 4]);
 
 	// 6th byte: song speed
-	m_songSpeed = mem[fromAddr + 5];
+	SetSongSpeed(mem[fromAddr + 5]);
 
 	// 7th byte: Instrument speed
-	m_instrumentSpeed = mem[fromAddr + 6];
+	SetInstrumentSpeed(mem[fromAddr + 6]);
 
 	// 8th byte: RMT format version nr.
 	//BYTE version = mem[fromAddr + 7];
@@ -343,7 +354,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		// The Pattern must to be "expanded" to be fully compatible since no such thing as smart loop is supported by the RMTE format (yet)
 		if (IsValidRow(smartLoop))
 		{
-			for (int j = 0; line + j < m_patternLength; j++)
+			for (int j = 0; line + j < GetPatternLength(); j++)
 			{
 				int k = line + j;
 				int l = smartLoop + j;
@@ -361,8 +372,8 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	BYTE line = 0;
 	WORD src = 0;
 
-	// This will provide access to the Module Index directly
-	TIndex* index = GetIndex();
+	// This will provide access to the Module Index directly, for the currently Active Subtune
+	TIndex* index = GetChannelIndex();
 
 	// Decoding Songlines Index
 	while (src < lengthSong)
@@ -377,8 +388,8 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			index[channel + 1].songline[line] = memSong[src + 1];	// Set the songline index number in Channel 2
 			index[channel + 2].songline[line] = INVALID;	// The Goto songline address isn't needed
 			index[channel + 3].songline[line] = INVALID;	// Set the remaining channels to INVALID
-			channel = m_channelCount;	// Set the channel index to the channel count to trigger the condition below
-			src += m_channelCount;	// The number of bytes processed is equal to the number of channels
+			channel = GetChannelCount();	// Set the channel index to the channel count to trigger the condition below
+			src += GetChannelCount();	// The number of bytes processed is equal to the number of channels
 			break;
 
 		default:	// An empty pattern at 0xFF is also valid for the RMTE format
@@ -388,7 +399,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		}
 
 		// 1 songline was processed when the channel count is equal to the number of channels
-		if (channel >= m_channelCount)
+		if (channel >= GetChannelCount())
 		{
 			channel = 0;	// Reset the channel index
 			line++;	// Increment the songline count by 1
@@ -486,7 +497,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	// Set the Active Effect Command Columns for each channels
 	for (int i = 0; i < GetChannelCount(); i++)
 	{
-		SetActiveEffectCommand(i, i == CH1 ? 2 : 1);
+		SetEffectCommandCount(i, i == CH1 ? 2 : 1);
 	}
 
 	// Then... not a lot would be left to do here...
@@ -744,6 +755,20 @@ bool CModule::CopyIndex(TIndex* sourceIndex, TIndex* destinationIndex)
 	return true;
 }
 
+// Copy data from source Subtune to destination Subtune, Return True if successful
+bool CModule::CopySubtune(TSubtune* sourceSubtune, TSubtune* destinationSubtune)
+{
+	// Make sure both the Subtunes from source and destination are not Null pointers
+	if (!sourceSubtune || !destinationSubtune)
+		return false;
+
+	// Otherwise, copying Index data is pretty straightforward
+	*destinationSubtune = *sourceSubtune;
+
+	// Subtune data should have been copied successfully
+	return true;
+}
+
 // Duplicate a Pattern Index from source Channel Index to destination Channel Index, Return True if successful
 bool CModule::DuplicatePatternIndex(int sourceIndex, int destinationIndex)
 {
@@ -820,9 +845,6 @@ void CModule::RenumberIndexedPatterns()
 			backupIndex->songline[j] = j;
 			CopyPattern(GetIndexedPattern(i, j), &backupIndex->pattern[j]);
 		}
-
-		// Set the maximum number of Active Effect Commands by Default
-		backupIndex->activeEffectCommand = PATTERN_ACTIVE_EFFECT_MAX;
 
 		// Copy the re-organised data back to the original Channel Index
 		CopyIndex(backupIndex, channelIndex);

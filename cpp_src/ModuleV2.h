@@ -31,6 +31,8 @@
 #define MODULE_LINE_STEP				g_linesafter						// Line Step between cursor movements
 #define MODULE_DISPLAY_FLAT_NOTES		g_displayflatnotes					// Display accidentals as Flat instead of Sharp
 #define MODULE_DISPLAY_GERMAN_NOTATION	g_usegermannotation					// Display notes using the German Notation
+#define MODULE_DEFAULT_SUBTUNE			0									// Default Active Subtune
+#define MODULE_SUBTUNE_COUNT			1									// Default Subtune Count
 #define MODULE_TRACK_LENGTH				64									// Default Track Length
 #define MODULE_SONG_LENGTH				1									// Default Song Length
 #define MODULE_SONG_SPEED				6									// Default Song Speed
@@ -42,7 +44,8 @@
 // ----------------------------------------------------------------------------
 // Song and Track Pattern definition
 //
-#define SUBTUNE_NAME_MAX				64									// Maximum length of Subtune name
+#define SUBTUNE_NAME_MAX				64									// 0-63 inclusive, Maximum length of Subtune name
+#define SUBTUNE_MAX						64									// 0-63 inclusive, Maximum number of Subtunes in a Module file
 #define SONGLINE_MAX					256									// 0-255 inclusive, Songline index used in Song
 #define TRACK_CHANNEL_MAX				8									// 0-7 inclusive, 2 POKEY soundchips, each using 4 Channels, a typical Stereo configuration
 #define TRACK_ROW_MAX					256									// 0-255 inclusive, Row index used in Pattern
@@ -108,7 +111,7 @@
 // RMTE Module Structs
 //
 
-// Row Data, used within Pattern data, designed to be easy to manage, following a Row by Row approach
+// Row Data, used within the Pattern data, designed to be easy to manage, following a Row by Row approach
 struct TRow
 {
 	BYTE note;										// Note index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
@@ -126,12 +129,24 @@ struct TPattern
 	TRow row[TRACK_ROW_MAX];						// Row data is contained withn its associated Pattern index
 };
 
-// Module Index, used for indexing the Songline and Pattern data, similar to the CSong Class
+// Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
 struct TIndex
 {
-	BYTE activeEffectCommand;						// Number of Effect Commands enabled for the Track Channel
 	BYTE songline[SONGLINE_MAX];					// Pattern Index for each songline within the Track Channel
 	TPattern pattern[TRACK_PATTERN_MAX];			// Pattern Data for the Track Channel
+};
+
+// Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
+struct TSubtune
+{
+	char name[SUBTUNE_NAME_MAX];					// Subtune name
+	BYTE songLength;								// Song Length, in Songlines
+	BYTE patternLength;								// Pattern Length, in Rows
+	BYTE channelCount;								// Number of Channels used in Subtune
+	BYTE songSpeed;									// Song Speed, in Frames per Row
+	BYTE instrumentSpeed;							// Instrument Speed, in Frames per VBI
+	BYTE effectCommandCount[TRACK_CHANNEL_MAX];		// Number of Effect Commands enabled per Track Channel
+	TIndex channel[TRACK_CHANNEL_MAX];				// Channel Index assigned to the Subtune
 };
 
 // Instrument Data, due to the Legacy TInstrument struct, this is temporarily defined as TInstrumentV2
@@ -163,10 +178,14 @@ public:
 
 	void InitialiseModule();
 	void ClearModule();
+
+	void SetModuleStatus(bool status) { m_initialised = status; };
+
 	void ImportLegacyRMT(std::ifstream& in);
 
 	// Booleans for Module index and data integrity
 	bool IsModuleInitialised() { return m_initialised; };
+	bool IsValidSubtune(int subtune) { return subtune > INVALID && subtune < SUBTUNE_MAX; };
 	bool IsValidChannel(int channel) { return channel > INVALID && channel < TRACK_CHANNEL_MAX; };
 	bool IsValidSongline(int songline) { return songline > INVALID && songline < SONGLINE_MAX; };
 	bool IsValidPattern(int pattern) { return pattern > INVALID && pattern < TRACK_PATTERN_MAX; };
@@ -179,39 +198,38 @@ public:
 	bool IsValidPatternRowIndex(int channel, int pattern, int row) { return IsValidChannel(channel) && IsValidPattern(pattern) && IsValidRow(row); };
 
 	// Pointers to Module Structs
-	TIndex* GetIndex() { return m_index; };
-	TIndex* GetChannelIndex(int channel) { return IsValidChannel(channel) ? &m_index[channel] : NULL; };
-	BYTE* GetSonglineIndex(int channel) { return IsValidChannel(channel) ? m_index[channel].songline : NULL; };
-	TPattern* GetPattern(int channel, int pattern) { return IsValidChannel(channel) && IsValidPattern(pattern) ? &m_index[channel].pattern[pattern] : NULL; };
+	TSubtune* GetSubtuneIndex(int subtune) { return IsValidSubtune(subtune) ? &m_index[subtune] : NULL; };
+	TIndex* GetChannelIndex() { return GetSubtuneIndex(m_activeSubtune)->channel; };
+	TIndex* GetChannelIndex(int channel) { return IsValidChannel(channel) ? &GetSubtuneIndex(m_activeSubtune)->channel[channel] : NULL; };
+	BYTE* GetSonglineIndex(int channel) { return IsValidChannel(channel) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].songline : NULL; };
+	TPattern* GetPattern(int channel, int pattern) { return IsValidChannel(channel) && IsValidPattern(pattern) ? &GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern] : NULL; };
 	TPattern* GetIndexedPattern(int channel, int songline) { return GetPattern(channel, GetPatternInSongline(channel, songline)); };
-	TRow* GetRow(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? &m_index[channel].pattern[pattern].row[row] : NULL; };
+	TRow* GetRow(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? &GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row] : NULL; };
 	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? &m_instrument[instrument] : NULL; };
 
 	// Getters for Pattern data
-	const BYTE GetActiveEffectCommand(int channel) { return IsValidChannel(channel) ? m_index[channel].activeEffectCommand : INVALID; };
-	const BYTE GetPatternInSongline(int channel, int songline) { return IsValidChannel(channel) && IsValidSongline(songline) ? m_index[channel].songline[songline] : INVALID; };
-	const BYTE GetPatternRowNote(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? m_index[channel].pattern[pattern].row[row].note : INVALID; };
-	const BYTE GetPatternRowInstrument(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? m_index[channel].pattern[pattern].row[row].instrument : INVALID; };
-	const BYTE GetPatternRowVolume(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? m_index[channel].pattern[pattern].row[row].volume : INVALID; };
+	const BYTE GetPatternInSongline(int channel, int songline) { return IsValidChannel(channel) && IsValidSongline(songline) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].songline[songline] : INVALID; };
+	const BYTE GetPatternRowNote(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].note : INVALID; };
+	const BYTE GetPatternRowInstrument(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].instrument : INVALID; };
+	const BYTE GetPatternRowVolume(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].volume : INVALID; };
 	const WORD GetPatternRowCommand(int channel, int pattern, int row, int column)
 	{
 		if (IsValidPatternRowIndex(channel, pattern, row))
 			switch (column)
 			{
-			case CMD1: return m_index[channel].pattern[pattern].row[row].cmd0;
-			case CMD2: return m_index[channel].pattern[pattern].row[row].cmd1;
-			case CMD3: return m_index[channel].pattern[pattern].row[row].cmd2;
-			case CMD4: return m_index[channel].pattern[pattern].row[row].cmd3;
+			case CMD1: return GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd0;
+			case CMD2: return GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd1;
+			case CMD3: return GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd2;
+			case CMD4: return GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd3;
 			}
 		return INVALID;
 	};
 
 	// Setters for Pattern data
-	void SetActiveEffectCommand(int channel, int column) { if (IsValidChannel(channel) && IsValidCommandColumn(column)) m_index[channel].activeEffectCommand = column; };
 	void SetPatternInSongline(int channel, int songline, int pattern)
 	{
 		if (IsValidChannel(channel) && IsValidSongline(songline))
-			m_index[channel].songline[songline] = IsValidPattern(pattern) ? pattern : INVALID;
+			GetSubtuneIndex(m_activeSubtune)->channel[channel].songline[songline] = IsValidPattern(pattern) ? pattern : INVALID;
 	};
 
 	void SetPatternRowCommand(int channel, int pattern, int row, int column, WORD effectCommand)
@@ -220,19 +238,19 @@ public:
 			switch (column)
 			{
 			case CMD1:
-				m_index[channel].pattern[pattern].row[row].cmd0 = effectCommand;
+				GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd0 = effectCommand;
 				break;
 
 			case CMD2:
-				m_index[channel].pattern[pattern].row[row].cmd1 = effectCommand;
+				GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd1 = effectCommand;
 				break;
 
 			case CMD3:
-				m_index[channel].pattern[pattern].row[row].cmd2 = effectCommand;
+				GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd2 = effectCommand;
 				break;
 
 			case CMD4:
-				m_index[channel].pattern[pattern].row[row].cmd3 = effectCommand;
+				GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd3 = effectCommand;
 				break;
 			}
 	};
@@ -254,15 +272,47 @@ public:
 
 	// Getters for Module parameters
 	const char* GetSongName() { return m_songName; };
-	const BYTE GetSongLength() { return m_songLength; };
-	const BYTE GetPatternLength() { return m_patternLength; };
-	const BYTE GetChannelCount() { return m_channelCount; };
+	
+	const BYTE GetActiveSubtune() { return m_activeSubtune; };
+	const BYTE GetSubtuneCount() { return m_subtuneCount; };
+
+	const char* GetSubtuneName(int subtune) { return GetSubtuneIndex(subtune)->name; };
+	const BYTE GetSongLength(int subtune) { return GetSubtuneIndex(subtune)->songLength; };
+	const BYTE GetPatternLength(int subtune) { return GetSubtuneIndex(subtune)->patternLength; };
+	const BYTE GetChannelCount(int subtune) { return GetSubtuneIndex(subtune)->channelCount; };
+	const BYTE GetSongSpeed(int subtune) { return GetSubtuneIndex(subtune)->songSpeed; };
+	const BYTE GetInstrumentSpeed(int subtune) { return GetSubtuneIndex(subtune)->instrumentSpeed; };
+	const BYTE GetEffectCommandCount(int subtune, int channel) { return IsValidChannel(channel) ? GetSubtuneIndex(subtune)->effectCommandCount[channel] : INVALID; };
+
+	const char* GetSubtuneName() { return GetSubtuneIndex(m_activeSubtune)->name; };
+	const BYTE GetSongLength() { return GetSubtuneIndex(m_activeSubtune)->songLength; };
+	const BYTE GetPatternLength() { return GetSubtuneIndex(m_activeSubtune)->patternLength; };
+	const BYTE GetChannelCount() { return GetSubtuneIndex(m_activeSubtune)->channelCount; };
+	const BYTE GetSongSpeed() { return GetSubtuneIndex(m_activeSubtune)->songSpeed; };
+	const BYTE GetInstrumentSpeed() { return GetSubtuneIndex(m_activeSubtune)->instrumentSpeed; };
+	const BYTE GetEffectCommandCount(int channel) { return IsValidChannel(channel) ? GetSubtuneIndex(m_activeSubtune)->effectCommandCount[channel] : INVALID; };
 
 	// Setters for Module parameters
-	void SetSongName(const char* songname) { strcpy(m_songName, songname); };	// Unsafe
-	void SetSongLength(int length) { m_songLength = length; };
-	void SetPatternLength(int length) { m_patternLength = length; };
-	void SetChannelCount(int count) { m_channelCount = count; };
+	void SetSongName(const char* name) { strcpy(m_songName, name); };	// Unsafe?
+
+	void SetActiveSubtune(int subtune) { m_activeSubtune = subtune; };
+	void SetSubtuneCount(int count) { m_subtuneCount = count; };
+
+	void SetSubtuneName(int subtune, const char* name) { strcpy(GetSubtuneIndex(subtune)->name, name); };	// Unsafe?
+	void SetSongLength(int subtune, int length) { GetSubtuneIndex(subtune)->songLength = length; };
+	void SetPatternLength(int subtune, int length) { GetSubtuneIndex(subtune)->patternLength = length; };
+	void SetChannelCount(int subtune, int count) { GetSubtuneIndex(subtune)->channelCount = count; };
+	void SetSongSpeed(int subtune, int speed) { GetSubtuneIndex(subtune)->songSpeed = speed; };
+	void SetInstrumentSpeed(int subtune, int speed) { GetSubtuneIndex(subtune)->instrumentSpeed = speed; };
+	void SetEffectCommandCount(int subtune, int channel, int column) { if (IsValidChannel(channel) && IsValidCommandColumn(column)) GetSubtuneIndex(subtune)->effectCommandCount[channel] = column; };
+
+	void SetSubtuneName(const char* name) { strcpy(GetSubtuneIndex(m_activeSubtune)->name, name); };	// Unsafe?
+	void SetSongLength(int length) { GetSubtuneIndex(m_activeSubtune)->songLength = length; };
+	void SetPatternLength(int length) { GetSubtuneIndex(m_activeSubtune)->patternLength = length; };
+	void SetChannelCount(int count) { GetSubtuneIndex(m_activeSubtune)->channelCount = count; };
+	void SetSongSpeed(int speed) { GetSubtuneIndex(m_activeSubtune)->songSpeed = speed; };
+	void SetInstrumentSpeed(int speed) { GetSubtuneIndex(m_activeSubtune)->instrumentSpeed = speed; };
+	void SetEffectCommandCount(int channel, int column) { if (IsValidChannel(channel) && IsValidCommandColumn(column)) GetSubtuneIndex(m_activeSubtune)->effectCommandCount[channel] = column; };
 
 	// Functions related to Pattern Data editing, and other unsorted things added in the process
 	BYTE GetShortestPatternLength(int songline);
@@ -277,6 +327,7 @@ public:
 	bool ClearPattern(int channel, int pattern);
 	bool ClearPattern(TPattern* destinationPattern);
 	bool CopyIndex(TIndex* sourceIndex, TIndex* destinationIndex);
+	bool CopySubtune(TSubtune* sourceSubtune, TSubtune* destinationSubtune);
 	bool DuplicatePatternIndex(int sourceIndex, int destinationIndex);
 	int MergeDuplicatedPatterns();
 	void RenumberIndexedPatterns();
@@ -286,16 +337,13 @@ public:
 	int GetSubtuneFromLegacyRMT(int startSongline, CString& resultstr);
 
 private:
-	TIndex* m_index;
+	TSubtune* m_index;
 	TInstrumentV2* m_instrument;
+
+	bool m_initialised;
 
 	char m_songName[MODULE_TITLE_NAME_MAX];
 
-	BYTE m_songLength;
-	BYTE m_patternLength;
-	BYTE m_channelCount;
-	BYTE m_songSpeed;
-	BYTE m_instrumentSpeed;
-
-	bool m_initialised;
+	BYTE m_activeSubtune;
+	BYTE m_subtuneCount;
 };

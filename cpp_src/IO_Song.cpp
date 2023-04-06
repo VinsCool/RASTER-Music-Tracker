@@ -521,11 +521,15 @@ void CSong::FileImport()
 		s.AppendFormat("Done!\n");
 		out << s << std::endl;
 
-		s.Format("Imported module parameters:\nSonglength: %02X, Tracklength: %02X, Channels: %01X\n", module->GetSongLength(), module->GetPatternLength(), module->GetChannelCount());
+		s.Format("Imported module parameters:\n");
+		s.AppendFormat("Subtunes: %02X, Songlength: %02X, Tracklength: %02X, Channels: %01X\n", module->GetSubtuneCount(), module->GetSongLength(), module->GetPatternLength(), module->GetChannelCount());
 		out << s << std::endl;
 
 		s.Format("All imported songlines will be displayed below...\n");
 		out << s << std::endl;
+
+		// Test, what was loaded in a this Subtune?
+		module->SetActiveSubtune(1);
 
 		for (int i = 0; i < module->GetSongLength(); i++)
 		{
@@ -638,7 +642,7 @@ void CSong::FileImport()
 					}
 
 					// Command(s)
-					for (int l = 0; l < module->GetActiveEffectCommand(k); l++)
+					for (int l = 0; l < module->GetEffectCommandCount(k); l++)
 					{
 						int cmd = module->GetPatternRowCommand(k, module->GetPatternInSongline(k, i), j, l);
 
