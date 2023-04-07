@@ -500,16 +500,11 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		SetEffectCommandCount(i, i == CH1 ? 2 : 1);
 	}
 
+	// Try to identify all the "Valid" Subtunes from the Imported Data
+	GetSubtuneFromLegacyRMT(startSongline);
+
 	// Then... not a lot would be left to do here...
 	// The entire RMTE Module could virtually be used right away from this point onward...
-
-	CString s;
-	CString subtuneCount;
-	int count = GetSubtuneFromLegacyRMT(startSongline, subtuneCount);
-
-	s.Format("%i subtunes detected, each starting on Songline:\n", count);
-
-	MessageBox(g_hwnd, s + subtuneCount, "Import Legacy RMT", MB_ICONINFORMATION);
 }
 
 
@@ -946,84 +941,113 @@ void CModule::AllSizeOptimisations()
 }
 
 // Find all individual Subtunes from imported Legacy RMT data, in order to reconstruct all the Subtunes later
-// FIXME: in order to support the Bxx Commands properly, this function must be rewritten with a different approach in mind!
-int CModule::GetSubtuneFromLegacyRMT(int startSongline, CString& resultstr)
+void CModule::GetSubtuneFromLegacyRMT(int startSongline)
 {
-	int apos = 0;
-	int asub = 0;
+	TSubtune* backupSubtune = new TSubtune;
+	CopySubtune(GetSubtuneIndex(MODULE_DEFAULT_SUBTUNE), backupSubtune);
 
-	bool ok = false;
+	WORD songlineStep[SONGLINE_MAX];
+	memset(songlineStep, INVALID, SONGLINE_MAX);
 
-	WORD songp[SONGLINE_MAX];
-	memset(songp, INVALID, SONGLINE_MAX);
+	BYTE subtuneOffset[SONGLINE_MAX];
+	memset(subtuneOffset, 0, SONGLINE_MAX);
 
-	CString s;
-	resultstr = "";
+	BYTE subtuneCount = 0;
 
 	// Process all indexed Songlines until all Subtunes are identified
 	for (int i = startSongline; i < GetSongLength(); i++)
 	{
 		// If the Indexed Songline was not already processed...
-		if (!IsValidSongline(songp[i]))
+		if (!IsValidSongline(songlineStep[i]))
 		{
-			// Set the current offset to the Songline Index
-			apos = i;
+			// if a new Subtune is found, set the offset to the current Songline Index
+			subtuneOffset[subtuneCount] = i;
+			subtuneCount++;
 
-			// Analyse all of the Songlines until a loop is detected
-			while (!IsValidSongline(songp[apos]))
+			// From here, analyse the next Songlines until a loop is detected
+			for (int j = i; j < GetSongLength(); j++)
 			{
-				songp[apos] = asub;
+				// If the Songline Step offset is Valid, a loop was completed, there is nothing else to do here
+				if (IsValidSongline(songlineStep[j]))
+					break;
 
-				// Jump to another line
-				if ((GetPatternRowCommand(CH1, GetPatternInSongline(CH1, apos), GetShortestPatternLength(apos) - 1, CMD2) & 0xFF00) == PATTERN_EFFECT_BXX)
+				// Set the Songline Step to the value of i to clearly indicate it belongs to the same Subtune
+				songlineStep[j] = i;
+
+				// If a Goto Songline Command is found, the Songline Step will be set to the Destination Songline
+				if ((GetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2) & 0xFF00) == PATTERN_EFFECT_BXX)
 				{
-					// If the Destination Songline is recursive, we know it is a valid Songline by default... Oh, Mama Mia, we have delicious spaghettis for dinner!
-					apos = GetPatternRowCommand(CH1, GetPatternInSongline(CH1, apos), GetShortestPatternLength(apos) - 1, CMD2) & 0xFF;
+					// The next Songline Step will also set to the value of i, to avoid the ricks of detecting false Subtunes
+					songlineStep[j + 1] = i;
+
+					// Update j to match the value of the Destination Songline
+					j = GetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2) & 0xFF;
+
+					// The Songline Step will be set once again to the value of i, for the same reasons described above
+					songlineStep[j] = i;
 				}
-				else
-				{
-					if (!ok)
-					{	
-						// Has not found any tracks in this subsong yet
-						for (int j = 0; j < GetChannelCount(); j++)
-						{
-							if (!IsEmptyPattern(j, GetPatternInSongline(j, apos)))
-							{
-								// If then found, this will be the beginning of the subsong
-								s.Format("%02X ", apos);
-								resultstr += s;
-
-								// The beginning of this subsong is already written
-								ok = true;
-								break;
-							}
-
-						}
-
-					}
-
-					// Move to the next Songline
-					apos++;
-
-					// If the maximum number of Songlines were processed, there is nothing else to do here
-					if (apos >= SONGLINE_MAX) 
-						break;
-
-				}
-
 			}
-
-			// Will move to the next if the subsong contains anything at all
-			if (ok) 
-				asub++;
-
-			// Initialization for further search
-			ok = false;
-
 		}
-
 	}
 
-	// Return the number of Subtunes detected
-	return asub;
+	// Re-construct all of individual Subtunes that were detected
+	for (int i = 0; i < subtuneCount; i++)
+	{
+		BYTE offset = subtuneOffset[i];
+
+		CopySubtune(backupSubtune, GetSubtuneIndex(i));
+
+		SetActiveSubtune(i);
+
+		// Set all indexed Patterns to INVALID, to easily keep track of the Empty Songlines
+		for (int j = 0; j < SONGLINE_MAX; j++)
+			SetPatternInSongline(i, j, INVALID);
+
+		// This will be used once again for detecting loop points in Subtunes
+		memset(songlineStep, INVALID, SONGLINE_MAX);
+
+		// Re-construct every Songlines used by the Subtune, until the loop point is found
+		for (int j = 0; j < SONGLINE_MAX; j++)
+		{
+			// If the Songline Step offset is Valid, a loop was completed, and the Songlength will be set here
+			if (IsValidSongline(songlineStep[offset]))
+			{
+				SetSongLength(j);
+				break;
+			}
+
+			// Set the Songline Step to the value of i to clearly indicate it belongs to the same Subtune
+			songlineStep[offset] = i;
+
+			// Fetch the Patterns from the backup Songline Index first
+			for (int k = 0; k < GetChannelCount(); k++)
+			{
+				SetPatternInSongline(k, j, backupSubtune->channel[k].songline[offset]);
+			}
+
+			// If a Goto Songline Command is found, the data from Destination Songline will be copied to the next Songline
+			if ((GetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2) & 0xFF00) == PATTERN_EFFECT_BXX)
+			{
+				// Update the Songline offset to the value of the Destination Songline
+				offset = GetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2) & 0xFF;
+
+				// Clear the Bxx Command, since it won't be needed anymore, except for the loop point, which will also be adjusted at the end
+				//SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, PATTERN_EFFECT_DXX);
+				continue;
+			}
+
+			// Otherwise, the Songline offset will increment by 1 for the next Songline
+			offset++;
+		}
+
+		// Finally, apply the Size Optimisations, the Subtune should have been reconstructed successfully!
+		AllSizeOptimisations();
+	}
+
+	// Set the Subtune count and the Active Subtune values once everything was processed
+	SetSubtuneCount(subtuneCount);
+	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
+
+	// Delete the Subtune Backup once it is no longer needed
+	delete backupSubtune;
 }

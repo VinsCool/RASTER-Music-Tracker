@@ -521,167 +521,169 @@ void CSong::FileImport()
 		s.AppendFormat("Done!\n");
 		out << s << std::endl;
 
-		s.Format("Imported module parameters:\n");
-		s.AppendFormat("Subtunes: %02X, Songlength: %02X, Tracklength: %02X, Channels: %01X\n", module->GetSubtuneCount(), module->GetSongLength(), module->GetPatternLength(), module->GetChannelCount());
-		out << s << std::endl;
-
-		s.Format("All imported songlines will be displayed below...\n");
-		out << s << std::endl;
-
-		// Test, what was loaded in a this Subtune?
-		module->SetActiveSubtune(1);
-
-		for (int i = 0; i < module->GetSongLength(); i++)
+		for (int subtune = 0; subtune < module->GetSubtuneCount(); subtune++)
 		{
-			// Songline index
-			s.Format("%02X: ", i);
+			module->SetActiveSubtune(subtune);
 
-			for (int j = 0; j < module->GetChannelCount(); j++)
+			s.Format("* Subtune %02X *\n\n", subtune);
+			s.AppendFormat("Songlength: %02X, Tracklength: %02X, Channels: %01X\n", module->GetSongLength(), module->GetPatternLength(), module->GetChannelCount());
+			out << s << std::endl;
+
+			s.Format("All imported songlines will be displayed below...\n");
+			out << s << std::endl;
+
+			for (int i = 0; i < module->GetSongLength(); i++)
 			{
-				s.AppendFormat("%02X ", module->GetPatternInSongline(j, i));
+				// Songline index
+				s.Format("%02X: ", i);
+
+				for (int j = 0; j < module->GetChannelCount(); j++)
+				{
+					s.AppendFormat("%02X ", module->GetPatternInSongline(j, i));
+				}
+
+				// Print out what is being read, hopefully with success...
+				out << s << std::endl;
 			}
 
-			// Print out what is being read, hopefully with success...
+			s.Format("\nNormally, this should have displayed all songlines!\n");
 			out << s << std::endl;
-		}
 
-		s.Format("\nNormally, this should have displayed all songlines!\n");
-		out << s << std::endl;
+			s.Format("All imported patterns will be displayed below...\n");
+			out << s << std::endl;
 
-		s.Format("All imported patterns will be displayed below...\n");
-		out << s << std::endl;
+			// Standard notation
+			int notation = 0;
 
-		// Standard notation
-		int notation = 0;
+			if (g_displayflatnotes)
+				notation += 1;
 
-		if (g_displayflatnotes)
-			notation += 1;
+			if (g_usegermannotation)
+				notation += 2;
 
-		if (g_usegermannotation)
-			notation += 2;
+			// Non-12 scales don't yet have proper display
+			if (g_notesperoctave != 12)
+				notation = 4;
 
-		// Non-12 scales don't yet have proper display
-		if (g_notesperoctave != 12)
-			notation = 4;
-
-		// This will print out all the pattern data from all channels
-		for (int i = 0; i < module->GetSongLength(); i++)
-		{
-			// Songline Index
-			s.Format("* Songline %02X *\n\n", i);
-
-			for (int j = 0; j < module->GetPatternLength(); j++)
+			// This will print out all the pattern data from all channels
+			for (int i = 0; i < module->GetSongLength(); i++)
 			{
-				// Row Index
-				s.AppendFormat("|%02X| ", j);
+				// Songline Index
+				s.Format("* Songline %02X *\n\n", i);
 
-				// Effect commands Bxx and Dxx may be used to end a pattern early
-				bool endPattern = false;
-
-				for (int k = 0; k < module->GetChannelCount(); k++)
+				for (int j = 0; j < module->GetPatternLength(); j++)
 				{
-					// Note and Octave
-					int note = module->GetPatternRowNote(k, module->GetPatternInSongline(k, i), j);
-					const char* noteidx = notesandscales[notation][note % g_notesperoctave];
+					// Row Index
+					s.AppendFormat("|%02X| ", j);
 
-					switch (note)
+					// Effect commands Bxx and Dxx may be used to end a pattern early
+					bool endPattern = false;
+
+					for (int k = 0; k < module->GetChannelCount(); k++)
 					{
-					case PATTERN_NOTE_EMPTY:
-						s.AppendFormat("--- ");
-						break;
+						// Note and Octave
+						int note = module->GetPatternRowNote(k, module->GetPatternInSongline(k, i), j);
+						const char* noteidx = notesandscales[notation][note % g_notesperoctave];
 
-					case PATTERN_NOTE_OFF:
-						s.AppendFormat("OFF ");
-						break;
-
-					case PATTERN_NOTE_RELEASE:
-						s.AppendFormat("=== ");
-						break;
-
-					case PATTERN_NOTE_RETRIGGER:
-						s.AppendFormat("~~~ ");
-						break;
-
-					default:
-						if (module->IsValidNote(note))
-							s.AppendFormat("%C%C%01X ", noteidx[0], noteidx[1], note / g_notesperoctave + 1);
-						else
-							s.AppendFormat("??? ");
-					}
-
-					// Instrument
-					int instrument = module->GetPatternRowInstrument(k, module->GetPatternInSongline(k, i), j);
-
-					switch (instrument)
-					{
-					case PATTERN_INSTRUMENT_EMPTY:
-						s.AppendFormat("-- ");
-						break;
-
-					default:
-						if (module->IsValidInstrument(instrument))
-							s.AppendFormat("%02X ", instrument);
-						else
-							s.AppendFormat("?? ");
-					}
-
-					// Volume
-					int volume = module->GetPatternRowVolume(k, module->GetPatternInSongline(k, i), j);
-
-					switch (volume)
-					{
-					case PATTERN_VOLUME_EMPTY:
-						s.AppendFormat("-- ");
-						break;
-
-					default:
-						if (module->IsValidVolume(volume))
-							s.AppendFormat("v%01X ", volume);
-						else
-							s.AppendFormat("?? ");
-					}
-
-					// Command(s)
-					for (int l = 0; l < module->GetEffectCommandCount(k); l++)
-					{
-						int cmd = module->GetPatternRowCommand(k, module->GetPatternInSongline(k, i), j, l);
-
-						switch (cmd)
+						switch (note)
 						{
-						case PATTERN_EFFECT_EMPTY:
+						case PATTERN_NOTE_EMPTY:
 							s.AppendFormat("--- ");
 							break;
 
+						case PATTERN_NOTE_OFF:
+							s.AppendFormat("OFF ");
+							break;
+
+						case PATTERN_NOTE_RELEASE:
+							s.AppendFormat("=== ");
+							break;
+
+						case PATTERN_NOTE_RETRIGGER:
+							s.AppendFormat("~~~ ");
+							break;
+
 						default:
-							if (module->IsValidCommand(cmd))
-								s.AppendFormat("%03X ", cmd);
+							if (module->IsValidNote(note))
+								s.AppendFormat("%C%C%01X ", noteidx[0], noteidx[1], note / g_notesperoctave + 1);
 							else
 								s.AppendFormat("??? ");
 						}
 
-						// Identify the Pattern End as long as it isn't already known
-						if (!endPattern)
-							endPattern = (cmd >> 8 == 0x0D || cmd >> 8 == 0x0B);
+						// Instrument
+						int instrument = module->GetPatternRowInstrument(k, module->GetPatternInSongline(k, i), j);
+
+						switch (instrument)
+						{
+						case PATTERN_INSTRUMENT_EMPTY:
+							s.AppendFormat("-- ");
+							break;
+
+						default:
+							if (module->IsValidInstrument(instrument))
+								s.AppendFormat("%02X ", instrument);
+							else
+								s.AppendFormat("?? ");
+						}
+
+						// Volume
+						int volume = module->GetPatternRowVolume(k, module->GetPatternInSongline(k, i), j);
+
+						switch (volume)
+						{
+						case PATTERN_VOLUME_EMPTY:
+							s.AppendFormat("-- ");
+							break;
+
+						default:
+							if (module->IsValidVolume(volume))
+								s.AppendFormat("v%01X ", volume);
+							else
+								s.AppendFormat("?? ");
+						}
+
+						// Command(s)
+						for (int l = 0; l < module->GetEffectCommandCount(k); l++)
+						{
+							int cmd = module->GetPatternRowCommand(k, module->GetPatternInSongline(k, i), j, l);
+
+							switch (cmd)
+							{
+							case PATTERN_EFFECT_EMPTY:
+								s.AppendFormat("--- ");
+								break;
+
+							default:
+								if (module->IsValidCommand(cmd))
+									s.AppendFormat("%03X ", cmd);
+								else
+									s.AppendFormat("??? ");
+							}
+
+							// Identify the Pattern End as long as it isn't already known
+							if (!endPattern)
+								endPattern = (cmd >> 8 == 0x0D || cmd >> 8 == 0x0B);
+						}
+
+						// Append a Separator between Rows, to make the Pattern Data aligned to its Channel Index
+						s.AppendFormat("| ");
 					}
 
-					// Append a Separator between Rows, to make the Pattern Data aligned to its Channel Index
-					s.AppendFormat("| ");
+					// Append a Line Break once a complete Pattern Row was constructed
+					s.AppendFormat("\n");
+
+					// If a End Pattern or Goto Songline command was detected, there is nothing else to display for this pattern
+					if (endPattern)
+						break;
 				}
 
-				// Append a Line Break once a complete Pattern Row was constructed
-				s.AppendFormat("\n");
-
-				// If a End Pattern or Goto Songline command was detected, there is nothing else to display for this pattern
-				if (endPattern)
-					break;
+				// Print out what is being read, hopefully with success...
+				out << s << std::endl;
 			}
 
-			// Print out what is being read, hopefully with success...
+			s.Format("Normally, this should have displayed all patterns!\n");
 			out << s << std::endl;
 		}
-
-		s.Format("Normally, this should have displayed all patterns!");
-		out << s << std::endl;
 
 		// Delete the module once it's no longer needed
 		delete module;

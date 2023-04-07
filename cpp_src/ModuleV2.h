@@ -334,7 +334,7 @@ public:
 	void ClearUnusedPatterns();
 	void ConcatenateIndexedPatterns();
 	void AllSizeOptimisations();
-	int GetSubtuneFromLegacyRMT(int startSongline, CString& resultstr);
+	void GetSubtuneFromLegacyRMT(int startSongline);
 
 private:
 	TSubtune* m_index;
