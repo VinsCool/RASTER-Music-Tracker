@@ -182,6 +182,10 @@ public:
 	void SetModuleStatus(bool status) { m_initialised = status; };
 
 	void ImportLegacyRMT(std::ifstream& in);
+	bool DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log);
+	bool ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress);
+	bool ImportLegacySonglines(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, WORD endAddress);
+	bool ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, BYTE version, BYTE* isLoaded);
 
 	// Booleans for Module index and data integrity
 	bool IsModuleInitialised() { return m_initialised; };
@@ -270,6 +274,23 @@ public:
 	const BYTE* GetInstrumentNoteTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].noteTable : NULL; };
 	const BYTE* GetInstrumentFreqTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].freqTable : NULL; };
 
+	// Setters for Instrument data
+	int SetInstrumentName(int instrument, const char* name)
+	{
+		if (!IsValidInstrument(instrument))
+			return 0;
+		
+		int i;
+
+		for (i = 0; i < INSTRUMENT_NAME_MAX; i++)
+		{
+			if (!(m_instrument[instrument].name[i] = name[i]))
+				break;
+		}
+
+		return i + 1;
+	};
+
 	// Getters for Module parameters
 	const char* GetSongName() { return m_songName; };
 	
@@ -293,12 +314,23 @@ public:
 	const BYTE GetEffectCommandCount(int channel) { return IsValidChannel(channel) ? GetSubtuneIndex(m_activeSubtune)->effectCommandCount[channel] : INVALID; };
 
 	// Setters for Module parameters
-	void SetSongName(const char* name) { strcpy(m_songName, name); };	// Unsafe?
+	int SetSongName(const char* name)
+	{
+		int i;
+
+		for (i = 0; i < MODULE_TITLE_NAME_MAX; i++)
+		{
+			if (!(m_songName[i] = name[i]))
+				break;
+		}
+
+		return i + 1;
+	};
 
 	void SetActiveSubtune(int subtune) { m_activeSubtune = subtune; };
 	void SetSubtuneCount(int count) { m_subtuneCount = count; };
 
-	void SetSubtuneName(int subtune, const char* name) { strcpy(GetSubtuneIndex(subtune)->name, name); };	// Unsafe?
+	void SetSubtuneName(int subtune, const char* name) { strncpy(GetSubtuneIndex(subtune)->name, name, SUBTUNE_NAME_MAX); GetSubtuneIndex(subtune)->name[SUBTUNE_NAME_MAX] = 0; };
 	void SetSongLength(int subtune, int length) { GetSubtuneIndex(subtune)->songLength = length; };
 	void SetPatternLength(int subtune, int length) { GetSubtuneIndex(subtune)->patternLength = length; };
 	void SetChannelCount(int subtune, int count) { GetSubtuneIndex(subtune)->channelCount = count; };
@@ -306,7 +338,7 @@ public:
 	void SetInstrumentSpeed(int subtune, int speed) { GetSubtuneIndex(subtune)->instrumentSpeed = speed; };
 	void SetEffectCommandCount(int subtune, int channel, int column) { if (IsValidChannel(channel) && IsValidCommandColumn(column)) GetSubtuneIndex(subtune)->effectCommandCount[channel] = column; };
 
-	void SetSubtuneName(const char* name) { strcpy(GetSubtuneIndex(m_activeSubtune)->name, name); };	// Unsafe?
+	void SetSubtuneName(const char* name) { strncpy(GetSubtuneIndex(m_activeSubtune)->name, name, SUBTUNE_NAME_MAX); GetSubtuneIndex(m_activeSubtune)->name[SUBTUNE_NAME_MAX] = 0; };
 	void SetSongLength(int length) { GetSubtuneIndex(m_activeSubtune)->songLength = length; };
 	void SetPatternLength(int length) { GetSubtuneIndex(m_activeSubtune)->patternLength = length; };
 	void SetChannelCount(int count) { GetSubtuneIndex(m_activeSubtune)->channelCount = count; };

@@ -21,7 +21,7 @@ void CModule::InitialiseModule()
 {
 	// Create new module data if it doesn't exist
 	if (!m_index) m_index = new TSubtune[SUBTUNE_MAX];
-	if (!m_instrument) m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_MAX];
+	if (!m_instrument) m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_COUNT];
 
 	// Set default module parameters
 	SetSongName("Noname Song");
@@ -56,7 +56,7 @@ void CModule::InitialiseModule()
 	}
 
 	// Also clear all instruments in the module
-	for (int i = 0; i < PATTERN_INSTRUMENT_MAX; i++)
+	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
 	{
 		strcpy(m_instrument[i].name, "New Instrument");
 		m_instrument[i].envelopeLength = 1;
@@ -101,71 +101,574 @@ void CModule::ClearModule()
 
 void CModule::ImportLegacyRMT(std::ifstream& in)
 {
+	CString importLog;
+	importLog.Format("");
+
+	WORD songlineStep[SONGLINE_MAX];
+	memset(songlineStep, INVALID, SONGLINE_MAX);
+
+	BYTE subtuneOffset[SONGLINE_MAX];
+	memset(subtuneOffset, 0, SONGLINE_MAX);
+
+	// This will become the final count of decoded Subtunes from the Legacy RMT Module
+	BYTE subtuneCount = 0;
+
+	// Create a Temporary Subtune, to make the Import procedure a much easier task
+	TSubtune* importSubtune = new TSubtune;
+
+	// Clear the current module data
+	InitialiseModule();
+
+	// Copy an empty Subtune to the Temporary Subtune to initialise it
+	CopySubtune(GetSubtuneIndex(MODULE_DEFAULT_SUBTUNE), importSubtune);
+
+	// Decode the Legacy RMT Module into the Temporary Subtune, and re-construct the imported data if successful
+	if (DecodeLegacyRMT(in, importSubtune, importLog))
+	{
+		importLog.AppendFormat("Stage 1 - Decoding of Legacy RMT Module:\n\n");
+		importLog.AppendFormat("Song Name: \"");
+		importLog.AppendFormat(GetSongName());
+		importLog.AppendFormat("\"\n");
+		importLog.AppendFormat("Song Length: %02X, Pattern Length: %02X, Channels: %01X\n", importSubtune->songLength, importSubtune->patternLength, importSubtune->channelCount);
+		importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n\n", importSubtune->songSpeed, importSubtune->instrumentSpeed);
+
+		importLog.AppendFormat("Stage 2 - Constructing RMTE Module from imported data:\n\n");
+
+		// Process all indexed Songlines until all the Subtunes are identified
+		for (int i = 0; i < importSubtune->songLength; i++)
+		{
+			// If the Indexed Songline was not already processed...
+			if (!IsValidSongline(songlineStep[i]))
+			{
+				// if a new Subtune is found, set the offset to the current Songline Index
+				importLog.AppendFormat("Identified: Subtune %02X, in Songline %02X\n", subtuneCount, i);
+				subtuneOffset[subtuneCount] = i;
+				subtuneCount++;
+
+				// From here, analyse the next Songlines until a loop is detected
+				for (int j = i; j < importSubtune->songLength; j++)
+				{
+					// If the Songline Step offset is Valid, a loop was completed, there is nothing else to do here
+					if (IsValidSongline(songlineStep[j]))
+					{
+						importLog.AppendFormat("Loop Point found in Songline %02X\n", j);
+						break;
+					}
+
+					// Set the Songline Step to the value of i to clearly indicate it belongs to the same Subtune
+					songlineStep[j] = i;
+
+					// If a Goto Songline Command is found, the Songline Step will be set to the Destination Songline
+					if (importSubtune->channel[CH1].songline[j] == 0xFE)
+					{
+						j = importSubtune->channel[CH2].songline[j];
+
+						// Also set the Songline Step at the offset of Destination Songline, so it won't be referenced again
+						songlineStep[j] = i;
+					}
+				}
+			}
+		}
+
+		importLog.AppendFormat("Confidently detected %i unique Subtune(s).\n\n", subtuneCount);
+		importLog.AppendFormat("Stage 3 - Optimising Subtunes with compatibility tweaks:\n\n");
+
+		// Copy all of the imported patterns to every Channels, so they all share identical data
+		for (int i = 0; i < importSubtune->channelCount; i++)
+		{
+			// The Songline Index won't be overwritten in the process, since we will need it in its current form!
+			for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+				CopyPattern(&importSubtune->channel[0].pattern[j], &importSubtune->channel[i].pattern[j]);
+
+			// Set the Active Effect Command Columns for each channels
+			importSubtune->effectCommandCount[i] = i == CH1 ? 2 : 1;
+		}
+
+		// Re-construct all of individual Subtunes that were detected
+		for (int i = 0; i < subtuneCount; i++)
+		{
+			BYTE offset = subtuneOffset[i];
+
+			// Copy the data previously imported from the Temporary Subtune into the Active Subtune
+			SetActiveSubtune(i);
+			CopySubtune(importSubtune, GetSubtuneIndex(i));
+
+			// This will be used once again for detecting loop points in Subtunes
+			memset(songlineStep, INVALID, SONGLINE_MAX);
+
+			// Re-construct every Songlines used by the Subtune, until the loop point is found
+			for (int j = 0; j < SONGLINE_MAX; j++)
+			{
+				// If the Songline Step offset is Valid, a loop was completed, and the Songlength will be set here
+				if (IsValidSongline(songlineStep[offset]))
+				{
+					SetSongLength(j - 1);
+					break;
+				}
+
+				// Set the Songline Step to the value of j to match the reconstructed Songline Index
+				songlineStep[offset] = j;
+
+				// If a Goto Songline Command is found, the data from Destination Songline will be copied to the next Songline
+				if (importSubtune->channel[CH1].songline[offset] == 0xFE)
+				{
+					offset = importSubtune->channel[CH2].songline[offset];
+
+					// Also set the Songline Step at the offset of Destination Songline, so it won't be referenced again
+					songlineStep[offset] = j;
+				}
+
+				// Fetch the Patterns from the backup Songline Index first
+				for (int k = 0; k < GetChannelCount(); k++)
+					SetPatternInSongline(k, j, importSubtune->channel[k].songline[offset]);
+
+				// Otherwise, the Songline offset will increment by 1 for the next Songline
+				offset++;
+			}
+
+			// Re-arrange all Patterns to make them unique entries for every Songline, so editing them will not overwrite anything intended to be used differently
+			RenumberIndexedPatterns();
+
+			// In order to merge all of the Bxx and Dxx Commands, find all Dxx Commands that were used, and move them to Channel 1, unless a Bxx Command was already used there
+			for (int j = 0; j < GetSongLength(); j++)
+			{
+				// If the Shortest Pattern Length is below actual Pattern Length, a Dxx Command was already used somewhere, and must be replaced
+				if (GetShortestPatternLength(j) < GetPatternLength())
+					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, PATTERN_EFFECT_DXX);
+
+				// Set the final Goto Songline Command Bxx to the Songline found at the loop point
+				if (j == GetSongLength() - 1)
+					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, PATTERN_EFFECT_BXX | (songlineStep[offset] - 1));
+
+				// Skip CH1, since it was already processed above
+				for (int k = CH2; k < GetChannelCount(); k++)
+				{
+					// All Pattern Rows will be edited, regardless of their contents
+					for (int l = 0; l < TRACK_ROW_MAX; l++)
+					{
+						// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
+						for (int m = CMD2; m < PATTERN_ACTIVE_EFFECT_MAX; m++)
+							SetPatternRowCommand(k, GetPatternInSongline(k, j), l, m, PATTERN_EFFECT_EMPTY);
+					}
+				}
+			}
+
+			// Finally, apply the Size Optimisations, the Subtune should have been reconstructed successfully!
+			AllSizeOptimisations();
+		}
+
+		// Set the Subtune count to the number of individual Subtunes identified
+		SetSubtuneCount(subtuneCount);
+
+		// Set the Active Subtune to the Default parameter, once the Legacy RMT Import procedure was completed
+		SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
+	}
+
+	// Delete the Temporary Subtune once it is no longer needed
+	delete importSubtune;
+
+	// Spawn a messagebox with the statistics collected during the Legacy RMT Module import procedure
+	MessageBox(g_hwnd, importLog, "Import Legacy RMT", MB_ICONINFORMATION);
+}
+
+// Decode Legacy RMT Module Data, Return True if successful
+// If an invalid parameter was found, settle for a compromise using the default values
+// The import procedure will be aborted if there is no suitable recovery, however!
+bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log)
+{
+	// Make sure the Subtune is not a Null pointer
+	if (!subtune)
+		return false;
+
 	WORD fromAddr, toAddr;
 
 	BYTE mem[65536];
 	memset(mem, 0, 65536);
 
+	BYTE instrumentLoaded[PATTERN_INSTRUMENT_COUNT];
+	memset(instrumentLoaded, 0, PATTERN_INSTRUMENT_COUNT);
+
+	// Load the first RMT Module Block, in order to get all of the Pattern, Songline and Instrument Data
 	if (!LoadBinaryBlock(in, mem, fromAddr, toAddr))
 	{
-		MessageBox(g_hwnd, "Corrupted RMT module, or incompatible format version.", "Import error", MB_ICONERROR);
-		return;
+		log.AppendFormat("An error was returned from LoadBinaryBlock().\n");
+		log.AppendFormat("This may be caused by an invalid file, or corrupted data.\n\n");
+		return false;
 	}
 
-	// Check that the header starts with "RMT"
-	if (strncmp((char*)(mem + fromAddr), "RMT", 3) != 0)
-	{
-		MessageBox(g_hwnd, "Corrupted RMT module, or incompatible format version.", "Import error", MB_ICONERROR);
-		return;
-	}
-
-	// Clear the current module data
-	InitialiseModule();
-
-	// Create a Temporary Subtune, to make the Import procedure a much easier task
-	TSubtune* importSubtune = new TSubtune;
-
-	// Copy an empty Subtune to the Temporary Subtune to initialise it
-	CopySubtune(GetSubtuneIndex(MODULE_DEFAULT_SUBTUNE), importSubtune);
+	// 1st, 2nd and 3rd byte: "RMT" identifier
+	char* identifier = (char*)mem + fromAddr;
 
 	// 4th byte: # of channels (4 or 8)
-	importSubtune->channelCount = mem[fromAddr + 3] & 0x0F;
+	subtune->channelCount = mem[fromAddr + 3] & 0x0F;
 
 	// 5th byte: track length
-	importSubtune->patternLength = mem[fromAddr + 4];
+	subtune->patternLength = mem[fromAddr + 4];
 
 	// 6th byte: song speed
-	importSubtune->songSpeed = mem[fromAddr + 5];
+	subtune->songSpeed = mem[fromAddr + 5];
 
 	// 7th byte: Instrument speed
-	importSubtune->instrumentSpeed = mem[fromAddr + 6];
+	subtune->instrumentSpeed = mem[fromAddr + 6];
 
-	// 8th byte: RMT format version nr.
-	//BYTE version = mem[fromAddr + 7];
+	// 8th byte: RMT format version (only needed for V0 Instruments, could be discarded otherwise)
+	BYTE version = mem[fromAddr + 7];
 
-	// Get various pointers
-	WORD ptrInstruments = mem[fromAddr + 8] + (mem[fromAddr + 9] << 8);		// Get ptr to the instuments
-	WORD ptrTracksLow = mem[fromAddr + 10] + (mem[fromAddr + 11] << 8);		// Get ptr to tracks table low
-	WORD ptrTracksHigh = mem[fromAddr + 12] + (mem[fromAddr + 13] << 8);	// Get ptr to tracks table high
-	WORD ptrSong = mem[fromAddr + 14] + (mem[fromAddr + 15] << 8);			// Get ptr to track list (the song)
+	// Check that the header starts with "RMT", any mismatch will flag the entire file as invalid, regardless of its contents
+	if (strncmp(identifier, "RMT", 3) != 0)
+	{
+		identifier[3] = 0;	// Append a Null terminator so only 3 bytes could be output
+		log.AppendFormat("Invalid identifier from file header.\n");
+		log.AppendFormat("Expected \"RMT\", but found \"");
+		log.AppendFormat(identifier);
+		log.AppendFormat("\" instead.\n\n");
+		return false;
+	}
 
-	// Calculate how long each of the sections are
-	WORD numInstruments = (ptrTracksLow - ptrInstruments) / 2;				// Number of instruments
-	WORD numTracks = ptrTracksHigh - ptrTracksLow;							// Number of tracks
-	WORD lengthSong = toAddr + 1 - ptrSong;									// Number of songlines
+	// Invalid Channel Count
+	if (subtune->channelCount != 4 && subtune->channelCount != 8)
+	{
+		subtune->channelCount = MODULE_STEREO;
+		log.AppendFormat("Warning: Invalid number of Channels, 4 or 8 were expected\n");
+		log.AppendFormat("Default value of %02X will be used instead.\n\n", subtune->channelCount);
+	}
 
-	// Decoding of individual instruments
-	// Instruments from RMT V0 only have few differences, so decoding its data using the same procedure might be possible(?)
-	for (int i = 0; i < numInstruments; i++)
+	// Invalid Song Speed
+	if (subtune->songSpeed < 1)
+	{
+		subtune->songSpeed = MODULE_SONG_SPEED;
+		log.AppendFormat("Warning: Song Speed could not be 0.\n");
+		log.AppendFormat("Default value of %02X will be used instead.\n\n", subtune->songSpeed);
+	}
+
+	// Invalid Instrument Speed
+	if (subtune->instrumentSpeed < 1 || subtune->instrumentSpeed > 8)
+	{
+		subtune->instrumentSpeed = MODULE_VBI_SPEED;
+		log.AppendFormat("Warning: Instrument Speed could only be set between 1 and 8 inclusive.\n");
+		log.AppendFormat("Default value of %02X will be used instead.\n\n", subtune->instrumentSpeed);
+	}
+
+	// Invalid Legacy RMT Format Version
+	if (version > RMTFORMATVERSION)
+	{
+		version = RMTFORMATVERSION;
+		log.AppendFormat("Warning: Invalid RMT Format Version detected.\n");
+		log.AppendFormat("Version %i will be assumed by default.\n\n", version);
+	}
+
+	// Import all the Legacy RMT Patterns
+	if (!ImportLegacyPatterns(subtune, mem, fromAddr))
+	{
+		log.AppendFormat("Error: Corrupted or Invalid Pattern Data!\n\n");
+		return false;
+	}
+
+	// Import all the Legacy RMT Songlines
+	if (!ImportLegacySonglines(subtune, mem, fromAddr, toAddr))
+	{
+		log.AppendFormat("Error: Corrupted or Invalid Songline Data!\n\n");
+		return false;
+	}
+
+	// Import all the Legacy RMT Instruments
+	if (!ImportLegacyInstruments(subtune, mem, fromAddr, version, instrumentLoaded))
+	{
+		log.AppendFormat("Error: Corrupted or Invalid Instrument Data!\n\n");
+		return false;
+	}
+
+	// Load the second RMT Module Block, in order to get the Song and Instrument Names
+	if (!LoadBinaryBlock(in, mem, fromAddr, toAddr))
+	{
+		log.AppendFormat("Stripped RMT Module detected.\nThe default Song and Instrument Names will be used instead.\n\n");
+
+		// Decoding of Legacy RMT Module should have been successful, even without the second Module Block
+		return true;
+	}
+
+	// Get the Song Name pointer
+	BYTE* ptrName = mem + fromAddr;
+
+	// Copy the Song Name
+	BYTE ch = SetSongName((const char*)ptrName);
+
+	// Get the Instrument Name address, which is directly after the Song Name
+	WORD addrInstrumentNames = fromAddr + ch;
+
+	// Process all Instruments
+	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+	{
+		// Skip the Instrument if it was not loaded
+		if (!instrumentLoaded[i])
+			continue;
+
+		// Get the Instrument Name pointer
+		ptrName = mem + addrInstrumentNames;
+
+		// Copy the Name to the indexed Instrument
+		ch = SetInstrumentName(i, (const char*)ptrName);
+
+		// Offset the Instrument Name address for the next one
+		addrInstrumentNames += ch;
+	}
+
+	// Decoding of Legacy RMT Module should have been successful
+	return true;
+}
+
+// Import Legacy RMT Pattern Data, Return True if successful
+bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress)
+{
+	// Make sure both the Subtune and Source Memory are not Null pointers
+	if (!subtune || !sourceMemory)
+		return false;
+
+	// Get the pointers used for decoding the Legacy RMT Pattern data
+	WORD ptrPatternsLow = sourceMemory[sourceAddress + 10] + (sourceMemory[sourceAddress + 11] << 8);
+	WORD ptrPatternsHigh = sourceMemory[sourceAddress + 12] + (sourceMemory[sourceAddress + 13] << 8);
+	WORD ptrEnd = sourceMemory[sourceAddress + 14] + (sourceMemory[sourceAddress + 15] << 8);
+
+	// Number of Patterns to decode
+	WORD patternCount = ptrPatternsHigh - ptrPatternsLow;
+
+	// Abort the import procedure if the number of Patterns detected is invalid
+	if (!IsValidPattern(patternCount))
+		return false;
+
+	// Decode all Patterns
+	for (int i = 0; i < patternCount; i++)
+	{
+		// Pattern data pointers are split over two tables, low and high bytes, each indexed by the Pattern number itself
+		WORD ptrOnePattern = sourceMemory[ptrPatternsLow + i] + (sourceMemory[ptrPatternsHigh + i] << 8);
+
+		// If the pointer is Null, it is an empty Pattern, and must be skipped
+		if (!ptrOnePattern)
+			continue;
+
+		// Pattern Index number to process, in order to copy data used by all indexed Songlines
+		BYTE pattern = i;
+
+		// Identify the end of the Pattern by comparing the starting address of the next Pattern, or the address to End if all Patterns were processed
+		WORD ptrPatternEnd = 0;
+
+		for (int j = i; j < patternCount; j++)
+		{
+			// Get the address used by the next indexed Pattern, or the address to End if there is no additional Patterns to process 
+			if ((ptrPatternEnd = (j + 1 == patternCount) ? ptrEnd : sourceMemory[ptrPatternsLow + j + 1] + (sourceMemory[ptrPatternsHigh + j + 1] << 8)))
+				break;
+
+			// If the next Pattern is empty, skip over it and continue seeking for the address until something is found
+			i++;
+		}
+
+		WORD patternLength = ptrPatternEnd - ptrOnePattern;
+
+		// Invalid data, the Legacy RMT Pattern cannot be larger than 256 bytes!
+		if (patternLength > 256)
+			return false;
+
+		BYTE* memPattern = sourceMemory + ptrOnePattern;
+
+		// Get the pointer to Pattern data used by the Subtune
+		TPattern* t = &subtune->channel[0].pattern[pattern];
+
+		WORD src = 0;
+		WORD gotoIndex = INVALID;
+		WORD smartLoop = INVALID;
+
+		BYTE data, count;
+		BYTE line = 0;
+
+		// Minimal Pattern Length that could be used for a smart loop
+		if (patternLength >= 2)
+		{
+			// There is a smart loop at the end of the Pattern
+			if (memPattern[patternLength - 2] == 0xBF)
+				gotoIndex = memPattern[patternLength - 1];
+		}
+
+		// Fetch the Pattern data for as long as the are bytes remaining to be processed
+		while (src < patternLength)
+		{
+			// Jump to gotoIndex => Set the Smart Loop offset here
+			if (src == gotoIndex)
+				smartLoop = line;
+
+			// Data to process at current Pattern offset
+			data = memPattern[src] & 0x3F;
+
+			switch (data)
+			{
+			case 0x3D:	// Have Volume only on this row
+				t->row[line].volume = ((memPattern[src + 1] & 0x03) << 2) | ((memPattern[src] & 0xC0) >> 6);
+				src += 2;	// 2 bytes were processed
+				line++;	// 1 row was processed
+				break;
+
+			case 0x3E:	// Pause or empty row
+				count = memPattern[src] & 0xC0;
+				if (!count)
+				{
+					// If the Pause is 0, the number of Rows to skip is in the next byte
+					if (memPattern[src + 1] == 0)
+					{
+						// Infinite pause => Set Pattern End here
+						src = patternLength;
+						break;
+					}
+					line += memPattern[src + 1];	// Number of Rows to skip
+					src += 2;	// 2 bytes were processed
+				}
+				else
+				{
+					line += (count >> 6);	// Upper 2 bits directly specify a pause between 1 to 3 rows
+					src++;	// 1 byte was processed
+				}
+				break;
+
+			case 0x3F:	// Speed, smart loop, or end
+				count = memPattern[src] & 0xC0;
+				if (!count)
+				{
+					// Speed, set Fxx command
+					t->row[line].cmd0 = 0x0F00 | memPattern[src + 1];
+					src += 2;	// 2 bytes were processed
+				}
+				if (count == 0x80)
+				{
+					// Smart loop, no extra data to process
+					src = patternLength;
+				}
+				if (count == 0xC0)
+				{
+					// End of Pattern, set a Dxx command here, no extra data to process
+					t->row[line - 1].cmd1 = 0x0D00;
+					src = patternLength;
+				}
+				break;
+
+			default:	// Note, Instrument and Volume data on this Row
+				t->row[line].note = data;
+				t->row[line].instrument = ((memPattern[src + 1] & 0xfc) >> 2);
+				t->row[line].volume = ((memPattern[src + 1] & 0x03) << 2) | ((memPattern[src] & 0xc0) >> 6);
+				src += 2;	// 2 bytes were processed
+				line++;	// 1 row was processed
+			}
+		}
+
+		// The Pattern must to be "expanded" in order to be compatible, an equivalent for Smart Loop does not yet exist for the RMTE format
+		if (IsValidRow(smartLoop))
+		{
+			for (int j = 0; line + j < subtune->patternLength; j++)
+			{
+				int k = line + j;
+				int l = smartLoop + j;
+				t->row[k].note = t->row[l].note;
+				t->row[k].instrument = t->row[l].instrument;
+				t->row[k].volume = t->row[l].volume;
+				t->row[k].cmd0 = t->row[l].cmd0;
+			}
+		}
+	}
+
+	// Legacy RMT Patterns should have been imported successfully
+	return true;
+}
+
+// Import Legacy RMT Songline Data, Return True if successful
+bool CModule::ImportLegacySonglines(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, WORD endAddress)
+{
+	// Make sure both the Subtune and Source Memory are not Null pointers
+	if (!subtune || !sourceMemory)
+		return false;
+
+	// Variables for processing songline data
+	WORD line = 0, src = 0;
+	BYTE channel = 0;
+
+	// Get the pointers used for decoding the Legacy RMT Songline data
+	WORD ptrSong = sourceMemory[sourceAddress + 14] + (sourceMemory[sourceAddress + 15] << 8);
+	BYTE* memSong = sourceMemory + ptrSong;
+
+	// Get the Song length, in bytes
+	WORD lengthSong = endAddress - ptrSong + 1;
+
+	// Abort the import procedure if the Song length detected is invalid
+	if (lengthSong < INVALID || lengthSong > 256 * 8)
+		return false;
+
+	// Decode all Songlines
+	while (src < lengthSong)
+	{
+		BYTE data = memSong[src];
+
+		// Process the Pattern index in the songline indexed by the channel number
+		switch (data)
+		{
+		case 0xFE:	// Goto Songline commands are only valid from the first channel, but we know it's never used anywhere else
+			subtune->channel[channel].songline[line] = data;
+			subtune->channel[channel + 1].songline[line] = memSong[src + 1];	// Set the songline index number in Channel 2
+			subtune->channel[channel + 2].songline[line] = INVALID;	// The Goto songline address isn't needed
+			subtune->channel[channel + 3].songline[line] = INVALID;	// Set the remaining channels to INVALID
+			channel = subtune->channelCount;	// Set the channel index to the channel count to trigger the condition below
+			src += subtune->channelCount;	// The number of bytes processed is equal to the number of channels
+			break;
+
+		default:	// An empty pattern at 0xFF is also valid for the RMTE format
+			subtune->channel[channel].songline[line] = data;
+			channel++;	// 1 pattern per channel, for each indexed songline
+			src++;	// 1 byte was processed
+		}
+
+		// 1 songline was processed when the channel count is equal to the number of channels
+		if (channel >= subtune->channelCount)
+		{
+			channel = 0;	// Reset the channel index
+			line++;	// Increment the songline count by 1
+		}
+
+		// Break out of the loop if the maximum number of songlines was processed
+		if (line >= SONGLINE_MAX)
+			break;
+	}
+
+	// Set the Songlength to the number of decoded Songlines
+	subtune->songLength = (BYTE)line;
+
+	// Legacy RMT Songlines should have been imported successfully
+	return true;
+}
+
+// Import Legacy RMT Instrument Data, Return True if successful
+bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, BYTE version, BYTE* isLoaded)
+{
+	// Make sure both the Subtune and Source Memory are not Null pointers
+	if (!subtune || !sourceMemory)
+		return false;
+
+	// Get the pointers used for decoding the Legacy RMT Instrument data
+	WORD ptrInstruments = sourceMemory[sourceAddress + 8] + (sourceMemory[sourceAddress + 9] << 8);
+	WORD ptrEnd = sourceMemory[sourceAddress + 10] + (sourceMemory[sourceAddress + 11] << 8);
+
+	// Number of instruments to decode
+	WORD instrumentCount = (ptrEnd - ptrInstruments) / 2;
+
+	// Abort the import procedure if the number of Instruments detected is invalid
+	if (!IsValidInstrument(instrumentCount))
+		return false;
+
+	// Decode all Instruments, TODO: Add exceptions for V0 Instruments
+	for (int i = 0; i < instrumentCount; i++)
 	{
 		// Get the pointer to Instrument envelope and parameters
-		WORD ptrOneInstrument = mem[ptrInstruments + i * 2] + (mem[ptrInstruments + i * 2 + 1] << 8);
+		WORD ptrOneInstrument = sourceMemory[ptrInstruments + i * 2] + (sourceMemory[ptrInstruments + i * 2 + 1] << 8);
 
 		// If it is a NULL pointer, in this case, an offset of 0, the instrument is empty, and must be skipped
 		if (!ptrOneInstrument)
 			continue;
 
-		BYTE* memInstrument = mem + ptrOneInstrument;
+		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
 
 		// Get the equivalent RMTE Instrument number
 		TInstrumentV2* ai = GetInstrument(i);
@@ -239,315 +742,13 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			// Portamento, not supported (and unlikely to be) by the RMTE format
 			//ai->portamentoEnvelope[j] = envelopeCommand & 0x01;
 		}
+
+		// Instrument was loaded
+		isLoaded[i]++;
 	}
 
-	// Decoding individual tracks
-	for (int i = 0; i < numTracks; i++)
-	{
-		// Track data pointers are split over two tables, low and high bytes, each indexed by the track number itself
-		int ptrOneTrack = mem[ptrTracksLow + i] + (mem[ptrTracksHigh + i] << 8);
-
-		// If it is a NULL pointer, in this case, an offset of 0, the track is empty, and must be skipped
-		if (!ptrOneTrack)
-			continue;
-
-		// Track index number being processed, needed in order to copy data to all indexed songlines
-		int trackNr = i;
-
-		// Identify the end of the track by comparing the starting address of the next track, or the song data pointer if all tracks were processed
-		int ptrTrackEnd = 0;
-
-		for (int j = i; j < numTracks; j++)
-		{
-			// Get the next track's address, unless it is the last track, which will use the Song pointer address due to not having a definite end
-			if ((ptrTrackEnd = (j + 1 == numTracks) ? ptrSong : mem[ptrTracksLow + j + 1] + (mem[ptrTracksHigh + j + 1] << 8)))
-				break;
-
-			// if the next track is empty, skip over it and continue seeking for the address until something is found
-			i++;
-		}
-
-		int trackLength = ptrTrackEnd - ptrOneTrack;
-
-		BYTE* memTrack = mem + ptrOneTrack;
-
-		TPattern* t = &importSubtune->channel[0].pattern[trackNr];
-
-		WORD src = 0;
-		WORD gotoIndex = INVALID;
-		WORD smartLoop = INVALID;
-
-		BYTE data, count;
-		BYTE line = 0;
-
-		// Minimal Track Length for a smart loop
-		if (trackLength >= 2)
-		{
-			// There is a smart loop at the end of the track
-			if (memTrack[trackLength - 2] == 0xBF)
-				gotoIndex = memTrack[trackLength - 1];
-		}
-
-		while (src < trackLength)
-		{
-			// Jump to gotoIndex => set smart loop to this line
-			if (src == gotoIndex)
-				smartLoop = line;
-
-			// Data to process at current track offset
-			data = memTrack[src] & 0x3F;
-
-			switch (data)
-			{
-			case 0x3D:	// Have Volume only on this row
-				t->row[line].volume = ((memTrack[src + 1] & 0x03) << 2) | ((memTrack[src] & 0xC0) >> 6);
-				src += 2;	// 2 bytes were processed
-				line++;	// 1 row was processed
-				break;
-
-			case 0x3E:	// Pause or empty row
-				count = memTrack[src] & 0xC0;
-				if (!count)
-				{
-					// Pause is 0 then the number of rows to skip is in the next byte
-					if (!memTrack[src + 1])
-					{
-						// Infinite pause => end
-						src = trackLength;
-						break;
-					}
-					line += memTrack[src + 1];	// Number of rows to skip
-					src += 2;	// 2 bytes were processed
-				}
-				else
-				{
-					line += (count >> 6);	// Upper 2 bits directly specify a pause between 1 to 3 rows
-					src++;	// 1 byte was processed
-				}
-				break;
-
-			case 0x3F:	// Speed, smart loop, or end
-				count = memTrack[src] & 0xC0;
-				if (!count)
-				{
-					// Speed, set Fxx command
-					t->row[line].cmd0 = 0x0F00 | memTrack[src + 1];
-					src += 2;	// 2 bytes were processed
-				}
-				if (count == 0x80)
-				{
-					// Smart loop, no extra data to process
-					src = trackLength;
-				}
-				if (count == 0xC0)
-				{
-					// End of track, set Dxx command, no extra data to process
-					t->row[line - 1].cmd1 = 0x0D00;
-					src = trackLength;
-				}
-				break;
-
-			default:	// Have Note, Instrument and volume data on this line
-				t->row[line].note = data;
-				t->row[line].instrument = ((memTrack[src + 1] & 0xfc) >> 2);
-				t->row[line].volume = ((memTrack[src + 1] & 0x03) << 2) | ((memTrack[src] & 0xc0) >> 6);
-				src += 2;	// 2 bytes were processed
-				line++;	// 1 row was processed
-			}
-		}
-
-		// The Pattern must to be "expanded" to be fully compatible since no such thing as smart loop is supported by the RMTE format (yet)
-		if (IsValidRow(smartLoop))
-		{
-			for (int j = 0; line + j < importSubtune->patternLength; j++)
-			{
-				int k = line + j;
-				int l = smartLoop + j;
-				t->row[k].note = t->row[l].note;
-				t->row[k].instrument = t->row[l].instrument;
-				t->row[k].volume = t->row[l].volume;
-				t->row[k].cmd0 = t->row[l].cmd0;
-			}
-		}
-	}
-
-	// Variables for processing songline data
-	BYTE* memSong = mem + ptrSong;
-	BYTE channel = 0;
-	BYTE line = 0;
-	WORD src = 0;
-
-	// Decoding Songlines Index
-	while (src < lengthSong)
-	{
-		BYTE data = memSong[src];
-
-		// Process the Pattern index in the songline indexed by the channel number
-		switch (data)
-		{
-		case 0xFE:	// Goto Songline commands are only valid from the first channel, but we know it's never used anywhere else
-			importSubtune->channel[channel].songline[line] = data;
-			importSubtune->channel[channel + 1].songline[line] = memSong[src + 1];	// Set the songline index number in Channel 2
-			importSubtune->channel[channel + 2].songline[line] = INVALID;	// The Goto songline address isn't needed
-			importSubtune->channel[channel + 3].songline[line] = INVALID;	// Set the remaining channels to INVALID
-			channel = importSubtune->channelCount;	// Set the channel index to the channel count to trigger the condition below
-			src += importSubtune->channelCount;	// The number of bytes processed is equal to the number of channels
-			break;
-
-		default:	// An empty pattern at 0xFF is also valid for the RMTE format
-			importSubtune->channel[channel].songline[line] = data;
-			channel++;	// 1 pattern per channel, for each indexed songline
-			src++;	// 1 byte was processed
-		}
-
-		// 1 songline was processed when the channel count is equal to the number of channels
-		if (channel >= importSubtune->channelCount)
-		{
-			channel = 0;	// Reset the channel index
-			line++;	// Increment the songline count by 1
-		}
-
-		// Break out of the loop if the maximum number of songlines was processed
-		if (line > SONGLINE_MAX)
-			break;
-	}
-
-	// Set the Songlength to the number of decoded songlines
-	importSubtune->songLength = line;
-	
-	// This will become the final count of decoded Subtunes from the Legacy RMT Module
-	BYTE subtuneCount = 0;
-
-	WORD songlineStep[SONGLINE_MAX];
-	memset(songlineStep, INVALID, SONGLINE_MAX);
-
-	BYTE subtuneOffset[SONGLINE_MAX];
-	memset(subtuneOffset, 0, SONGLINE_MAX);
-
-	// Process all indexed Songlines until all the Subtunes are identified
-	for (int i = 0; i < importSubtune->songLength; i++)
-	{
-		// If the Indexed Songline was not already processed...
-		if (!IsValidSongline(songlineStep[i]))
-		{
-			// if a new Subtune is found, set the offset to the current Songline Index
-			subtuneOffset[subtuneCount] = i;
-			subtuneCount++;
-
-			// From here, analyse the next Songlines until a loop is detected
-			for (int j = i; j < importSubtune->songLength; j++)
-			{
-				// If the Songline Step offset is Valid, a loop was completed, there is nothing else to do here
-				if (IsValidSongline(songlineStep[j]))
-					break;
-
-				// Set the Songline Step to the value of i to clearly indicate it belongs to the same Subtune
-				songlineStep[j] = i;
-
-				// If a Goto Songline Command is found, the Songline Step will be set to the Destination Songline
-				if (importSubtune->channel[CH1].songline[j] == 0xFE)
-				{
-					j = importSubtune->channel[CH2].songline[j];
-
-					// Also set the Songline Step at the offset of Destination Songline, so it won't be referenced again
-					songlineStep[j] = i;
-				}
-			}
-		}
-	}
-
-	// Set the Subtune count to the number of individual Subtunes identified
-	SetSubtuneCount(subtuneCount);
-
-	// Copy all of the imported patterns to every Channels, so they all share identical data
-	for (int i = 0; i < importSubtune->channelCount; i++)
-	{
-		// The Songline Index won't be overwritten in the process, since we will need it in its current form!
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-			CopyPattern(&importSubtune->channel[0].pattern[j], &importSubtune->channel[i].pattern[j]);
-
-		// Set the Active Effect Command Columns for each channels
-		importSubtune->effectCommandCount[i] = i == CH1 ? 2 : 1;
-	}
-
-	// Re-construct all of individual Subtunes that were detected
-	for (int i = 0; i < GetSubtuneCount(); i++)
-	{
-		BYTE offset = subtuneOffset[i];
-
-		// Copy the data previously imported from the Temporary Subtune into the Active Subtune
-		SetActiveSubtune(i);
-		CopySubtune(importSubtune, GetSubtuneIndex(i));
-
-		// This will be used once again for detecting loop points in Subtunes
-		memset(songlineStep, INVALID, SONGLINE_MAX);
-
-		// Re-construct every Songlines used by the Subtune, until the loop point is found
-		for (int j = 0; j < SONGLINE_MAX; j++)
-		{
-			// If the Songline Step offset is Valid, a loop was completed, and the Songlength will be set here
-			if (IsValidSongline(songlineStep[offset]))
-			{
-				SetSongLength(j - 1);
-				break;
-			}
-
-			// Set the Songline Step to the value of j to match the reconstructed Songline Index
-			songlineStep[offset] = j;
-
-			// If a Goto Songline Command is found, the data from Destination Songline will be copied to the next Songline
-			if (importSubtune->channel[CH1].songline[offset] == 0xFE)
-			{
-				offset = importSubtune->channel[CH2].songline[offset];
-
-				// Also set the Songline Step at the offset of Destination Songline, so it won't be referenced again
-				songlineStep[offset] = j;
-			}
-
-			// Fetch the Patterns from the backup Songline Index first
-			for (int k = 0; k < GetChannelCount(); k++)
-				SetPatternInSongline(k, j, importSubtune->channel[k].songline[offset]);
-			
-			// Otherwise, the Songline offset will increment by 1 for the next Songline
-			offset++;
-		}
-
-		// Re-arrange all Patterns to make them unique entries for every Songline, so editing them will not overwrite anything intended to be used differently
-		RenumberIndexedPatterns();
-
-		// In order to merge all of the Bxx and Dxx Commands, find all Dxx Commands that were used, and move them to Channel 1, unless a Bxx Command was already used there
-		for (int j = 0; j < GetSongLength(); j++)
-		{
-			// If the Shortest Pattern Length is below actual Pattern Length, a Dxx Command was already used somewhere, and must be replaced
-			if (GetShortestPatternLength(j) < GetPatternLength())
-				SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, PATTERN_EFFECT_DXX);
-
-			// Set the final Goto Songline Command Bxx to the Songline found at the loop point
-			if (j == GetSongLength() - 1)
-				SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, PATTERN_EFFECT_BXX | (songlineStep[offset] - 1));
-
-			// Skip CH1, since it was already processed above
-			for (int k = CH2; k < GetChannelCount(); k++)
-			{
-				// All Pattern Rows will be edited, regardless of their contents
-				for (int l = 0; l < TRACK_ROW_MAX; l++)
-				{
-					// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
-					for (int m = CMD2; m < PATTERN_ACTIVE_EFFECT_MAX; m++)
-						SetPatternRowCommand(k, GetPatternInSongline(k, j), l, m, PATTERN_EFFECT_EMPTY);
-				}
-			}
-		}
-
-		// Finally, apply the Size Optimisations, the Subtune should have been reconstructed successfully!
-		AllSizeOptimisations();
-	}
-
-	// Set the Active Subtune to the Default parameter, once the Legacy RMT Import procedure was completed
-	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
-
-	// Delete the Temporary Subtune once it is no longer needed
-	delete importSubtune;
+	// Legacy RMT Instruments should have been imported successfully
+	return true;
 }
 
 
