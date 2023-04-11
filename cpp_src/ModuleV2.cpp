@@ -151,7 +151,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 					// If the Songline Step offset is Valid, a loop was completed, there is nothing else to do here
 					if (IsValidSongline(songlineStep[j]))
 					{
-						importLog.AppendFormat("Loop Point found in Songline %02X\n", j);
+						importLog.AppendFormat("Loop Point found in Songline %02X\n", j - 1);
 						break;
 					}
 
@@ -255,6 +255,10 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 
 			// Finally, apply the Size Optimisations, the Subtune should have been reconstructed successfully!
 			AllSizeOptimisations();
+			importLog.AppendFormat("Reconstructed: Subtune %02X\n", GetActiveSubtune());
+			importLog.AppendFormat("Song Length: %02X, Pattern Length: %02X, Channels: %01X\n", GetSongLength(), GetPatternLength(), GetChannelCount());
+			importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n", GetSongSpeed(), GetInstrumentSpeed());
+			importLog.AppendFormat("Loop Point found in Songline %02X\n\n", songlineStep[offset] - 1);
 		}
 
 		// Set the Subtune count to the number of individual Subtunes identified
@@ -262,6 +266,9 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 
 		// Set the Active Subtune to the Default parameter, once the Legacy RMT Import procedure was completed
 		SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
+
+		// Final number of Subtunes that were imported
+		importLog.AppendFormat("Processed: %i Subtune(s) with All Size Optimisations.\n\n", GetSubtuneCount());
 	}
 
 	// Delete the Temporary Subtune once it is no longer needed
