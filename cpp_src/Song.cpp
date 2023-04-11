@@ -20,13 +20,14 @@
 #include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 #include "PokeyStream.h"
-
+#include "ModuleV2.h"
 
 extern CSong g_Song;
 extern CInstruments g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
 extern CXPokey g_Pokey;
 extern CPokeyStream g_PokeyStream;
+extern CModule g_Module;
 
 static BOOL busyInTimer = 0;
 

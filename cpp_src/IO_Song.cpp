@@ -35,6 +35,7 @@ extern CTrackClipboard g_TrackClipboard;
 extern CXPokey g_Pokey;
 extern CRmtMidi g_Midi;
 extern CPokeyStream g_PokeyStream;
+extern CModule g_Module;
 
 void CSong::StrToAtariVideo(char* txt, int count)
 {
@@ -500,6 +501,10 @@ void CSong::FileImport()
 	switch (g_lastImportTypeIndex)
 	{
 	case FILE_IMPORT_FILTER_IDX_RMT:
+		SetWindowText(g_hwnd, "Imported: Legacy RMT " + fn);
+		g_Module.ClearModule();
+		g_Module.ImportLegacyRMT(in);
+/*
 	{
 		// This is for tests related to the upcoming Module V2 format import...
 		SetWindowText(g_hwnd, "Imported: Legacy RMT " + fn);
@@ -691,6 +696,7 @@ void CSong::FileImport()
 		// Also close the text file once it's filled
 		out.close();
 	}
+*/	
 	// Success is assumed by default for the time being...
 	successful = true;
 	break;

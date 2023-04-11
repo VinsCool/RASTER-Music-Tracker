@@ -4,6 +4,7 @@
 #include "RmtView.h"
 #include "Atari6502.h"
 #include "PokeyStream.h"
+#include "ModuleV2.h"
 #include "global.h"
 
 unsigned char g_atarimem[65536];
@@ -192,11 +193,12 @@ CSong			g_Song;				// There is one active song
 CRmtMidi		g_Midi;				// There is one midi interface
 CUndo			g_Undo;				// Undo buffer tracker
 CXPokey			g_Pokey;			// The simulated Pokey chip
-CInstruments	g_Instruments;
-CTracks			g_Tracks;
-CTrackClipboard g_TrackClipboard;
+CInstruments	g_Instruments;		// Instrument routines
+CTracks			g_Tracks;			// Track and Pattern routines
+CTrackClipboard g_TrackClipboard;	// Clipboard functions
 CTuning			g_Tuning;			// Tuning calculations and POKEY tuning lookup tables generation
-CPokeyStream	g_PokeyStream;
+CPokeyStream	g_PokeyStream;		// POKEY registers state stream buffer functions
+CModule			g_Module;			// Extended RMT Module Format (WIP)
 
 /*
 void UpdateShiftControlKeys()

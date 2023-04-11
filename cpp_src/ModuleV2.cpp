@@ -20,7 +20,7 @@ CModule::~CModule()
 void CModule::InitialiseModule()
 {
 	// Create new module data if it doesn't exist
-	if (!m_index) m_index = new TSubtune[SUBTUNE_MAX];
+	if (!m_index) m_index = new TSubtune[MODULE_SUBTUNE_COUNT];
 	if (!m_instrument) m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_COUNT];
 
 	// Set default module parameters
@@ -50,7 +50,7 @@ void CModule::InitialiseModule()
 	}
 
 	// Clear all Subtunes using the Active Subtune values
-	for (int i = 1; i < SUBTUNE_MAX; i++)
+	for (int i = 1; i < GetSubtuneCount(); i++)
 	{
 		CopySubtune(GetSubtuneIndex(GetActiveSubtune()), GetSubtuneIndex(i));
 	}
@@ -170,6 +170,13 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			}
 		}
 
+		// Set the Subtune count to the number of individual Subtunes identified
+		SetSubtuneCount(subtuneCount);
+
+		// Clear the current Subtune Index, then create a new one matching the number of Subtunes to be imported
+		delete m_index;
+		m_index = new TSubtune[subtuneCount];
+
 		importLog.AppendFormat("Confidently detected %i unique Subtune(s).\n\n", subtuneCount);
 		importLog.AppendFormat("Stage 3 - Optimising Subtunes with compatibility tweaks:\n\n");
 
@@ -185,7 +192,7 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		}
 
 		// Re-construct all of individual Subtunes that were detected
-		for (int i = 0; i < subtuneCount; i++)
+		for (int i = 0; i < GetSubtuneCount(); i++)
 		{
 			BYTE offset = subtuneOffset[i];
 
@@ -260,9 +267,6 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n", GetSongSpeed(), GetInstrumentSpeed());
 			importLog.AppendFormat("Loop Point found in Songline %02X\n\n", songlineStep[offset] - 1);
 		}
-
-		// Set the Subtune count to the number of individual Subtunes identified
-		SetSubtuneCount(subtuneCount);
 
 		// Set the Active Subtune to the Default parameter, once the Legacy RMT Import procedure was completed
 		SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
