@@ -30,7 +30,7 @@ void CModule::InitialiseModule()
 	SetSubtuneCount(MODULE_SUBTUNE_COUNT);
 	SetSongLength(MODULE_SONG_LENGTH);
 	SetPatternLength(MODULE_TRACK_LENGTH);
-	SetChannelCount(MODULE_STEREO);
+	SetChannelCount(TRACK_CHANNEL_MAX);	//(MODULE_STEREO);	// FIXME: g_tracks4_8 is NOT initialised when it is called for the first time here!
 	SetSongSpeed(MODULE_SONG_SPEED);
 	SetInstrumentSpeed(MODULE_VBI_SPEED);
 

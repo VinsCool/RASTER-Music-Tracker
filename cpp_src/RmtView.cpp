@@ -352,20 +352,35 @@ void CRmtView::DrawAll()
 	// Clear the screen with the background colour
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);
 
-	// Draw the secondary screen elements
-	g_Song.DrawInfo();
-	g_Song.DrawSong();
-	g_Song.DrawAnalyzer();
-	g_Song.DrawPlayTimeCounter();
-	
-	// Draw the primary screen above everything
-	if (g_active_ti == PART_TRACKS)
+	// If the condition is respected, the RMTE procedure will be executed here 
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		g_Song.DrawTracks();
+		// Draw the primary screen block first
+		if (g_active_ti == PART_TRACKS)
+			g_Song.DrawPatternEditor();
+		else
+			g_Song.DrawInstrumentEditor();
+
+		// Draw the secondary screen block afterwards
+		g_Song.DrawSonglines();
+		g_Song.DrawSubtuneInfos();
+		g_Song.DrawRegistersState();
 	}
+
+	// Otherwise, the Legacy procedure will be executed here like before
 	else
 	{
-		g_Song.DrawInstrument();
+		// Draw the secondary screen elements first
+		g_Song.DrawInfo();
+		g_Song.DrawSong();
+		g_Song.DrawAnalyzer();
+		g_Song.DrawPlayTimeCounter();
+
+		// Draw the primary screen above everything
+		if (g_active_ti == PART_TRACKS)
+			g_Song.DrawTracks();
+		else
+			g_Song.DrawInstrument();
 	}
 }
 

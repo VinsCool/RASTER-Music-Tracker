@@ -182,6 +182,9 @@ void CSong::ClearSong(int numOfTracks)
 
 	// Initialise RMT routine, to clear anything leftover in Atari memory
 	Atari_InitRMTRoutine();
+
+	// Initialise the RMTE Module as well, since it will progressively replace the Legacy format, and will use most of the same functions
+	//g_Module.InitialiseModule();
 }
 
 //---
@@ -3317,4 +3320,166 @@ void CSong::TimerRoutine()
 
 	g_timerGlobalCount++;			// Increment by one each time Timer Routine was processed
 	g_timerRoutineProcessed = 1;	// TimerRoutine took place
+}
+
+// TODO: Move all these functions to GUI_Song.cpp later
+
+void CSong::DrawSonglines()
+{
+	CString s;
+	int linescount = 9, linesoffset = -4;
+	RECT songblock(SONG_X - 4, SONG_Y, SONG_X + (3 * 8) + (g_Module.GetChannelCount() * (3 * 8)) - 4, SONG_Y + (2 * 16) + (linescount * 16));
+
+	// All Channels used in the Subtune will be displayed within the Songline Index
+	for (int i = 0; i < g_Module.GetChannelCount(); i++)
+	{
+		// Offset for the X axis, each character use a 8x16 Bitmap tile
+		int x = (3 * 8) + (i * (3 * 8));
+
+		// Default Colour for all Channels
+		int colour = GetChannelOnOff(i) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
+
+		// If the Channel is both Active and Enabled, use the Highlight Colour instead
+		if (GetChannelOnOff(i) && m_trackactivecol == i)
+			colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+
+		// Each POKEY chips may use up to 4 Channels, numbered between 1 to 4 inclusive
+		s.Format("%i", (i % 4) + 1);
+		TextXY(s, SONG_X + x, SONG_Y + 16, colour);
+
+		// For each POKEY chip, display the chip number above the Channel Index
+		if (i % 4 == 0)
+		{
+			bool enabled = false;
+			bool active = false;
+
+			// Check if at least one of the associated Channels is either Enabled or Active
+			for (int j = 0; j < 4; j++)
+			{
+				if (GetChannelOnOff((i + j)))
+					enabled = true;
+
+				if (m_trackactivecol == i + j)
+					active = true;
+			}
+
+			// The same Colour condition is used here, this time for the whole POKEY chip
+			if (active && enabled)
+				colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+			else
+				colour = enabled ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
+
+			// The POKEY chip number is derived from i, divided by 4, plus 1, due to being a Zero Based Index
+			s.Format("POKEY %i", (i / 4) + 1);
+			TextXY(s, SONG_X + x, SONG_Y, colour);
+		}
+	}
+
+	// Draw all the Indexed Songlines that could be displayed at once
+	for (int i = 0; i < linescount; i++)
+	{
+		// Offset for the Y axis, each character use a 8x16 Bitmap tile
+		int y = (2 * 16) + (i * 16);
+
+		// Fetch the actual Songline number relative to the Index Offset
+		int songline = m_songactiveline + i + linesoffset;
+
+		// This will be used for wrapping around the Songline Index
+		bool isOutOfBounds = false;
+
+		// If the Songline Index is out of bounds, apply a modulo operation using the Song Length value, and set the out of bounds flag
+		if (!g_Module.IsValidSongline(songline) || songline >= g_Module.GetSongLength())
+		{
+			// If the Songline Index is below 0, add the number of Songlines to balance it back to a valid range
+			if (songline < 0)
+				songline += g_Module.GetSongLength();
+
+			// Apply a modulo operation on top of it to make the Songline Index wrap around
+			songline %= g_Module.GetSongLength();
+			isOutOfBounds = true;
+		}
+
+		// Default Colour for all Songlines
+		int colour = songline == m_songplayline ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
+
+		if (songline == m_songactiveline)
+			colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+
+		if (isOutOfBounds)
+			colour = TEXT_COLOR_DARK_GRAY;
+
+		s.Format("%02X", songline);
+		TextXY(s, SONG_X, SONG_Y + y, colour);
+
+		// Draw all Songlines used in every Channels
+		for (int j = 0; j < g_Module.GetChannelCount(); j++)
+		{
+			// Offset for the X axis, each character use a 8x16 Bitmap tile
+			int x = (3 * 8) + (j * (3 * 8));
+
+			// Default Colour for all Channels
+			colour = GetChannelOnOff(j) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
+
+			if (GetChannelOnOff(j) && songline == m_songplayline)
+				colour = TEXT_COLOR_YELLOW;
+
+			if (GetChannelOnOff(j) && m_songactiveline == songline)
+				colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+
+			// If the Channel is both Active and Enabled, use the Highlight Colour instead
+			if (GetChannelOnOff(j) && m_trackactivecol == j && m_songactiveline == songline && g_activepart == PART_SONG)
+				colour = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
+
+			if (isOutOfBounds)
+				colour = TEXT_COLOR_DARK_GRAY;
+
+			// Fetch the Pattern number used in the Songline's Channel, and draw it in the Songline Block
+			s.Format("%02X", g_Module.GetPatternInSongline(j, songline));
+			TextXY(s, SONG_X + x, SONG_Y + y, colour);
+		}
+
+	}
+
+	// Draw the lines delimiting boundaries between each elements in the Songline block
+
+	// Songline Index and Songline Data:
+	g_mem_dc->MoveTo(songblock.left + (3 * 8) - 1, songblock.top);
+	g_mem_dc->LineTo(songblock.left + (3 * 8) - 1, songblock.bottom);
+	
+	// Left and Right POKEY:
+	g_mem_dc->MoveTo(songblock.left + (5 * (3 * 8)) - 1, songblock.top);
+	g_mem_dc->LineTo(songblock.left + (5 * (3 * 8)) - 1, songblock.bottom);
+
+	// Channel Index and Songline Data:
+	g_mem_dc->MoveTo(songblock.left, songblock.top + (2 * 16));
+	g_mem_dc->LineTo(songblock.right, songblock.top + (2 * 16));
+
+	// Active Songline Highlight:
+	g_mem_dc->MoveTo(songblock.left, songblock.top + (6 * 16));
+	g_mem_dc->LineTo(songblock.right, songblock.top + (6 * 16));
+	g_mem_dc->MoveTo(songblock.left, songblock.top + (7 * 16));
+	g_mem_dc->LineTo(songblock.right, songblock.top + (7 * 16));
+
+	// The Songline Block itself:
+	g_mem_dc->DrawEdge(&songblock, EDGE_BUMP, BF_RECT);
+}
+
+void CSong::DrawSubtuneInfos()
+{
+
+}
+
+void CSong::DrawRegistersState()
+{
+
+}
+
+void CSong::DrawPatternEditor()
+{
+
+}
+
+void CSong::DrawInstrumentEditor()
+{
+
 }

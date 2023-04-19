@@ -72,12 +72,20 @@ public:
 
 	void MidiEvent(DWORD dwParam);
 
+	// Legacy Draw functions
 	void DrawSong();				// Draw the song line info on the right
 	void DrawTracks();
 	void DrawInstrument();
 	void DrawInfo();			//top left corner
 	void DrawAnalyzer();
 	void DrawPlayTimeCounter();
+
+	// New Draw functions
+	void DrawSonglines();
+	void DrawSubtuneInfos();
+	void DrawRegistersState();
+	void DrawPatternEditor();
+	void DrawInstrumentEditor();
 
 	BOOL InfoKey(int vk, int shift, int control);
 	BOOL InfoCursorGotoSongname(int x);
