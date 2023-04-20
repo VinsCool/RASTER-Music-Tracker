@@ -86,6 +86,7 @@ public:
 	void DrawRegistersState();
 	void DrawPatternEditor();
 	void DrawInstrumentEditor();
+	void DrawDebugInfos();
 
 	BOOL InfoKey(int vk, int shift, int control);
 	BOOL InfoCursorGotoSongname(int x);

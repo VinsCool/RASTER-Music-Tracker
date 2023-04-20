@@ -45,6 +45,31 @@ BOOL RefreshScreen(int frameskip)
 	return 1;
 }
 
+void GetTracklineText(char* dest, int line)
+{
+	if (line < 0 || line>0xff) { dest[0] = 0; return; }
+	if (g_tracklinealtnumbering)
+	{
+		int a = line / g_trackLinePrimaryHighlight;
+		if (a >= 35) a = (a - 35) % 26 + 'a' - '9' + 1;
+		int b = line % g_trackLinePrimaryHighlight;
+		if (b >= 35) b = (b - 35) % 26 + 'a' - '9' + 1;
+		if (a <= 8)
+			a = '1' + a;
+		else
+			a = 'A' - 9 + a;
+		if (b <= 8)
+			b = '1' + b;
+		else
+			b = 'A' - 9 + b;
+		dest[0] = a;
+		dest[1] = b;
+		dest[2] = 0;
+	}
+	else
+		sprintf(dest, "%02X", line);
+}
+
 int EditText(int vk, int shift, int control, char* txt, int& cur, int max)
 {
 	//returns 1 if TAB or ENTER was pressed

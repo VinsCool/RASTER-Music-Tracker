@@ -41,32 +41,6 @@ BOOL IsnotMovementVKey(int vk)
 	return (vk != VK_RIGHT && vk != VK_LEFT && vk != VK_UP && vk != VK_DOWN && vk != VK_TAB && vk != 13 && vk != VK_HOME && vk != VK_END && vk != VK_PAGE_UP && vk != VK_PAGE_DOWN && vk != VK_CAPITAL);
 }
 
-
-void GetTracklineText(char* dest, int line)
-{
-	if (line < 0 || line>0xff) { dest[0] = 0; return; }
-	if (g_tracklinealtnumbering)
-	{
-		int a = line / g_trackLinePrimaryHighlight;
-		if (a >= 35) a = (a - 35) % 26 + 'a' - '9' + 1;
-		int b = line % g_trackLinePrimaryHighlight;
-		if (b >= 35) b = (b - 35) % 26 + 'a' - '9' + 1;
-		if (a <= 8)
-			a = '1' + a;
-		else
-			a = 'A' - 9 + a;
-		if (b <= 8)
-			b = '1' + b;
-		else
-			b = 'A' - 9 + b;
-		dest[0] = a;
-		dest[1] = b;
-		dest[2] = 0;
-	}
-	else
-		sprintf(dest, "%02X", line);
-}
-
 //debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
 void GetAtariMemHexStr(int adr, int len)
 {

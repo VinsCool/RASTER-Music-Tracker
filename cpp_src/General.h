@@ -72,6 +72,15 @@
 #define PADHEX(width, val) "0x"  << std::setfill('0') << std::setw(width) << std::hex << std::uppercase << (unsigned)val
 #define PADDEC(width, val) std::setfill('0') << std::setw(width) << std::dec << (unsigned)val
 
+// RMTE Screen coordinates
+#define PATTERNBLOCK_X	2 * 8
+#define PATTERNBLOCK_Y	13 * 16
+#define SONGBLOCK_X		2 * 8
+#define SONGBLOCK_Y		1 * 16
+#define INFOBLOCK_X		28 * 8
+#define INFOBLOCK_Y		1 * 16
+
+// Legacy Screen coordinates
 #define TRACKS_X 2*8
 #define TRACKS_Y 8*16+8
 #define	SONG_X	768

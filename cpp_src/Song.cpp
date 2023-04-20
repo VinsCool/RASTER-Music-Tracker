@@ -3328,7 +3328,7 @@ void CSong::DrawSonglines()
 {
 	CString s;
 	int linescount = 9, linesoffset = -4;
-	RECT songblock(SONG_X - 4, SONG_Y, SONG_X + (3 * 8) + (g_Module.GetChannelCount() * (3 * 8)) - 4, SONG_Y + (2 * 16) + (linescount * 16));
+	RECT songblock(SONGBLOCK_X - 4, SONGBLOCK_Y, SONGBLOCK_X + (3 * 8) + (g_Module.GetChannelCount() * (3 * 8)) - 4, SONGBLOCK_Y + (2 * 16) + (linescount * 16));
 
 	// All Channels used in the Subtune will be displayed within the Songline Index
 	for (int i = 0; i < g_Module.GetChannelCount(); i++)
@@ -3345,7 +3345,7 @@ void CSong::DrawSonglines()
 
 		// Each POKEY chips may use up to 4 Channels, numbered between 1 to 4 inclusive
 		s.Format("%i", (i % 4) + 1);
-		TextXY(s, SONG_X + x, SONG_Y + 16, colour);
+		TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + 16, colour);
 
 		// For each POKEY chip, display the chip number above the Channel Index
 		if (i % 4 == 0)
@@ -3371,7 +3371,7 @@ void CSong::DrawSonglines()
 
 			// The POKEY chip number is derived from i, divided by 4, plus 1, due to being a Zero Based Index
 			s.Format("POKEY %i", (i / 4) + 1);
-			TextXY(s, SONG_X + x, SONG_Y, colour);
+			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y, colour);
 		}
 	}
 
@@ -3409,7 +3409,7 @@ void CSong::DrawSonglines()
 			colour = TEXT_COLOR_DARK_GRAY;
 
 		s.Format("%02X", songline);
-		TextXY(s, SONG_X, SONG_Y + y, colour);
+		TextXY(s, SONGBLOCK_X, SONGBLOCK_Y + y, colour);
 
 		// Draw all Songlines used in every Channels
 		for (int j = 0; j < g_Module.GetChannelCount(); j++)
@@ -3435,7 +3435,7 @@ void CSong::DrawSonglines()
 
 			// Fetch the Pattern number used in the Songline's Channel, and draw it in the Songline Block
 			s.Format("%02X", g_Module.GetPatternInSongline(j, songline));
-			TextXY(s, SONG_X + x, SONG_Y + y, colour);
+			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + y, colour);
 		}
 
 	}
@@ -3476,10 +3476,348 @@ void CSong::DrawRegistersState()
 
 void CSong::DrawPatternEditor()
 {
+	CString s;
+	RECT patternblock;
+
+	// Caching global variables is necessary in order to display Patterns without random "jumps" around during playback 
+	// This is caused by the screen update timing, and this is the main reason why these bugs seem to happen randomly
+	int trackactiveline = m_trackactiveline;
+	int trackplayline = m_trackplayline;
+	int songactiveline = m_songactiveline;
+	int songplayline = m_songplayline;
+	int speed = m_speed;
+	int speeda = m_speeda;
+
+	// Coordinates used for drawing most of the Pattern Editor block on screen
+	int x = 3 * 8, y = 0;
+
+	// The cursor position is alway centered regardless of the window size with this simple formula
+	g_cursoractview = trackactiveline + 8 - g_line_y;
+
+	// Standard notation
+	int notation = 0;
+
+	if (g_displayflatnotes)
+		notation += 1;
+
+	if (g_usegermannotation)
+		notation += 2;
+
+	// Non-12 scales don't yet have proper display
+	if (g_notesperoctave != 12)
+		notation = 4;
+
+	// Process Channels 1 by 1, for all the Patterns to be drawn on screen
+	for (int i = 0; i < g_Module.GetChannelCount(); i++)
+	{
+		int pattern = g_Module.GetPatternInSongline(i, songactiveline);
+
+		// For as many Pattern Rows there are to display on screen, execute this loop
+		for (int j = 0; j < g_tracklines; j++, y += 16)
+		{
+			// The first 3 Rows are used by the Channel Header, and will be processed later
+			if (j < 3)
+				continue;
+
+			// Get the Row Index, derived from the active cursor offset and j, minus 9
+			int row = g_cursoractview + j - 9;
+
+			// If the Row is out of bounds, skip it (for now, hehehe...)
+			if (!g_Module.IsValidRow(row) || row >= g_Module.GetShortestPatternLength(songactiveline))
+				continue;
+
+			// If the procedure is set to run from Channel 1, the Row Index will also be drawn on screen
+			if (i == CH1)
+			{
+				s.Format("%02X", row);
+				TextXY(s, PATTERNBLOCK_X, PATTERNBLOCK_Y + y, TEXT_COLOR_WHITE);
+			}
+
+			// Parse all the parameters and format the text for 1 Pattern Row
+			s.Format("");
+
+			// Note and Octave
+			int note = g_Module.GetPatternRowNote(i, pattern, row);
+			const char* noteidx = notesandscales[notation][note % g_notesperoctave];
+
+			switch (note)
+			{
+			case PATTERN_NOTE_EMPTY:
+				s.AppendFormat("--- ");
+				break;
+
+			case PATTERN_NOTE_OFF:
+				s.AppendFormat("OFF ");
+				break;
+
+			case PATTERN_NOTE_RELEASE:
+				s.AppendFormat("=== ");
+				break;
+
+			case PATTERN_NOTE_RETRIGGER:
+				s.AppendFormat("~~~ ");
+				break;
+
+			default:
+				if (g_Module.IsValidNote(note))
+					s.AppendFormat("%C%C%01X ", noteidx[0], noteidx[1], note / g_notesperoctave + 1);
+				else
+					s.AppendFormat("??? ");
+			}
+
+			// Instrument
+			int instrument = g_Module.GetPatternRowInstrument(i, pattern, row);
+
+			switch (instrument)
+			{
+			case PATTERN_INSTRUMENT_EMPTY:
+				s.AppendFormat("-- ");
+				break;
+
+			default:
+				if (g_Module.IsValidInstrument(instrument))
+					s.AppendFormat("%02X ", instrument);
+				else
+					s.AppendFormat("?? ");
+			}
+
+			// Volume
+			int volume = g_Module.GetPatternRowVolume(i, pattern, row);
+
+			switch (volume)
+			{
+			case PATTERN_VOLUME_EMPTY:
+				s.AppendFormat("-- ");
+				break;
+
+			default:
+				if (g_Module.IsValidVolume(volume))
+					s.AppendFormat("v%01X ", volume);
+				else
+					s.AppendFormat("?? ");
+			}
+
+			// Command(s)
+			for (int k = 0; k < g_Module.GetEffectCommandCount(i); k++)
+			{
+				int cmd = g_Module.GetPatternRowCommand(i, pattern, row, k);
+
+				switch (cmd)
+				{
+				case PATTERN_EFFECT_EMPTY:
+					s.AppendFormat("--- ");
+					break;
+
+				default:
+					if (g_Module.IsValidCommand(cmd))
+						s.AppendFormat("%03X ", cmd);
+					else
+						s.AppendFormat("??? ");
+				}
+			}
+
+			// Draw the formated Pattern Row on screen once it is ready to be output
+			TextXY(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, TEXT_COLOR_WHITE);			
+		}
+
+		// Offset X with the Channel's width, including the Active Effect Commands
+		x += (10 * 8) + (g_Module.GetEffectCommandCount(i) * (4 * 8));
+
+		// Reset Y to process the next Channel from the same position
+		y = 0;
+	}
+
+	// Actual dimensions used by the Pattern Editor block, including the Channels Header
+	patternblock.left = PATTERNBLOCK_X - 4;
+	patternblock.top = PATTERNBLOCK_Y;
+	patternblock.right = PATTERNBLOCK_X + x - 4;
+	patternblock.bottom = PATTERNBLOCK_Y + (g_tracklines * 16);
+	
+	// Coordinates used for drawing lines delimiting boundaries
+	x = (3 * 8) - 1;
+	y = patternblock.top + (g_line_y * 16) + (1 * 16);
+
+	// Row Index and Pattern Data:
+	g_mem_dc->MoveTo(patternblock.left + x, patternblock.top);
+	g_mem_dc->LineTo(patternblock.left + x, patternblock.bottom);
+
+	// Active Pattern Row Highlight:
+	g_mem_dc->MoveTo(patternblock.left, y);
+	g_mem_dc->LineTo(patternblock.right, y);
+	g_mem_dc->MoveTo(patternblock.left, y + 16);
+	g_mem_dc->LineTo(patternblock.right, y + 16);
+
+	// Channels Header and Pattern Data:
+	g_mem_dc->MoveTo(patternblock.left, patternblock.top + (3 * 16));
+	g_mem_dc->LineTo(patternblock.right, patternblock.top + (3 * 16));
+
+	// Separation between each POKEY Channels:
+	for (int i = 0; i < g_Module.GetChannelCount(); i++)
+	{
+		x += (10 * 8) + (g_Module.GetEffectCommandCount(i) * (4 * 8));
+		g_mem_dc->MoveTo(patternblock.left + x, patternblock.top);
+		g_mem_dc->LineTo(patternblock.left + x, patternblock.bottom);
+	}
+
+	// The Pattern Editor Block itself:
+	g_mem_dc->DrawEdge(&patternblock, EDGE_BUMP, BF_RECT);
+
+/*
+	strcpy(s, "--\x2");	//2 digits and the "|" tile on the right side
+
+	BOOL is_goto = 0;
+
+	for (i = 0; i < g_tracklines + active_smooth * 2; i++, y += 16)
+	{
+		line = g_cursoractview + i - 8 - active_smooth;		//8 lines from above
+		int oob = 0;
+
+		int sl = songactiveline;	//offset by the oob songline counter when needed
+		int ln = GetSmallestMaxtracklen(sl);
+
+		if (line < 0)
+		{
+		minusline:
+			oob--;
+			sl = songactiveline + oob;
+			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
+			ln = GetSmallestMaxtracklen(sl);
+
+			line += ln;
+			if (line < 0) goto minusline;
+		}
+		if (line >= ln)
+		{
+		plusline:
+			oob++;
+			line -= ln;
+			sl = songactiveline + oob;
+			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
+			ln = GetSmallestMaxtracklen(sl);
+
+			if (!ln)
+			{
+				is_goto = 1;
+				ln = g_Tracks.GetMaxTrackLength();
+			}
+
+			if (line >= ln) goto plusline;
+		}
+
+		if (g_tracklinealtnumbering)
+		{
+			GetTracklineText(stmp, line);
+			s[0] = (stmp[1] == '1') ? stmp[0] : ' ';
+			s[1] = stmp[1];
+		}
+		else
+		{
+			s[0] = CharH4(line);
+			s[1] = CharL4(line);
+		}
+
+		if (is_goto)
+		{
+			//mask out the first line
+			g_mem_dc->FillSolidRect(TRACKS_X, y, mask_x, 16, RGB_BACKGROUND);
+
+			//get the songline that has the goto set
+			sl = songactiveline + oob;
+			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
+
+			//if the line is 2 patterns or more away, it must also be gray
+			TextXY("GO TO LINE ", TRACKS_X + 6 * 8, y, (oob - 1) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_TURQUOISE);
+			sprintf(s, "%02X", m_songgo[sl]);
+			TextXY(s, TRACKS_X + 17 * 8, y, (oob - 1) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_WHITE);
+			break;
+		}
+
+		color = TEXT_COLOR_WHITE;
+		if (line % g_trackLineSecondaryHighlight == 0)  color = TEXT_COLOR_GREEN;
+		if (line % g_trackLinePrimaryHighlight == 0) color = TEXT_COLOR_CYAN;
+		if (line == trackplayline) color = TEXT_COLOR_YELLOW;
+		if (line == trackactiveline) color = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+		if (oob) color = TEXT_COLOR_DARK_GRAY;
+		TextXY(s, TRACKS_X, y, color);
+
+		for (int j = 0; j < g_tracks4_8; j++, x += 16 * 8)
+		{
+			//track in the current line of the song
+			sl = songactiveline + oob;
+			if (sl < 0 || sl > 255) { sl += 256; sl %= 256; }
+
+			tr = m_song[sl][j];
+
+			//is it playing?
+			if (songplayline == songactiveline) t = trackplayline; else t = -1;
+			g_Tracks.DrawTrackLine(j, x, y, tr, line, trackactiveline, g_cursoractview, t, (m_trackactivecol == j), m_trackactivecur, oob);
+		}
+		x = TRACKS_X + 5 * 8;
+	}
+
+	// Mask rectangles for hiding extra rendered lines
+	g_mem_dc->FillSolidRect(TRACKS_X - 8, TRACKS_Y + 1 * 16, mask_x, 32, RGB_BACKGROUND);
+	g_mem_dc->FillSolidRect(TRACKS_X - 8, TRACKS_Y + 2 * 16 + ((g_tracklines + 1) * 16) + 1, mask_x, 48, RGB_BACKGROUND);
+*/
+
+/*
+	// Tracks
+	strcpy(s, "  TRACK XX   ");
+	x = TRACKS_X + 5 * 8;
+	y = (TRACKS_Y + 3 * 16) + smooth_y;
+
+	for (i = 0; i < g_tracks4_8; i++, x += 16 * 8)
+	{
+		s[8] = tnames[i * 2];
+		s[9] = tnames[i * 2 + 1];
+
+		color = (GetChannelOnOff(i)) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;	//channels off are in gray
+		//TextXY(s, x + 12, TRACKS_Y, color);
+		TextXY(s, x, TRACKS_Y, color);
+
+		//track in the current line of the song
+		tr = m_song[songactiveline][i];
+
+		//g_Tracks.DrawTrackHeader(x + 24, TRACKS_Y + 16, tr, color);
+		g_Tracks.DrawTrackHeader(x + 8, TRACKS_Y + 16, tr, color);
+	}
+*/
 
 }
 
 void CSong::DrawInstrumentEditor()
 {
 
+}
+
+void CSong::DrawDebugInfos()
+{
+	// Debug display at the bottom of the screen, this could be toggled on if needed 
+	if (!g_viewDebugDisplay)
+		return;
+
+	CString s;
+
+	// Don't draw further more than what could fit on screen
+	for (int i = 0; i < g_width / (16 * 6); i++)
+	{
+		switch (i)
+		{
+		case 0: s.Format("GW = %02d", g_width); break;
+		case 1: s.Format("GH = %02d", g_height); break;
+		case 2: s.Format("PX = %02d", g_mouseLastPointX); break;
+		case 3: s.Format("PY = %02d", g_mouseLastPointY); break;
+		case 4: s.Format("MB = %02d", g_mouseLastButton); break;
+		case 5: s.Format("CA = %02d", g_cursoractview); break;
+		case 6: s.Format("TA = %02d", m_trackactiveline); break;
+		case 7: s.Format("DY = %02d", g_mouseLastPointY / 16); break;
+		case 8: s.Format("GTL = %02d", g_tracklines); break;
+		case 9: s.Format("OL = %02d", g_tracklines / 2); break;
+		case 10: s.Format("VK = %02X", g_lastKeyPressed); break;
+		case 11: s.Format("WD = %02d", g_mouseLastWheelDelta); break;
+		default: continue;
+		}
+
+		TextXY(s, PATTERNBLOCK_X + i * (16 * 6), g_height - 32, TEXT_COLOR_TURQUOISE);
+	}
 }

@@ -365,6 +365,9 @@ void CRmtView::DrawAll()
 		g_Song.DrawSonglines();
 		g_Song.DrawSubtuneInfos();
 		g_Song.DrawRegistersState();
+
+		// Draw the debug stuff if needed
+		g_Song.DrawDebugInfos();
 	}
 
 	// Otherwise, the Legacy procedure will be executed here like before
