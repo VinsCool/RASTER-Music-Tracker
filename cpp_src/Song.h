@@ -80,7 +80,7 @@ public:
 	void DrawAnalyzer();
 	void DrawPlayTimeCounter();
 
-	// New Draw functions
+	// RMTE Draw functions
 	void DrawSonglines();
 	void DrawSubtuneInfos();
 	void DrawRegistersState();
@@ -112,10 +112,21 @@ public:
 	BOOL ProveKey(int vk, int shift, int control);
 	BOOL TrackKey(int vk, int shift, int control);
 	BOOL TrackCursorGoto(CPoint point);
+
+	// Legacy Pattern Movement functions
 	BOOL TrackUp(int lines);
 	BOOL TrackDown(int lines, BOOL stoponlastline = 1);
 	BOOL TrackLeft(BOOL column = 0);
 	BOOL TrackRight(BOOL column = 0);
+
+	// RMTE Pattern Movement functions
+	void PatternLeft();
+	void PatternRight();
+	void PatternUp(int rows);
+	void PatternDown(int rows);
+	void ChannelLeft();
+	void ChannelRight();
+
 	BOOL TrackDelNoteInstrVolSpeed(int noteinstrvolspeed) { return g_Tracks.DelNoteInstrVolSpeed(noteinstrvolspeed, SongGetActiveTrack(), m_trackactiveline); };
 	BOOL TrackSetNoteActualInstrVol(int note) { return g_Tracks.SetNoteInstrVol(note, m_activeinstr, m_volume, SongGetActiveTrack(), m_trackactiveline); };
 	BOOL TrackSetNoteInstrVol(int note, int instr, int vol) { return g_Tracks.SetNoteInstrVol(note, instr, vol, SongGetActiveTrack(), m_trackactiveline); };
@@ -143,10 +154,19 @@ public:
 
 	BOOL SongKey(int vk, int shift, int control);
 	BOOL SongCursorGoto(CPoint point);
+
+	// Legacy Songline Movement functions
 	BOOL SongUp();
 	BOOL SongDown();
 	BOOL SongSubsongPrev();
 	BOOL SongSubsongNext();
+
+	// RMTE Songline Movement functions
+	void SonglineUp();
+	void SonglineDown();
+	void SeekNextSubtune();
+	void SeekPreviousSubtune();
+
 	BOOL SongTrackSet(int t);
 	BOOL SongTrackSetByNum(int num);
 	BOOL SongTrackDec();
@@ -364,8 +384,6 @@ public:
 
 	BOOL IsValidSongline(int songline) { return songline >= 0 && songline < SONGLEN; };
 	BOOL IsSongGo(int songline) { return IsValidSongline(songline) ? m_songgo[songline] >= 0 : 0; };
-
-	void SongJump(int lines);
 
 private:
 	int m_song[SONGLEN][SONGTRACKS];

@@ -944,111 +944,229 @@ void CSong::ActiveInstrSet(int instr)
 }
 
 
-
+// Legacy Function
 BOOL CSong::TrackUp(int lines)
 {
-	if (m_play && m_followplay)	//prevents moving at all during play+follow
-		return 0;
-
-	g_Undo.Separator();
-	m_trackactiveline -= lines;	//subtract the number of lines from active track line 
-
-	//GetSmallestMaxtracklen() seems to do a really good job for the navigation within the "compact" tracks display so far
-	int trlen = GetSmallestMaxtracklen(m_songactiveline);
-
-	if (m_trackactiveline < 0)	//track line is below 0
+	// Bad hack, but this is the quickest way to run tests with the RMTE functions
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		if (ISBLOCKSELECTED)	//a selection block is currently in use
-		{
-			m_trackactiveline = 0;	//prevent moving anywhere else
-			return 1;
-		}
-		if (g_keyboard_updowncontinue)	//navigation between tracks is enabled
-		{
-			BLOCKDESELECT;
-			SongUp();	//go to the next songline with current trackline position
-			trlen = GetSmallestMaxtracklen(m_songactiveline);	//fetch the new pattern length as well
-		}
-		m_trackactiveline = m_trackactiveline + trlen;	//active line should appear at the bottom line, from the previous pattern movement 
-		if (m_trackactiveline < 0)	//active line is still below 0? assume max track length to be the correct position, so the next movement up will rectify itself
-			m_trackactiveline = trlen - lines; 
+		PatternUp(lines);
 	}
-	if (m_trackactiveline > trlen)
-		m_trackactiveline = trlen - lines;	//above max track length, snap back in-bounds, and take the number of used for movements as well 
+
+	// Execute the Legacy procedure otherwise
+	else
+	{
+		// Prevent movements during playback if followplay is enabled
+		if (m_play && m_followplay)
+			return 0;
+
+		g_Undo.Separator();
+		m_trackactiveline -= lines;	//subtract the number of lines from active track line 
+
+		//GetSmallestMaxtracklen() seems to do a really good job for the navigation within the "compact" tracks display so far
+		int trlen = GetSmallestMaxtracklen(m_songactiveline);
+
+		if (m_trackactiveline < 0)	//track line is below 0
+		{
+			if (ISBLOCKSELECTED)	//a selection block is currently in use
+			{
+				m_trackactiveline = 0;	//prevent moving anywhere else
+				return 1;
+			}
+			if (g_keyboard_updowncontinue)	//navigation between tracks is enabled
+			{
+				BLOCKDESELECT;
+				SongUp();	//go to the next songline with current trackline position
+				trlen = GetSmallestMaxtracklen(m_songactiveline);	//fetch the new pattern length as well
+			}
+			m_trackactiveline = m_trackactiveline + trlen;	//active line should appear at the bottom line, from the previous pattern movement 
+			if (m_trackactiveline < 0)	//active line is still below 0? assume max track length to be the correct position, so the next movement up will rectify itself
+				m_trackactiveline = trlen - lines;
+		}
+		if (m_trackactiveline > trlen)
+			m_trackactiveline = trlen - lines;	//above max track length, snap back in-bounds, and take the number of used for movements as well 
+	}
 
 	return 1;
 }
 
+// Legacy Function
 BOOL CSong::TrackDown(int lines, BOOL stoponlastline)
 {
-	if (m_play && m_followplay)	//prevents moving at all during play+follow
-		return 0;
-
-	if (!g_keyboard_updowncontinue && stoponlastline && m_trackactiveline + lines > TrackGetLastLine()) // an invalid combination should be ignored
-		return 0;
-
-	g_Undo.Separator();
-	m_trackactiveline += lines;	//add the number of lines to move down to the current active trackline
-
-	//GetSmallestMaxtracklen() seems to do a really good job for the navigation within the "compact" tracks display so far
-	int trlen = GetSmallestMaxtracklen(m_songactiveline);	//identify the true track length in song line 
-	if (!trlen) trlen = g_Tracks.GetMaxTrackLength();	//in case the smallest max track length returned zero (eg from a goto line)
-
-	if (m_trackactiveline >= trlen)	//active line is equal or above max track length
+	// Bad hack, but this is the quickest way to run tests with the RMTE functions
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		if (ISBLOCKSELECTED)
-		{
-			//m_trackactiveline = g_Tracks.m_maxtracklen - 1;	//prevent moving anywhere else
-			m_trackactiveline = trlen - 1;	//prevent moving anywhere else
-			return 1;
-		}
-		//m_trackactiveline = m_trackactiveline % g_Tracks.m_maxtracklen;
-		m_trackactiveline = m_trackactiveline % trlen;	//active line is modulo of track length, it will roll over 
-		if (g_keyboard_updowncontinue)	//navigation between tracks is enabled
-		{
-			BLOCKDESELECT;
-			SongDown();	//go to the next songline with current trackline position
-			trlen = GetSmallestMaxtracklen(m_songactiveline);	//fetch the new pattern length as well
-		}
-		if (m_trackactiveline < 0)	//active line is still below 0? assume max track length to be the correct position, so the next movement up will rectify itself
-			m_trackactiveline = 0 + lines;
+		PatternDown(lines);
 	}
-	if (m_trackactiveline > trlen)
-		m_trackactiveline = 0 + lines;	//above max track length, snap back in-bounds, and take the number of used for movements as well 
+
+	// Execute the Legacy procedure otherwise
+	else
+	{
+		// Prevent movements during playback if followplay is enabled
+		if (m_play && m_followplay)
+			return 0;
+
+		// An invalid combination should be ignored
+		if (!g_keyboard_updowncontinue && stoponlastline && m_trackactiveline + lines > TrackGetLastLine())
+			return 0;
+
+		g_Undo.Separator();
+		m_trackactiveline += lines;	//add the number of lines to move down to the current active trackline
+
+		//GetSmallestMaxtracklen() seems to do a really good job for the navigation within the "compact" tracks display so far
+		int trlen = GetSmallestMaxtracklen(m_songactiveline);	//identify the true track length in song line 
+		if (!trlen) trlen = g_Tracks.GetMaxTrackLength();	//in case the smallest max track length returned zero (eg from a goto line)
+
+		if (m_trackactiveline >= trlen)	//active line is equal or above max track length
+		{
+			if (ISBLOCKSELECTED)
+			{
+				//m_trackactiveline = g_Tracks.m_maxtracklen - 1;	//prevent moving anywhere else
+				m_trackactiveline = trlen - 1;	//prevent moving anywhere else
+				return 1;
+			}
+			//m_trackactiveline = m_trackactiveline % g_Tracks.m_maxtracklen;
+			m_trackactiveline = m_trackactiveline % trlen;	//active line is modulo of track length, it will roll over 
+			if (g_keyboard_updowncontinue)	//navigation between tracks is enabled
+			{
+				BLOCKDESELECT;
+				SongDown();	//go to the next songline with current trackline position
+				trlen = GetSmallestMaxtracklen(m_songactiveline);	//fetch the new pattern length as well
+			}
+			if (m_trackactiveline < 0)	//active line is still below 0? assume max track length to be the correct position, so the next movement up will rectify itself
+				m_trackactiveline = 0 + lines;
+		}
+		if (m_trackactiveline > trlen)
+			m_trackactiveline = 0 + lines;	//above max track length, snap back in-bounds, and take the number of used for movements as well 
+	}
 
 	return 1;
 }
 
+// Legacy Function
 BOOL CSong::TrackLeft(BOOL column)
 {
-	g_Undo.Separator();
-	if (column) goto track_leftcolumn;
-	m_trackactivecur--;
-	if (m_trackactivecur < 0)
+	// Bad hack, but this is the quickest way to run tests with the RMTE functions
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		m_trackactivecur = 3;	//previous speed column
-	track_leftcolumn:
-		m_trackactivecol--;
-		if (m_trackactivecol < 0) m_trackactivecol = g_tracks4_8 - 1;
+		if (column)
+			ChannelLeft();
+		else
+			PatternLeft();
 	}
+
+	// Execute the Legacy procedure otherwise
+	else
+	{
+		g_Undo.Separator();
+		if (column) goto track_leftcolumn;
+		m_trackactivecur--;
+		if (m_trackactivecur < 0)
+		{
+			m_trackactivecur = 3;	//previous speed column
+		track_leftcolumn:
+			m_trackactivecol--;
+			if (m_trackactivecol < 0) m_trackactivecol = g_tracks4_8 - 1;
+		}
+	}
+
 	return 1;
 }
 
+// Legacy Function
 BOOL CSong::TrackRight(BOOL column)
 {
-	g_Undo.Separator();
-	if (column) goto track_rightcolumn;
-	m_trackactivecur++;
-	if (m_trackactivecur > 3)	//speed column
+	// Bad hack, but this is the quickest way to run tests with the RMTE functions
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		m_trackactivecur = 0;
-	track_rightcolumn:
-		m_trackactivecol++;
-		if (m_trackactivecol >= g_tracks4_8) m_trackactivecol = 0;
+		if (column)
+			ChannelRight();
+		else
+			PatternRight();
 	}
+
+	// Execute the Legacy procedure otherwise
+	else
+	{
+		g_Undo.Separator();
+		if (column) goto track_rightcolumn;
+		m_trackactivecur++;
+		if (m_trackactivecur > 3)	//speed column
+		{
+			m_trackactivecur = 0;
+		track_rightcolumn:
+			m_trackactivecol++;
+			if (m_trackactivecol >= g_tracks4_8) m_trackactivecol = 0;
+		}
+	}
+
 	return 1;
 }
 
+void CSong::PatternLeft()
+{
+	if (--m_trackactivecur < 0)
+	{
+		ChannelLeft();
+		m_trackactivecur = g_Module.GetEffectCommandCount(m_trackactivecol) + 2;
+	}
+}
+
+void CSong::PatternRight()
+{
+	if (++m_trackactivecur > g_Module.GetEffectCommandCount(m_trackactivecol) + 2)
+	{
+		ChannelRight();
+		m_trackactivecur = 0;
+	}
+}
+
+void CSong::PatternUp(int rows)
+{
+	// Prevent movements during playback if followplay is enabled
+	if (m_play && m_followplay)
+		return;
+
+	if ((m_trackactiveline -= rows) < 0)
+	{
+		// Moving between Songlines from Pattern boundaries is enabled
+		if (g_keyboard_updowncontinue)
+			SonglineUp();
+		
+		// Adjustment for the Row Index between Songlines, done after updating the Songline
+		m_trackactiveline += g_Module.GetShortestPatternLength(m_songactiveline);
+	}
+}
+
+void CSong::PatternDown(int rows)
+{
+	// Prevent movements during playback if followplay is enabled
+	if (m_play && m_followplay)
+		return;
+
+	if ((m_trackactiveline += rows) >= g_Module.GetShortestPatternLength(m_songactiveline))
+	{
+		// Adjustment for the Row Index between Songlines, done before updating the Songline
+		m_trackactiveline %= g_Module.GetShortestPatternLength(m_songactiveline);
+
+		// Moving between Songlines from Pattern boundaries is enabled
+		if (g_keyboard_updowncontinue)
+			SonglineDown();
+	}
+}
+
+void CSong::ChannelLeft()
+{
+	if (--m_trackactivecol < 0)
+		m_trackactivecol += g_Module.GetChannelCount();
+}
+
+void CSong::ChannelRight()
+{
+	++m_trackactivecol %= g_Module.GetChannelCount();
+}
+
+// FIXME: Not actually needed, but required for working around issues with the Legacy functions...
 void CSong::RespectBoundaries()
 {
 	int songline = SongGetActiveLine();
@@ -1196,144 +1314,224 @@ BOOL CSong::UECursorIsEqual(int* cursor1, int* cursor2, int part)
 
 //----------
 
-void CSong::SongJump(int lines)
-{
-	int songline = SongGetActiveLine();
-	int toline = songline + lines;
 
-	if (toline > songline)
-	{
-		SongSetActiveLine(toline - 1);
-		SongDown();
-	}
-	else
-	{
-		SongSetActiveLine(toline + 1);
-		SongUp();
-	}
-}
-
+// Legacy Function
 BOOL CSong::SongUp()
 {
-	BLOCKDESELECT;
-	g_Undo.Separator();
-
-	m_songactiveline--;
-
-	if (!IsValidSongline(m_songactiveline))
-		m_songactiveline = SONGLEN - 1;
-
-	if (m_play && m_followplay)
+	// Bad hack, but this is the quickest way to run tests with the RMTE functions
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		// Play track in loop, else, play from cursor position
-		int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;
-		Stop();
+		SonglineUp();
+	}
 
-		// This is a Gotoline, skip another line above it
-		if (IsSongGo(m_songactiveline))
-			m_songactiveline--;
+	// Execute the Legacy procedure otherwise
+	else
+	{
+		BLOCKDESELECT;
+		g_Undo.Separator();
 
-		// If the line is no longer valid, force it to the last line instead
+		m_songactiveline--;
+
 		if (!IsValidSongline(m_songactiveline))
 			m_songactiveline = SONGLEN - 1;
 
-		m_songplayline = m_songactiveline;
-		m_trackplayline = m_trackactiveline = 0;
-		
-		// Continue playing using the correct parameters
-		Play(mode, m_followplay);
+		if (m_play && m_followplay)
+		{
+			// Play track in loop, else, play from cursor position
+			int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;
+			Stop();
+
+			// This is a Gotoline, skip another line above it
+			if (IsSongGo(m_songactiveline))
+				m_songactiveline--;
+
+			// If the line is no longer valid, force it to the last line instead
+			if (!IsValidSongline(m_songactiveline))
+				m_songactiveline = SONGLEN - 1;
+
+			m_songplayline = m_songactiveline;
+			m_trackplayline = m_trackactiveline = 0;
+
+			// Continue playing using the correct parameters
+			Play(mode, m_followplay);
+		}
 	}
+
 	return 1;
 }
 
+// Legacy Function
 BOOL CSong::SongDown()
 {
-	BLOCKDESELECT;
-	g_Undo.Separator();
-
-	m_songactiveline++;
-
-	if (!IsValidSongline(m_songactiveline))
-		m_songactiveline = 0;
-
-	if (m_play && m_followplay)
+	// Bad hack, but this is the quickest way to run tests with the RMTE functions
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		// Play track in loop, else, play from cursor position
-		int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;
-		Stop();
+		SonglineDown();
+	}
 
-		// This is a Gotoline, skip another line below it
-		if (IsSongGo(m_songactiveline))
-			m_songactiveline++;
+	// Execute the Legacy procedure otherwise
+	else
+	{
+		BLOCKDESELECT;
+		g_Undo.Separator();
 
-		// If the line is no longer valid, force it to the first line instead
+		m_songactiveline++;
+
 		if (!IsValidSongline(m_songactiveline))
 			m_songactiveline = 0;
 
-		m_songplayline = m_songactiveline;
-		m_trackplayline = m_trackactiveline = 0;
+		if (m_play && m_followplay)
+		{
+			// Play track in loop, else, play from cursor position
+			int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;
+			Stop();
 
-		// Continue playing using the correct parameters
-		Play(mode, m_followplay);
+			// This is a Gotoline, skip another line below it
+			if (IsSongGo(m_songactiveline))
+				m_songactiveline++;
+
+			// If the line is no longer valid, force it to the first line instead
+			if (!IsValidSongline(m_songactiveline))
+				m_songactiveline = 0;
+
+			m_songplayline = m_songactiveline;
+			m_trackplayline = m_trackactiveline = 0;
+
+			// Continue playing using the correct parameters
+			Play(mode, m_followplay);
+		}
 	}
+
 	return 1;
 }
 
+// Legacy Function
 BOOL CSong::SongSubsongPrev()
 {
-	g_Undo.Separator();
-	int i = m_songactiveline - 1;
-
-	//only few lines in track have been played, or active line is 0, search for 1 subsong earlier to avoid being sent back to the same line each time 
-	if ((m_play && m_followplay && m_trackplayline < 16) || m_trackactiveline == 0)	 
-		i--;
-	for (; i >= 0; i--)
+	// Bad hack, but this is the quickest way to run tests with the RMTE functions
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		if (m_songgo[i] >= 0)
+		SeekPreviousSubtune();
+	}
+
+	// Execute the Legacy procedure otherwise
+	else
+	{
+		g_Undo.Separator();
+		int i = m_songactiveline - 1;
+
+		//only few lines in track have been played, or active line is 0, search for 1 subsong earlier to avoid being sent back to the same line each time 
+		if ((m_play && m_followplay && m_trackplayline < 16) || m_trackactiveline == 0)
+			i--;
+		for (; i >= 0; i--)
 		{
-			m_songactiveline = i + 1;
-			break;
+			if (m_songgo[i] >= 0)
+			{
+				m_songactiveline = i + 1;
+				break;
+			}
+		}
+		if (i < 0) m_songactiveline = 0;
+		m_trackactiveline = 0;
+		if (m_play && m_followplay)
+		{
+			int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;	//play track in loop, else, play from cursor position
+			Stop();
+			m_songplayline = m_songactiveline;
+			m_trackplayline = m_trackactiveline = 0;
+			Play(mode, m_followplay); // continue playing using the correct parameters
 		}
 	}
-	if (i < 0) m_songactiveline = 0;
-	m_trackactiveline = 0;
-	if (m_play && m_followplay)
-	{
-		int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;	//play track in loop, else, play from cursor position
-		Stop();
-		m_songplayline = m_songactiveline;
-		m_trackplayline = m_trackactiveline = 0;
-		Play(mode, m_followplay); // continue playing using the correct parameters
-	}
+
 	return 1;
 }
 
+// Legacy Function
 BOOL CSong::SongSubsongNext()
 {
-	g_Undo.Separator();
-	int i;
-	for (i = m_songactiveline; i < SONGLEN; i++)
+	// Bad hack, but this is the quickest way to run tests with the RMTE functions
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		if (m_songgo[i] >= 0)
+		SeekNextSubtune();
+	}
+
+	// Execute the Legacy procedure otherwise
+	else
+	{
+		g_Undo.Separator();
+		int i;
+		for (i = m_songactiveline; i < SONGLEN; i++)
 		{
-			if (i < (SONGLEN - 1))
-				m_songactiveline = i + 1;
-			else
-				m_songactiveline = SONGLEN - 1; //Goto on the last songline (=> it is not possible to set a line below it!)
-			m_trackactiveline = 0;
-			break;
+			if (m_songgo[i] >= 0)
+			{
+				if (i < (SONGLEN - 1))
+					m_songactiveline = i + 1;
+				else
+					m_songactiveline = SONGLEN - 1; //Goto on the last songline (=> it is not possible to set a line below it!)
+				m_trackactiveline = 0;
+				break;
+			}
+		}
+		if (m_play && m_followplay)
+		{
+			int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;	//play track in loop, else, play from cursor position
+			Stop();
+			m_songplayline = m_songactiveline;
+			m_trackplayline = m_trackactiveline = 0;
+			Play(mode, m_followplay); // continue playing using the correct parameters
 		}
 	}
-	if (m_play && m_followplay)
-	{
-		int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;	//play track in loop, else, play from cursor position
-		Stop();
-		m_songplayline = m_songactiveline;
-		m_trackplayline = m_trackactiveline = 0;
-		Play(mode, m_followplay); // continue playing using the correct parameters
-	}
+
 	return 1;
 }
+
+
+void CSong::SonglineUp()
+{
+	if (--m_songactiveline < 0)
+		m_songactiveline += g_Module.GetSongLength();
+
+	// Prevent the Active Pattern Row to go out of bounds
+	m_trackactiveline %= g_Module.GetShortestPatternLength(m_songactiveline);
+}
+
+void CSong::SonglineDown()
+{
+	++m_songactiveline %= g_Module.GetSongLength();
+
+	// Prevent the Active Pattern Row to go out of bounds
+	m_trackactiveline %= g_Module.GetShortestPatternLength(m_songactiveline);
+}
+
+void CSong::SeekNextSubtune()
+{
+	int activeSubtune = g_Module.GetActiveSubtune();
+
+	++activeSubtune %= g_Module.GetSubtuneCount();
+
+	g_Module.SetActiveSubtune(activeSubtune);
+
+	//ClearSong(g_Module.GetChannelCount());
+	m_songplayline = m_songactiveline = 0;
+	m_trackactiveline = m_trackplayline = 0;
+	m_trackactivecol = m_trackactivecur = 0;
+}
+
+void CSong::SeekPreviousSubtune()
+{
+	int activeSubtune = g_Module.GetActiveSubtune();
+
+	if (--activeSubtune < 0)
+		activeSubtune += g_Module.GetSubtuneCount();
+
+	g_Module.SetActiveSubtune(activeSubtune);
+
+	//ClearSong(g_Module.GetChannelCount());
+	m_songplayline = m_songactiveline = 0;
+	m_trackactiveline = m_trackplayline = 0;
+	m_trackactivecol = m_trackactivecur = 0;
+}
+
 
 BOOL CSong::SongTrackSet(int t)
 {
@@ -3326,12 +3524,17 @@ void CSong::TimerRoutine()
 
 void CSong::DrawSonglines()
 {
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return;
+
 	CString s;
 	int linescount = 9, linesoffset = -4;
-	RECT songblock(SONGBLOCK_X - 4, SONGBLOCK_Y, SONGBLOCK_X + (3 * 8) + (g_Module.GetChannelCount() * (3 * 8)) - 4, SONGBLOCK_Y + (2 * 16) + (linescount * 16));
+	RECT songblock(SONGBLOCK_X - 4, SONGBLOCK_Y, SONGBLOCK_X + (3 * 8) + (p->channelCount * (3 * 8)) - 4, SONGBLOCK_Y + (2 * 16) + (linescount * 16));
 
 	// All Channels used in the Subtune will be displayed within the Songline Index
-	for (int i = 0; i < g_Module.GetChannelCount(); i++)
+	for (int i = 0; i < p->channelCount; i++)
 	{
 		// Offset for the X axis, each character use a 8x16 Bitmap tile
 		int x = (3 * 8) + (i * (3 * 8));
@@ -3388,14 +3591,14 @@ void CSong::DrawSonglines()
 		bool isOutOfBounds = false;
 
 		// If the Songline Index is out of bounds, apply a modulo operation using the Song Length value, and set the out of bounds flag
-		if (!g_Module.IsValidSongline(songline) || songline >= g_Module.GetSongLength())
+		if (!g_Module.IsValidSongline(songline) || songline >= p->songLength)
 		{
 			// If the Songline Index is below 0, add the number of Songlines to balance it back to a valid range
 			if (songline < 0)
-				songline += g_Module.GetSongLength();
+				songline += p->songLength;
 
 			// Apply a modulo operation on top of it to make the Songline Index wrap around
-			songline %= g_Module.GetSongLength();
+			songline %= p->songLength;
 			isOutOfBounds = true;
 		}
 
@@ -3412,7 +3615,7 @@ void CSong::DrawSonglines()
 		TextXY(s, SONGBLOCK_X, SONGBLOCK_Y + y, colour);
 
 		// Draw all Songlines used in every Channels
-		for (int j = 0; j < g_Module.GetChannelCount(); j++)
+		for (int j = 0; j < p->channelCount; j++)
 		{
 			// Offset for the X axis, each character use a 8x16 Bitmap tile
 			int x = (3 * 8) + (j * (3 * 8));
@@ -3434,7 +3637,7 @@ void CSong::DrawSonglines()
 				colour = TEXT_COLOR_DARK_GRAY;
 
 			// Fetch the Pattern number used in the Songline's Channel, and draw it in the Songline Block
-			s.Format("%02X", g_Module.GetPatternInSongline(j, songline));
+			s.Format("%02X", p->channel[j].songline[songline]);
 			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + y, colour);
 		}
 
@@ -3476,25 +3679,33 @@ void CSong::DrawRegistersState()
 
 void CSong::DrawPatternEditor()
 {
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return;
+
 	CString s;
-	RECT patternblock;
+	RECT patternblock{};
 
 	// Caching global variables is necessary in order to display Patterns without random "jumps" around during playback 
 	// This is caused by the screen update timing, and this is the main reason why these bugs seem to happen randomly
-	int trackactiveline = m_trackactiveline;
-	int trackplayline = m_trackplayline;
-	int songactiveline = m_songactiveline;
-	int songplayline = m_songplayline;
-	int speed = m_speed;
-	int speeda = m_speeda;
+	int activeRow = m_trackactiveline;
+	int playRow = m_trackplayline;
+	int activeSongline = m_songactiveline;
+	int playSongline = m_songplayline;
+	int activeCursor = m_trackactivecur;
+	int activeChannel = m_trackactivecol;
+
+	//int speed = m_speed;
+	//int speeda = m_speeda;
 
 	// Coordinates used for drawing most of the Pattern Editor block on screen
 	int x = 3 * 8, y = 0;
 
 	// The cursor position is alway centered regardless of the window size with this simple formula
-	g_cursoractview = trackactiveline + 8 - g_line_y;
+	g_cursoractview = activeRow + 8 - g_line_y;
 
-	// Standard notation
+	// Standard notation FIXME: create a proper method for the Note and Octave text format
 	int notation = 0;
 
 	if (g_displayflatnotes)
@@ -3508,9 +3719,10 @@ void CSong::DrawPatternEditor()
 		notation = 4;
 
 	// Process Channels 1 by 1, for all the Patterns to be drawn on screen
-	for (int i = 0; i < g_Module.GetChannelCount(); i++)
+	for (int i = 0; i < p->channelCount; i++)
 	{
-		int pattern = g_Module.GetPatternInSongline(i, songactiveline);
+		// The Y offset is always reset to 0 between Channels
+		y = 0;
 
 		// For as many Pattern Rows there are to display on screen, execute this loop
 		for (int j = 0; j < g_tracklines; j++, y += 16)
@@ -3522,109 +3734,141 @@ void CSong::DrawPatternEditor()
 			// Get the Row Index, derived from the active cursor offset and j, minus 9
 			int row = g_cursoractview + j - 9;
 
-			// If the Row is out of bounds, skip it (for now, hehehe...)
-			if (!g_Module.IsValidRow(row) || row >= g_Module.GetShortestPatternLength(songactiveline))
-				continue;
+			// This will be used for wrapping around the Pattern Row Index
+			int offsetSongline = activeSongline;
+			bool isOutOfBounds = false;
+
+			// If the Row Index is out of bounds, the Active Songline will be offset using the Shortest Pattern Length for each iteration
+			if (!g_Module.IsValidRow(row) || row >= g_Module.GetShortestPatternLength(offsetSongline))
+			{
+				isOutOfBounds = true;
+
+				// Add Rows for as many Songlines there are to offset
+				while (row < 0)
+				{
+					//row += g_Module.GetShortestPatternLength(offsetSongline);
+					if (--offsetSongline < 0)
+						offsetSongline += g_Module.GetSongLength();
+					row += g_Module.GetShortestPatternLength(offsetSongline);
+				}
+
+				// Subtract Rows for as many Songlines there are to offset
+				while (row >= g_Module.GetShortestPatternLength(offsetSongline))
+				{
+					row -= g_Module.GetShortestPatternLength(offsetSongline);
+					++offsetSongline %= g_Module.GetSongLength();
+				}
+			}
+
+			// Get the Pattern Index from the Songline offset
+			int pattern = p->channel[i].songline[offsetSongline];
+
+			// Default Colour for all Pattern Rows
+			int colour = TEXT_COLOR_WHITE;
+
+			if (row % g_trackLineSecondaryHighlight == 0)
+				colour = TEXT_COLOR_GREEN;
+
+			if (row % g_trackLinePrimaryHighlight == 0)
+				colour = TEXT_COLOR_CYAN;
+
+			if (row == playRow)
+				colour = TEXT_COLOR_YELLOW;
+
+			if (row == activeRow)
+				colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+
+			if (isOutOfBounds)
+				colour = TEXT_COLOR_DARK_GRAY;
 
 			// If the procedure is set to run from Channel 1, the Row Index will also be drawn on screen
 			if (i == CH1)
 			{
 				s.Format("%02X", row);
-				TextXY(s, PATTERNBLOCK_X, PATTERNBLOCK_Y + y, TEXT_COLOR_WHITE);
+				TextXY(s, PATTERNBLOCK_X, PATTERNBLOCK_Y + y, colour);
 			}
 
 			// Parse all the parameters and format the text for 1 Pattern Row
 			s.Format("");
 
+			// Conditions needed for displaying the Active Cursor Highlight
+			bool isActiveCursor = g_activepart == PART_TRACKS && row == activeRow && i == activeChannel && !isOutOfBounds;
+
 			// Note and Octave
-			int note = g_Module.GetPatternRowNote(i, pattern, row);
-			const char* noteidx = notesandscales[notation][note % g_notesperoctave];
+			int note = p->channel[i].pattern[pattern].row[row].note;
+
+			if (!g_Module.IsValidNote(note))
+				note = INVALID;
 
 			switch (note)
 			{
-			case PATTERN_NOTE_EMPTY:
-				s.AppendFormat("--- ");
-				break;
-
-			case PATTERN_NOTE_OFF:
-				s.AppendFormat("OFF ");
-				break;
-
-			case PATTERN_NOTE_RELEASE:
-				s.AppendFormat("=== ");
-				break;
-
-			case PATTERN_NOTE_RETRIGGER:
-				s.AppendFormat("~~~ ");
-				break;
-
+			case INVALID: s.AppendFormat("??? "); break;
+			case PATTERN_NOTE_EMPTY: s.AppendFormat("--- "); break;
+			case PATTERN_NOTE_OFF: s.AppendFormat("OFF "); break;
+			case PATTERN_NOTE_RELEASE: s.AppendFormat("=== "); break;
+			case PATTERN_NOTE_RETRIGGER: s.AppendFormat("~~~ "); break;
 			default:
-				if (g_Module.IsValidNote(note))
-					s.AppendFormat("%C%C%01X ", noteidx[0], noteidx[1], note / g_notesperoctave + 1);
-				else
-					s.AppendFormat("??? ");
+				// FIXME: create a proper method for the Note and Octave text format
+				const char* noteidx = notesandscales[notation][note % g_notesperoctave];
+				s.AppendFormat("%C%C%01X ", noteidx[0], noteidx[1], note / g_notesperoctave + 1);
 			}
 
 			// Instrument
-			int instrument = g_Module.GetPatternRowInstrument(i, pattern, row);
+			int instrument = p->channel[i].pattern[pattern].row[row].instrument;
+
+			if (!g_Module.IsValidInstrument(instrument))
+				instrument = INVALID;
 
 			switch (instrument)
 			{
-			case PATTERN_INSTRUMENT_EMPTY:
-				s.AppendFormat("-- ");
-				break;
-
-			default:
-				if (g_Module.IsValidInstrument(instrument))
-					s.AppendFormat("%02X ", instrument);
-				else
-					s.AppendFormat("?? ");
+			case INVALID: s.AppendFormat("?? "); break;
+			case PATTERN_INSTRUMENT_EMPTY: s.AppendFormat("-- "); break;
+			default: s.AppendFormat("%02X ", instrument);
 			}
 
 			// Volume
-			int volume = g_Module.GetPatternRowVolume(i, pattern, row);
+			int volume = p->channel[i].pattern[pattern].row[row].volume;
+
+			if (!g_Module.IsValidVolume(volume))
+				volume = INVALID;
 
 			switch (volume)
 			{
-			case PATTERN_VOLUME_EMPTY:
-				s.AppendFormat("-- ");
-				break;
-
-			default:
-				if (g_Module.IsValidVolume(volume))
-					s.AppendFormat("v%01X ", volume);
-				else
-					s.AppendFormat("?? ");
+			case INVALID: s.AppendFormat("?? "); break;
+			case PATTERN_VOLUME_EMPTY: s.AppendFormat("-- "); break;
+			default: s.AppendFormat("v%01X ", volume);
 			}
 
 			// Command(s)
-			for (int k = 0; k < g_Module.GetEffectCommandCount(i); k++)
+			for (int k = 0; k < p->effectCommandCount[i]; k++)
 			{
-				int cmd = g_Module.GetPatternRowCommand(i, pattern, row, k);
+				int cmd = INVALID;
+
+				switch (k)
+				{
+				case CMD1: cmd = p->channel[i].pattern[pattern].row[row].cmd0; break;
+				case CMD2: cmd = p->channel[i].pattern[pattern].row[row].cmd1; break;
+				case CMD3: cmd = p->channel[i].pattern[pattern].row[row].cmd2; break;
+				case CMD4: cmd = p->channel[i].pattern[pattern].row[row].cmd3; break;
+				}
+
+				if (!g_Module.IsValidCommand(cmd))
+					cmd = INVALID;
 
 				switch (cmd)
 				{
-				case PATTERN_EFFECT_EMPTY:
-					s.AppendFormat("--- ");
-					break;
-
-				default:
-					if (g_Module.IsValidCommand(cmd))
-						s.AppendFormat("%03X ", cmd);
-					else
-						s.AppendFormat("??? ");
+				case INVALID: s.AppendFormat("??? "); break;
+				case PATTERN_EFFECT_EMPTY: s.AppendFormat("--- "); break;
+				default: s.AppendFormat("%03X ", cmd);
 				}
 			}
 
-			// Draw the formated Pattern Row on screen once it is ready to be output
-			TextXY(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, TEXT_COLOR_WHITE);			
+			// Draw the formated Pattern Row on screen once it is ready to be output, using the cursor position for highlighted column
+			TextXYCol(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, isActiveCursor ? activeCursor : INVALID, colour);
 		}
 
-		// Offset X with the Channel's width, including the Active Effect Commands
-		x += (10 * 8) + (g_Module.GetEffectCommandCount(i) * (4 * 8));
-
-		// Reset Y to process the next Channel from the same position
-		y = 0;
+		// Update the X offset with the Channel's width, including the Active Effect Commands
+		x += (10 * 8) + (p->effectCommandCount[i] * (4 * 8));
 	}
 
 	// Actual dimensions used by the Pattern Editor block, including the Channels Header
@@ -3652,9 +3896,9 @@ void CSong::DrawPatternEditor()
 	g_mem_dc->LineTo(patternblock.right, patternblock.top + (3 * 16));
 
 	// Separation between each POKEY Channels:
-	for (int i = 0; i < g_Module.GetChannelCount(); i++)
+	for (int i = 0; i < p->channelCount; i++)
 	{
-		x += (10 * 8) + (g_Module.GetEffectCommandCount(i) * (4 * 8));
+		x += (10 * 8) + (p->effectCommandCount[i] * (4 * 8));
 		g_mem_dc->MoveTo(patternblock.left + x, patternblock.top);
 		g_mem_dc->LineTo(patternblock.left + x, patternblock.bottom);
 	}

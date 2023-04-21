@@ -203,6 +203,7 @@ public:
 
 	// Pointers to Module Structs
 	TSubtune* GetSubtuneIndex(int subtune) { return IsValidSubtune(subtune) ? &m_index[subtune] : NULL; };
+	TSubtune* GetSubtuneIndex() { return IsValidSubtune(m_activeSubtune) ? &m_index[m_activeSubtune] : NULL; };
 	TIndex* GetChannelIndex() { return GetSubtuneIndex(m_activeSubtune)->channel; };
 	TIndex* GetChannelIndex(int channel) { return IsValidChannel(channel) ? &GetSubtuneIndex(m_activeSubtune)->channel[channel] : NULL; };
 	BYTE* GetSonglineIndex(int channel) { return IsValidChannel(channel) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].songline : NULL; };

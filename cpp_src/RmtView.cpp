@@ -285,6 +285,10 @@ void CRmtView::OnTimer(UINT_PTR nIDEvent)
 // Debug function, poor attempt at a FPS counter
 void CRmtView::GetFPS()
 {
+	// If not in Debug mode, there is no need for getting the FPS
+	if (!g_viewDebugDisplay)
+		return;
+
 	using namespace std::chrono;
 	uint64_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 	uint64_t sec = duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
@@ -333,14 +337,15 @@ void CRmtView::OnSize(UINT nType, int cx, int cy)
 
 void CRmtView::OnDraw(CDC* pDC)
 {
+	if (!pDC)
+		return;
+
 	// Redraw the screen if needed
 	if (g_screenupdate)
 	{
-		if (g_viewDebugDisplay) GetFPS();
+		GetFPS();
 		Resize();
-		g_Song.RespectBoundaries();
 		DrawAll();
-		//pDC->SetStretchBltMode(HALFTONE);
 		pDC->StretchBlt(0, 0, m_width, m_height, &m_mem_dc, 0, 0, g_width, g_height, SRCCOPY);
 	}
 
@@ -373,6 +378,9 @@ void CRmtView::DrawAll()
 	// Otherwise, the Legacy procedure will be executed here like before
 	else
 	{
+		// Needed in order to work around several boundaries problems...
+		g_Song.RespectBoundaries();
+
 		// Draw the secondary screen elements first
 		g_Song.DrawInfo();
 		g_Song.DrawSong();

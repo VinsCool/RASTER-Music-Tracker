@@ -200,6 +200,7 @@ void TextXYSelN(const char* txt, int n, int x, int y, int color)
 }
 
 // Draw 8x16 chars with given color array per char position
+// TODO: make a lookup table for the cursor highlight position
 void TextXYCol(const char* txt, int x, int y, int acu, int color)
 {
 	color <<= 4;
@@ -208,13 +209,32 @@ void TextXYCol(const char* txt, int x, int y, int acu, int color)
 	int col = (g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED) << 4;
 	int cur = COLOR_HOVERED << 4;
 
-	switch (acu)
+	// RMTE variables
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-	case 0: acu = 1; num = 3; break;	// Note
-	case 1: acu = 5; num = 2; break;	// Instrument
-	case 2: acu = 8; num = 2; break;	// Volume
-	case 3: acu = 11; num = 3; break;	// Effect(s)
-	default: acu = -1;
+		switch (acu)
+		{
+		case 0: acu = 0; num = 3; break;	// Note
+		case 1: acu = 4; num = 2; break;	// Instrument
+		case 2: acu = 7; num = 2; break;	// Volume
+		case 3: acu = 10; num = 3; break;	// Effect(s)
+		case 4: acu = 14; num = 3; break;
+		case 5: acu = 18; num = 3; break;
+		case 6: acu = 22; num = 3; break;
+		case 7: acu = 26; num = 3; break;
+		}
+	}
+
+	// Legacy variables
+	else
+	{
+		switch (acu)
+		{
+		case 0: acu = 1; num = 3; break;	// Note
+		case 1: acu = 5; num = 2; break;	// Instrument
+		case 2: acu = 8; num = 2; break;	// Volume
+		case 3: acu = 11; num = 3; break;	// Effect(s)
+		}
 	}
 
 	for (int i = 0; char charToDraw = txt[i]; i++, x += 8)
