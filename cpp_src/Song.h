@@ -3,6 +3,7 @@
 #include <fstream>
 
 #include "General.h"
+#include "global.h"
 
 #include "Undo.h"
 #include "Instruments.h"
@@ -212,12 +213,17 @@ public:
 	BOOL PlayVBI();
 
 	BOOL PlayPressedTonesInit();
-	BOOL SetPlayPressedTonesTNIV(int t, int n, int i, int v) { m_playptnote[t] = n; m_playptinstr[t] = i; m_playptvolume[t] = v; return 1; }
+	BOOL SetPlayPressedTonesTNIV(int t, int n, int i, int v) { m_playptnote[t] = n; m_playptinstr[t] = i; m_playptvolume[t] = v; return 1; };
 	BOOL SetPlayPressedTonesV(int t, int v) { m_playptvolume[t] = v; return 1; };
 	BOOL SetPlayPressedTonesSilence();
 	BOOL PlayPressedTones();
 
 	void TimerRoutine();
+
+	void UpdatePlayTime() { m_playTimeFrameCount += m_play ? 1 : 0; };
+	void CalculatePlayTime();
+	void CalculatePlayBPM();
+	void CalculatePlayFPS();
 
 	void SetRMTTitle();
 
@@ -428,7 +434,23 @@ private:
 
 	TBookmark m_bookmark;
 
-	double m_avgspeed[8] = { 0 };		//use for calculating average BPM
+	// Used for calculating Play time
+	int m_playTimeFrameCount;
+	int m_playTimeSecondCount;
+	int m_playTimeMinuteCount;
+	int m_playTimeMillisecondCount;
+
+	// Used for calculating Average BPM
+	BYTE m_rowSpeed[8];
+	double m_averageBPM;
+	double m_averageSpeed;
+	
+	// Used for calculating Average FPS
+	uint64_t m_lastDeltaCount;
+	uint64_t m_lastFrameCount;
+	uint64_t m_lastMillisecondCount;
+	uint64_t m_lastSecondCount;
+	double m_averageFrameCount;
 
 	int volatile m_mainSpeed;
 	int volatile m_speed;

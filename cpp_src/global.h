@@ -115,14 +115,6 @@ extern CString g_AsmTracksLabel;
 extern CString g_AsmSongLinesLabel;
 extern int g_AsmFormat;
 
-extern int last_active_ti;			//if equal to g_active_ti, no screen clear necessary
-extern int last_activepart;		//if equal to g_activepart, no block clear necessary
-extern uint64_t last_ms;
-extern uint64_t last_sec;
-extern int real_fps;
-extern double last_fps;
-extern double avg_fps[120];
-
 extern int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 extern int g_active_ti;			//1 tracks, 2 instrs
 
@@ -157,7 +149,6 @@ extern BOOL g_viewInstrumentEditHelp;	//1 yes, 0 no
 
 extern int g_trackerDriverVersion;
 extern int g_timerGlobalCount;	// Initialised once, ticking forever
-extern int g_playtime;				//1 yes, 0 no
 
 extern int g_mousebutt;			//mouse button
 

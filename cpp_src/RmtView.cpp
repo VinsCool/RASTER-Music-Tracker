@@ -7,7 +7,6 @@
 #include "stdafx.h"
 #include "Rmt.h"
 #include "RmtDoc.h"
-#include <chrono>
 
 #include "RmtView.h"
 #include "MainFrm.h"
@@ -275,41 +274,11 @@ void CRmtView::OnTimer(UINT_PTR nIDEvent)
 	if (nIDEvent == m_timerDisplay)
 	{
 		KillTimer(m_timerDisplay);
-		m_timerDisplay = SetTimer(1, m_timerDisplayTick[g_timerGlobalCount % 3], NULL);
+		m_timerDisplay = SetTimer(1, 16, NULL);
 		RefreshScreen();
 	}
 
 	CView::OnTimer(nIDEvent);
-}
-
-// Debug function, poor attempt at a FPS counter
-void CRmtView::GetFPS()
-{
-	// If not in Debug mode, there is no need for getting the FPS
-	if (!g_viewDebugDisplay)
-		return;
-
-	using namespace std::chrono;
-	uint64_t ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-	uint64_t sec = duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
-
-	real_fps++;
-	int delta = (int)ms - (int)last_ms;
-	avg_fps[real_fps % 120] = 1000.0 / delta;
-	last_ms = ms;
-
-	if (real_fps)
-	{
-		last_fps = 0;
-		for (int i = 0; i < real_fps % 120; i++) { last_fps += avg_fps[i]; }
-		last_fps /= real_fps % 120;
-	}
-
-	if (last_sec != sec)
-	{
-		real_fps = -1;
-		last_sec = sec;
-	}
 }
 
 // Debug function, to get the mouse pointer coordinates
@@ -343,10 +312,10 @@ void CRmtView::OnDraw(CDC* pDC)
 	// Redraw the screen if needed
 	if (g_screenupdate)
 	{
-		GetFPS();
 		Resize();
 		DrawAll();
 		pDC->StretchBlt(0, 0, m_width, m_height, &m_mem_dc, 0, 0, g_width, g_height, SRCCOPY);
+		g_Song.CalculatePlayFPS();
 	}
 
 	NO_SCREENUPDATE;
@@ -1619,14 +1588,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_ESCAPE:
 		g_Song.Stop();	//stops everything
 		if (g_keyboard_escresetatarisound)
-		{
 			Atari_InitRMTRoutine(); //reset RMT routines automatically
-		}
-		if (g_Song.GetPlayMode() == 0) //only if the module is stopped
-		{
-			g_playtime = 0;
-			//DrawPlaytimecounter();
-		}
 		goto AllModesDefaultKey;
 		break;
 
@@ -2245,12 +2207,7 @@ void CRmtView::OnPlay3()
 
 void CRmtView::OnPlaystop() 
 {
-	g_Song.Stop();	//stops everything
-	if (g_Song.GetPlayMode()==0) //only if the module is stopped
-	{
-		g_playtime=0;
-		//DrawPlaytimecounter();
-	}
+	g_Song.Stop();
 }
 
 void CRmtView::OnPlayfollow() 

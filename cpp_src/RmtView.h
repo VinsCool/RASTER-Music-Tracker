@@ -38,7 +38,6 @@ public:
 	void WriteTuningConfig();
 
 	void DrawAll();
-	void GetFPS();
 	void GetMouseXY(int px, int py, int mousebutt, short wheelzDelta);
 	int MouseAction(CPoint point,UINT mousebutt,short wheelzDelta);
 	void ChangeViewElements(BOOL writeconfig=1);
@@ -64,7 +63,6 @@ public:
 	HCURSOR m_cursorSetPosition;
 
 	UINT_PTR m_timerDisplay;
-	const BYTE m_timerDisplayTick[3] = { 16, 16, 15 };
 
 // Operations
 public:

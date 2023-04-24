@@ -111,15 +111,6 @@ CString g_AsmTracksLabel;
 CString g_AsmSongLinesLabel;
 int g_AsmFormat = ASSEMBLER_FORMAT_XASM;
 
-
-int last_active_ti;			//if equal to g_active_ti, no screen clear necessary
-int last_activepart;		//if equal to g_activepart, no block clear necessary
-uint64_t last_ms = 0;
-uint64_t last_sec = 0;
-int real_fps = 0;
-double last_fps = 0;
-double avg_fps[120] = { 0 };
-
 int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 int g_active_ti;			//1 tracks, 2 instrs
 
@@ -155,7 +146,6 @@ BOOL g_viewDebugDisplay = 1;		// Display Debug informations on screen if enabled
 int g_trackerDriverVersion = TRACKER_DRIVER_PATCH16;
 
 int g_timerGlobalCount = 0;			// Initialised once, ticking forever
-int g_playtime = 0;					// 1 yes, 0 no
 
 int g_lastKeyPressed = 0;			// For debugging vk input
 int g_mousebutt = 0;				// Mouse button

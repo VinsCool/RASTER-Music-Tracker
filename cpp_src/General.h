@@ -75,9 +75,10 @@
 // RMTE Screen coordinates
 #define PATTERNBLOCK_X	2 * 8
 #define PATTERNBLOCK_Y	13 * 16
-#define SONGBLOCK_X		2 * 8
+#define SONGBLOCK_X		90 * 8
 #define SONGBLOCK_Y		1 * 16
-#define INFOBLOCK_X		28 * 8
+//#define INFOBLOCK_X		SONGBLOCK_X + 5 * 8 + p->channelCount * 3 * 8
+#define INFOBLOCK_X		2 * 8
 #define INFOBLOCK_Y		1 * 16
 
 // Legacy Screen coordinates
@@ -85,6 +86,10 @@
 #define TRACKS_Y 8*16+8
 #define	SONG_X	768
 #define SONG_Y	16
+#define PLAYTC_X 16
+#define PLAYTC_Y 16
+#define PLAYTC_W (32*8)
+#define PLAYTC_H 16
 
 // Info area
 // Shown at top-left

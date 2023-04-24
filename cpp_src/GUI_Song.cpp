@@ -1141,7 +1141,7 @@ void CSong::DrawInfo()
 	if (printdebug)
 	{
 		// A poor attempt at an FPS counter
-		snprintf(szBuffer, 16, "%1.2f FPS", last_fps);
+		snprintf(szBuffer, 16, "%1.2f FPS", m_averageFrameCount);
 		TextXY(szBuffer, 560 - 9 * 8, INFO_Y_LINE_1, TEXT_COLOR_TURQUOISE);
 	}
 
@@ -1281,43 +1281,24 @@ void CSong::DrawInfo()
 }
 
 /// <summary>
-/// Draw the song play time and BPM
-/// TODO: Merge with DrawInfo(), both are displayed in the same area
+/// (Legacy Function) Draw the song play time and BPM in the Song Info block
 /// </summary>
-/// <param name="pDC"></param>
-//void CSong::DrawPlayTimeCounter(CDC* pDC)
 void CSong::DrawPlayTimeCounter()
 {
-	if (!g_viewPlayTimeCounter) return;	//the timer won't be displayed without the setting enabled first
+	// The timer won't be displayed without the setting enabled first
+	if (!g_viewPlayTimeCounter)
+		return;
 
-#define PLAYTC_X	16		//(SONG_OFFSET+7)
-#define PLAYTC_Y	16		//(SONG_Y-8) 
-#define PLAYTC_W	(32*8)	//(4*8)  
-#define PLAYTC_H	16		//8 
-
-	int fps = (g_ntsc) ? 60 : 50;
-	int ts = g_playtime / fps;							//total time in seconds
-	int timesec = ts % 60;								//seconds 0 to 59
-	int timemin = ts / 60;								//minutes 0 to ...
-	int timemilisec = (g_playtime % fps) * 100 / fps;	//miliseconds 0 to 99
-	double speed = 0.0;
-	double bpm = 0.0;
-	char timstr[16] = { 0 };
-	char bpmstr[8] = { 0 };
-
-	m_avgspeed[m_trackplayline % 8] = m_speed;				//refreshed every 8 rows
-	for (int i = 0; i < 8; i++) speed += m_avgspeed[i];
-	speed /= 8.0;											//average speed
-	bpm = ((60.0 * fps) / g_trackLinePrimaryHighlight) / speed;	//average BPM 
-
-	snprintf(timstr, 16, !(timesec & 1) ? "%2d:%02d.%02d" : "%2d %02d.%02d", timemin, timesec, timemilisec);
-	snprintf(bpmstr, 8, (m_play) ? "%1.2f" : "0.00", bpm);
+	CString s;
+	
+	CalculatePlayTime();
+	CalculatePlayBPM();
 
 	TextXY("TIME:             BPM:", PLAYTC_X, PLAYTC_Y, TEXT_COLOR_WHITE);
-	TextXY(timstr, PLAYTC_X + 8 * 6, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
-	TextXY(bpmstr, PLAYTC_X + 8 * 23, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
-
-	//if (pDC) pDC->BitBlt( SCALE(PLAYTC_X), SCALE(PLAYTC_Y), SCALE(PLAYTC_W), SCALE(PLAYTC_H), g_mem_dc, SCALE(PLAYTC_X), SCALE(PLAYTC_Y), SRCCOPY);
+	s.Format(m_playTimeSecondCount & 1 ? "%2d %02d.%02d" : "%2d:%02d.%02d", m_playTimeMinuteCount, m_playTimeSecondCount, m_playTimeMillisecondCount);
+	TextXY(s, PLAYTC_X + 8 * 6, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
+	s.Format("%1.2F", m_averageBPM);
+	TextXY(s, PLAYTC_X + 8 * 23, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 }
 
 

@@ -50,9 +50,9 @@ void CConfigDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_MIDI_VOLUMEOFFSET, m_midi_VolumeOffset);
 	DDV_MinMaxInt(pDX, m_midi_VolumeOffset, 0, 15);
 	DDX_Text(pDX, IDC_TRACKLINEPRIMARYHIGHLIGHT, m_trackLinePrimaryHighlight);
-	DDV_MinMaxInt(pDX, m_trackLinePrimaryHighlight, 2, 256);
+	DDV_MinMaxInt(pDX, m_trackLinePrimaryHighlight, 1, 128);
 	DDX_Text(pDX, IDC_TRACKLINESECONDARYHIGHLIGHT, m_trackLineSecondaryHighlight);
-	DDV_MinMaxInt(pDX, m_trackLineSecondaryHighlight, 2, 256);
+	DDV_MinMaxInt(pDX, m_trackLineSecondaryHighlight, 1, 128);
 	DDX_Text(pDX, IDC_SCALINGPERCENTAGE, m_scaling_percentage);
 	DDV_MinMaxInt(pDX, m_scaling_percentage, 100, 300);
 	DDX_Check(pDX, IDC_DISPLAYFLATNOTES, m_displayflatnotes);

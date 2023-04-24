@@ -126,6 +126,7 @@ int Atari_LoadRMTRoutines()
 		break;
 
 	case TRACKER_DRIVER_PATCH16:
+	case TRACKER_DRIVER_NONE:	// Needed for POKEY updates using SetPokey(), until a proper C++ driver is written for this purpose...
 		bin = tracker_Patch16; size = sizeof tracker_Patch16;
 		break;
 

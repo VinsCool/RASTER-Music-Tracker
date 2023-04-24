@@ -760,8 +760,8 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 		// 1 VBI of module playback
 		PlayVBI();
 
-		// Increment the timer shown during playback
-		g_playtime++;
+		// Increment the timer shown during playback (not actually needed here?)
+		UpdatePlayTime();
 
 		// Multiple RMT routine calls will be processed if needed
 		for (int i = 0; i < m_instrumentSpeed; i++)

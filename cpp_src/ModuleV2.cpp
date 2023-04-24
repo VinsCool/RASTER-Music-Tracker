@@ -25,7 +25,9 @@ void CModule::InitialiseModule()
 
 	// Set default module parameters
 	SetSongName("Noname Song");
-	SetSubtuneName(MODULE_DEFAULT_SUBTUNE, "");
+	SetSongAuthor("Unknown");
+	SetSongCopyright("2023");
+	SetSubtuneName(MODULE_DEFAULT_SUBTUNE, "Noname Subtune");
 	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
 	SetSubtuneCount(MODULE_SUBTUNE_COUNT);
 	SetSongLength(MODULE_SONG_LENGTH);
@@ -291,6 +293,8 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 	if (!subtune)
 		return false;
 
+	CString s;
+
 	WORD fromAddr, toAddr;
 
 	BYTE mem[65536];
@@ -400,12 +404,18 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 
 	// Get the Song Name pointer
 	BYTE* ptrName = mem + fromAddr;
+	BYTE ch;
+
+	s.Format("");
 
 	// Copy the Song Name
-	BYTE ch = SetSongName((const char*)ptrName);
+	for (ch = 0; ch < MODULE_TITLE_NAME_MAX && ptrName[ch]; ch++)
+		s.AppendFormat("%c", ptrName[ch]);
+
+	SetSongName(s);
 
 	// Get the Instrument Name address, which is directly after the Song Name
-	WORD addrInstrumentNames = fromAddr + ch;
+	WORD addrInstrumentNames = fromAddr + ch + 1;
 
 	// Process all Instruments
 	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
@@ -417,11 +427,16 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 		// Get the Instrument Name pointer
 		ptrName = mem + addrInstrumentNames;
 
+		s.Format("");
+
 		// Copy the Name to the indexed Instrument
-		ch = SetInstrumentName(i, (const char*)ptrName);
+		for (ch = 0; ch < INSTRUMENT_NAME_MAX && ptrName[ch]; ch++)
+			s.AppendFormat("%c", ptrName[ch]);
+
+		SetInstrumentName(i, s);
 
 		// Offset the Instrument Name address for the next one
-		addrInstrumentNames += ch;
+		addrInstrumentNames += ch + 1;
 	}
 
 	// Decoding of Legacy RMT Module should have been successful
