@@ -391,6 +391,16 @@ public:
 	BOOL IsValidSongline(int songline) { return songline >= 0 && songline < SONGLEN; };
 	BOOL IsSongGo(int songline) { return IsValidSongline(songline) ? m_songgo[songline] >= 0 : 0; };
 
+	// Prototype C++ RMTE Module Driver functions
+	// TODO: Move to a different file later
+	void PlayRow();
+	void PlayPattern();
+	void PlaySongline();
+	void PlayNote();
+	void PlayInstrument();
+	void PlayVolume();
+	void PlayEffect();
+
 private:
 	int m_song[SONGLEN][SONGTRACKS];
 	int m_songgo[SONGLEN];						// If >= 0, then GO applies

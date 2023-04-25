@@ -1336,6 +1336,13 @@ BOOL CSong::SongDown()
 // Legacy Function
 BOOL CSong::SongSubsongPrev()
 {
+	// Yet another hijack until the entire input handler is rewritten since tests need to be done here quickly
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
+	{
+		SeekPreviousSubtune();
+		return 1;
+	}
+
 	g_Undo.Separator();
 	int i = m_songactiveline - 1;
 
@@ -1366,6 +1373,13 @@ BOOL CSong::SongSubsongPrev()
 // Legacy Function
 BOOL CSong::SongSubsongNext()
 {
+	// Yet another hijack until the entire input handler is rewritten since tests need to be done here quickly
+	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
+	{
+		SeekNextSubtune();
+		return 1;
+	}
+
 	g_Undo.Separator();
 	int i;
 	for (i = m_songactiveline; i < SONGLEN; i++)
@@ -3106,6 +3120,7 @@ void CSong::RenumberAllInstruments(int type)
 //--------------------------------------------------------------------------------------
 //
 
+// Legacy Function
 BOOL CSong::SetBookmark()
 {
 	if (m_songactiveline >= 0 && m_songactiveline < SONGLEN
@@ -3120,6 +3135,7 @@ BOOL CSong::SetBookmark()
 	return 0;
 }
 
+// Legacy Function
 BOOL CSong::Play(int mode, BOOL follow, int special)
 {
 	g_Undo.Separator();
@@ -3196,35 +3212,44 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 
 	}
 
-	if (m_songgo[m_songplayline] >= 0)	//there is a goto
+	WaitForTimerRoutineProcessed();
+
+	m_followplay = follow;
+	m_play = mode;
+	m_speeda = 0;	// Set for first Row to begin immediately
+
+	// Legacy RMT procedure, which is required for the original format
+	// TODO: Not do a workaround like this, for obvious reasons
+	if (g_trackerDriverVersion != TRACKER_DRIVER_NONE)
 	{
-		m_songplayline = m_songgo[m_songplayline];	//goto where
-		m_trackplayline = 0;							//from the beginning of that track
-		if (m_songgo[m_songplayline] >= 0)
+		if (m_songgo[m_songplayline] >= 0)	//there is a goto
 		{
-			//goto into another goto
-			MessageBox(g_hwnd, "There is recursive \"Go to line\" to other \"Go to line\" in song.", "Recursive \"Go to line\"...", MB_ICONSTOP);
-			return 0;
+			m_songplayline = m_songgo[m_songplayline];	//goto where
+			m_trackplayline = 0;							//from the beginning of that track
+			if (m_songgo[m_songplayline] >= 0)
+			{
+				//goto into another goto
+				MessageBox(g_hwnd, "There is recursive \"Go to line\" to other \"Go to line\" in song.", "Recursive \"Go to line\"...", MB_ICONSTOP);
+				return 0;
+			}
 		}
+
+		PlayBeat();	//sets m_speeda
+		m_speeda++;	//(Original comment by Raster, April 27, 2003) adds 1 to m_speed, for what the real thing will take place in Init
 	}
 
-	WaitForTimerRoutineProcessed();
-	m_followplay = follow;
-	PlayBeat();						//sets m_speeda
-	m_speeda++;						//(Original comment by Raster, April 27, 2003) adds 1 to m_speed, for what the real thing will take place in Init
-
-	if (m_followplay)	//cursor following the player
+	// Cursor following the player
+	if (m_followplay)
 	{
 		m_trackactiveline = m_trackplayline;
 		m_songactiveline = m_songplayline;
 	}
 
-	m_play = mode;
-
 	g_PokeyStream.CallFromPlay(m_play, m_trackplayline, m_songplayline);
 	return 1;
 }
 
+// Legacy Function
 void CSong::Stop()
 {
 	if (GetPlayMode() != MPLAY_STOP)
@@ -3237,6 +3262,7 @@ void CSong::Stop()
 	}
 }
 
+// Legacy Function
 BOOL CSong::SongPlayNextLine()
 {
 	m_trackplayline = 0;	//first track pattern line 
@@ -3261,6 +3287,7 @@ BOOL CSong::SongPlayNextLine()
 	return 1;
 }
 
+// Legacy Function
 BOOL CSong::PlayBeat()
 {
 	int t, tt, xline, len, go, speed;
@@ -3341,6 +3368,7 @@ TrackLine:
 	return 1;
 }
 
+// Legacy Function
 BOOL CSong::PlayVBI()
 {
 	if (!m_play) return 0;	//not playing
@@ -3403,7 +3431,12 @@ void CSong::TimerRoutine()
 	if (!g_PokeyStream.IsRecording())
 	{
 		// Things that are solved 1x for vbi
-		PlayVBI();
+		//PlayVBI();
+
+		if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
+			PlayPattern();
+		else
+			PlayVBI();
 
 		// Play tones if there are key presses
 		PlayPressedTones();
@@ -3509,8 +3542,11 @@ void CSong::DrawSonglines()
 		return;
 
 	CString s;
-	int linescount = 9, linesoffset = -4;
-	RECT songblock(SONGBLOCK_X - 4, SONGBLOCK_Y, SONGBLOCK_X + (3 * 8) + (p->channelCount * (3 * 8)) - 4, SONGBLOCK_Y + (2 * 16) + (linescount * 16));
+	RECT songblock{};
+	const int linescount = 9, linesoffset = -4;
+
+	// A Songline Index that is out of bounds will be displayed with a grayed out colour
+	bool isOutOfBounds;
 
 	// All Channels used in the Subtune will be displayed within the Songline Index
 	for (int i = 0; i < p->channelCount; i++)
@@ -3564,22 +3600,13 @@ void CSong::DrawSonglines()
 		int y = (2 * 16) + (i * 16);
 
 		// Fetch the actual Songline number relative to the Index Offset
-		int songline = m_songactiveline + i + linesoffset;
+		BYTE songline = m_songactiveline + i + linesoffset;
 
-		// This will be used for wrapping around the Songline Index
-		bool isOutOfBounds = false;
+		// If the Songline Index is out of bounds, wrap around relative to the Song Length itself
+		if (isOutOfBounds = songline >= p->songLength)
+			songline += p->songLength;
 
-		// If the Songline Index is out of bounds, apply a modulo operation using the Song Length value, and set the out of bounds flag
-		if (!g_Module.IsValidSongline(songline) || songline >= p->songLength)
-		{
-			// If the Songline Index is below 0, add the number of Songlines to balance it back to a valid range
-			if (songline < 0)
-				songline += p->songLength;
-
-			// Apply a modulo operation on top of it to make the Songline Index wrap around
-			songline %= p->songLength;
-			isOutOfBounds = true;
-		}
+		songline %= p->songLength;
 
 		// Default Colour for all Songlines
 		int colour = songline == m_songplayline ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
@@ -3623,6 +3650,10 @@ void CSong::DrawSonglines()
 	}
 
 	// Draw the lines delimiting boundaries between each elements in the Songline block
+	songblock.left = SONGBLOCK_X - 4;
+	songblock.top = SONGBLOCK_Y;
+	songblock.right = SONGBLOCK_X + (3 * 8) + (p->channelCount * (3 * 8)) - 4;
+	songblock.bottom = SONGBLOCK_Y + (2 * 16) + (linescount * 16);
 
 	// Songline Index and Songline Data:
 	g_mem_dc->MoveTo(songblock.left + (3 * 8) - 1, songblock.top);
@@ -3684,13 +3715,7 @@ void CSong::DrawSubtuneInfos()
 	TextXY(s, x += 12 * 8, y, colour);
 
 	// Region
-	//TextXY(g_ntsc ? "NTSC" : "PAL", x += 9 * 8, y, colour);
-	//TextXYSelN("<>", -1, x += 5 * 8, y);
-
-	// Highlights
-	//TextXY("HIGHLIGHT:", x += 4 * 8, y);
-	//s.Format("%02X/%02X", g_trackLinePrimaryHighlight, g_trackLineSecondaryHighlight);
-	//TextXY(s, x += 12 * 8, y, colour);
+	TextXY(g_ntsc ? "NTSC" : "PAL", x += 7 * 8, y, colour);
 
 	//-- Subtune Parameters --//
 
@@ -3794,14 +3819,17 @@ void CSong::DrawPatternEditor()
 	CString s;
 	RECT patternblock{};
 
+	// A Row Index that is out of bounds will be displayed with a grayed out colour
+	bool isOutOfBounds;
+
 	// Caching global variables is necessary in order to display Patterns without random "jumps" around during playback 
 	// This is caused by the screen update timing, and this is the main reason why these bugs seem to happen randomly
-	int activeRow = m_trackactiveline;
-	int playRow = m_trackplayline;
-	int activeSongline = m_songactiveline;
-	int playSongline = m_songplayline;
-	int activeCursor = m_trackactivecur;
-	int activeChannel = m_trackactivecol;
+	BYTE activeRow = m_trackactiveline;
+	BYTE playRow = m_trackplayline;
+	BYTE activeSongline = m_songactiveline;
+	BYTE playSongline = m_songplayline;
+	BYTE activeCursor = m_trackactivecur;
+	BYTE activeChannel = m_trackactivecol;
 
 	// Coordinates used for drawing most of the Pattern Editor block on screen
 	int x = 3 * 8, y = 0;
@@ -3858,32 +3886,26 @@ void CSong::DrawPatternEditor()
 			int row = g_cursoractview + j - 9;
 
 			// This will be used for wrapping around the Pattern Row Index
-			int offsetSongline = activeSongline;
-			bool isOutOfBounds = false;
+			BYTE offsetSongline = activeSongline;
 
-			// If the Row Index is out of bounds, the Active Songline will be offset using the Shortest Pattern Length for each iteration
-			if (!g_Module.IsValidRow(row) || row >= g_Module.GetShortestPatternLength(offsetSongline))
+			// If the Row Index is out of bounds, wrap around relative to the Shortest Pattern Length itself
+			if (isOutOfBounds = row < 0 || row >= g_Module.GetShortestPatternLength(offsetSongline))
 			{
-				isOutOfBounds = true;
-
-				// Add Rows for as many Songlines there are to offset
+				// Add Rows for as many Songlines there are to offset above it
 				while (row < 0)
 				{
-					if (--offsetSongline < 0)
-						offsetSongline += g_Module.GetSongLength();
+					if (--offsetSongline >= p->songLength)
+						offsetSongline += p->songLength;
 					row += g_Module.GetShortestPatternLength(offsetSongline);
 				}
 
-				// Subtract Rows for as many Songlines there are to offset
+				// Subtract Rows for as many Songlines there are to offset below it
 				while (row >= g_Module.GetShortestPatternLength(offsetSongline))
 				{
 					row -= g_Module.GetShortestPatternLength(offsetSongline);
-					++offsetSongline %= g_Module.GetSongLength();
+					++offsetSongline %= p->songLength;
 				}
 			}
-
-			// Get the Pattern Index from the Songline offset
-			int pattern = p->channel[i].songline[offsetSongline];
 
 			// Highlight Colour used to draw the Pattern Rows, from lowest to highest in priority
 			int colour = TEXT_COLOR_WHITE;
@@ -3921,55 +3943,55 @@ void CSong::DrawPatternEditor()
 			// Conditions needed for displaying the Active Cursor Highlight
 			bool isActiveCursor = g_activepart == PART_TRACKS && row == activeRow && i == activeChannel && !isOutOfBounds;
 
-			// Note and Octave
-			int note = p->channel[i].pattern[pattern].row[row].note;
+			// Get the Pattern Index from the Songline offset
+			BYTE pattern = p->channel[i].songline[offsetSongline];
 
-			if (!g_Module.IsValidNote(note))
-				note = INVALID;
+			// Note and Octave
+			BYTE note = p->channel[i].pattern[pattern].row[row].note;
 
 			switch (note)
 			{
-			case INVALID: s.AppendFormat("??? "); break;
 			case PATTERN_NOTE_EMPTY: s.AppendFormat("--- "); break;
 			case PATTERN_NOTE_OFF: s.AppendFormat("OFF "); break;
 			case PATTERN_NOTE_RELEASE: s.AppendFormat("=== "); break;
 			case PATTERN_NOTE_RETRIGGER: s.AppendFormat("~~~ "); break;
 			default:
-				// FIXME: create a proper method for the Note and Octave text format
-				const char* noteidx = notesandscales[notation][note % g_notesperoctave];
-				s.AppendFormat("%C%C%01X ", noteidx[0], noteidx[1], note / g_notesperoctave + 1);
+				if (note < PATTERN_NOTE_MAX)
+					s.AppendFormat("%s%1X ", notesandscales[notation][note % g_notesperoctave], note / g_notesperoctave + 1);
+				else
+					s.AppendFormat("??? ");
 			}
 
 			// Instrument
-			int instrument = p->channel[i].pattern[pattern].row[row].instrument;
-
-			if (!g_Module.IsValidInstrument(instrument))
-				instrument = INVALID;
+			BYTE instrument = p->channel[i].pattern[pattern].row[row].instrument;
 
 			switch (instrument)
 			{
-			case INVALID: s.AppendFormat("?? "); break;
 			case PATTERN_INSTRUMENT_EMPTY: s.AppendFormat("-- "); break;
-			default: s.AppendFormat("%02X ", instrument);
+			default:
+				if (instrument < PATTERN_INSTRUMENT_MAX)
+					s.AppendFormat("%02X ", instrument);
+				else
+					s.AppendFormat("?? ");
 			}
 
 			// Volume
-			int volume = p->channel[i].pattern[pattern].row[row].volume;
-
-			if (!g_Module.IsValidVolume(volume))
-				volume = INVALID;
+			BYTE volume = p->channel[i].pattern[pattern].row[row].volume;
 
 			switch (volume)
 			{
-			case INVALID: s.AppendFormat("?? "); break;
 			case PATTERN_VOLUME_EMPTY: s.AppendFormat("-- "); break;
-			default: s.AppendFormat("v%01X ", volume);
+			default:
+				if (volume < PATTERN_VOLUME_MAX)
+					s.AppendFormat("v%01X ", volume);
+				else
+					s.AppendFormat("?? ");
 			}
 
 			// Command(s)
 			for (int k = 0; k < p->effectCommandCount[i]; k++)
 			{
-				int cmd = INVALID;
+				WORD cmd = INVALID;
 
 				switch (k)
 				{
@@ -3979,14 +4001,14 @@ void CSong::DrawPatternEditor()
 				case CMD4: cmd = p->channel[i].pattern[pattern].row[row].cmd3; break;
 				}
 
-				if (!g_Module.IsValidCommand(cmd))
-					cmd = INVALID;
-
 				switch (cmd)
 				{
-				case INVALID: s.AppendFormat("??? "); break;
 				case PATTERN_EFFECT_EMPTY: s.AppendFormat("--- "); break;
-				default: s.AppendFormat("%03X ", cmd);
+				default:
+					if (cmd < PATTERN_EFFECT_MAX)
+						s.AppendFormat("%03X ", cmd);
+					else
+						s.AppendFormat("??? ");
 				}
 			}
 
@@ -4070,4 +4092,145 @@ void CSong::DrawDebugInfos()
 
 		TextMiniXY(s, 12 + i * 96, 4, TEXT_MINI_COLOR_WHITE);
 	}
+}
+
+// Prototype C++ RMTE Module Driver functions
+// TODO: Move to a different file later
+
+void CSong::PlayRow()
+{
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return;
+
+	BYTE note, instrument, volume;
+
+	BYTE speed = m_speed;
+	BYTE row = m_trackplayline;
+	BYTE songline = m_songplayline;
+
+	// In order to simulate the Legacy 6502 RMT routines behaviour, certain compromises are deliberately introduced here
+	for (int i = 0; i < p->channelCount; i++)
+	{
+		// Get the Pattern Index from the Songline offset
+		BYTE pattern = p->channel[i].songline[songline];
+
+		// Same as Legacy RMT routines
+		if ((note = p->channel[i].pattern[pattern].row[row].note) >= PATTERN_NOTE_COUNT)
+			note = INVALID;
+
+		// Same as Legacy RMT routines
+		if ((instrument = p->channel[i].pattern[pattern].row[row].instrument) >= PATTERN_INSTRUMENT_COUNT)
+			instrument = INVALID;
+
+		// Same as Legacy RMT routines
+		if ((volume = p->channel[i].pattern[pattern].row[row].volume) >= PATTERN_VOLUME_COUNT)
+			volume = INVALID;
+
+		// Compromised to only get the Speed Commands
+		for (int k = 0; k < p->effectCommandCount[i]; k++)
+		{
+			WORD cmd = INVALID;
+
+			switch (k)
+			{
+			case CMD1: cmd = p->channel[i].pattern[pattern].row[row].cmd0; break;
+			case CMD2: cmd = p->channel[i].pattern[pattern].row[row].cmd1; break;
+			case CMD3: cmd = p->channel[i].pattern[pattern].row[row].cmd2; break;
+			case CMD4: cmd = p->channel[i].pattern[pattern].row[row].cmd3; break;
+			}
+
+			// If a Bxx command is found, set the next Songline with it
+			if (cmd >> 8 == 0x0B)
+			{
+				m_trackplayline = -1;
+				m_songplayline = cmd & 0xFF;
+			}
+
+			// If a Dxx command is found, the Pattern will end on the next Row
+			if (cmd >> 8 == 0x0D)
+			{
+				m_trackplayline = -1;
+				m_songplayline = (songline + 1) % p->songLength;
+			}
+
+			// If a Fxx command is found, overwrite the speed with it
+			if (cmd >> 8 == 0x0F && cmd & 0xFF)
+				speed = cmd & 0xFF;
+		}
+
+		// Compromised for compatibility with RMTE data
+		if (volume < PATTERN_VOLUME_COUNT)
+		{
+			if (note < PATTERN_NOTE_COUNT)
+				Atari_SetTrack_NoteInstrVolume(i, note, instrument, volume);
+			else
+				Atari_SetTrack_Volume(i, volume);
+		}
+	}
+
+	// Speed will be set at the end, so the last Channel with a Speed value will take priority
+	m_speeda = m_speed = speed;
+}
+
+void CSong::PlayPattern()
+{
+	// Not playing, there is nothing to process here
+	if (!m_play)
+		return;
+
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return;
+
+	// Play next Row when it is ready
+	if (--m_speeda < 1)
+	{
+		PlayRow();
+
+		// The next Songline will be played if the Pattern reached the end
+		if (++m_trackplayline >= p->patternLength)
+			PlaySongline();
+	}
+
+	// Playing and following
+	if (m_speeda == m_speed && m_followplay)
+	{
+		m_trackactiveline = m_trackplayline;
+		m_songactiveline = m_songplayline;
+	}
+
+}
+
+void CSong::PlaySongline()
+{
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return;
+
+	m_trackplayline = 0;
+	++m_songplayline %= p->songLength;
+}
+
+void CSong::PlayNote()
+{
+
+}
+
+void CSong::PlayInstrument()
+{
+
+}
+
+void CSong::PlayVolume()
+{
+
+}
+
+void CSong::PlayEffect()
+{
+
 }
