@@ -503,6 +503,12 @@ void CSong::FileImport()
 	case FILE_IMPORT_FILTER_IDX_RMT:
 		if (successful = LoadRMT(in))
 		{
+			SetWindowText(g_hwnd, "Imported: Legacy RMT " + fn);
+
+			// Re-open the file
+			in.close();
+			in.open(fn, std::ios::binary);
+
 			// Keep the Legacy Instruments data in memory since the RMTE tests rely on existing routines
 			for (int i = 0; i < SONGLEN; i++)
 			{
@@ -511,10 +517,10 @@ void CSong::FileImport()
 				m_songgo[i] = -1;
 			}
 			g_Tracks.InitTracks();
-			in.seekg(0, in.beg);
+
+			// Clear the current Module data, then import the Legacy RMT data into it
 			g_Module.ClearModule();
 			g_Module.ImportLegacyRMT(in);
-			SetWindowText(g_hwnd, "Imported: Legacy RMT " + fn);
 		}
 	break;
 
