@@ -10,10 +10,6 @@
 // Data boundaries constant
 //
 #define INVALID							-1									// Failsafe value for invalid data
-//#define BYTE_MIN						0x00								// BYTE Minimum
-//#define BYTE_MAX						0xFF								// BYTE Maximum
-//#define WORD_MIN						0x0000								// WORD Minimum
-//#define WORD_MAX						0xFFFF								// WORD Maximum
 
 // ----------------------------------------------------------------------------
 // Module Header definition
@@ -79,13 +75,8 @@
 #define PATTERN_VOLUME_MAX				PATTERN_VOLUME_COUNT + 1			// Total for Volume index integrity
 
 #define PATTERN_EFFECT_COUNT			16									// 0-15 inclusive, Effect index used in Pattern
-#define PATTERN_EFFECT_EMPTY			(PATTERN_EFFECT_COUNT << 8)			// There is no Effect Command in the Pattern Row
-#define PATTERN_EFFECT_MAX				((PATTERN_EFFECT_COUNT << 8) + 1)	// Total for Effect Command index integrity
-
-//
-#define PATTERN_EFFECT_BXX				(0x0B << 8)							// Effect Command Bxx -> Goto Songline $xx
-#define PATTERN_EFFECT_DXX				(0x0D << 8)							// Effect Command Dxx -> End Pattern (no parameter needed)
-//
+#define PATTERN_EFFECT_EMPTY			PATTERN_EFFECT_COUNT				// There is no Effect Command in the Pattern Row
+#define PATTERN_EFFECT_MAX				PATTERN_EFFECT_COUNT + 1			// Total for Effect Command index integrity
 
 // ----------------------------------------------------------------------------
 // Instrument definition
@@ -99,9 +90,14 @@
 // ----------------------------------------------------------------------------
 // Effect Command definition
 //
-#define EFFECT_PARAMETER_MAX			256									// 0-255 inclusive, Effect $XY Parameter used in Pattern
+#define EFFECT_PARAMETER_MAX			0xFF								// 0-255 inclusive, Effect $XY Parameter used in Pattern
 #define EFFECT_PARAMETER_MIN			0x00								// The $XY Parameter of 0 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_DEFAULT		0x80								// The $XY Parameter of 128 may be used to disable certain Effect Commands
+//
+#define EFFECT_COMMAND_BXX				0x0B								// Effect Command Bxx -> Goto Songline $xx
+#define EFFECT_COMMAND_DXX				0x0D								// Effect Command Dxx -> End Pattern, no parameter needed(?)
+#define EFFECT_COMMAND_FXX				0x0F								// Effect Command Fxx -> Set Song Speed $xx
+//
 #define CMD1							0									// Effect Command identifier for Effect Column 1
 #define CMD2							1									// Effect Command identifier for Effect Column 2
 #define CMD3							2									// Effect Command identifier for Effect Column 3
@@ -111,16 +107,20 @@
 // RMTE Module Structs
 //
 
+// Effect Command Data, 1 byte for the Identifier, and 1 byte for the Parameter, nothing too complicated
+struct TEffect
+{
+	BYTE identifier;
+	BYTE parameter;
+};
+
 // Row Data, used within the Pattern data, designed to be easy to manage, following a Row by Row approach
 struct TRow
 {
 	BYTE note;										// Note index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
 	BYTE instrument;								// Instrument index
 	BYTE volume;									// Volume index
-	WORD cmd0;										// Effect Command, toggled from the Active Effect Columns in Track Channels
-	WORD cmd1;										// All 4 Commands could be used at once in order to run multiple Effects in the same row
-	WORD cmd2;										// Certain Effects may not compatible together, however, and could cause priority conflicts
-	WORD cmd3;										// Making sure some commands take priority over the others would help working around issues
+	TEffect command[PATTERN_ACTIVE_EFFECT_MAX];		// Effect Command, toggled from the Active Effect Columns in Track Channels
 };
 
 // Pattern Data, indexed by the TRow Struct
@@ -217,18 +217,6 @@ public:
 	const BYTE GetPatternRowNote(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].note : INVALID; };
 	const BYTE GetPatternRowInstrument(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].instrument : INVALID; };
 	const BYTE GetPatternRowVolume(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].volume : INVALID; };
-	const WORD GetPatternRowCommand(int channel, int pattern, int row, int column)
-	{
-		if (IsValidPatternRowIndex(channel, pattern, row))
-			switch (column)
-			{
-			case CMD1: return GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd0;
-			case CMD2: return GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd1;
-			case CMD3: return GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd2;
-			case CMD4: return GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd3;
-			}
-		return INVALID;
-	};
 
 	// Setters for Pattern data
 	void SetPatternInSongline(int channel, int songline, int pattern)
@@ -237,27 +225,18 @@ public:
 			GetSubtuneIndex(m_activeSubtune)->channel[channel].songline[songline] = IsValidPattern(pattern) ? pattern : INVALID;
 	};
 
-	void SetPatternRowCommand(int channel, int pattern, int row, int column, WORD effectCommand)
+	void SetPatternRowCommand(int channel, int pattern, int row, int column, BYTE effectCommand, BYTE effectParameter)
 	{
-		if (IsValidPatternRowIndex(channel, pattern, row))
-			switch (column)
-			{
-			case CMD1:
-				GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd0 = effectCommand;
-				break;
+		TSubtune* p = GetSubtuneIndex(m_activeSubtune);
 
-			case CMD2:
-				GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd1 = effectCommand;
-				break;
+		if (!p)
+			return;
 
-			case CMD3:
-				GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd2 = effectCommand;
-				break;
-
-			case CMD4:
-				GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].cmd3 = effectCommand;
-				break;
-			}
+		if (IsValidPatternRowIndex(channel, pattern, row) && IsValidCommandColumn(column))
+		{
+			p->channel[channel].pattern[pattern].row[row].command[column].identifier = effectCommand;
+			p->channel[channel].pattern[pattern].row[row].command[column].parameter = effectParameter;
+		}
 	};
 
 	// Getters for Instrument data
@@ -330,7 +309,7 @@ public:
 
 	// Functions related to Pattern Data editing, and other unsorted things added in the process
 	BYTE GetShortestPatternLength(int songline);
-
+	BYTE GetShortestPatternLength(TSubtune* subtune, int songline);
 	bool DuplicatePatternInSongline(int channel, int songline, int pattern);
 	bool IsUnusedPattern(int channel, int pattern);
 	bool IsUnusedPattern(TIndex* index, int pattern);

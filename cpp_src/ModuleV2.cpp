@@ -189,8 +189,8 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			for (int j = 0; j < TRACK_PATTERN_MAX; j++)
 				CopyPattern(&importSubtune->channel[0].pattern[j], &importSubtune->channel[i].pattern[j]);
 
-			// Set the Active Effect Command Columns for each channels
-			importSubtune->effectCommandCount[i] = i == CH1 ? 2 : 1;
+			// Set the Active Effect Command Columns to the same number for each channels
+			importSubtune->effectCommandCount[i] = 2;
 		}
 
 		// Re-construct all of individual Subtunes that were detected
@@ -243,11 +243,11 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			{
 				// If the Shortest Pattern Length is below actual Pattern Length, a Dxx Command was already used somewhere, and must be replaced
 				if (GetShortestPatternLength(j) < GetPatternLength())
-					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, PATTERN_EFFECT_DXX);
+					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, EFFECT_COMMAND_DXX, EFFECT_PARAMETER_MIN);
 
 				// Set the final Goto Songline Command Bxx to the Songline found at the loop point
 				if (j == GetSongLength() - 1)
-					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, PATTERN_EFFECT_BXX | (songlineStep[offset] - 1));
+					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, EFFECT_COMMAND_BXX, songlineStep[offset] - 1);	// PATTERN_EFFECT_BXX | (songlineStep[offset] - 1));
 
 				// Skip CH1, since it was already processed above
 				for (int k = CH2; k < GetChannelCount(); k++)
@@ -257,10 +257,14 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 					{
 						// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
 						for (int m = CMD2; m < PATTERN_ACTIVE_EFFECT_MAX; m++)
-							SetPatternRowCommand(k, GetPatternInSongline(k, j), l, m, PATTERN_EFFECT_EMPTY);
+							SetPatternRowCommand(k, GetPatternInSongline(k, j), l, m, PATTERN_EFFECT_EMPTY, EFFECT_PARAMETER_MIN);
 					}
 				}
 			}
+
+			// Set the final count of Active Effect Command Columns for each channels once they're all processed
+			for (int j = 0; j < GetChannelCount(); j++)
+				SetEffectCommandCount(j, j == CH1 ? 2 : 1);
 
 			// Finally, apply the Size Optimisations, the Subtune should have been reconstructed successfully!
 			AllSizeOptimisations();
@@ -558,7 +562,8 @@ bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD s
 				if (!count)
 				{
 					// Speed, set Fxx command
-					t->row[line].cmd0 = 0x0F00 | memPattern[src + 1];
+					t->row[line].command[CMD1].identifier = EFFECT_COMMAND_FXX;
+					t->row[line].command[CMD1].parameter = memPattern[src + 1];
 					src += 2;	// 2 bytes were processed
 				}
 				if (count == 0x80)
@@ -569,7 +574,8 @@ bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD s
 				if (count == 0xC0)
 				{
 					// End of Pattern, set a Dxx command here, no extra data to process
-					t->row[line - 1].cmd1 = 0x0D00;
+					t->row[line - 1].command[CMD2].identifier = EFFECT_COMMAND_DXX;
+					t->row[line - 1].command[CMD2].parameter = EFFECT_PARAMETER_MIN;
 					src = patternLength;
 				}
 				break;
@@ -593,7 +599,8 @@ bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD s
 				t->row[k].note = t->row[l].note;
 				t->row[k].instrument = t->row[l].instrument;
 				t->row[k].volume = t->row[l].volume;
-				t->row[k].cmd0 = t->row[l].cmd0;
+				t->row[k].command[CMD1].identifier = t->row[l].command[CMD1].identifier;
+				t->row[k].command[CMD1].parameter = t->row[l].command[CMD1].parameter;
 			}
 		}
 	}
@@ -787,23 +794,32 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 // Identify the shortest pattern length relative to the other ones used in the same Songline
 BYTE CModule::GetShortestPatternLength(int songline)
 {
+	return GetShortestPatternLength(GetSubtuneIndex(), songline);
+}
+
+BYTE CModule::GetShortestPatternLength(TSubtune* subtune, int songline)
+{
+	// Make sure the Subtune is not a Null pointer
+	if (!subtune)
+		return 0;
+
 	// Get the current Pattern Length first
-	BYTE patternLength = GetPatternLength();
+	BYTE patternLength = subtune->patternLength;
 
 	// All channels will be processed in order to identify the shortest Pattern
-	for (int i = 0; i < GetChannelCount(); i++)
+	for (int i = 0; i < subtune->channelCount; i++)
 	{
 		// Get the Pattern Index used in the Songline first
-		BYTE pattern = GetPatternInSongline(i, songline);
+		BYTE pattern = subtune->channel[i].songline[songline];
 
 		// Check for each Row that could be used within the shortest Pattern
 		for (int j = 0; j < patternLength; j++)
 		{
 			// Check for all Effect Commands used in each Row
-			for (int k = 0; k < PATTERN_ACTIVE_EFFECT_MAX; k++)
+			for (int k = 0; k < subtune->effectCommandCount[i]; k++)
 			{
 				// Get the Effect Command Identifier, the Parameter is not needed here
-				BYTE command = GetPatternRowCommand(i, pattern, j, k) >> 8;
+				BYTE command = subtune->channel[i].pattern[pattern].row[j].command[k].identifier;
 
 				// Set the Pattern Length to the current Row Index if a match is found
 				if (command == 0x0B || command == 0x0D)
@@ -874,17 +890,12 @@ bool CModule::IsEmptyPattern(TPattern* pattern)
 			return false;
 
 		// If there is an Effect Command, it's not empty
-		if (pattern->row[i].cmd0 != PATTERN_EFFECT_EMPTY)
-			return false;
-
-		if (pattern->row[i].cmd1 != PATTERN_EFFECT_EMPTY)
-			return false;
-
-		if (pattern->row[i].cmd2 != PATTERN_EFFECT_EMPTY)
-			return false;
-
-		if (pattern->row[i].cmd3 != PATTERN_EFFECT_EMPTY)
-			return false;
+		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		{
+			// Only the Identifier is checked, since the Parameter cannot be used alone
+			if (pattern->row[i].command[j].identifier != PATTERN_EFFECT_EMPTY)
+				return false;
+		}
 	}
 
 	// Otherwise, the Pattern is most likely empty
@@ -914,17 +925,14 @@ bool CModule::IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationP
 			return false;
 
 		// If there is a different Effect Command, it's not identical
-		if (sourcePattern->row[i].cmd0 != destinationPattern->row[i].cmd0)
-			return false;
+		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		{
+			if (sourcePattern->row[i].command[j].identifier != destinationPattern->row[i].command[j].identifier)
+				return false;
 
-		if (sourcePattern->row[i].cmd1 != destinationPattern->row[i].cmd1)
-			return false;
-
-		if (sourcePattern->row[i].cmd2 != destinationPattern->row[i].cmd2)
-			return false;
-
-		if (sourcePattern->row[i].cmd3 != destinationPattern->row[i].cmd3)
-			return false;
+			if (sourcePattern->row[i].command[j].parameter != destinationPattern->row[i].command[j].parameter)
+				return false;
+		}
 	}
 
 	// Otherwise, the Pattern is most likely identical
@@ -996,10 +1004,12 @@ bool CModule::ClearPattern(TPattern* destinationPattern)
 		destinationPattern->row[i].note = PATTERN_NOTE_EMPTY;
 		destinationPattern->row[i].instrument = PATTERN_INSTRUMENT_EMPTY;
 		destinationPattern->row[i].volume = PATTERN_VOLUME_EMPTY;
-		destinationPattern->row[i].cmd0 = PATTERN_EFFECT_EMPTY;
-		destinationPattern->row[i].cmd1 = PATTERN_EFFECT_EMPTY;
-		destinationPattern->row[i].cmd2 = PATTERN_EFFECT_EMPTY;
-		destinationPattern->row[i].cmd3 = PATTERN_EFFECT_EMPTY;
+
+		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		{
+			destinationPattern->row[i].command[j].identifier = PATTERN_EFFECT_EMPTY;
+			destinationPattern->row[i].command[j].parameter = EFFECT_PARAMETER_MIN;
+		}
 	}
 
 	// Pattern data should have been cleared successfully

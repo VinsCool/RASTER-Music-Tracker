@@ -3991,22 +3991,15 @@ void CSong::DrawPatternEditor()
 			// Command(s)
 			for (int k = 0; k < p->effectCommandCount[i]; k++)
 			{
-				WORD cmd = INVALID;
+				BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
+				BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
 
-				switch (k)
-				{
-				case CMD1: cmd = p->channel[i].pattern[pattern].row[row].cmd0; break;
-				case CMD2: cmd = p->channel[i].pattern[pattern].row[row].cmd1; break;
-				case CMD3: cmd = p->channel[i].pattern[pattern].row[row].cmd2; break;
-				case CMD4: cmd = p->channel[i].pattern[pattern].row[row].cmd3; break;
-				}
-
-				switch (cmd)
+				switch (command)
 				{
 				case PATTERN_EFFECT_EMPTY: s.AppendFormat("--- "); break;
 				default:
-					if (cmd < PATTERN_EFFECT_MAX)
-						s.AppendFormat("%03X ", cmd);
+					if (command < PATTERN_EFFECT_MAX)
+						s.AppendFormat("%01X%02X ", command, parameter);
 					else
 						s.AppendFormat("??? ");
 				}
@@ -4131,33 +4124,26 @@ void CSong::PlayRow()
 		// Compromised to only get the Speed Commands
 		for (int k = 0; k < p->effectCommandCount[i]; k++)
 		{
-			WORD cmd = INVALID;
-
-			switch (k)
-			{
-			case CMD1: cmd = p->channel[i].pattern[pattern].row[row].cmd0; break;
-			case CMD2: cmd = p->channel[i].pattern[pattern].row[row].cmd1; break;
-			case CMD3: cmd = p->channel[i].pattern[pattern].row[row].cmd2; break;
-			case CMD4: cmd = p->channel[i].pattern[pattern].row[row].cmd3; break;
-			}
+			BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
+			BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
 
 			// If a Bxx command is found, set the next Songline with it
-			if (cmd >> 8 == 0x0B)
+			if (command == EFFECT_COMMAND_BXX)
 			{
 				m_trackplayline = -1;
-				m_songplayline = cmd & 0xFF;
+				m_songplayline = parameter;
 			}
 
 			// If a Dxx command is found, the Pattern will end on the next Row
-			if (cmd >> 8 == 0x0D)
+			if (command == EFFECT_COMMAND_DXX)
 			{
 				m_trackplayline = -1;
 				m_songplayline = (songline + 1) % p->songLength;
 			}
 
 			// If a Fxx command is found, overwrite the speed with it
-			if (cmd >> 8 == 0x0F && cmd & 0xFF)
-				speed = cmd & 0xFF;
+			if (command == EFFECT_COMMAND_FXX && parameter)
+				speed = parameter;
 		}
 
 		// Compromised for compatibility with RMTE data
