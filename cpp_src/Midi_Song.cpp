@@ -360,7 +360,7 @@ void CSong::MidiEvent(DWORD dwParam)
 
 				if (note >= 0 && note < NOTESNUM)		//only within this range
 				{
-					if (g_activepart != PART_TRACKS || g_prove || g_shiftkey || g_controlkey) goto Prove_midi_test;	//play notes but do not record them if the active screen is not TRACKS, or if any other PROVE combo is detected
+					if (g_activepart != PART_TRACKS || g_prove) goto Prove_midi_test;	//play notes but do not record them if the active screen is not TRACKS, or if any other PROVE combo is detected
 
 					if (vol > 0)
 					{
@@ -610,7 +610,7 @@ void CSong::MidiEvent(DWORD dwParam)
 
 			if (note >= 0 && note < NOTESNUM)		//only within this range
 			{
-				if (g_activepart != PART_TRACKS || g_prove || g_shiftkey || g_controlkey) goto Prove_midi;	//play notes but do not record them if the active screen is not TRACKS, or if any other PROVE combo is detected
+				if (g_activepart != PART_TRACKS || g_prove) goto Prove_midi;	//play notes but do not record them if the active screen is not TRACKS, or if any other PROVE combo is detected
 
 				if (vol > 0)
 				{
@@ -657,7 +657,7 @@ void CSong::MidiEvent(DWORD dwParam)
 					if (!(m_play && m_followplay)) TrackDown(g_linesafter);	//scrolls only when there is no followplay
 				Prove_midi:
 					SetPlayPressedTonesTNIV(m_trackactivecol, note, m_activeinstr, vol);
-					if ((g_prove == PROVE_JAM_STEREO_MODE || g_controlkey) && g_tracks4_8 > 4)
+					if ((g_prove == PROVE_JAM_STEREO_MODE) && g_tracks4_8 > 4)
 					{	//with control or in prove2 => stereo test
 						SetPlayPressedTonesTNIV((m_trackactivecol + 4) & 0x07, note, m_activeinstr, vol);
 					}

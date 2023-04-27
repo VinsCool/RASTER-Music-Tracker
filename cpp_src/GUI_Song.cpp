@@ -1301,7 +1301,7 @@ void CSong::DrawPlayTimeCounter()
 	TextXY(s, PLAYTC_X + 8 * 23, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 }
 
-
+/*
 BOOL CSong::InfoKey(int vk, int shift, int control)
 {
 	int i, num;
@@ -2071,6 +2071,7 @@ ChangeInstrumentPar:
 	}
 	return 0;	//=> SCREENUPDATE will not be performed
 }
+*/
 
 BOOL CSong::InfoCursorGotoSongname(int x)
 {
@@ -2171,6 +2172,7 @@ BOOL CSong::CursorToSpeedColumn()
 	return 1;
 }
 
+/*
 BOOL CSong::ProveKey(int vk, int shift, int control)
 {
 	int note, i;
@@ -2606,7 +2608,6 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 	}
 	return 1;
 }
-
 
 BOOL CSong::TrackKey(int vk, int shift, int control)
 {
@@ -3339,6 +3340,7 @@ TrackKeyOk:
 	}
 	return 1;
 }
+*/
 
 BOOL CSong::TrackCursorGoto(CPoint point)
 {
@@ -3392,8 +3394,7 @@ notracklinechange:
 	return 1;
 }
 
-
-
+/*
 BOOL CSong::SongKey(int vk, int shift, int control)
 {
 	int isgo = (m_songgo[m_songactiveline] >= 0) ? 1 : 0;
@@ -3567,7 +3568,7 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 	}
 	return 1;
 }
-
+*/
 
 BOOL CSong::SongCursorGoto(CPoint point)
 {

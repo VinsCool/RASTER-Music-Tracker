@@ -378,6 +378,7 @@
     <ClCompile Include="GUI_Instruments.cpp" />
     <ClCompile Include="GUI_Song.cpp" />
     <ClCompile Include="GUI_Tracks.cpp" />
+    <ClCompile Include="GUI_V2.cpp" />
     <ClCompile Include="ImportDlgs.cpp">
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">_DEBUG;WIN32;_WINDOWS;NO_CONSOL_SOUND;NO_VOL_ONLY;STEREO;_MBCS;_AFXDLL</PreprocessorDefinitions>

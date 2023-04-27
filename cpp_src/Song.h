@@ -89,7 +89,7 @@ public:
 	void DrawInstrumentEditor();
 	void DrawDebugInfos();
 
-	BOOL InfoKey(int vk, int shift, int control);
+	//BOOL InfoKey(int vk, int shift, int control);
 	BOOL InfoCursorGotoSongname(int x);
 	BOOL InfoCursorGotoSpeed(int x);
 	BOOL InfoCursorGotoHighlight(int x);
@@ -97,7 +97,7 @@ public:
 	BOOL InfoCursorGotoVolumeSelect(int x, int y);
 	BOOL InfoCursorGotoInstrumentSelect(int x, int y);
 
-	BOOL InstrKey(int vk, int shift, int control);
+	//BOOL InstrKey(int vk, int shift, int control);
 	void ActiveInstrSet(int instr);
 	void ActiveInstrPrev() { g_Undo.Separator(); int instr = (m_activeinstr - 1) & 0x3f; ActiveInstrSet(instr); };
 	void ActiveInstrNext() { g_Undo.Separator(); int instr = (m_activeinstr + 1) & 0x3f; ActiveInstrSet(instr); };
@@ -110,8 +110,8 @@ public:
 	void SetPlayLine(int line) { m_trackplayline = line; };
 
 	BOOL CursorToSpeedColumn();
-	BOOL ProveKey(int vk, int shift, int control);
-	BOOL TrackKey(int vk, int shift, int control);
+	//BOOL ProveKey(int vk, int shift, int control);
+	//BOOL TrackKey(int vk, int shift, int control);
 	BOOL TrackCursorGoto(CPoint point);
 
 	// Legacy Pattern Movement functions
@@ -153,7 +153,7 @@ public:
 	BOOL Redo() { return g_Undo.Redo(); };
 	int  UndoGetRedoSteps() { return g_Undo.GetRedoSteps(); };
 
-	BOOL SongKey(int vk, int shift, int control);
+	//BOOL SongKey(int vk, int shift, int control);
 	BOOL SongCursorGoto(CPoint point);
 
 	// Legacy Songline Movement functions

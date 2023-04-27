@@ -87,9 +87,6 @@ extern CString g_about6502;
 extern BOOL g_changes;	//have there been any changes in the module?
 
 extern int g_RmtHasFocus;
-extern int g_shiftkey;
-extern int g_controlkey;
-extern int g_altkey;	//unfinished implementation, doesn't work yet for some reason
 
 extern int g_tracks4_8;
 extern BOOL volatile g_screenupdate;
@@ -148,6 +145,8 @@ extern BOOL g_viewPokeyRegisters;		//1 yes, 0 no
 extern BOOL g_viewInstrumentEditHelp;	//1 yes, 0 no
 
 extern int g_trackerDriverVersion;
+extern bool g_isRMTE;
+
 extern int g_timerGlobalCount;	// Initialised once, ticking forever
 
 extern int g_mousebutt;			//mouse button

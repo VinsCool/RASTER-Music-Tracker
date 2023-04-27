@@ -1336,13 +1336,6 @@ BOOL CSong::SongDown()
 // Legacy Function
 BOOL CSong::SongSubsongPrev()
 {
-	// Yet another hijack until the entire input handler is rewritten since tests need to be done here quickly
-	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
-	{
-		SeekPreviousSubtune();
-		return 1;
-	}
-
 	g_Undo.Separator();
 	int i = m_songactiveline - 1;
 
@@ -1373,13 +1366,6 @@ BOOL CSong::SongSubsongPrev()
 // Legacy Function
 BOOL CSong::SongSubsongNext()
 {
-	// Yet another hijack until the entire input handler is rewritten since tests need to be done here quickly
-	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
-	{
-		SeekNextSubtune();
-		return 1;
-	}
-
 	g_Undo.Separator();
 	int i;
 	for (i = m_songactiveline; i < SONGLEN; i++)
@@ -3220,7 +3206,7 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 
 	// Legacy RMT procedure, which is required for the original format
 	// TODO: Not do a workaround like this, for obvious reasons
-	if (g_trackerDriverVersion != TRACKER_DRIVER_NONE)
+	if (!g_isRMTE)
 	{
 		if (m_songgo[m_songplayline] >= 0)	//there is a goto
 		{
@@ -3433,7 +3419,7 @@ void CSong::TimerRoutine()
 		// Things that are solved 1x for vbi
 		//PlayVBI();
 
-		if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
+		if (g_isRMTE)
 			PlayPattern();
 		else
 			PlayVBI();

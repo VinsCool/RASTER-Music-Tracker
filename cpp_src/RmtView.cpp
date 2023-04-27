@@ -47,9 +47,9 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_WM_ERASEBKGND()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_RBUTTONDOWN()
-	ON_WM_SYSCHAR()
 	ON_WM_KEYDOWN()
 	ON_WM_KEYUP()
+	ON_WM_SYSKEYDOWN()
 	ON_COMMAND(ID_FILE_OPEN, OnFileOpen)
 	ON_COMMAND(ID_FILE_SAVE, OnFileSave)
 	ON_COMMAND(ID_FILE_SAVE_AS, OnFileSaveAs)
@@ -281,18 +281,40 @@ void CRmtView::OnTimer(UINT_PTR nIDEvent)
 	CView::OnTimer(nIDEvent);
 }
 
-// Debug function, to get the mouse pointer coordinates
-void CRmtView::GetMouseXY(int px, int py, int mousebutt, short wheelzDelta)
-{
-	g_mouseLastPointX = px;
-	g_mouseLastPointY = py;
-	g_mouseLastButton = mousebutt;
-	g_mouseLastWheelDelta = wheelzDelta;
-}
-
 BOOL CRmtView::PreCreateWindow(CREATESTRUCT& cs)
 {
 	return CView::PreCreateWindow(cs);
+}
+
+BOOL CRmtView::PreTranslateMessage(MSG* pMsg)
+{
+	if (pMsg->message == WM_KEYDOWN || pMsg->message == WM_SYSKEYDOWN)
+	{
+		// Workaround in order to differentiate the Left and Right SHIFT, CTRL and ALT keys between each others
+		switch (pMsg->wParam)
+		{
+		case VK_SHIFT:	// SHIFT keys
+			pMsg->wParam = MapVirtualKey((pMsg->lParam & 0x00FF0000) >> 16, MAPVK_VSC_TO_VK_EX);
+			break;
+
+		case VK_CONTROL:// CTRL keys
+			pMsg->wParam = pMsg->lParam & 0x01000000 ? VK_RCONTROL : VK_LCONTROL;
+			break;
+
+		case VK_MENU:	// ALT keys
+			pMsg->wParam = pMsg->lParam & 0x01000000 ? VK_RMENU : VK_LMENU;
+			break;
+		}
+
+		// Workaround in order to use the F10 key, otherwise it would be ignored
+		if (pMsg->wParam == VK_F10)
+		{
+			OnSysKeyDown((UINT)pMsg->wParam, 0, 0);
+			return TRUE;
+		}
+	}
+
+	return CView::PreTranslateMessage(pMsg);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -327,7 +349,7 @@ void CRmtView::DrawAll()
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);
 
 	// If the condition is respected, the RMTE procedure will be executed here 
-	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
+	if (g_isRMTE)
 	{
 		// Draw the primary screen block first
 		if (g_active_ti == PART_TRACKS)
@@ -965,9 +987,6 @@ void CRmtView::OnInitialUpdate()
 	m_cursorDialog = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORDLG));
 	m_cursorSetPosition = LoadCursor(AfxGetApp()->m_hInstance,MAKEINTRESOURCE(IDC_CURSORSETPOS));
 
-	//keyboard
-	g_shiftkey=g_controlkey=0;	//TODO: add support for ALT key as well
-
 	//current parts
 	g_activepart = PART_TRACKS;	//tracks
 	g_active_ti = PART_TRACKS;	//below the active tracks
@@ -1036,6 +1055,7 @@ void CRmtView::OnInitialUpdate()
 	}
 }
 
+/*
 int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 {
 	int i;
@@ -1471,12 +1491,29 @@ int CRmtView::MouseAction(CPoint point,UINT mousebutt,short wheelzDelta=0)
 	SetCursor(m_cursororig);
 	return 0;
 }
+*/
 
-void CRmtView::OnLButtonDown(UINT nFlags, CPoint point) 
+void CRmtView::MouseAction(CPoint point, UINT mousebutt, short wheelzDelta)
+{
+	// Scale the mouse XY coordinates to the actual display scaling, so the hitboxes will match everything visually rendered
+	point.x = INVERSE_SCALE(point.x);
+	point.y = INVERSE_SCALE(point.y);
+
+	// Store the last known mouse XY coordinates and buttons used
+	g_mouseLastPointX = point.x;
+	g_mouseLastPointY = point.y;
+	g_mouseLastButton = mousebutt;
+	g_mouseLastWheelDelta = wheelzDelta;
+
+	// Set the Cursor back to the original once everything was processed
+	SetCursor(m_cursororig);
+}
+
+void CRmtView::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	g_Undo.Separator();
-	g_mousebutt|=MK_LBUTTON;
-	MouseAction(point,MK_LBUTTON);
+	g_mousebutt |= MK_LBUTTON;
+	MouseAction(point, MK_LBUTTON);
 	CView::OnLButtonDown(nFlags, point);
 }
 
@@ -1494,11 +1531,11 @@ void CRmtView::OnLButtonDblClk(UINT nFlags, CPoint point)
 	OnLButtonUp(nFlags, point);
 }
 
-void CRmtView::OnRButtonDown(UINT nFlags, CPoint point) 
+void CRmtView::OnRButtonDown(UINT nFlags, CPoint point)
 {
 	g_Undo.Separator();
-	g_mousebutt|=MK_RBUTTON;
-	MouseAction(point,MK_RBUTTON);
+	g_mousebutt |= MK_RBUTTON;
+	MouseAction(point, MK_RBUTTON);
 	CView::OnRButtonDown(nFlags, point);
 }
 
@@ -1516,10 +1553,19 @@ void CRmtView::OnRButtonDblClk(UINT nFlags, CPoint point)
 	OnRButtonUp(nFlags, point);
 }
 
-void CRmtView::OnMouseMove(UINT nFlags, CPoint point) 
+void CRmtView::OnMouseMove(UINT nFlags, CPoint point)
 {
-	MouseAction(point,0);
+	MouseAction(point, 0);
 	CView::OnMouseMove(nFlags, point);
+}
+
+BOOL CRmtView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
+{
+	CRect rec;
+	::GetWindowRect(g_viewhwnd, &rec);
+	CPoint np(pt - rec.TopLeft());
+	MouseAction(np, 0, zDelta);
+	return CView::OnMouseWheel(nFlags, zDelta, pt);
 }
 
 BOOL CRmtView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message) 
@@ -1527,11 +1573,7 @@ BOOL CRmtView::OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message)
 	return 1;
 }
 
-void CRmtView::OnSysChar( UINT nChar, UINT nRepCnt, UINT nFlags )
-{
-	CView::OnSysChar( nChar, nRepCnt, nFlags );
-}
-
+/*
 const int  NChaCode[]={  36,  38,  33, VK_SUBTRACT,  37,  12,  39, VK_ADD,  35,  40,  34,  45};
 const char FlaToCha[]={0x67,0x68,0x69,109,0x64,0x65,0x66,107,0x61,0x62,0x63,0x60};
 //const char layout2[]={VK_F5,VK_F6,VK_F7,VK_F8, VK_F3,VK_F2,VK_F4,VK_ESCAPE};
@@ -1901,25 +1943,158 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 KeyDownNoUndoCheckPoint:
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
+*/
+
+void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// Store the last pressed key in memory for debugging purposes
+	g_lastKeyPressed = nChar;
+
+	// If nothing was pressed, or a key without a function was pressed, nothing will happen
+	switch (nChar)
+	{
+	case VK_SPACE:
+		if (IsPressingCTRL())
+			OnProvemode();
+		break;
+
+	case VK_ESCAPE:
+		g_Song.Stop();
+		if (g_keyboard_escresetatarisound)
+			Atari_InitRMTRoutine();
+		break;
+
+	case VK_F1:
+		OnEmTracks();
+		break;
+
+	case VK_F2:
+		OnEmInstruments();
+		break;
+
+	case VK_F3:
+		OnEmInfo();
+		break;
+
+	case VK_F4:
+		OnEmSong();
+		break;
+
+	case VK_F5:
+		if (IsPressingCTRL() && IsPressingSHIFT())
+			g_prove = PROVE_POKEY_EXPLORER_MODE;	//POKEY EXPLORER MODE -- KEYBOARD INPUT AND FORMULAE DISPLAY
+		else
+			g_Song.Play(MPLAY_SONG, g_Song.GetFollowPlayMode());	//play song from start
+		break;
+
+	case VK_F6:
+		if (IsPressingSHIFT())
+			g_Song.Play(MPLAY_BLOCK, g_Song.GetFollowPlayMode());	//play block and follow
+		else
+			g_Song.Play(MPLAY_TRACK, g_Song.GetFollowPlayMode());	//play pattern and follow	
+		break;
+
+	case VK_F7:
+		if (IsPressingSHIFT() && g_Song.IsBookmark())
+			g_Song.Play(MPLAY_BOOKMARK, g_Song.GetFollowPlayMode());	//play song from bookmark
+		else
+			g_Song.Play(MPLAY_FROM, g_Song.GetFollowPlayMode());		//play song from current position
+		break;
+
+	case VK_F8:
+		if (IsPressingCTRL())
+			g_Song.ClearBookmark();	//clear bookmark
+		else
+			g_Song.SetBookmark();	//set song bookmark
+		break;
+
+	case VK_F9:
+		if (IsPressingCTRL() && IsPressingSHIFT())
+			SetChannelOnOff(-1, -1);	//switch all channels on or off
+		else if (IsPressingCTRL())
+			SetChannelSolo(g_Song.GetActiveColumn());	//solo current channel
+		else
+			SetChannelOnOff(g_Song.GetActiveColumn(), -1);	//mute current channel
+		break;
+
+	case VK_F10:
+		g_ntsc ^= 1;	//change region TODO: Turn into a function
+		g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
+		Atari_InitRMTRoutine();
+		break;
+
+	case VK_F11:
+		g_respectvolume ^= 1;	//respect volume
+		break;
+
+	case VK_F12:
+		OnPlayfollow();	//toggle follow position
+		break;
+
+	case 49:	//VK_1
+	case 50:	//VK_2
+	case 51:	//VK_3
+	case 52:	//VK_4
+	case 53:	//VK_5
+	case 54:	//VK_6
+	case 55:	//VK_7
+	case 56:	//VK_8
+		if (IsPressingCTRL() && IsPressingSHIFT())	//CONTROL + 1-8
+			SetChannelOnOff(nChar - 49, -1);		//inverts channel status 1-8 (=> on / off)
+		break;
+
+	case 76:	//VK_L
+		if (IsPressingCTRL()) // TODO: Turn into a function
+		{
+			SetStatusBarText("Load...");
+			OnFileOpen();
+			SetStatusBarText("");
+		}
+		break;
+
+	case 87: //VK_W
+		if (IsPressingCTRL()) // TODO: Turn into a function
+			if (MessageBox("Would you like to create a new song?", "Create new song", MB_YESNOCANCEL | MB_ICONQUESTION) == IDYES)
+				g_Song.FileNew();
+		break;
+
+	case 83:	//VK_S
+		if (IsPressingCTRL()) // TODO: Turn into a function
+		{
+			SetStatusBarText("Save...");
+			if (g_keyboard_askwhencontrol_s && (g_Song.GetFilename() != "" || g_Song.GetFiletype() != 0))
+			{
+				CString s;
+				s.Format("Do you want to save song file '%s'?\nIs it okay to overwrite?", g_Song.GetFilename());
+				int r = MessageBox(s, "Save song", MB_YESNOCANCEL | MB_ICONQUESTION);
+				if (r == IDNO)
+					OnFileSaveAs();
+				else if (r == IDYES)
+					OnFileSave();
+			}
+			SetStatusBarText("");
+		}
+		break;
+
+	case 82:	//VK_R
+		if (IsPressingCTRL()) // TODO: Turn into a function
+			g_Song.FileReload();
+		break;
+	};
+
+	CView::OnKeyDown(nChar, nRepCnt, nFlags);
+}
 
 void CRmtView::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags) 
 {
-	//TODO: Add support for ALT key for the "is held" flag, currently it does not work for some reason
-	if (nChar==VK_SHIFT)
-	{
-		g_shiftkey=0;
-	}
-	else
-	if (nChar==VK_CONTROL) 
-	{
-		g_controlkey=0;
-	}
-	else
-	if (nChar==VK_LMENU)
-	{
-		g_altkey=0;
-	}
 	CView::OnKeyUp(nChar, nRepCnt, nFlags);
+}
+
+void CRmtView::OnSysKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	// All keys will be processed at the same place for convenience
+	OnKeyDown(nChar, nRepCnt, nFlags);
+	CView::OnSysKeyDown(nChar, nRepCnt, nFlags);
 }
 
 void CRmtView::OnFileOpen() 
@@ -2598,17 +2773,17 @@ void CRmtView::OnUpdateMidionoff(CCmdUI* pCmdUI)
 
 void CRmtView::OnBlockCopy() 
 {
-	g_Song.TrackKey(67,0,1);	//Ctrl+C
+	//g_Song.TrackKey(67,0,1);	//Ctrl+C
 }
 
 void CRmtView::OnBlockCut() 
 {
-	g_Song.TrackKey(88,0,1);	//Ctrl+X
+	//g_Song.TrackKey(88,0,1);	//Ctrl+X
 }
 
 void CRmtView::OnBlockDelete() 
 {
-	g_Song.TrackKey(VK_DELETE,0,1);	//Del
+	//g_Song.TrackKey(VK_DELETE,0,1);	//Del
 }
 
 void CRmtView::OnBlockPaste() 
@@ -2633,17 +2808,17 @@ void CRmtView::OnBlockPastespecialSpeedvaluesonly()
 
 void CRmtView::OnBlockExchange() 
 {
-	g_Song.TrackKey(69,0,1);	//Ctrl+E
+	//g_Song.TrackKey(69,0,1);	//Ctrl+E
 }
 
 void CRmtView::OnBlockEffect() 
 {
-	g_Song.TrackKey(70,0,1);	//Ctrl+F
+	//g_Song.TrackKey(70,0,1);	//Ctrl+F
 }
 
 void CRmtView::OnBlockSelectall() 
 {
-	g_Song.TrackKey(65,0,1);	//Ctrl+A
+	//g_Song.TrackKey(65,0,1);	//Ctrl+A
 }
 
 void CRmtView::OnUpdateBlockCut(CCmdUI* pCmdUI) 
@@ -2962,7 +3137,6 @@ void CRmtView::OnInstrumentRenumberallinstruments()
 void CRmtView::OnSetFocus(CWnd* pOldWnd) 
 {
 	CView::OnSetFocus(pOldWnd);
-	g_shiftkey = g_controlkey = 0;
 	g_RmtHasFocus = 1;	// RMT main window has focus
 }
 
@@ -2970,15 +3144,6 @@ void CRmtView::OnKillFocus(CWnd* pNewWnd)
 {
 	CView::OnKillFocus(pNewWnd);
 	g_RmtHasFocus = 0;	// RMT main window does not have focus
-}
-
-BOOL CRmtView::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt) 
-{
-	CRect rec;
-	::GetWindowRect(g_viewhwnd,&rec);
-	CPoint np(pt-rec.TopLeft());
-	MouseAction(np,0,zDelta);
-	return CView::OnMouseWheel(nFlags, zDelta, pt);
 }
 
 void CRmtView::OnUndoUndo() 
