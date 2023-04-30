@@ -1,32 +1,35 @@
 ************************************************************************
 RASTER MUSIC TRACKER - RMT\
-by Radek Sterba, Raster/C.P.U., 2002-2009\
-currently maintained by Vin Samuel, VinsCool, 2021-2022\
-http://raster.atari.org\
+By Radek Štěrba, Raster/C.P.U., 2002-2009\
+Currently maintained by Vin Samuel, VinsCool, 2021-2023\
+Original Website http://raster.atari.org
 ************************************************************************
 
-### About:
+### About
 
 RASTER Music Tracker (RMT) is a cross-platform tool for making Atari XE/XL
-music on PC (OS Win9x). RMT uses  new Atari XE/XL music routines of my own
-- I developed them for a very long time and I hope it will be small
+music on PC (OS Win9x). RMT uses  new Atari XE/XL music routines of my own.
+I developed them for a very long time and I hope it will be small
 revolution for all Atari musicians and fans. 
 
-### Disclaimer:
+### Disclaimer
 
-THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND.
-AUTHOR DOES NOT WARRANT, GUARANTEE, OR MAKE ANY REPRESENTATIONS REGARDING
-THE USE, OR THE RESULTS OF USE, OF THE SOFTWARE OR WRITTEN MATERIALS IN
-TERMS OF CORRECTNESS, ACCURACY, RELIABILITY, CURRENTNESS, OR OTHERWISE.
-THE ENTIRE RISK AS TO THE RESULTS AND PERFORMANCE OF THE SOFTWARE
-IS ASSUMED BY YOU.
+This software is provided "as is" without warranty of any kind.
+The author does not warrant, guarantee, or make any representations regarding
+The use, or the results of use, of the software or written materials in
+Terms of correctness, accuracy, reliability, currentness, or otherwise.
+The entire risk as to the results and performance of the software
+is assumed by you.
 
-### Credits:
+The source code is open source and licened under the 
+GNU General Public License v3.0 which you can find in the file "LICENCE".
+
+### Credits
 
 Bob!k/C.P.U.\
 JirkaS/C.P.U.
 
-### Main features:
+### Main Features
 
 * Mono 4 tracks / stereo 8 tracks.
 * 254 tracks, each with its own length (256 beats max.) and with support for track loop.
@@ -55,7 +58,7 @@ JirkaS/C.P.U.
   to RMT MIDI input by means of some virtual MIDI cable (for example 
   "MIDI Yoke" etc.). MIDI implementation chart is in midi.txt file.
 
-### Technical info:
+### Technical Information
 
 Pokey sound emulation and Atari 6502 processor emulation aren't built-in
 components of RMT. If the sound output is needed, the external dynamic DLL
@@ -64,7 +67,7 @@ If you run RMT without this way described DLLs (apokeysnd.dll or sa_pokey.dll,
 sa_c6502.dll), RMT will work, but there won't be any Pokey sound output
 and Atari sound routines won't be executed.
 
-#### Pokey sound emulation:
+#### Pokey Sound Emulation
 
 `apokeysnd.dll`\
 `void APokeySound_Initialize(abool stereo);`\
@@ -83,23 +86,23 @@ or
 `void Pokey_PutByte(UWORD addr, UBYTE byte);`\
 `void Pokey_About(char** name, char** author, char** description);`
 
-#### 6502 processor emulation:
+#### 6502 Processor Emulation
 
 `sa_c6502.dll`\
 `void C6502_Initialise(BYTE* memory);`\
 `int C6502_JSR(WORD* addr, BYTE* areg, BYTE* xreg, BYTE* yreg, int* maxcycles);`\
 `void C6502_About(char** name, char** author, char** description)`;
 
-### Greetings:
+### Greetings
 
-Fox/Taquart (Thanks for XASM and ASAP - http://asap.sourceforge.net)<br>
+Fox/Taquart (Thanks for XASM and ASAP - https://asap.sourceforge.net)<br>
 Jaskier/Taquart (Thanks for TMC and a lot of RMT routine speed/size optimizations)\
 Tatqoo/Taquart\
 Sack/Cosine\
 X-ray/Grayscale\
 Greg/Grayscale\
 Bewu/Grayscale\
-PG (Thanks for ASMA - Atari SAP Music Archive - http://asma.atari.org)<br>
+PG (Thanks for ASMA - Atari SAP Music Archive - https://asma.atari.org)<br>
 Fandal\
 ZdenekB\
 KrupkaJ\
@@ -118,4 +121,3 @@ All the active "Atariarea" Polish Atarians (http://atariarea.krap.pl)<br>
 ...and other 8bit Atarians all over the world! :-)
 
 TODO: Update README.md to reflect all the changes done since version 1.28
-
