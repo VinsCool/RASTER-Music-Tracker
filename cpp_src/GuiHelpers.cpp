@@ -13,6 +13,7 @@ void SetStatusBarText(const char* text)
 	sb.SetWindowText(text);
 }
 
+/*
 static int lastTick;
 
 BOOL RefreshScreen(int frameskip)
@@ -44,6 +45,7 @@ BOOL RefreshScreen(int frameskip)
 	// Screen was refreshed
 	return 1;
 }
+*/
 
 void GetTracklineText(char* dest, int line)
 {

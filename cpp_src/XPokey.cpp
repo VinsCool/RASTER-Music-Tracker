@@ -158,8 +158,33 @@ BOOL CXPokey::RenderSound1_50(int instrspeed)
 	for (; instrspeed > 0; instrspeed--)
 	{
 		//--- RMT - instrument play ---/
-		if (g_rmtroutine) Atari_PlayRMT();	//one run RMT routine (instruments)
-		MemToPokey();			//transfer from g_atarimem to POKEY (mono or stereo)
+		if (g_isRMTE)
+		{
+			//MemToPokey();
+
+			//if (g_rmtroutine)
+			//	Atari_SetPokey();
+
+			//MemToPokey();
+
+			//if (g_rmtroutine)
+			//	Atari_PlayRMT_P3();
+
+			if (g_rmtroutine)
+				Atari_PlayRMT();
+
+			MemToPokey();
+		}
+		else
+		{
+			// One play of RMT routine (instruments)
+			if (g_rmtroutine)
+				Atari_PlayRMT();
+
+			// Transfer from g_atarimem to POKEY (mono or stereo)
+			MemToPokey();
+		}
+
 		renderpartsize = (rendersize / instrspeed) & 0xfffe;	//just the numbers
 
 		switch (m_soundDriverId)
@@ -370,6 +395,10 @@ void CXPokey::MemToPokey()
 			if (numTracksSetOnDriver == 8)
 				Pokey_PutByte(i + 16, (i & 0x01) && !GetChannelOnOff(i / 2 + 4) ? 0 : g_atarimem[0xd210 + i]);		// Stereo
 		}
+		// 15 (SKCTL)
+		Pokey_PutByte(0x0F, g_atarimem[0xd20F]);
+		if (numTracksSetOnDriver == 8)
+			Pokey_PutByte(0x1F, g_atarimem[0xd21F]);
 		break;
 	}
 }

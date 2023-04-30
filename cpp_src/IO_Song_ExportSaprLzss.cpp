@@ -747,15 +747,15 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 
 	// Play song using the chosen playback parameters
 	// If no argument was passed, Play from start will be assumed
-	m_songactiveline = songline;
-	m_trackactiveline = trackline;
-	Play(playmode, m_followplay);
+	m_activeSongline = songline;
+	m_activeRow = trackline;
+	Play(playmode, m_isFollowPlay);
 
 	// Wait in a tight loop pumping messages until the playback stops
 	EnableWindow(g_hwnd, FALSE);
 
 	// The SAP-R dumper is running during that time...
-	while (m_play != MPLAY_STOP)
+	while (m_playMode != MPLAY_STOP)
 	{
 		// 1 VBI of module playback
 		PlayVBI();
@@ -776,8 +776,8 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 
 		// Update the screen only once every few frames
 		// Displaying everything in real time slows things down considerably!
-		if (!RefreshScreen(1))
-			continue;
+		//if (!RefreshScreen(1))
+		//	continue;
 
 		// Display the number of frames dumped so far
 		statusBarLog.Format("Generating Pokey stream, playing song in quick mode... %i frames recorded", g_PokeyStream.GetCurrentFrame());
@@ -816,7 +816,7 @@ int CSong::BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* 
 		}
 
 		// Always refresh the screen after each iteration
-		RefreshScreen();
+		//RefreshScreen();
 
 		statusBarLog.Format("Compressing %i bytes, bruteforcing optimisation pattern %i... Current best: %i bytes with optimisation pattern %i", srclen, i, bestScore, optimal);
 		SetStatusBarText(statusBarLog);

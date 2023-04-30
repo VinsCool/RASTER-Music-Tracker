@@ -84,9 +84,14 @@ BOOL g_changes = 0;	//have there been any changes in the module?
 int g_RmtHasFocus;			// Track if RMT has focus, when it does not have focus and is not in prove mode, the MIDI input will be ignored (to avoid overwriting patterns accidentally)
 
 int g_tracks4_8;
+
 BOOL volatile g_screenupdate = 0;
 BOOL volatile g_rmtroutine;
 BOOL volatile g_timerRoutineProcessed;
+
+BYTE volatile g_timerDisplayCount = 0;
+BYTE volatile g_timerRoutineCount = 0;
+BYTE const g_timerTick[3] = { 17, 16, 16 };
 
 int volatile g_prove;			// Test notes without editing (0 = off, 1 = mono jam, 2 = stereo jam)
 int volatile g_respectvolume;	//does not change the volume if it is already there
@@ -187,12 +192,3 @@ CTrackClipboard g_TrackClipboard;	// Clipboard functions
 CTuning			g_Tuning;			// Tuning calculations and POKEY tuning lookup tables generation
 CPokeyStream	g_PokeyStream;		// POKEY registers state stream buffer functions
 CModule			g_Module;			// Extended RMT Module Format (WIP)
-
-/*
-void UpdateShiftControlKeys()
-{
-	g_shiftkey = (GetAsyncKeyState(VK_SHIFT) != NULL);
-	g_controlkey = (GetAsyncKeyState(VK_CONTROL) != NULL);
-	g_altkey = (GetAsyncKeyState(VK_MENU) != NULL);
-}
-*/

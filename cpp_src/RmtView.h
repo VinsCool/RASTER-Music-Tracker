@@ -30,6 +30,9 @@ protected: // create from serialization only
 public:
 	CRmtDoc* GetDocument();
 
+	void ChangeTimer(UINT_PTR nIDEvent, int ms);
+	void StopTimer(UINT_PTR nIDEvent);
+
 	void ReadRMTConfig();
 	void WriteRMTConfig();
 	void ResetRMTConfig();

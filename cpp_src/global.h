@@ -93,6 +93,10 @@ extern BOOL volatile g_screenupdate;
 extern BOOL volatile g_rmtroutine;
 extern BOOL volatile g_timerRoutineProcessed;
 
+extern BYTE volatile g_timerDisplayCount;
+extern BYTE volatile g_timerRoutineCount;
+extern BYTE const g_timerTick[3];
+
 extern int volatile g_prove;			//test notes without editing (0 = off, 1 = mono, 2 = stereo)
 extern int volatile g_respectvolume;	//does not change the volume if it is already there
 

@@ -8,7 +8,7 @@
 #include "Undo.h"
 #include "Instruments.h"
 #include "Tracks.h"
-
+#include "ModuleV2.h"
 
 struct TBookmark
 {
@@ -74,20 +74,20 @@ public:
 	void MidiEvent(DWORD dwParam);
 
 	// Legacy Draw functions
-	void DrawSong();				// Draw the song line info on the right
-	void DrawTracks();
-	void DrawInstrument();
-	void DrawInfo();			//top left corner
-	void DrawAnalyzer();
-	void DrawPlayTimeCounter();
+	//void DrawSong();				// Draw the song line info on the right
+	//void DrawTracks();
+	//void DrawInstrument();
+	//void DrawInfo();			//top left corner
+	//void DrawAnalyzer();
+	//void DrawPlayTimeCounter();
 
 	// RMTE Draw functions
-	void DrawSonglines();
-	void DrawSubtuneInfos();
-	void DrawRegistersState();
-	void DrawPatternEditor();
-	void DrawInstrumentEditor();
-	void DrawDebugInfos();
+	void DrawSonglines(TSubtune* p);
+	void DrawSubtuneInfos(TSubtune* p);
+	void DrawRegistersState(TSubtune* p);
+	void DrawPatternEditor(TSubtune* p);
+	void DrawInstrumentEditor(TSubtune* p);
+	void DrawDebugInfos(TSubtune* p);
 
 	//BOOL InfoKey(int vk, int shift, int control);
 	BOOL InfoCursorGotoSongname(int x);
@@ -104,21 +104,21 @@ public:
 
 	int GetActiveInstr() { return m_activeinstr; };
 	int GetActiveColumn() { return m_trackactivecol; };
-	int GetActiveLine() { return m_trackactiveline; };
-	int GetPlayLine() { return m_trackplayline; };
-	void SetActiveLine(int line) { m_trackactiveline = line; };
-	void SetPlayLine(int line) { m_trackplayline = line; };
+	int GetActiveLine() { return m_activeRow; };
+	int GetPlayLine() { return m_playRow; };
+	void SetActiveLine(int line) { m_activeRow = line; };
+	void SetPlayLine(int line) { m_playRow = line; };
 
-	BOOL CursorToSpeedColumn();
+	//BOOL CursorToSpeedColumn();
 	//BOOL ProveKey(int vk, int shift, int control);
 	//BOOL TrackKey(int vk, int shift, int control);
-	BOOL TrackCursorGoto(CPoint point);
+	//BOOL TrackCursorGoto(CPoint point);
 
 	// Legacy Pattern Movement functions
-	BOOL TrackUp(int lines);
-	BOOL TrackDown(int lines, BOOL stoponlastline = 1);
-	BOOL TrackLeft(BOOL column = 0);
-	BOOL TrackRight(BOOL column = 0);
+	//BOOL TrackUp(int lines);
+	//BOOL TrackDown(int lines, BOOL stoponlastline = 1);
+	//BOOL TrackLeft(BOOL column = 0);
+	//BOOL TrackRight(BOOL column = 0);
 
 	// RMTE Pattern Movement functions
 	void PatternLeft();
@@ -128,19 +128,19 @@ public:
 	void ChannelLeft();
 	void ChannelRight();
 
-	BOOL TrackDelNoteInstrVolSpeed(int noteinstrvolspeed) { return g_Tracks.DelNoteInstrVolSpeed(noteinstrvolspeed, SongGetActiveTrack(), m_trackactiveline); };
-	BOOL TrackSetNoteActualInstrVol(int note) { return g_Tracks.SetNoteInstrVol(note, m_activeinstr, m_volume, SongGetActiveTrack(), m_trackactiveline); };
-	BOOL TrackSetNoteInstrVol(int note, int instr, int vol) { return g_Tracks.SetNoteInstrVol(note, instr, vol, SongGetActiveTrack(), m_trackactiveline); };
-	BOOL TrackSetInstr(int instr) { return g_Tracks.SetInstr(instr, SongGetActiveTrack(), m_trackactiveline); };
-	BOOL TrackSetVol(int vol) { return g_Tracks.SetVol(vol, SongGetActiveTrack(), m_trackactiveline); };
-	BOOL TrackSetSpeed(int speed) { return g_Tracks.SetSpeed(speed, SongGetActiveTrack(), m_trackactiveline); };
-	int TrackGetNote() { return g_Tracks.GetNote(SongGetActiveTrack(), m_trackactiveline); };
-	int TrackGetInstr() { return g_Tracks.GetInstr(SongGetActiveTrack(), m_trackactiveline); };
-	int TrackGetVol() { return g_Tracks.GetVol(SongGetActiveTrack(), m_trackactiveline); };
-	int TrackGetSpeed() { return g_Tracks.GetSpeed(SongGetActiveTrack(), m_trackactiveline); };
-	BOOL TrackSetEnd() { return g_Tracks.SetEnd(SongGetActiveTrack(), m_trackactiveline + 1); };
+	BOOL TrackDelNoteInstrVolSpeed(int noteinstrvolspeed) { return g_Tracks.DelNoteInstrVolSpeed(noteinstrvolspeed, SongGetActiveTrack(), m_activeRow); };
+	BOOL TrackSetNoteActualInstrVol(int note) { return g_Tracks.SetNoteInstrVol(note, m_activeinstr, m_volume, SongGetActiveTrack(), m_activeRow); };
+	BOOL TrackSetNoteInstrVol(int note, int instr, int vol) { return g_Tracks.SetNoteInstrVol(note, instr, vol, SongGetActiveTrack(), m_activeRow); };
+	BOOL TrackSetInstr(int instr) { return g_Tracks.SetInstr(instr, SongGetActiveTrack(), m_activeRow); };
+	BOOL TrackSetVol(int vol) { return g_Tracks.SetVol(vol, SongGetActiveTrack(), m_activeRow); };
+	BOOL TrackSetSpeed(int speed) { return g_Tracks.SetSpeed(speed, SongGetActiveTrack(), m_activeRow); };
+	int TrackGetNote() { return g_Tracks.GetNote(SongGetActiveTrack(), m_activeRow); };
+	int TrackGetInstr() { return g_Tracks.GetInstr(SongGetActiveTrack(), m_activeRow); };
+	int TrackGetVol() { return g_Tracks.GetVol(SongGetActiveTrack(), m_activeRow); };
+	int TrackGetSpeed() { return g_Tracks.GetSpeed(SongGetActiveTrack(), m_activeRow); };
+	BOOL TrackSetEnd() { return g_Tracks.SetEnd(SongGetActiveTrack(), m_activeRow + 1); };
 	int TrackGetLastLine() { return g_Tracks.GetLastLine(SongGetActiveTrack()); };
-	BOOL TrackSetGo() { return g_Tracks.SetGo(SongGetActiveTrack(), m_trackactiveline); };
+	BOOL TrackSetGo() { return g_Tracks.SetGo(SongGetActiveTrack(), m_activeRow); };
 	int TrackGetGoLine() { return g_Tracks.GetGoLine(SongGetActiveTrack()); };
 	void RespectBoundaries();
 	void TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol);
@@ -154,13 +154,13 @@ public:
 	int  UndoGetRedoSteps() { return g_Undo.GetRedoSteps(); };
 
 	//BOOL SongKey(int vk, int shift, int control);
-	BOOL SongCursorGoto(CPoint point);
+	//BOOL SongCursorGoto(CPoint point);
 
 	// Legacy Songline Movement functions
-	BOOL SongUp();
-	BOOL SongDown();
-	BOOL SongSubsongPrev();
-	BOOL SongSubsongNext();
+	//BOOL SongUp();
+	//BOOL SongDown();
+	//BOOL SongSubsongPrev();
+	//BOOL SongSubsongNext();
 
 	// RMTE Songline Movement functions
 	void SonglineUp();
@@ -173,19 +173,19 @@ public:
 	BOOL SongTrackDec();
 	BOOL SongTrackInc();
 	BOOL SongTrackEmpty();
-	int SongGetActiveTrack() { return (m_songgo[m_songactiveline] >= 0) ? -1 : m_song[m_songactiveline][m_trackactivecol]; };
+	int SongGetActiveTrack() { return (m_songgo[m_activeSongline] >= 0) ? -1 : m_song[m_activeSongline][m_trackactivecol]; };
 	int SongGetTrack(int songline, int trackcol) { return IsValidSongline(songline) && !IsSongGo(songline) ? m_song[songline][trackcol] : -1; };
-	int SongGetActiveTrackInColumn(int column) { return m_song[m_songactiveline][column]; };
-	int SongGetActiveLine() { return m_songactiveline; };
-	int SongGetPlayLine() { return m_songplayline; };
-	void SongSetActiveLine(int line) { m_songactiveline = line; };
-	void SongSetPlayLine(int line) { m_songplayline = line; };
+	int SongGetActiveTrackInColumn(int column) { return m_song[m_activeSongline][column]; };
+	int SongGetActiveLine() { return m_activeSongline; };
+	int SongGetPlayLine() { return m_playSongline; };
+	void SongSetActiveLine(int line) { m_activeSongline = line; };
+	void SongSetPlayLine(int line) { m_playSongline = line; };
 
 	BOOL SongTrackGoOnOff();
-	int SongGetGo() { return m_songgo[m_songactiveline]; };
+	int SongGetGo() { return m_songgo[m_activeSongline]; };
 	int SongGetGo(int songline) { return m_songgo[songline]; };
-	void SongTrackGoDec() { m_songgo[m_songactiveline] = (m_songgo[m_songactiveline] - 1) & 0xff; };
-	void SongTrackGoInc() { m_songgo[m_songactiveline] = (m_songgo[m_songactiveline] + 1) & 0xff; };
+	void SongTrackGoDec() { m_songgo[m_activeSongline] = (m_songgo[m_activeSongline] - 1) & 0xff; };
+	void SongTrackGoInc() { m_songgo[m_activeSongline] = (m_songgo[m_activeSongline] + 1) & 0xff; };
 
 	BOOL SongInsertLine(int line);
 	BOOL SongDeleteLine(int line);
@@ -220,10 +220,12 @@ public:
 
 	void TimerRoutine();
 
-	void UpdatePlayTime() { m_playTimeFrameCount += m_play ? 1 : 0; };
+	void UpdatePlayTime() { m_playTimeFrameCount += m_playMode ? 1 : 0; };
+	void ResetPlayTime() { m_playTimeFrameCount = 0; };
+
 	void CalculatePlayTime();
 	void CalculatePlayBPM();
-	void CalculatePlayFPS();
+	void CalculateDisplayFPS();
 
 	void SetRMTTitle();
 
@@ -380,10 +382,11 @@ public:
 	int(*GetSongGo())[SONGLEN] { return &m_songgo; };
 	TBookmark* GetBookmark() { return &m_bookmark; };
 
-	int GetPlayMode() { return m_play; };
-	void SetPlayMode(int mode) { m_play = mode; };
-	BOOL GetFollowPlayMode() { return m_followplay; };
-	void SetFollowPlayMode(BOOL follow) { m_followplay = follow; };
+	int GetPlayMode() { return m_playMode; };
+	void SetPlayMode(int mode) { m_playMode = mode; };
+
+	BOOL GetFollowPlayMode() { return m_isFollowPlay; };
+	void SetFollowPlayMode(BOOL follow) { m_isFollowPlay = follow; };
 
 	void GetSongInfoPars(TInfo* info) { memcpy(info->songname, m_songname, SONG_NAME_MAX_LEN); info->speed = m_speed; info->mainspeed = m_mainSpeed; info->instrspeed = m_instrumentSpeed; info->songnamecur = m_songnamecur; };
 	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONG_NAME_MAX_LEN); m_speed = info->speed; m_mainSpeed = info->mainspeed; m_instrumentSpeed = info->instrspeed; m_songnamecur = info->songnamecur; };
@@ -393,25 +396,28 @@ public:
 
 	// Prototype C++ RMTE Module Driver functions
 	// TODO: Move to a different file later
-	void PlayRow();
-	void PlayPattern();
-	void PlaySongline();
-	void PlayNote();
-	void PlayInstrument();
-	void PlayVolume();
-	void PlayEffect();
+	void StopV2();
+	void PlayV2(int mode, BOOL follow, int special = 0);
+	void PlayRow(TSubtune* p);
+	void PlayPattern(TSubtune* p);
+	void PlaySongline(TSubtune* p);
+	void PlayNote(TSubtune* p);
+	void PlayInstrument(TSubtune* p);
+	void PlayVolume(TSubtune* p);
+	void PlayEffect(TSubtune* p);
 
 private:
-	int m_song[SONGLEN][SONGTRACKS];
-	int m_songgo[SONGLEN];						// If >= 0, then GO applies
+	// Legacy variables
+	int m_song[SONGLEN][SONGTRACKS];	// TODO: Delete
+	int m_songgo[SONGLEN];				// TODO: Delete	// If >= 0, then GO applies
 
-	BOOL volatile m_followplay;
-	int volatile m_play;
-	int m_songactiveline;
-	int volatile m_songplayline;				// Which line of the song is currently being played
+	BOOL volatile m_isFollowPlay;
+	int volatile m_playMode;
+	int m_activeSongline;
+	int volatile m_playSongline;				// Which line of the song is currently being played
 
-	int m_trackactiveline;
-	int volatile m_trackplayline;				// Which line of a track is currenyly being played
+	int m_activeRow;
+	int volatile m_playRow;				// Which line of a track is currenyly being played
 	int m_trackactivecol;						//0-7
 	int m_trackactivecur;						//0-2
 
@@ -423,26 +429,25 @@ private:
 	int m_octave;
 
 	//MIDI input variables, used for tests through MIDI CH15 
-	int m_mod_wheel = 0;
-	int m_vol_slider = 0;
-	int m_heldkeys = 0;
-	int m_midi_distortion = 0;
-	BOOL m_ch_offset = 0;
+	int m_mod_wheel = 0;			// TODO: Delete
+	int m_vol_slider = 0;			// TODO: Delete
+	int m_heldkeys = 0;				// TODO: Delete
+	int m_midi_distortion = 0;		// TODO: Delete
+	BOOL m_ch_offset = 0;			// TODO: Delete
 
 	//POKEY EXPLORER variables, used for tests involving pitch calculations and sound debugging displayed on screen
-	int e_ch_idx = 0;
-	int e_modoffset = 1;
-	int e_coarse_divisor = 1;
-	int e_modulo = 0;
-	BOOL e_valid = 1;
-	double e_divisor = 1;
-	double e_pitch = 0;
+	int e_ch_idx = 0;				// TODO: Delete
+	int e_modoffset = 1;			// TODO: Delete
+	int e_coarse_divisor = 1;		// TODO: Delete
+	int e_modulo = 0;				// TODO: Delete
+	BOOL e_valid = 1;				// TODO: Delete
+	double e_divisor = 1;			// TODO: Delete
+	double e_pitch = 0;				// TODO: Delete
 
-	int m_infoact;						// Which part of the info area is active for editing: 0 = name, 
-	char m_songname[SONG_NAME_MAX_LEN + 1];
-	int m_songnamecur;
-
-	TBookmark m_bookmark;
+	int m_infoact;							// TODO: Delete	// Which part of the info area is active for editing: 0 = name, 
+	char m_songname[SONG_NAME_MAX_LEN + 1];	// TODO: Delete
+	int m_songnamecur;						// TODO: Delete
+	TBookmark m_bookmark;					// TODO: Delete
 
 	// Used for calculating Play time
 	int m_playTimeFrameCount;
@@ -462,31 +467,69 @@ private:
 	uint64_t m_lastSecondCount;
 	double m_averageFrameCount;
 
-	int volatile m_mainSpeed;
+	int volatile m_mainSpeed;				// TODO: Delete
 	int volatile m_speed;
 	int volatile m_speeda;
 
 	int volatile m_instrumentSpeed;
 
-	int volatile m_quantization_note;
-	int volatile m_quantization_instr;
-	int volatile m_quantization_vol;
+	int volatile m_quantization_note;		// TODO: Delete
+	int volatile m_quantization_instr;		// TODO: Delete
+	int volatile m_quantization_vol;		// TODO: Delete
 
-	int m_playptnote[SONGTRACKS];
-	int m_playptinstr[SONGTRACKS];
-	int m_playptvolume[SONGTRACKS];
+	int m_playptnote[SONGTRACKS];			// TODO: Delete
+	int m_playptinstr[SONGTRACKS];			// TODO: Delete
+	int m_playptvolume[SONGTRACKS];			// TODO: Delete
 
-	TInstrument m_instrclipboard;
-	int m_songlineclipboard[SONGTRACKS];
-	int m_songgoclipboard;
+	TInstrument m_instrclipboard;			// TODO: Delete
+	int m_songlineclipboard[SONGTRACKS];	// TODO: Delete
+	int m_songgoclipboard;					// TODO: Delete
 
 	UINT m_timerRoutine;
-	const BYTE m_timerRoutineTick[3] = { 17, 17, 16 };
 
 	CString m_filename;
 	int m_filetype;
 	int m_lastExportType;					// Which data format was used to export a file the last time?
 
-	int m_TracksOrderChange_songlinefrom; //is defined as a member variable to keep in use
-	int m_TracksOrderChange_songlineto;	  //the last values used remain
+	int m_TracksOrderChange_songlinefrom; // TODO: Delete	//is defined as a member variable to keep in use
+	int m_TracksOrderChange_songlineto;	  // TODO: Delete	//the last values used remain
+
+
+
+	// RMTE variables
+	//bool volatile m_isFollowPlay;
+	//BYTE volatile m_playMode;
+	//BYTE volatile m_activeSongline;
+	//BYTE volatile m_playSongline;
+	//BYTE volatile m_activeRow;
+	//BYTE volatile m_playRow;
+	BYTE volatile m_activeChannel;
+	BYTE volatile m_activeCursor;
+	BYTE volatile m_playBlockStart;
+	BYTE volatile m_playBlockEnd;
+	BYTE volatile m_activeInstrument;
+	BYTE volatile m_activeVolume;
+	BYTE volatile m_activeOctave;
+	//BYTE volatile m_activeSpeed;
+	BYTE volatile m_playSpeed;
+	BYTE volatile m_speedTimer;
+//	BYTE volatile m_instrumentSpeed;
+//	int volatile m_playTimeFrameCount;
+//	int volatile m_playTimeSecondCount;
+//	int volatile m_playTimeMinuteCount;
+//	int volatile m_playTimeMillisecondCount;
+//	BYTE volatile m_rowSpeed[8];
+//	double volatile m_averageBPM;
+//	double volatile m_averageSpeed;
+//	uint64_t volatile m_lastDeltaCount;
+//	uint64_t volatile m_lastFrameCount;
+//	uint64_t volatile m_lastMillisecondCount;
+//	uint64_t volatile m_lastSecondCount;
+//	double volatile m_averageFrameCount;
+//	UINT m_timerRoutine;
+//	const BYTE m_timerRoutineTick[3] = { 17, 17, 16 };
+	CString m_fileName;
+	int m_fileType;
+//	int m_lastExportType;
+
 };

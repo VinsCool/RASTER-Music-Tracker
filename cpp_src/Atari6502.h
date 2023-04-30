@@ -39,6 +39,7 @@ extern int SaveBinaryBlock(std::ofstream& out, unsigned char* memory, WORD fromA
 extern int Atari_LoadRMTRoutines();
 extern int Atari_InitRMTRoutine();
 extern void Atari_PlayRMT();
+extern void Atari_PlayRMT_P3();
 extern void Atari_SetPokey();
 extern void Atari_Silence();
 extern void Atari_SetTrack_NoteInstrVolume(int t,int n,int i,int v);

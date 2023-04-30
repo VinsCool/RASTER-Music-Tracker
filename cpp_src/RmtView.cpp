@@ -36,6 +36,7 @@ extern CUndo	g_Undo;
 extern CXPokey	g_Pokey;
 extern CInstruments	g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
+extern CModule g_Module;
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView
@@ -260,12 +261,8 @@ void CRmtView::OnDestroy()
 	// Unload 6502 DLL
 	Atari6502_DeInit();
 
-	// Turn off the timer
-	if (m_timerDisplay)
-	{
-		KillTimer(m_timerDisplay);
-		m_timerDisplay = 0;
-	}
+	StopTimer(m_timerDisplay);
+
 	CView::OnDestroy();
 }
 
@@ -273,12 +270,33 @@ void CRmtView::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == m_timerDisplay)
 	{
-		KillTimer(m_timerDisplay);
-		m_timerDisplay = SetTimer(1, 16, NULL);
-		RefreshScreen();
+		//ChangeTimer(m_timerDisplay, g_timerTick[++g_timerDisplayCount % 3]);
+		ChangeTimer(m_timerDisplay, 16);
+		g_Song.CalculateDisplayFPS();
+		AfxGetApp()->GetMainWnd()->Invalidate();
+		g_timerGlobalCount++;
+		SCREENUPDATE;
 	}
 
 	CView::OnTimer(nIDEvent);
+}
+
+void CRmtView::ChangeTimer(UINT_PTR nIDEvent, int ms)
+{
+	if (nIDEvent == m_timerDisplay)
+	{
+		KillTimer(m_timerDisplay);
+		m_timerDisplay = SetTimer(1, ms, NULL);
+	}
+}
+
+void CRmtView::StopTimer(UINT_PTR nIDEvent)
+{
+	if (nIDEvent == m_timerDisplay)
+	{
+		KillTimer(m_timerDisplay);
+		m_timerDisplay = NULL;
+	}
 }
 
 BOOL CRmtView::PreCreateWindow(CREATESTRUCT& cs)
@@ -304,11 +322,8 @@ BOOL CRmtView::PreTranslateMessage(MSG* pMsg)
 		case VK_MENU:	// ALT keys
 			pMsg->wParam = pMsg->lParam & 0x01000000 ? VK_RMENU : VK_LMENU;
 			break;
-		}
 
-		// Workaround in order to use the F10 key, otherwise it would be ignored
-		if (pMsg->wParam == VK_F10)
-		{
+		case VK_F10:	// Workaround in order to use the F10 key, otherwise it would be ignored
 			OnSysKeyDown((UINT)pMsg->wParam, 0, 0);
 			return TRUE;
 		}
@@ -332,15 +347,14 @@ void CRmtView::OnDraw(CDC* pDC)
 		return;
 
 	// Redraw the screen if needed
+	// TODO: Improve this procedure to avoid redrawing everything at once every time
 	if (g_screenupdate)
 	{
 		Resize();
 		DrawAll();
 		pDC->StretchBlt(0, 0, m_width, m_height, &m_mem_dc, 0, 0, g_width, g_height, SRCCOPY);
-		g_Song.CalculatePlayFPS();
+		NO_SCREENUPDATE;
 	}
-
-	NO_SCREENUPDATE;
 }
 
 void CRmtView::DrawAll()
@@ -348,42 +362,22 @@ void CRmtView::DrawAll()
 	// Clear the screen with the background colour
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);
 
-	// If the condition is respected, the RMTE procedure will be executed here 
-	if (g_isRMTE)
-	{
-		// Draw the primary screen block first
-		if (g_active_ti == PART_TRACKS)
-			g_Song.DrawPatternEditor();
-		else
-			g_Song.DrawInstrumentEditor();
+	// Get the current Module Subtune pointer
+	TSubtune* p = g_Module.GetSubtuneIndex();
 
-		// Draw the secondary screen block afterwards
-		g_Song.DrawSonglines();
-		g_Song.DrawSubtuneInfos();
-		g_Song.DrawRegistersState();
-
-		// Draw the debug stuff if needed
-		g_Song.DrawDebugInfos();
-	}
-
-	// Otherwise, the Legacy procedure will be executed here like before
+	// Draw the primary screen block first
+	if (g_active_ti == PART_TRACKS)
+		g_Song.DrawPatternEditor(p);
 	else
-	{
-		// Needed in order to work around several boundaries problems...
-		g_Song.RespectBoundaries();
+		g_Song.DrawInstrumentEditor(p);
 
-		// Draw the secondary screen elements first
-		g_Song.DrawInfo();
-		g_Song.DrawSong();
-		g_Song.DrawAnalyzer();
-		g_Song.DrawPlayTimeCounter();
+	// Draw the secondary screen block afterwards
+	g_Song.DrawSonglines(p);
+	g_Song.DrawSubtuneInfos(p);
+	g_Song.DrawRegistersState(p);
 
-		// Draw the primary screen above everything
-		if (g_active_ti == PART_TRACKS)
-			g_Song.DrawTracks();
-		else
-			g_Song.DrawInstrument();
-	}
+	// Draw the debug stuff if needed
+	g_Song.DrawDebugInfos(p);
 }
 
 BOOL CRmtView::OnEraseBkgnd(CDC* pDC) 
@@ -1024,8 +1018,8 @@ void CRmtView::OnInitialUpdate()
 	g_Song.SetRMTTitle();
 
 	// RMTView Timer Initialisation
-	m_timerDisplay = SetTimer(1,16, NULL);
-
+	ChangeTimer(m_timerDisplay, 16);
+	
 	//Displays the ABOUT dialog if there is no Pokey or 6502 initialized...
 	if (!g_Pokey.IsSoundDriverLoaded() || !g_is6502)
 	{
@@ -1953,134 +1947,14 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	// If nothing was pressed, or a key without a function was pressed, nothing will happen
 	switch (nChar)
 	{
-	case VK_SPACE:
-		if (IsPressingCTRL())
-			OnProvemode();
-		break;
-
 	case VK_ESCAPE:
-		g_Song.Stop();
-		if (g_keyboard_escresetatarisound)
-			Atari_InitRMTRoutine();
-		break;
-
-	case VK_F1:
-		OnEmTracks();
-		break;
-
-	case VK_F2:
-		OnEmInstruments();
-		break;
-
-	case VK_F3:
-		OnEmInfo();
-		break;
-
-	case VK_F4:
-		OnEmSong();
+		g_Song.StopV2();
 		break;
 
 	case VK_F5:
-		if (IsPressingCTRL() && IsPressingSHIFT())
-			g_prove = PROVE_POKEY_EXPLORER_MODE;	//POKEY EXPLORER MODE -- KEYBOARD INPUT AND FORMULAE DISPLAY
-		else
-			g_Song.Play(MPLAY_SONG, g_Song.GetFollowPlayMode());	//play song from start
+		g_Song.PlayV2(MPLAY_SONG, g_Song.GetFollowPlayMode());
 		break;
-
-	case VK_F6:
-		if (IsPressingSHIFT())
-			g_Song.Play(MPLAY_BLOCK, g_Song.GetFollowPlayMode());	//play block and follow
-		else
-			g_Song.Play(MPLAY_TRACK, g_Song.GetFollowPlayMode());	//play pattern and follow	
-		break;
-
-	case VK_F7:
-		if (IsPressingSHIFT() && g_Song.IsBookmark())
-			g_Song.Play(MPLAY_BOOKMARK, g_Song.GetFollowPlayMode());	//play song from bookmark
-		else
-			g_Song.Play(MPLAY_FROM, g_Song.GetFollowPlayMode());		//play song from current position
-		break;
-
-	case VK_F8:
-		if (IsPressingCTRL())
-			g_Song.ClearBookmark();	//clear bookmark
-		else
-			g_Song.SetBookmark();	//set song bookmark
-		break;
-
-	case VK_F9:
-		if (IsPressingCTRL() && IsPressingSHIFT())
-			SetChannelOnOff(-1, -1);	//switch all channels on or off
-		else if (IsPressingCTRL())
-			SetChannelSolo(g_Song.GetActiveColumn());	//solo current channel
-		else
-			SetChannelOnOff(g_Song.GetActiveColumn(), -1);	//mute current channel
-		break;
-
-	case VK_F10:
-		g_ntsc ^= 1;	//change region TODO: Turn into a function
-		g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
-		Atari_InitRMTRoutine();
-		break;
-
-	case VK_F11:
-		g_respectvolume ^= 1;	//respect volume
-		break;
-
-	case VK_F12:
-		OnPlayfollow();	//toggle follow position
-		break;
-
-	case 49:	//VK_1
-	case 50:	//VK_2
-	case 51:	//VK_3
-	case 52:	//VK_4
-	case 53:	//VK_5
-	case 54:	//VK_6
-	case 55:	//VK_7
-	case 56:	//VK_8
-		if (IsPressingCTRL() && IsPressingSHIFT())	//CONTROL + 1-8
-			SetChannelOnOff(nChar - 49, -1);		//inverts channel status 1-8 (=> on / off)
-		break;
-
-	case 76:	//VK_L
-		if (IsPressingCTRL()) // TODO: Turn into a function
-		{
-			SetStatusBarText("Load...");
-			OnFileOpen();
-			SetStatusBarText("");
-		}
-		break;
-
-	case 87: //VK_W
-		if (IsPressingCTRL()) // TODO: Turn into a function
-			if (MessageBox("Would you like to create a new song?", "Create new song", MB_YESNOCANCEL | MB_ICONQUESTION) == IDYES)
-				g_Song.FileNew();
-		break;
-
-	case 83:	//VK_S
-		if (IsPressingCTRL()) // TODO: Turn into a function
-		{
-			SetStatusBarText("Save...");
-			if (g_keyboard_askwhencontrol_s && (g_Song.GetFilename() != "" || g_Song.GetFiletype() != 0))
-			{
-				CString s;
-				s.Format("Do you want to save song file '%s'?\nIs it okay to overwrite?", g_Song.GetFilename());
-				int r = MessageBox(s, "Save song", MB_YESNOCANCEL | MB_ICONQUESTION);
-				if (r == IDNO)
-					OnFileSaveAs();
-				else if (r == IDYES)
-					OnFileSave();
-			}
-			SetStatusBarText("");
-		}
-		break;
-
-	case 82:	//VK_R
-		if (IsPressingCTRL()) // TODO: Turn into a function
-			g_Song.FileReload();
-		break;
-	};
+	}
 
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
@@ -2094,7 +1968,7 @@ void CRmtView::OnSysKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	// All keys will be processed at the same place for convenience
 	OnKeyDown(nChar, nRepCnt, nFlags);
-	CView::OnSysKeyDown(nChar, nRepCnt, nFlags);
+	//CView::OnSysKeyDown(nChar, nRepCnt, nFlags);	// Not actually required?
 }
 
 void CRmtView::OnFileOpen() 
@@ -3202,10 +3076,9 @@ void CRmtView::OnUpdateUndoClearundoredo(CCmdUI* pCmdUI)
 
 void CRmtView::OnWantExit() // Called from the menu File/Exit ID_WANTEXIT instead of the original ID_APP_EXIT
 {
-	if ( g_Song.WarnUnsavedChanges() )
-	{
+	if (g_Song.WarnUnsavedChanges())
 		return; // There is no exit
-	}
+
 	g_Song.Stop();
 	g_closeApplication = 1;
 	g_Song.StopTimer();
@@ -3216,7 +3089,7 @@ void CRmtView::OnWantExit() // Called from the menu File/Exit ID_WANTEXIT instea
 
 void CRmtView::OnTrackCursorgotothespeedcolumn() 
 {
-	g_Song.CursorToSpeedColumn();
+	//g_Song.CursorToSpeedColumn();
 }
 
 void CRmtView::OnUpdateTrackCursorgotothespeedcolumn(CCmdUI* pCmdUI) 
