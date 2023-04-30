@@ -42,16 +42,15 @@ void CALLBACK G_TimerRoutine(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR)
 
 CSong::CSong()
 {
-	// Initialise Timer
-	m_timerRoutine = 0;
-	m_quantization_note = -1; // init
-	m_quantization_instr = -1;
-	m_quantization_vol = -1;
+	m_timerRoutine = NULL;
+	m_songVariables = NULL;
+	m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
 }
 
 CSong::~CSong()
 {
-	//KillTimer();
+	KillTimer();
+	ClearSongVariables();
 }
 
 /// <summary>
@@ -71,10 +70,9 @@ void CSong::ChangeTimer(int ms)
 void CSong::KillTimer()
 {
 	if (m_timerRoutine) 
-	{ 
 		timeKillEvent(m_timerRoutine);
-		m_timerRoutine = 0;
-	}
+
+	m_timerRoutine = NULL;
 }
 
 /// <summary>
@@ -161,6 +159,60 @@ void CSong::ClearSong(int numOfTracks)
 
 	// Initialise the RMTE Module as well, since it will progressively replace the Legacy format, and will use most of the same functions
 	//g_Module.InitialiseModule();
+
+	// Initialise Song variables
+	InitialiseSongVariables();
+}
+
+void CSong::ClearSongVariables()
+{
+	if (m_songVariables)
+		delete m_songVariables;
+
+	m_songVariables = NULL;
+}
+
+void CSong::InitialiseSongVariables()
+{
+	ClearSongVariables();
+	m_songVariables = new TSongVariables[SONGTRACKS];
+
+	for (int i = 0; i < SONGTRACKS; i++)
+		ResetChannelVariables(&m_songVariables[i]);
+}
+
+void CSong::ResetChannelVariables(TSongVariables* p)
+{
+	if (!p)
+		return;
+
+	p->isDelayEnabled = false;
+	p->isNoteActive = false;
+	p->isNoteRelease = false;
+	p->isNoteSustain = false;
+	p->isNoteTrigger = false;
+	p->isPortamentoEnabled = false;
+	p->isTremoloEnabled = false;
+	p->isVibratoEnabled = false;
+	p->isVolumeOnlyEnabled = false;
+	p->arpeggioScheme = 0x00;
+	p->channelAUDCTL = 0x00;
+	p->channelDistortion = 0xA0;
+	p->channelFreq = 0x0000;
+	p->channelInstrument = INVALID;
+	p->channelNote = INVALID;
+	p->channelVolume = 0x0F;
+	p->delayedRow = NULL;
+	p->delayOffset = 0x00;
+	p->finetuneOffset = EFFECT_PARAMETER_DEFAULT;
+	p->frameCount = 0x00;
+	p->portamentoSpeed = 0x00;
+	p->portamentoTarget = 0x0000;
+	p->tremoloDepth = 0x00;
+	p->tremoloSpeed = 0x00;
+	p->vibratoDepth = 0x00;
+	p->vibratoSpeed = 0x00;
+	p->volumeSlide = 0x00;
 }
 
 //---
@@ -4115,66 +4167,107 @@ void CSong::PlayRow(TSubtune* p)
 	if (!p)
 		return;
 
-	BYTE note, instrument, volume;
 	BYTE speed = m_playSpeed;
 	BYTE row = m_playRow;
 	BYTE songline = m_playSongline;
 
-	// In order to simulate the Legacy 6502 RMT routines behaviour, certain compromises are deliberately introduced here
-	for (int i = 0; i < p->channelCount; i++)
+	// Play Row without the 6502 routines limitation, designed specifically for the RMTE Module format
+	// Ultimatey aimed to become the default payback method, unless specified otherwise (eg: Legacy RMT compatibility)
+	if (g_isRMTE && g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		// Get the Pattern Index from the Songline offset
-		BYTE pattern = p->channel[i].songline[songline];
-
-		// Same as Legacy RMT routines
-		if ((note = p->channel[i].pattern[pattern].row[row].note) >= PATTERN_NOTE_COUNT)
-			note = INVALID;
-
-		// Same as Legacy RMT routines
-		if ((instrument = p->channel[i].pattern[pattern].row[row].instrument) >= PATTERN_INSTRUMENT_COUNT)
-			instrument = INVALID;
-
-		// Same as Legacy RMT routines
-		if ((volume = p->channel[i].pattern[pattern].row[row].volume) >= PATTERN_VOLUME_COUNT)
-			volume = INVALID;
-
-		// Compromised to only get the Speed Commands
-		for (int k = 0; k < p->effectCommandCount[i]; k++)
+		// Process all channels
+		for (int i = 0; i < p->channelCount; i++)
 		{
-			BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
-			BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
+			// Get the Pattern Index from the Songline offset, then get data from the associated Row Index
+			BYTE pattern = p->channel[i].songline[songline];
 
-			// If a Bxx command is found, set the next Songline with it
-			if (command == EFFECT_COMMAND_BXX)
+			// Note
+			//BYTE note = p->channel[i].pattern[pattern].row[row].note;
+			PlayNote(p);
+
+			// Instrument
+			//BYTE instrument = p->channel[i].pattern[pattern].row[row].instrument;
+			PlayInstrument(p);
+
+			// Volume;
+			//BYTE volume = p->channel[i].pattern[pattern].row[row].volume;
+			PlayVolume(p);
+
+			// Command(s)
+			for (int k = 0; k < p->effectCommandCount[i]; k++)
 			{
-				m_playRow = INVALID;
-				m_playSongline = parameter;
+				//BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
+				//BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
+				PlayEffect(p);
 			}
-
-			// If a Dxx command is found, the Pattern will end on the next Row
-			if (command == EFFECT_COMMAND_DXX)
-			{
-				m_playRow = INVALID;
-				m_playSongline = (songline + 1) % p->songLength;
-			}
-
-			// If a Fxx command is found, overwrite the speed with it
-			if (command == EFFECT_COMMAND_FXX && parameter)
-				speed = parameter;
 		}
 
-		// Compromised for compatibility with RMTE data
-		if (volume < PATTERN_VOLUME_COUNT)
-		{
-			if (note < PATTERN_NOTE_COUNT)
-				Atari_SetTrack_NoteInstrVolume(i, note, instrument, volume);
-			else
-				Atari_SetTrack_Volume(i, volume);
-		}
 	}
 
-	// Speed will be set at the end, so the last Channel with a Speed value will take priority
-	m_speedTimer = m_playSpeed = speed;
+	// Play Row with Legacy RMT compatibility in mind using the emulated 6502 routines
+	// TODO: Recreate the routine behaviour entirely in software for better compatibility
+	else
+	{
+		// In order to simulate the Legacy 6502 RMT routines behaviour, certain compromises are deliberately introduced here
+		for (int i = 0; i < p->channelCount; i++)
+		{
+			// Get the Pattern Index from the Songline offset
+			BYTE pattern = p->channel[i].songline[songline];
+
+			// Same as Legacy RMT routines
+			BYTE note = p->channel[i].pattern[pattern].row[row].note;
+			if (note >= PATTERN_NOTE_COUNT)
+				note = INVALID;
+			
+			// Same as Legacy RMT routines
+			BYTE instrument = p->channel[i].pattern[pattern].row[row].instrument;
+			if (instrument >= PATTERN_INSTRUMENT_COUNT)
+				instrument = INVALID;
+			
+			// Same as Legacy RMT routines
+			BYTE volume = p->channel[i].pattern[pattern].row[row].volume;
+			if (volume >= PATTERN_VOLUME_COUNT)
+				volume = INVALID;
+
+			// Compromised to only get the Speed Commands
+			for (int k = 0; k < p->effectCommandCount[i]; k++)
+			{
+				BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
+				BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
+
+				// If a Bxx command is found, set the next Songline with it
+				if (command == EFFECT_COMMAND_BXX)
+				{
+					m_playRow = INVALID;
+					m_playSongline = parameter;
+				}
+
+				// If a Dxx command is found, the Pattern will end on the next Row
+				if (command == EFFECT_COMMAND_DXX)
+				{
+					m_playRow = INVALID;
+					m_playSongline = (songline + 1) % p->songLength;
+				}
+
+				// If a Fxx command is found, overwrite the speed with it
+				if (command == EFFECT_COMMAND_FXX && parameter)
+					speed = parameter;
+			}
+
+			// Compromised for compatibility with RMTE data
+			if (volume < PATTERN_VOLUME_COUNT)
+			{
+				if (note < PATTERN_NOTE_COUNT)
+					Atari_SetTrack_NoteInstrVolume(i, note, instrument, volume);
+				else
+					Atari_SetTrack_Volume(i, volume);
+			}
+		}
+
+		// Speed will be set at the end, so the last Channel with a Speed value will take priority
+		m_speedTimer = m_playSpeed = speed;
+	}
+
 }
 
 void CSong::PlayPattern(TSubtune* p)
