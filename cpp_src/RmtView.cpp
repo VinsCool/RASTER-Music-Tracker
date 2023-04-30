@@ -964,14 +964,26 @@ void CRmtView::OnInitialUpdate()
 		}
 	}
 
+	// Initialise DC and Bitmap objects
 	CDC* dc = GetDC();
 	m_gfx_bitmap.LoadBitmap(MAKEINTRESOURCE(IDB_GFX));
 	m_gfx_dc.CreateCompatibleDC(dc);
 	m_gfx_dc.SelectObject(&m_gfx_bitmap);
 	g_gfx_dc = &m_gfx_dc;
+	m_mem_bitmap.CreateCompatibleBitmap(dc, m_width, m_height);
+	m_mem_dc.CreateCompatibleDC(dc);
+	m_mem_dc.SelectObject(&m_mem_bitmap);
+	g_mem_dc = &m_mem_dc;
+	ReleaseDC(dc);
+
+	// Initialise CPen objects
+	if (m_pen1) delete m_pen1;
+	m_pen1 = new CPen(PS_SOLID, 1, RGB_LINES);
+	m_penorig = g_mem_dc->SelectObject(m_pen1);
+
+	// Initialise hwnd pointers
 	g_hwnd = AfxGetApp()->GetMainWnd()->m_hWnd;
 	g_viewhwnd = this->m_hWnd;
-	ReleaseDC(dc);
 
 	//cursor
 	m_cursororig = LoadCursor(NULL,IDC_ARROW);
