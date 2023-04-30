@@ -65,7 +65,6 @@ public:
 	CSong();
 	~CSong();
 
-	void StopTimer();
 	void ChangeTimer(int ms);
 	void KillTimer();
 
@@ -142,7 +141,7 @@ public:
 	int TrackGetLastLine() { return g_Tracks.GetLastLine(SongGetActiveTrack()); };
 	BOOL TrackSetGo() { return g_Tracks.SetGo(SongGetActiveTrack(), m_activeRow); };
 	int TrackGetGoLine() { return g_Tracks.GetGoLine(SongGetActiveTrack()); };
-	void RespectBoundaries();
+	//void RespectBoundaries();
 	void TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol);
 
 	int* GetUECursor(int part);
@@ -201,17 +200,16 @@ public:
 	BOOL VolumeUp() { if (m_volume < MAXVOLUME) { m_volume++; return 1; } else return 0; };
 	BOOL VolumeDown() { if (m_volume > 0) { m_volume--; return 1; } else return 0; };
 
-	void ClearBookmark() { m_bookmark.songline = m_bookmark.trackline = m_bookmark.speed = -1; };
-	BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.GetMaxTrackLength()); };
-	BOOL SetBookmark();
+	//void ClearBookmark() { m_bookmark.songline = m_bookmark.trackline = m_bookmark.speed = -1; };
+	//BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.GetMaxTrackLength()); };
+	//BOOL SetBookmark();
 
-	BOOL Play(int mode, BOOL follow, int special = 0);
+	void Play(int mode, BOOL follow, int special = 0);
 	void Stop();
-	BOOL SongPlayNextLine();
 
-	BOOL PlayBeat();
-	BOOL PlayVBI();
-
+	//BOOL SongPlayNextLine();
+	//BOOL PlayBeat();
+	//BOOL PlayVBI();
 	BOOL PlayPressedTonesInit();
 	BOOL SetPlayPressedTonesTNIV(int t, int n, int i, int v) { m_playptnote[t] = n; m_playptinstr[t] = i; m_playptvolume[t] = v; return 1; };
 	BOOL SetPlayPressedTonesV(int t, int v) { m_playptvolume[t] = v; return 1; };
@@ -280,7 +278,7 @@ public:
 	int BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* dst);
 
 	bool TestBeforeFileSave();
-	int GetSubsongParts(CString& resultstr);
+	//int GetSubsongParts(CString& resultstr);
 
 	void ComposeRMTFEATstring(CString& dest, const char* filename, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags, BOOL sfx, BOOL gvf, BOOL nos, int assemblerFormat);
 
@@ -396,8 +394,7 @@ public:
 
 	// Prototype C++ RMTE Module Driver functions
 	// TODO: Move to a different file later
-	void StopV2();
-	void PlayV2(int mode, BOOL follow, int special = 0);
+
 	void PlayRow(TSubtune* p);
 	void PlayPattern(TSubtune* p);
 	void PlaySongline(TSubtune* p);

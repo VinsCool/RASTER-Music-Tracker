@@ -1948,11 +1948,11 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	switch (nChar)
 	{
 	case VK_ESCAPE:
-		g_Song.StopV2();
+		g_Song.Stop();
 		break;
 
 	case VK_F5:
-		g_Song.PlayV2(MPLAY_SONG, g_Song.GetFollowPlayMode());
+		g_Song.Play(MPLAY_SONG, g_Song.GetFollowPlayMode());
 		break;
 	}
 
@@ -2289,10 +2289,12 @@ void CRmtView::OnEmSong()
 
 void CRmtView::OnUpdatePlay0(CCmdUI* pCmdUI) 
 {
-	int ch= g_Song.IsBookmark();
-	pCmdUI->Enable(ch);
-	ch= (g_Song.GetPlayMode()==MPLAY_BOOKMARK);
-	pCmdUI->SetCheck(ch);
+	//int ch= g_Song.IsBookmark();
+	//pCmdUI->Enable(ch);
+	//ch= (g_Song.GetPlayMode()==MPLAY_BOOKMARK);
+	//pCmdUI->SetCheck(ch);
+	pCmdUI->Enable(0);
+	pCmdUI->SetCheck(0);
 }
 
 void CRmtView::OnUpdatePlay1(CCmdUI* pCmdUI) 
@@ -3081,10 +3083,10 @@ void CRmtView::OnWantExit() // Called from the menu File/Exit ID_WANTEXIT instea
 
 	g_Song.Stop();
 	g_closeApplication = 1;
-	g_Song.StopTimer();
+	g_Song.KillTimer();
 	WriteRMTConfig();		// Save the current configuration 
 	WriteTuningConfig();	// Save the current Tuning parameters 
-	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE,0,0);
+	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE, 0, 0);
 }
 
 void CRmtView::OnTrackCursorgotothespeedcolumn() 

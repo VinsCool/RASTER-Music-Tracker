@@ -91,7 +91,6 @@ extern int g_RmtHasFocus;
 extern int g_tracks4_8;
 extern BOOL volatile g_screenupdate;
 extern BOOL volatile g_rmtroutine;
-extern BOOL volatile g_timerRoutineProcessed;
 
 extern BYTE volatile g_timerDisplayCount;
 extern BYTE volatile g_timerRoutineCount;

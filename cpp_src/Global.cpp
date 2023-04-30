@@ -87,7 +87,6 @@ int g_tracks4_8;
 
 BOOL volatile g_screenupdate = 0;
 BOOL volatile g_rmtroutine;
-BOOL volatile g_timerRoutineProcessed;
 
 BYTE volatile g_timerDisplayCount = 0;
 BYTE volatile g_timerRoutineCount = 0;

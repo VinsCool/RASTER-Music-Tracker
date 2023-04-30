@@ -155,35 +155,15 @@ BOOL CXPokey::RenderSound1_50(int instrspeed)
 	int renderpartsize = 0;
 	int renderoffset = 0;
 
+	//--- RMT - instrument play ---/
 	for (; instrspeed > 0; instrspeed--)
 	{
-		//--- RMT - instrument play ---/
-		if (g_isRMTE)
-		{
-			//MemToPokey();
+		// One play of RMT routine (instruments)
+		if (g_rmtroutine)
+			Atari_PlayRMT();
 
-			//if (g_rmtroutine)
-			//	Atari_SetPokey();
-
-			//MemToPokey();
-
-			//if (g_rmtroutine)
-			//	Atari_PlayRMT_P3();
-
-			if (g_rmtroutine)
-				Atari_PlayRMT();
-
-			MemToPokey();
-		}
-		else
-		{
-			// One play of RMT routine (instruments)
-			if (g_rmtroutine)
-				Atari_PlayRMT();
-
-			// Transfer from g_atarimem to POKEY (mono or stereo)
-			MemToPokey();
-		}
+		// Transfer from g_atarimem to POKEY (mono or stereo)
+		MemToPokey();
 
 		renderpartsize = (rendersize / instrspeed) & 0xfffe;	//just the numbers
 

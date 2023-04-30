@@ -564,7 +564,7 @@ void CSong::FileExportAs()
 	//Stop();
 
 	// Verify the integrity of the .rmt module to save first, so it won't be saved if it's not meeting the conditions for it
-	if (!TestBeforeFileSave())
+	if (!g_isRMTE && !TestBeforeFileSave())
 	{
 		MessageBox(g_hwnd, "Warning!\nNo data has been saved!", "Warning", MB_ICONEXCLAMATION);
 		return;
@@ -1350,10 +1350,13 @@ bool CSong::ExportV2(std::ofstream& ou, int iotype, LPCTSTR filename)
 	exportDesc.targetAddrOfModule = 0x4000;		// Standard RMT modules are set to start @ $4000
 
 	// Create a module, if it fails stop the export
-	int maxAddr = MakeModule(exportDesc.mem, exportDesc.targetAddrOfModule, iotype, exportDesc.instrumentSavedFlags, exportDesc.trackSavedFlags);
-	if (maxAddr < 0) 
-		return false;								// If the module could not be created, the export process is immediately aborted
-	exportDesc.firstByteAfterModule = maxAddr;
+	if (!g_isRMTE)
+	{
+		int maxAddr = MakeModule(exportDesc.mem, exportDesc.targetAddrOfModule, iotype, exportDesc.instrumentSavedFlags, exportDesc.trackSavedFlags);
+		if (maxAddr < 0)
+			return false;								// If the module could not be created, the export process is immediately aborted
+		exportDesc.firstByteAfterModule = maxAddr;
+	}
 
 	switch (iotype)
 	{

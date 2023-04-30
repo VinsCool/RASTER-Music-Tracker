@@ -30,26 +30,12 @@ extern CXPokey g_Pokey;
 extern CPokeyStream g_PokeyStream;
 extern CModule g_Module;
 
-static volatile BOOL busyInTimer = 0;
-
-/// <summary>
-/// Wait for the Timer Routine to run at least once
-/// </summary>
-void WaitForTimerRoutineProcessed()
-{
-	g_timerRoutineProcessed = 0;
-	while (!g_timerRoutineProcessed && !g_closeApplication);	// Waiting
-}
-
 // ----------------------------------------------------------------------------
 
 void CALLBACK G_TimerRoutine(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR)
 {
-	busyInTimer = 1;
 	g_Song.ChangeTimer(g_ntsc ? g_timerTick[++g_timerRoutineCount % 3] : 20);
 	g_Song.TimerRoutine();
-	g_timerRoutineProcessed = 1;	// TimerRoutine took place
-	busyInTimer = 0;
 }
 
 // ----------------------------------------------------------------------------
@@ -58,8 +44,6 @@ CSong::CSong()
 {
 	// Initialise Timer
 	m_timerRoutine = 0;
-	g_timerRoutineProcessed = 0;
-
 	m_quantization_note = -1; // init
 	m_quantization_instr = -1;
 	m_quantization_vol = -1;
@@ -68,16 +52,6 @@ CSong::CSong()
 CSong::~CSong()
 {
 	//KillTimer();
-}
-
-/// <summary>
-/// Stop the timer and make sure that the timer event is not running
-/// </summary>
-void CSong::StopTimer()
-{
-	while (busyInTimer);			// Wait until not in timer handler
-	KillTimer();					// Kill the timer
-	while (busyInTimer);			// Make sure not in the timer handler
 }
 
 /// <summary>
@@ -136,7 +110,7 @@ void CSong::ClearSong(int numOfTracks)
 	m_octave = 0;
 	m_volume = MAXVOLUME;
 
-	ClearBookmark();
+	//ClearBookmark();
 
 	m_infoact = INFO_ACTIVE_NAME;
 
@@ -191,6 +165,7 @@ void CSong::ClearSong(int numOfTracks)
 
 //---
 
+/*
 int CSong::GetSubsongParts(CString& resultstr)
 {
 	CString s;
@@ -245,6 +220,7 @@ int CSong::GetSubsongParts(CString& resultstr)
 	}
 	return asub;
 }
+*/
 
 /// <summary>
 /// Mark all tracks that are referenced in the song as USED
@@ -1119,6 +1095,7 @@ void CSong::ChannelRight()
 	++m_trackactivecol %= g_Module.GetChannelCount();
 }
 
+/*
 // FIXME: Not actually needed, but required for working around issues with the Legacy functions...
 void CSong::RespectBoundaries()
 {
@@ -1136,6 +1113,7 @@ void CSong::RespectBoundaries()
 	SetActiveLine(line);
 	SongSetActiveLine(songline);
 }
+*/
 
 void CSong::TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol)
 {
@@ -1420,7 +1398,6 @@ void CSong::SeekNextSubtune()
 
 	g_Module.SetActiveSubtune(activeSubtune);
 
-	//ClearSong(g_Module.GetChannelCount());
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_trackactivecol = m_trackactivecur = 0;
@@ -1435,7 +1412,6 @@ void CSong::SeekPreviousSubtune()
 
 	g_Module.SetActiveSubtune(activeSubtune);
 
-	//ClearSong(g_Module.GetChannelCount());
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_trackactivecol = m_trackactivecur = 0;
@@ -1547,11 +1523,11 @@ BOOL CSong::SongInsertLine(int line)
 	{
 		if (m_songgo[i] >= line) m_songgo[i]++;
 	}
-	if (IsBookmark() && m_bookmark.songline >= line)
-	{
-		m_bookmark.songline++;
-		if (m_bookmark.songline >= SONGLEN) ClearBookmark(); //just pushed the bookmark out of the song => cancel the bookmark
-	}
+	//if (IsBookmark() && m_bookmark.songline >= line)
+	//{
+	//	m_bookmark.songline++;
+	//	if (m_bookmark.songline >= SONGLEN) ClearBookmark(); //just pushed the bookmark out of the song => cancel the bookmark
+	//}
 	return 1;
 }
 
@@ -1572,11 +1548,11 @@ BOOL CSong::SongDeleteLine(int line)
 	}
 	for (j = 0; j < g_tracks4_8; j++) m_song[SONGLEN - 1][j] = -1;
 	m_songgo[SONGLEN - 1] = -1;
-	if (IsBookmark() && m_bookmark.songline >= line)
-	{
-		m_bookmark.songline--;
-		if (m_bookmark.songline < line) ClearBookmark(); //just deleted the songline with the bookmark
-	}
+	//if (IsBookmark() && m_bookmark.songline >= line)
+	//{
+	//	m_bookmark.songline--;
+	//	if (m_bookmark.songline < line) ClearBookmark(); //just deleted the songline with the bookmark
+	//}
 	return 1;
 }
 
@@ -3109,6 +3085,8 @@ void CSong::RenumberAllInstruments(int type)
 //--------------------------------------------------------------------------------------
 //
 
+
+/*
 // Legacy Function
 BOOL CSong::SetBookmark()
 {
@@ -3239,20 +3217,6 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 }
 
 // Legacy Function
-void CSong::Stop()
-{
-	if (GetPlayMode() != MPLAY_STOP)
-	{
-		SetPlayMode(MPLAY_STOP);
-		ResetPlayTime();
-		g_Undo.Separator();
-		m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
-		SetPlayPressedTonesSilence();
-		WaitForTimerRoutineProcessed();	// The Timer Routine will run at least once
-	}
-}
-
-// Legacy Function
 BOOL CSong::SongPlayNextLine()
 {
 	m_playRow = 0;	//first track pattern line 
@@ -3334,7 +3298,7 @@ TrackLine:
 		int v = vol[t];
 		if (v >= 0 && v < 16)
 		{
-			if (n >= 0 && n < NOTESNUM /*&& i>=0 && i<INSTRSNUM*/)		//adjustment for routine compatibility
+			if (n >= 0 && n < NOTESNUM) //&& i>=0 && i<INSTRSNUM//)		//adjustment for routine compatibility
 			{
 				if (i < 0 || i >= INSTRSNUM) i = 255;						//adjustment for routine compatibility
 				Atari_SetTrack_NoteInstrVolume(t, n, i, v);
@@ -3411,6 +3375,7 @@ BOOL CSong::PlayVBI()
 
 	return 1;
 }
+*/
 
 /// <summary>
 /// Call this X times per second to handle the playing of the song
@@ -3422,35 +3387,16 @@ void CSong::TimerRoutine()
 		return;
 
 	// Things that are solved 1x for vbi
-	//if (g_isRMTE)
-	//PlayPattern(g_Module.GetSubtuneIndex());
-	//else
-	//	PlayVBI();
-
-	// Play tones if there are key presses
-	//PlayPressedTones();
-
 	PlayPattern(g_Module.GetSubtuneIndex());
+
+	// Play tones if there are key presses (TODO: Delete)
+	PlayPressedTones();
 
 	// Rendering of a piece of sound sample (1 / 50s = 20ms)
 	g_Pokey.RenderSound1_50(m_instrumentSpeed);
 
-	//PlayPattern(g_Module.GetSubtuneIndex());
-
 	// If the Song is currently playing, increment the timer
 	UpdatePlayTime();
-
-	//--- NTSC timing hack during playback ---//
-	// The NTSC timing cannot be divided to an integer
-	// the optimal timing would be 16.666666667ms, which is typically rounded to 17
-	// unfortunately, things run too slow with 17, or too fast 16
-	// a good enough compromise for now is to make use of a '17-17-16' miliseconds "groove"
-	// this isn't proper, but at least, this makes the timing much closer to the actual thing
-	// the only issue with this is that the sound will have very slight jitters during playback 
-	//ChangeTimer(g_ntsc ? m_timerRoutineTick[g_timerGlobalCount % 3] : 20);
-
-	// Increment by one each time Timer Routine was processed
-	//g_timerGlobalCount++;
 }
 
 /// <summary>
@@ -4113,24 +4059,25 @@ void CSong::DrawDebugInfos(TSubtune* p)
 // Prototype C++ RMTE Module Driver functions
 // TODO: Move to a different file later
 
-void CSong::StopV2()
+void CSong::Stop()
 {
 	m_playMode = MPLAY_STOP;
 	ResetPlayTime();
 	m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
 	SetPlayPressedTonesSilence();
 	Atari_InitRMTRoutine();
-	WaitForTimerRoutineProcessed();
+	Sleep(20);	// To ensure the Timer Routine is executed at least once here
 }
 
-void CSong::PlayV2(int mode, BOOL follow, int special)
+void CSong::Play(int mode, BOOL follow, int special)
 {
 	TSubtune* p = g_Module.GetSubtuneIndex();
 
 	if (!p)
 		return;
 
-	StopV2();
+	// Stop and reset the POKEY registers first
+	Stop();
 
 	switch (mode)
 	{
@@ -4160,6 +4107,7 @@ void CSong::PlayV2(int mode, BOOL follow, int special)
 	// Begin playback from here
 	m_playMode = mode;
 	m_speedTimer = 1;
+	g_PokeyStream.CallFromPlay(m_playMode, m_playRow, m_playSongline);
 }
 
 void CSong::PlayRow(TSubtune* p)
@@ -4253,8 +4201,6 @@ void CSong::PlayPattern(TSubtune* p)
 			m_activeSongline = m_playSongline;
 		}
 	}
-
-	//m_speedTimer--;
 }
 
 void CSong::PlaySongline(TSubtune* p)
@@ -4264,6 +4210,9 @@ void CSong::PlaySongline(TSubtune* p)
 
 	m_playRow = 0;
 	++m_playSongline %= p->songLength;
+
+	if (g_PokeyStream.TrackSongLine(m_playSongline))
+		Stop();
 }
 
 void CSong::PlayNote(TSubtune* p)
