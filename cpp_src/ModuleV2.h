@@ -202,6 +202,7 @@ public:
 	bool IsValidPatternRowIndex(int channel, int pattern, int row) { return IsValidChannel(channel) && IsValidPattern(pattern) && IsValidRow(row); };
 
 	// Pointers to Module Structs
+	TSubtune* GetModule() { return m_index; };
 	TSubtune* GetSubtuneIndex(int subtune) { return IsValidSubtune(subtune) ? &m_index[subtune] : NULL; };
 	TSubtune* GetSubtuneIndex() { return IsValidSubtune(m_activeSubtune) ? &m_index[m_activeSubtune] : NULL; };
 	TIndex* GetChannelIndex() { return GetSubtuneIndex(m_activeSubtune)->channel; };

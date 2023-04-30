@@ -113,6 +113,7 @@ int CSong::WarnUnsavedChanges()
 	return 0;
 }
 
+/*
 /// <summary>
 /// Draw a volume analyser above each track
 /// </summary>
@@ -420,16 +421,16 @@ void CSong::DrawAnalyzer()
 				if (JOIN_16BIT || JOIN_64KHZ || JOIN_15KHZ)
 					TextMiniXY("16-BIT", ANALYZER3_X + 8 * 76, ANALYZER3_Y + a, TEXT_MINI_COLOR_BLUE);
 
-				/*
+				//
 				if (JOIN_16BIT)
 					TextMiniXY("16-BIT, 1.79MHZ", ANALYZER3_X + 8 * 76, ANALYZER3_Y + a, TEXT_MINI_COLOR_BLUE);
 				else if (JOIN_64KHZ)
 					TextMiniXY("16-BIT, 64KHZ", ANALYZER3_X + 8 * 76, ANALYZER3_Y + a, TEXT_MINI_COLOR_BLUE);
 				else if (JOIN_15KHZ)
 					TextMiniXY("16-BIT, 15KHZ", ANALYZER3_X + 8 * 76, ANALYZER3_Y + a, TEXT_MINI_COLOR_BLUE);
-				*/
+				//
 
-				/*
+				//
 				if (dist == 0xC0)
 				{
 					int v_modulo = (CLOCK_15) ? 5 : 15;
@@ -443,7 +444,7 @@ void CSong::DrawAnalyzer()
 						else TextMiniXY("GRITTY", ANALYZER3_X + 8 * 84, ANALYZER3_Y + a, TEXT_MINI_COLOR_BLUE);
 					}
 				}
-				*/
+				//
 
 				if (HPF_CH13)
 				{
@@ -688,7 +689,7 @@ void CSong::DrawSong()
 	if (g_tracks4_8 == 4 && g_active_ti == PART_INSTRUMENTS && g_width > MINIMAL_WIDTH_INSTRUMENTS - 220) INSTRUMENT_OFFSET = 260;
 	int SONG_OFFSET = SONG_X + WINDOW_OFFSET + INSTRUMENT_OFFSET + ((g_tracks4_8 == 4) ? -200 : 310);	//displace the SONG block depending on certain parameters
 
-	BOOL active_smooth = (smooth_scroll && m_play && m_followplay) ? 1 : 0;	//could also be used as an offset
+	BOOL active_smooth = (smooth_scroll && m_playMode && m_isFollowPlay) ? 1 : 0;	//could also be used as an offset
 	int pattern_len = 0;
 	int smooth_y = 0;
 
@@ -698,9 +699,9 @@ void CSong::DrawSong()
 		// This gives a Y position shift to draw the song line info
 		// y_offset = line * 16 / track_length
 		
-		pattern_len = GetSmallestMaxtracklen(m_songplayline);
+		pattern_len = GetSmallestMaxtracklen(m_playSongline);
 		if (!pattern_len) pattern_len = g_Tracks.GetMaxTrackLength();	//fallback to whatever is in memory instead if the value returned is invalid
-		smooth_y = (active_smooth) ? (m_trackplayline * 16 / pattern_len) - 8 : 0;
+		smooth_y = (active_smooth) ? (m_playRow * 16 / pattern_len) - 8 : 0;
 		// TRACE("y offset = %d\n", smooth_y);
 	}
 	y = SONG_Y + (1 - active_smooth) * 16 - smooth_y;
@@ -710,7 +711,7 @@ void CSong::DrawSong()
 	for (i = 0; i < linescount + active_smooth * 2; i++, y += 16)
 	{
 		int linesoffset = (WINDOW_OFFSET) ? -2 : -4;
-		line = m_songactiveline + i + linesoffset - active_smooth;
+		line = m_activeSongline + i + linesoffset - active_smooth;
 		BOOL isOutOfBounds = 0;
 
 		//roll over the songline if it is out of bounds
@@ -730,7 +731,7 @@ void CSong::DrawSong()
 
 			// Draw: "XX"
 			color = (isOutOfBounds) ? TEXT_COLOR_DARK_GRAY : TEXT_COLOR_WHITE;	//white, for the number used, or gray if out of bounds
-			if (line == m_songactiveline)
+			if (line == m_activeSongline)
 			{
 				if (g_prove) color = (g_activepart == PART_SONG) ? COLOR_SELECTED_PROVE : TEXT_COLOR_BLUE;
 				else color = (g_activepart == PART_SONG) ? COLOR_SELECTED : TEXT_COLOR_RED;
@@ -747,7 +748,7 @@ void CSong::DrawSong()
 			szBuffer[1] = CharL4(line);
 			szBuffer[2] = ':';
 			szBuffer[3] = 0;
-			color = (line == m_songplayline) ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
+			color = (line == m_playSongline) ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
 			if (isOutOfBounds) color = TEXT_COLOR_DARK_GRAY;	//darker gray, out of bounds
 			TextXY(szBuffer, SONG_OFFSET + 16, y, color);
 
@@ -762,12 +763,12 @@ void CSong::DrawSong()
 				}
 				else szBuffer[0] = szBuffer[1] = '-';	// No track here so draw "--"
 
-				if (line == m_songactiveline && j == m_trackactivecol)
+				if (line == m_activeSongline && j == m_trackactivecol)
 				{
 					if (g_prove) color = (g_activepart == PART_SONG) ? COLOR_SELECTED_PROVE : TEXT_COLOR_BLUE;
 					else color = (g_activepart == PART_SONG) ? COLOR_SELECTED : TEXT_COLOR_RED;
 				}
-				else color = (line == m_songplayline) ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
+				else color = (line == m_playSongline) ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
 				if (isOutOfBounds) color = TEXT_COLOR_DARK_GRAY;	//darker gray, out of bounds
 				TextXY(szBuffer, SONG_OFFSET + 16 + k, y, color);
 			}
@@ -837,10 +838,10 @@ void CSong::DrawTracks()
 
 	//caching certain global variables makes sure they remain the same until the function finishes drawing the tracks
 	//this appears to be related to routine timing, and might actually explain why certain bugs seem to happen randomly
-	int trackactiveline = m_trackactiveline;
-	int trackplayline = m_trackplayline;
-	int songactiveline = m_songactiveline;
-	int songplayline = m_songplayline;
+	int trackactiveline = m_activeRow;
+	int trackplayline = m_playRow;
+	int songactiveline = m_activeSongline;
+	int songplayline = m_playSongline;
 	int speed = m_speed;
 	int speeda = m_speeda;
 
@@ -861,7 +862,7 @@ void CSong::DrawTracks()
 	//the cursor position is alway centered regardless of the window size with this simple formula
 	g_cursoractview = trackactiveline + 8 - g_line_y;
 
-	BOOL active_smooth = (g_viewDoSmoothScrolling && m_play && m_followplay && speed > 1) ? 1 : 0;	//could also be used as an offset
+	BOOL active_smooth = (g_viewDoSmoothScrolling && m_playMode && m_isFollowPlay && speed > 1) ? 1 : 0;	//could also be used as an offset
 	int smooth_y = (active_smooth) ? ((speeda * 16) / speed) - 8 : 0;
 	if (smooth_y > 8 || smooth_y < -8) active_smooth = smooth_y = 0;	//prevents going out of bounds
 	y = (TRACKS_Y + (3 - active_smooth) * 16) + smooth_y;
@@ -1086,7 +1087,7 @@ void CSong::DrawTracks()
 			case 3: d.Format("PY = %02d", g_mouseLastPointY); break;
 			case 4: d.Format("MB = %02d", g_mouseLastButton); break;
 			case 5: d.Format("CA = %02d", g_cursoractview); break;
-			case 6: d.Format("TA = %02d", m_trackactiveline); break;
+			case 6: d.Format("TA = %02d", m_activeRow); break;
 			case 7: d.Format("DY = %02d", g_mouseLastPointY / 16); break;
 			case 8: d.Format("GTL = %02d", g_tracklines); break;
 			case 9: d.Format("OL = %02d", g_tracklines / 2); break;
@@ -1296,12 +1297,13 @@ void CSong::DrawPlayTimeCounter()
 
 	TextXY("TIME:             BPM:", PLAYTC_X, PLAYTC_Y, TEXT_COLOR_WHITE);
 	s.Format(m_playTimeSecondCount & 1 ? "%2d %02d.%02d" : "%2d:%02d.%02d", m_playTimeMinuteCount, m_playTimeSecondCount, m_playTimeMillisecondCount);
-	TextXY(s, PLAYTC_X + 8 * 6, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
+	TextXY(s, PLAYTC_X + 8 * 6, PLAYTC_Y, (m_playMode) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 	s.Format("%1.2F", m_averageBPM);
-	TextXY(s, PLAYTC_X + 8 * 23, PLAYTC_Y, (m_play) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
+	TextXY(s, PLAYTC_X + 8 * 23, PLAYTC_Y, (m_playMode) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 }
+*/
 
-
+/*
 BOOL CSong::InfoKey(int vk, int shift, int control)
 {
 	int i, num;
@@ -2071,6 +2073,7 @@ ChangeInstrumentPar:
 	}
 	return 0;	//=> SCREENUPDATE will not be performed
 }
+*/
 
 BOOL CSong::InfoCursorGotoSongname(int x)
 {
@@ -2162,7 +2165,7 @@ BOOL CSong::InfoCursorGotoInstrumentSelect(int x, int y)
 	}
 	return 0;
 }
-
+/*
 BOOL CSong::CursorToSpeedColumn()
 {
 	if (g_activepart != PART_TRACKS || SongGetActiveTrack() < 0) return 0;
@@ -2170,7 +2173,9 @@ BOOL CSong::CursorToSpeedColumn()
 	m_trackactivecur = 3;
 	return 1;
 }
+*/
 
+/*
 BOOL CSong::ProveKey(int vk, int shift, int control)
 {
 	int note, i;
@@ -2370,14 +2375,14 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 	{
 		if (!control && (vk == VK_UP || vk == VK_PAGE_UP))  //GO - key up
 		{
-			m_trackactiveline = 0;
+			m_activeRow = 0;
 			if (!g_linesafter) TrackUp(1);
 			else TrackUp(g_linesafter);
 			return 1;
 		}
 		if (!control && (vk == VK_DOWN || vk == VK_PAGE_DOWN)) //GO - key down
 		{
-			m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1;
+			m_activeRow = g_Tracks.GetMaxTrackLength() - 1;
 			TrackDown(1, 0);
 			return 1;
 		}
@@ -2487,9 +2492,9 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					if (m_play && m_followplay) break;	//prevents moving at all during play+follow
 					else
 					{
-						if (m_trackactiveline > 0)
+						if (m_activeRow > 0)
 						{
-							m_trackactiveline = ((m_trackactiveline - 1) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
+							m_activeRow = ((m_activeRow - 1) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
 						}
 					}
 				}
@@ -2522,9 +2527,9 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					if (m_play && m_followplay) break;	//prevents moving at all during play+follow
 					else
 					{
-						m_trackactiveline = ((m_trackactiveline + g_trackLinePrimaryHighlight) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
-						if (m_trackactiveline > GetSmallestMaxtracklen(m_songactiveline) - 1)
-							m_trackactiveline -= g_trackLinePrimaryHighlight;
+						m_activeRow = ((m_activeRow + g_trackLinePrimaryHighlight) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
+						if (m_activeRow > GetSmallestMaxtracklen(m_activeSongline) - 1)
+							m_activeRow -= g_trackLinePrimaryHighlight;
 					}
 				}
 			break;
@@ -2532,9 +2537,9 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 		case VK_HOME:
 			if (control || shift) break; //do nothing
 			if (g_activepart == 1)	//tracks
-				m_trackactiveline = 0;		//line 0
+				m_activeRow = 0;		//line 0
 			else if (g_activepart == 3)	//song lines
-				m_songactiveline = 0;
+				m_activeSongline = 0;
 			break;
 
 		case VK_END:
@@ -2542,10 +2547,10 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 			if (g_activepart == 1)	//tracks
 			{
 				if (TrackGetGoLine() >= 0)
-					m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //last line
+					m_activeRow = g_Tracks.GetMaxTrackLength() - 1; //last line
 				else
-					m_trackactiveline = TrackGetLastLine();	//end line
-				if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
+					m_activeRow = TrackGetLastLine();	//end line
+				if (m_activeRow < 0) m_activeRow = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
 			}
 			else if (g_activepart == 3)	//song lines
 			{
@@ -2555,7 +2560,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					for (i = 0; i < g_tracks4_8; i++) if (m_song[j][i] >= 0) { la = j; break; }
 					if (m_songgo[j] >= 0) la = j;
 				}
-				m_songactiveline = la;
+				m_activeSongline = la;
 			}
 			break;
 
@@ -2570,7 +2575,7 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 					{
 						if (i != m_trackactivecol)
 						{
-							TrackGetLoopingNoteInstrVol(m_song[m_songactiveline][i], note, instr, vol);
+							TrackGetLoopingNoteInstrVol(m_song[m_activeSongline][i], note, instr, vol);
 							if (note >= 0)		//is there a note?
 								SetPlayPressedTonesTNIV(i, note, instr, vol);	//it will lose it as it is there
 							else
@@ -2607,7 +2612,6 @@ BOOL CSong::ProveKey(int vk, int shift, int control)
 	return 1;
 }
 
-
 BOOL CSong::TrackKey(int vk, int shift, int control)
 {
 //
@@ -2626,14 +2630,14 @@ BOOL CSong::TrackKey(int vk, int shift, int control)
 	{
 		if (!control && (vk == VK_UP || vk == VK_PAGE_UP))  //GO - key up
 		{
-			m_trackactiveline = 0;	//always assume it went from line 0
+			m_activeRow = 0;	//always assume it went from line 0
 			if (!g_linesafter) TrackUp(1);
 			else TrackUp(g_linesafter);
 			return 1;
 		}
 		if (!control && (vk == VK_DOWN || vk == VK_PAGE_DOWN)) //GO - key down
 		{
-			m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1;	//always reset to line 0
+			m_activeRow = g_Tracks.GetMaxTrackLength() - 1;	//always reset to line 0
 			TrackDown(1, 0);
 			return 1;
 		}
@@ -2678,7 +2682,7 @@ TrackKeyOk:
 				return 1;
 			}
 			else //the numbers 1-6 on the numeral are overwritten by an octave
-				if ((j = Numblock09Key(vk)) >= 1 && j <= 6 && m_trackactiveline <= TrackGetLastLine())
+				if ((j = Numblock09Key(vk)) >= 1 && j <= 6 && m_activeRow <= TrackGetLastLine())
 				{
 					note = TrackGetNote();
 					if (note >= 0)		//is there a note?
@@ -2755,11 +2759,11 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				//volume change incrementing
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA);
 				g_TrackClipboard.BlockVolumeChange(m_activeinstr, 1);
 			}
 			else
@@ -2794,11 +2798,11 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				//volume change decrementing
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA);
 				g_TrackClipboard.BlockVolumeChange(m_activeinstr, -1);
 			}
 			else
@@ -2836,11 +2840,11 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				//instrument changes decrementing
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA);
 				g_TrackClipboard.BlockInstrumentChange(m_activeinstr, -1);
 			}
 			else
@@ -2868,11 +2872,11 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				//instrument changes incrementing
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA);
 				g_TrackClipboard.BlockInstrumentChange(m_activeinstr, 1);
 			}
 			else
@@ -2913,9 +2917,9 @@ TrackKeyOk:
 					else
 					{
 						BLOCKDESELECT;
-						if (m_trackactiveline > 0)
+						if (m_activeRow > 0)
 						{
-							m_trackactiveline = ((m_trackactiveline - 1) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
+							m_activeRow = ((m_activeRow - 1) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
 						}
 					}
 			break;
@@ -2938,9 +2942,9 @@ TrackKeyOk:
 					else
 					{
 						BLOCKDESELECT;
-						m_trackactiveline = ((m_trackactiveline + g_trackLinePrimaryHighlight) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
-						if (m_trackactiveline > GetSmallestMaxtracklen(m_songactiveline) - 1)
-							m_trackactiveline -= g_trackLinePrimaryHighlight;
+						m_activeRow = ((m_activeRow + g_trackLinePrimaryHighlight) / g_trackLinePrimaryHighlight) * g_trackLinePrimaryHighlight;
+						if (m_activeRow > GetSmallestMaxtracklen(m_activeSongline) - 1)
+							m_activeRow -= g_trackLinePrimaryHighlight;
 					}
 			break;
 
@@ -2987,14 +2991,14 @@ TrackKeyOk:
 					//selection of the whole track (from 0 to the length of that track)
 					g_TrackClipboard.BlockDeselect();
 					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), 0);
-					g_TrackClipboard.BlockSetEnd(GetSmallestMaxtracklen(m_songactiveline) - 1);
+					g_TrackClipboard.BlockSetEnd(GetSmallestMaxtracklen(m_activeSongline) - 1);
 				}
 			break;
 
 		case 66:	//VK_B			//restore block from backup
 			if (g_TrackClipboard.IsBlockSelected() && control && !shift)
 			{
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA, 1);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA, 1);
 				g_TrackClipboard.BlockRestoreFromBackup();
 			}
 			break;
@@ -3004,8 +3008,8 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				g_TrackClipboard.BlockCopyToClipboard();
 			}
@@ -3016,7 +3020,7 @@ TrackKeyOk:
 			{
 				if (g_TrackClipboard.IsBlockSelected())
 				{
-					g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA, 1);
+					g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA, 1);
 					if (!g_TrackClipboard.BlockExchangeClipboard()) g_Undo.DropLast();
 				}
 			}
@@ -3043,10 +3047,10 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA, 1);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA, 1);
 				g_TrackClipboard.BlockCopyToClipboard();
 				g_TrackClipboard.BlockClear();
 			}
@@ -3055,7 +3059,7 @@ TrackKeyOk:
 		case 70:	//VK_F
 			if (control && !shift && g_TrackClipboard.IsBlockSelected())
 			{
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA, 1);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA, 1);
 				if (!g_TrackClipboard.BlockEffect()) g_Undo.DropLast();
 			}
 			break;
@@ -3085,7 +3089,7 @@ TrackKeyOk:
 				if (shift)
 				{
 					BLOCKSETBEGIN;
-					m_trackactiveline = 0;		//line 0
+					m_activeRow = 0;		//line 0
 					BLOCKSETEND;
 				}
 				else
@@ -3095,16 +3099,16 @@ TrackKeyOk:
 						//sets to the first line in the block
 						int bfro, bto;
 						g_TrackClipboard.GetFromTo(bfro, bto);
-						m_trackactiveline = bfro;
+						m_activeRow = bfro;
 					}
 					else
 					{
-						if (m_trackactiveline != 0)
-							m_trackactiveline = 0;		//line 0
+						if (m_activeRow != 0)
+							m_activeRow = 0;		//line 0
 						else
 						{
 							i = TrackGetGoLine();
-							if (i >= 0) m_trackactiveline = i;	//at the beginning of the GO loop
+							if (i >= 0) m_activeRow = i;	//at the beginning of the GO loop
 						}
 						BLOCKDESELECT;
 					}
@@ -3121,13 +3125,13 @@ TrackKeyOk:
 				{
 					BLOCKSETBEGIN;
 					if (TrackGetGoLine() >= 0)
-						m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //last line
+						m_activeRow = g_Tracks.GetMaxTrackLength() - 1; //last line
 					else
-						m_trackactiveline = TrackGetLastLine();	//end line
+						m_activeRow = TrackGetLastLine();	//end line
 					BLOCKSETEND;
-					if (m_trackactiveline < 0)
+					if (m_activeRow < 0)
 					{
-						m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
+						m_activeRow = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
 						BLOCKDESELECT;	//prevents selecting invalid data
 					}
 				}
@@ -3138,17 +3142,17 @@ TrackKeyOk:
 						//sets to the first line in the block
 						int bfro, bto;
 						g_TrackClipboard.GetFromTo(bfro, bto);
-						m_trackactiveline = bto;
+						m_activeRow = bto;
 					}
 					else
 					{
 						i = TrackGetLastLine();
-						if (i != m_trackactiveline)
+						if (i != m_activeRow)
 						{
-							m_trackactiveline = i;	//at the end of the GO loop or end line
-							if (m_trackactiveline < 0) m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
+							m_activeRow = i;	//at the end of the GO loop or end line
+							if (m_activeRow < 0) m_activeRow = g_Tracks.GetMaxTrackLength() - 1; //failsafe in case the active line is out of bounds
 						}
-						else m_trackactiveline = g_Tracks.GetMaxTrackLength() - 1; //last line
+						else m_activeRow = g_Tracks.GetMaxTrackLength() - 1; //last line
 						BLOCKDESELECT;
 					}
 				}
@@ -3171,7 +3175,7 @@ TrackKeyOk:
 					{
 						if (i != m_trackactivecol)
 						{
-							TrackGetLoopingNoteInstrVol(m_song[m_songactiveline][i], note, instr, vol);
+							TrackGetLoopingNoteInstrVol(m_song[m_activeSongline][i], note, instr, vol);
 							if (note >= 0)		//is there a note?
 								SetPlayPressedTonesTNIV(i, note, instr, vol);	//it will lose it as it is there
 							else
@@ -3198,13 +3202,13 @@ TrackKeyOk:
 						if (shift && !control && vol > 0) m_volume = vol; //"picks up" the volume as current (only if it is not 0)
 					}
 			}
-			oldline = m_trackactiveline;	//hack, force a line move even if TrackDown prevents it after Enter called it, otherwise the last line would get stuck
-			if (TrackDown(1, 0) && oldline == m_trackactiveline) m_trackactiveline++;
+			oldline = m_activeRow;	//hack, force a line move even if TrackDown prevents it after Enter called it, otherwise the last line would get stuck
+			if (TrackDown(1, 0) && oldline == m_activeRow) m_activeRow++;
 			if (g_TrackClipboard.IsBlockSelected())	//if a block is selected, it moves (and plays) only in it
 			{
 				int bfro, bto;
 				g_TrackClipboard.GetFromTo(bfro, bto);
-				if (m_trackactiveline<bfro || m_trackactiveline>bto) m_trackactiveline = bfro;
+				if (m_activeRow<bfro || m_activeRow>bto) m_activeRow = bfro;
 			}
 			break;
 
@@ -3222,8 +3226,8 @@ TrackKeyOk:
 		{
 		insertline:
 			BLOCKDESELECT;
-			g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA, 0);
-			g_Tracks.InsertLine(SongGetActiveTrack(), m_trackactiveline);
+			g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA, 0);
+			g_Tracks.InsertLine(SongGetActiveTrack(), m_activeRow);
 		}
 		break;
 
@@ -3231,7 +3235,7 @@ TrackKeyOk:
 			if (g_TrackClipboard.IsBlockSelected())
 			{
 				//the block is selected, so it deletes it
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA, 1);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA, 1);
 				g_TrackClipboard.BlockClear();
 			}
 			else
@@ -3239,8 +3243,8 @@ TrackKeyOk:
 				{
 				deleteline:
 					BLOCKDESELECT;
-					g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA, 0);
-					g_Tracks.DeleteLine(SongGetActiveTrack(), m_trackactiveline);
+					g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA, 0);
+					g_Tracks.DeleteLine(SongGetActiveTrack(), m_activeRow);
 				}
 			break;
 
@@ -3282,11 +3286,11 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				//transpose down by 1 semitone
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA);
 				g_TrackClipboard.BlockNoteTransposition(m_activeinstr, -1);
 			}
 			break;
@@ -3296,11 +3300,11 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				//transpose up by 1 semitone
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA);
 				g_TrackClipboard.BlockNoteTransposition(m_activeinstr, 1);
 			}
 			break;
@@ -3310,11 +3314,11 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				//transpose down by 1 octave
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA);
 				g_TrackClipboard.BlockNoteTransposition(m_activeinstr, -12);
 			}
 			break;
@@ -3324,11 +3328,11 @@ TrackKeyOk:
 			{
 				if (!g_TrackClipboard.IsBlockSelected())
 				{	//if no block is selected, make a block at the current location
-					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_trackactiveline);
-					g_TrackClipboard.BlockSetEnd(m_trackactiveline);
+					g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+					g_TrackClipboard.BlockSetEnd(m_activeRow);
 				}
 				//transpose up by 1 octave
-				g_Undo.ChangeTrack(SongGetActiveTrack(), m_trackactiveline, UETYPE_TRACKDATA);
+				g_Undo.ChangeTrack(SongGetActiveTrack(), m_activeRow, UETYPE_TRACKDATA);
 				g_TrackClipboard.BlockNoteTransposition(m_activeinstr, 12);
 			}
 			break;
@@ -3339,23 +3343,25 @@ TrackKeyOk:
 	}
 	return 1;
 }
+*/
 
+/*
 BOOL CSong::TrackCursorGoto(CPoint point)
 {
 	int xch, x, y;
 	xch = (point.x / (16 * 8));
 	x = (point.x - (xch * 16 * 8)) / 8;
 
-	y = (point.y + 0) / 16 - 8 + g_cursoractview;	//m_trackactiveline;
+	y = (point.y + 0) / 16 - 8 + g_cursoractview;	//m_activeRow;
 
 	//if (y >= 0 && y < g_Tracks.m_maxtracklen)
-	if (y >= 0 && y < GetSmallestMaxtracklen(m_songactiveline))	//variable pattern size, to prevent clicking "out of bounds" with the new tracks display
+	if (y >= 0 && y < GetSmallestMaxtracklen(m_activeSongline))	//variable pattern size, to prevent clicking "out of bounds" with the new tracks display
 	{
 		if (xch >= 0 && xch < g_tracks4_8) m_trackactivecol = xch;
-		if (m_play && m_followplay)	//prevents moving at all during play+follow
+		if (m_playMode && m_isFollowPlay)	//prevents moving at all during play+follow
 			goto notracklinechange;
 		else
-			m_trackactiveline = y;
+			m_activeRow = y;
 	}
 	else
 		return 0;
@@ -3391,12 +3397,12 @@ notracklinechange:
 	g_activepart = PART_TRACKS;
 	return 1;
 }
+*/
 
-
-
+/*
 BOOL CSong::SongKey(int vk, int shift, int control)
 {
-	int isgo = (m_songgo[m_songactiveline] >= 0) ? 1 : 0;
+	int isgo = (m_songgo[m_activeSongline] >= 0) ? 1 : 0;
 
 	if (!control && NumbKey(vk) >= 0)
 	{
@@ -3455,23 +3461,23 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 		case VKX_SONGDELETELINE:	//Control+VK_U:
 			if (!control) break;
 		case VK_DELETE:
-			SongDeleteLine(m_songactiveline);
+			SongDeleteLine(m_activeSongline);
 			break;
 
 		case VKX_SONGINSERTLINE:	//Control+VK_I:
 			if (!control) break;
 		case VK_INSERT:
-			SongInsertLine(m_songactiveline);
+			SongInsertLine(m_activeSongline);
 			break;
 
 		case VKX_SONGDUPLICATELINE:	//Control+VK_O
 			if (control)
-				SongInsertCopyOrCloneOfSongLines(m_songactiveline);
+				SongInsertCopyOrCloneOfSongLines(m_activeSongline);
 			break;
 
 		case VKX_SONGPREPARELINE:	//Control+VK_P
 			if (control)
-				SongPrepareNewLine(m_songactiveline);
+				SongPrepareNewLine(m_activeSongline);
 			break;
 
 		case VKX_SONGPUTNEWTRACK:	//Control+VK_N
@@ -3502,7 +3508,7 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 			break;
 
 		case VK_HOME:
-			m_songactiveline = 0;
+			m_activeSongline = 0;
 			break;
 
 		case VK_END:
@@ -3513,7 +3519,7 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 				for (i = 0; i < g_tracks4_8; i++) if (m_song[j][i] >= 0) { la = j; break; }
 				if (m_songgo[j] >= 0) la = j;
 			}
-			m_songactiveline = la;
+			m_activeSongline = la;
 		}
 		break;
 
@@ -3567,29 +3573,30 @@ BOOL CSong::SongKey(int vk, int shift, int control)
 	}
 	return 1;
 }
+*/
 
-
+/*
 BOOL CSong::SongCursorGoto(CPoint point)
 {
 	int xch, y;
 	xch = ((point.x + 4) / (3 * 8));
-	y = (point.y + 0) / 16 - 2 + m_songactiveline;
+	y = (point.y + 0) / 16 - 2 + m_activeSongline;
 	if (y >= 0 && y < SONGLEN)
 	{
 		if (xch >= 0 && xch < g_tracks4_8) m_trackactivecol = xch;
-		if (y != m_songactiveline)
+		if (y != m_activeSongline)
 		{
 			g_activepart = PART_SONG;
-			if (m_play && m_followplay)
+			if (m_playMode && m_isFollowPlay)
 			{
-				int mode = (m_play == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;	//play track in loop, else, play from cursor position
+				int mode = (m_playMode == MPLAY_TRACK) ? MPLAY_TRACK : MPLAY_FROM;	//play track in loop, else, play from cursor position
 				Stop();
-				m_songplayline = m_songactiveline = y;
-				m_trackplayline = m_trackactiveline = 0;
-				Play(mode, m_followplay); // continue playing using the correct parameters
+				m_playSongline = m_activeSongline = y;
+				m_playRow = m_activeRow = 0;
+				Play(mode, m_isFollowPlay); // continue playing using the correct parameters
 			}
 			else
-				m_songactiveline = y;
+				m_activeSongline = y;
 		}
 
 	}
@@ -3599,3 +3606,4 @@ BOOL CSong::SongCursorGoto(CPoint point)
 	g_activepart = PART_SONG;
 	return 1;
 }
+*/

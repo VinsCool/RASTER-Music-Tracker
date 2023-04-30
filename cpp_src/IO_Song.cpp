@@ -912,8 +912,8 @@ void CSong::FileTrackLoad()
 #define DEFINE_MAINPARAMS int* mainparams[RMWMAINPARAMSCOUNT]= {\
 	&g_tracks4_8,												\
 	(int*)&m_speed,(int*)&m_mainSpeed,(int*)&m_instrumentSpeed,	\
-	(int*)&m_songactiveline,(int*)&m_songplayline,				\
-	(int*)&m_trackactiveline,(int*)&m_trackplayline,			\
+	(int*)&m_activeSongline,(int*)&m_playSongline,				\
+	(int*)&m_activeRow,(int*)&m_playRow,			\
 	(int*)&g_activepart,(int*)&g_active_ti,						\
 	(int*)&g_prove,(int*)&g_respectvolume,						\
 	&g_trackLinePrimaryHighlight,								\

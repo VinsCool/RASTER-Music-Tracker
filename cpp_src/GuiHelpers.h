@@ -10,7 +10,7 @@
 
 
 extern void SetStatusBarText(const char* text);
-extern BOOL RefreshScreen(int frameskip = 0);
+//extern BOOL RefreshScreen(int frameskip = 0);
 
 extern void GetTracklineText(char* dest, int line);
 extern int EditText(int vk, int shift, int control, char* txt, int& cur, int max);

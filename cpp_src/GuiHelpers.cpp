@@ -13,6 +13,7 @@ void SetStatusBarText(const char* text)
 	sb.SetWindowText(text);
 }
 
+/*
 static int lastTick;
 
 BOOL RefreshScreen(int frameskip)
@@ -44,6 +45,7 @@ BOOL RefreshScreen(int frameskip)
 	// Screen was refreshed
 	return 1;
 }
+*/
 
 void GetTracklineText(char* dest, int line)
 {
@@ -210,7 +212,7 @@ void TextXYCol(const char* txt, int x, int y, int acu, int color)
 	int cur = COLOR_HOVERED << 4;
 
 	// RMTE variables
-	if (g_trackerDriverVersion == TRACKER_DRIVER_NONE)
+	if (g_isRMTE)
 	{
 		switch (acu)
 		{

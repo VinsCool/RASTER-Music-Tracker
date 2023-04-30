@@ -145,7 +145,7 @@ void CSong::MidiEvent(DWORD dwParam)
 
 				case 115:	//LOOP key
 					if (!pr2) break;	//no key press
-					Play(MPLAY_TRACK, m_followplay, 0);
+					Play(MPLAY_TRACK, m_isFollowPlay, 0);
 					break;
 
 				case 116:	//STOP key
@@ -155,7 +155,7 @@ void CSong::MidiEvent(DWORD dwParam)
 
 				case 117:	//PLAY key
 					if (!pr2) break;	//no key press
-					Play(MPLAY_SONG, m_followplay, 0);
+					Play(MPLAY_SONG, m_isFollowPlay, 0);
 					break;
 
 				case 118:	//REC key
@@ -360,13 +360,13 @@ void CSong::MidiEvent(DWORD dwParam)
 
 				if (note >= 0 && note < NOTESNUM)		//only within this range
 				{
-					if (g_activepart != PART_TRACKS || g_prove || g_shiftkey || g_controlkey) goto Prove_midi_test;	//play notes but do not record them if the active screen is not TRACKS, or if any other PROVE combo is detected
+					if (g_activepart != PART_TRACKS || g_prove) goto Prove_midi_test;	//play notes but do not record them if the active screen is not TRACKS, or if any other PROVE combo is detected
 
 					if (vol > 0)
 					{
 						//volume > 0 => write note
 						//Quantization
-						if (m_play && m_followplay && (m_speeda < (m_speed / 2)))
+						if (m_playMode && m_isFollowPlay && (m_speeda < (m_speed / 2)))
 						{
 							m_quantization_note = note;
 							m_quantization_instr = m_activeinstr;
@@ -396,7 +396,7 @@ void CSong::MidiEvent(DWORD dwParam)
 						//volume = 0 => noteOff => delete note and write only volume 0
 						if (g_Midi.m_LastNoteOnChannel[atc] == note) //is it really the last one pressed?
 						{
-							if (m_play && m_followplay && (m_speed < (m_speed / 2)))
+							if (m_playMode && m_isFollowPlay && (m_speed < (m_speed / 2)))
 							{
 								m_quantization_note = -2;
 							}
@@ -409,7 +409,7 @@ void CSong::MidiEvent(DWORD dwParam)
 					if (0) //inside jumps only through goto
 					{
 					NextLine_midi_test:
-						if (!(m_play && m_followplay)) TrackDown(g_linesafter);	//scrolls only when there is no followplay
+						if (!(m_playMode && m_isFollowPlay)) PatternDown(g_linesafter);	//scrolls only when there is no followplay
 					Prove_midi_test:
 						//SetPlayPressedTonesTNIV(m_trackactivecol, note, m_activeinstr, vol);
 						SetPlayPressedTonesTNIV(atc, note, m_activeinstr, vol);
@@ -610,13 +610,13 @@ void CSong::MidiEvent(DWORD dwParam)
 
 			if (note >= 0 && note < NOTESNUM)		//only within this range
 			{
-				if (g_activepart != PART_TRACKS || g_prove || g_shiftkey || g_controlkey) goto Prove_midi;	//play notes but do not record them if the active screen is not TRACKS, or if any other PROVE combo is detected
+				if (g_activepart != PART_TRACKS || g_prove) goto Prove_midi;	//play notes but do not record them if the active screen is not TRACKS, or if any other PROVE combo is detected
 
 				if (vol > 0)
 				{
 					//volume > 0 => write note
 					//Quantization
-					if (m_play && m_followplay && (m_speeda < (m_speed / 2)))
+					if (m_playMode && m_isFollowPlay && (m_speeda < (m_speed / 2)))
 					{
 						m_quantization_note = note;
 						m_quantization_instr = m_activeinstr;
@@ -641,7 +641,7 @@ void CSong::MidiEvent(DWORD dwParam)
 					//volume = 0 => noteOff => delete note and write only volume 0
 					if (g_Midi.m_LastNoteOnChannel[chn] == note) //is it really the last one pressed?
 					{
-						if (m_play && m_followplay && (m_speed < (m_speed / 2)))
+						if (m_playMode && m_isFollowPlay && (m_speed < (m_speed / 2)))
 						{
 							m_quantization_note = -2;
 						}
@@ -654,10 +654,10 @@ void CSong::MidiEvent(DWORD dwParam)
 				if (0) //inside jumps only through goto
 				{
 				NextLine_midi:
-					if (!(m_play && m_followplay)) TrackDown(g_linesafter);	//scrolls only when there is no followplay
+					if (!(m_playMode && m_isFollowPlay)) PatternDown(g_linesafter);	//scrolls only when there is no followplay
 				Prove_midi:
 					SetPlayPressedTonesTNIV(m_trackactivecol, note, m_activeinstr, vol);
-					if ((g_prove == PROVE_JAM_STEREO_MODE || g_controlkey) && g_tracks4_8 > 4)
+					if ((g_prove == PROVE_JAM_STEREO_MODE) && g_tracks4_8 > 4)
 					{	//with control or in prove2 => stereo test
 						SetPlayPressedTonesTNIV((m_trackactivecol + 4) & 0x07, note, m_activeinstr, vol);
 					}
