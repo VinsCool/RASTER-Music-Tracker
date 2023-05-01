@@ -256,7 +256,7 @@ public:
 	const BYTE* GetInstrumentFreqTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].freqTable : NULL; };
 
 	// Setters for Instrument data
-	void SetInstrumentName(int instrument, const char* name) { if (IsValidInstrument(instrument)) strncpy(m_instrument[instrument].name, name, INSTRUMENT_NAME_MAX); };
+	void SetInstrumentName(int instrument, const char* name) { if (IsValidInstrument(instrument)) strncpy_s(m_instrument[instrument].name, name, INSTRUMENT_NAME_MAX); };
 
 	// TODO: All of the stuff related to editing Instruments
 
@@ -285,14 +285,14 @@ public:
 	const BYTE GetEffectCommandCount(int channel) { return IsValidChannel(channel) ? GetSubtuneIndex(m_activeSubtune)->effectCommandCount[channel] : INVALID; };
 
 	// Setters for Module parameters
-	void SetSongName(const char* name) { strncpy(m_songName, name, MODULE_TITLE_NAME_MAX); };
-	void SetSongAuthor(const char* author) { strncpy(m_songAuthor, author, MODULE_AUTHOR_NAME_MAX); };
-	void SetSongCopyright(const char* copyright) { strncpy(m_songCopyright, copyright, MODULE_COPYRIGHT_INFO_MAX); };
+	void SetSongName(const char* name) { strncpy_s(m_songName, name, MODULE_TITLE_NAME_MAX); };
+	void SetSongAuthor(const char* author) { strncpy_s(m_songAuthor, author, MODULE_AUTHOR_NAME_MAX); };
+	void SetSongCopyright(const char* copyright) { strncpy_s(m_songCopyright, copyright, MODULE_COPYRIGHT_INFO_MAX); };
 
 	void SetActiveSubtune(int subtune) { m_activeSubtune = subtune; };
 	void SetSubtuneCount(int count) { m_subtuneCount = count; };
 
-	void SetSubtuneName(int subtune, const char* name) { strncpy(GetSubtuneIndex(subtune)->name, name, SUBTUNE_NAME_MAX); };
+	void SetSubtuneName(int subtune, const char* name) { strncpy_s(GetSubtuneIndex(subtune)->name, name, SUBTUNE_NAME_MAX); };
 	void SetSongLength(int subtune, int length) { GetSubtuneIndex(subtune)->songLength = length; };
 	void SetPatternLength(int subtune, int length) { GetSubtuneIndex(subtune)->patternLength = length; };
 	void SetChannelCount(int subtune, int count) { GetSubtuneIndex(subtune)->channelCount = count; };
@@ -300,7 +300,7 @@ public:
 	void SetInstrumentSpeed(int subtune, int speed) { GetSubtuneIndex(subtune)->instrumentSpeed = speed; };
 	void SetEffectCommandCount(int subtune, int channel, int column) { if (IsValidChannel(channel) && IsValidCommandColumn(column)) GetSubtuneIndex(subtune)->effectCommandCount[channel] = column; };
 
-	void SetSubtuneName(const char* name) { strncpy(GetSubtuneIndex(m_activeSubtune)->name, name, SUBTUNE_NAME_MAX); };
+	void SetSubtuneName(const char* name) { strncpy_s(GetSubtuneIndex(m_activeSubtune)->name, name, SUBTUNE_NAME_MAX); };
 	void SetSongLength(int length) { GetSubtuneIndex(m_activeSubtune)->songLength = length; };
 	void SetPatternLength(int length) { GetSubtuneIndex(m_activeSubtune)->patternLength = length; };
 	void SetChannelCount(int count) { GetSubtuneIndex(m_activeSubtune)->channelCount = count; };

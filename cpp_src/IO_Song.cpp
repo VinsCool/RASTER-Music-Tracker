@@ -256,7 +256,7 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 		}
 
 		m_filename = fileToLoad;
-		m_speed = m_mainSpeed;			// Init speed
+		m_playSpeed = m_mainSpeed;			// Init speed
 		SetRMTTitle();					// Window name
 		SetChannelOnOff(-1, 1);			// All channels ON (unmute all) -1 = all, 1 = on
 	}
@@ -551,7 +551,7 @@ void CSong::FileImport()
 	}
 
 	m_filename = fn;
-	m_speed = m_mainSpeed;	// Init speed
+	m_playSpeed = m_mainSpeed;	// Init speed
 	SetChannelOnOff(-1, 1);	// All channels ON (unmute all) -1 = all, 1 = on
 }
 
@@ -911,7 +911,7 @@ void CSong::FileTrackLoad()
 #define RMWMAINPARAMSCOUNT		31		//
 #define DEFINE_MAINPARAMS int* mainparams[RMWMAINPARAMSCOUNT]= {\
 	&g_tracks4_8,												\
-	(int*)&m_speed,(int*)&m_mainSpeed,(int*)&m_instrumentSpeed,	\
+	(int*)&m_playSpeed,(int*)&m_mainSpeed,(int*)&m_instrumentSpeed,	\
 	(int*)&m_activeSongline,(int*)&m_playSongline,				\
 	(int*)&m_activeRow,(int*)&m_playRow,			\
 	(int*)&g_activepart,(int*)&g_active_ti,						\
@@ -928,7 +928,7 @@ void CSong::FileTrackLoad()
 	&g_keyboard_updowncontinue,									\
 	&g_keyboard_RememberOctavesAndVolumes,						\
 	&g_keyboard_escresetatarisound,								\
-	&m_trackactivecol,&m_trackactivecur,						\
+	&m_activeChannel,&m_activeCursor,						\
 	&m_activeinstr,&m_volume,&m_octave,							\
 	&m_infoact,&m_songnamecur									\
 }

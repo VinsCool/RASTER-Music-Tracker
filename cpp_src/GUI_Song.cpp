@@ -34,7 +34,7 @@ extern CTrackClipboard g_TrackClipboard;
 // Support routines
 
 
-
+/*
 BOOL IsnotMovementVKey(int vk)
 {
 	//returns 1 if it is not a scroll key
@@ -69,6 +69,7 @@ void GetAtariMemHexStr(int adr, int len)
 		else g_debugmem[(i * 4) + 3] = ' ';	//, or space if last character
 	}
 }
+*/
 
 // TODO: update this function for simplified changes
 void CSong::SetRMTTitle()
@@ -2075,6 +2076,7 @@ ChangeInstrumentPar:
 }
 */
 
+/*
 BOOL CSong::InfoCursorGotoSongname(int x)
 {
 	x = x / 8;
@@ -2165,6 +2167,8 @@ BOOL CSong::InfoCursorGotoInstrumentSelect(int x, int y)
 	}
 	return 0;
 }
+*/
+
 /*
 BOOL CSong::CursorToSpeedColumn()
 {

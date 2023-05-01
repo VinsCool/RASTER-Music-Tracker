@@ -47,10 +47,18 @@ public:
 	void MouseAction(CPoint point, UINT mousebutt, short wheelzDelta = 0);
 
 	// Return the last know state for held keys
-	const bool IsPressingALT(bool right = false) { return right ? (GetKeyState(VK_RMENU) & 0x8000) : (GetKeyState(VK_LMENU) & 0x8000); };
-	const bool IsPressingCTRL(bool right = false) { return right ? (GetKeyState(VK_RCONTROL) & 0x80) : (GetKeyState(VK_LCONTROL) & 0x80); };
-	const bool IsPressingSHIFT(bool right = false) { return right ? (GetKeyState(VK_RSHIFT) & 0x80) : (GetKeyState(VK_LSHIFT) & 0x80); };
-	const bool IsAnyKeyPressed(UINT vk) { return (GetKeyState(vk) & 0x80); };
+	const bool IsPressingAlt(bool right = false) { return right ? (GetKeyState(VK_RMENU) & 0x8000) : (GetKeyState(VK_LMENU) & 0x8000); };
+	const bool IsPressingCtrl(bool right = false) { return right ? (GetKeyState(VK_RCONTROL) & 0x80) : (GetKeyState(VK_LCONTROL) & 0x80); };
+	const bool IsPressingShift(bool right = false) { return right ? (GetKeyState(VK_RSHIFT) & 0x80) : (GetKeyState(VK_LSHIFT) & 0x80); };
+	const bool IsPressedAnyKey(UINT vk) { return (GetKeyState(vk) & 0x80); };
+
+	// Split functions used for movements and actions executed from keyboard inputs
+	void OnKeyMoveUp(bool keyAlt, bool keyCtrl, bool keyShift);
+	void OnKeyMoveDown(bool keyAlt, bool keyCtrl, bool keyShift);
+	void OnKeyMoveLeft(bool keyAlt, bool keyCtrl, bool keyShift);
+	void OnKeyMoveRight(bool keyAlt, bool keyCtrl, bool keyShift);
+	void OnKeyPageUp(bool keyAlt, bool keyCtrl, bool keyShift);
+	void OnKeyPageDown(bool keyAlt, bool keyCtrl, bool keyShift);
 
 	// Used to handle the window size and most dynamic elements related to it
 	void Resize();
@@ -129,9 +137,7 @@ protected:
 	afx_msg void OnSongCopyline();
 	afx_msg void OnSongPasteline();
 	afx_msg void OnSongClearline();
-	afx_msg void OnPlay1();
-	afx_msg void OnPlay2();
-	afx_msg void OnPlay3();
+	afx_msg BOOL OnPlay(UINT mode);
 	afx_msg void OnPlaystop();
 	afx_msg void OnPlayfollow();
 	afx_msg void OnEmInfo();
@@ -142,10 +148,7 @@ protected:
 	afx_msg void OnUpdateEmInstruments(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateEmInfo(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateEmSong(CCmdUI* pCmdUI);
-	afx_msg void OnUpdatePlayfollow(CCmdUI* pCmdUI);
-	afx_msg void OnUpdatePlay1(CCmdUI* pCmdUI);
-	afx_msg void OnUpdatePlay2(CCmdUI* pCmdUI);
-	afx_msg void OnUpdatePlay3(CCmdUI* pCmdUI);
+	afx_msg void OnUpdatePlayMode(CCmdUI* pCmdUI);
 	afx_msg void OnProvemode();
 	afx_msg void OnUpdateProvemode(CCmdUI* pCmdUI);
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
@@ -174,24 +177,7 @@ protected:
 	afx_msg void OnUpdateBlockInstrall(CCmdUI* pCmdUI);
 	afx_msg void OnBlockBackup();
 	afx_msg void OnUpdateBlockBackup(CCmdUI* pCmdUI);
-	afx_msg void OnBlockPlay();
 	afx_msg void OnUpdateBlockPlay(CCmdUI* pCmdUI);
-	afx_msg void OnChan1();
-	afx_msg void OnChan2();
-	afx_msg void OnChan3();
-	afx_msg void OnChan4();
-	afx_msg void OnChan5();
-	afx_msg void OnChan6();
-	afx_msg void OnChan7();
-	afx_msg void OnChan8();
-	afx_msg void OnUpdateChan1(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateChan2(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateChan3(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateChan4(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateChan5(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateChan6(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateChan7(CCmdUI* pCmdUI);
-	afx_msg void OnUpdateChan8(CCmdUI* pCmdUI);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
 	afx_msg BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
@@ -264,8 +250,6 @@ protected:
 	afx_msg void OnSongMaketracksduplicate();
 	afx_msg void OnUpdateSongMaketracksduplicate(CCmdUI* pCmdUI);
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
-	afx_msg void OnPlay0();
-	afx_msg void OnUpdatePlay0(CCmdUI* pCmdUI);
 	afx_msg void OnFileReload();
 	afx_msg void OnUpdateFileReload(CCmdUI* pCmdUI);
 	afx_msg void OnUndoUndo();
@@ -282,8 +266,6 @@ protected:
 	afx_msg void OnInstrumentPastespecialVolumertolenvelopeonly();
 	afx_msg void OnUpdateInstrumentPastespecialVolumertolenvelopeonly(CCmdUI* pCmdUI);
 	afx_msg void OnUpdateInstrumentPastespecialVolumelenvelopeonly(CCmdUI* pCmdUI);
-	afx_msg void OnTrackCursorgotothespeedcolumn();
-	afx_msg void OnUpdateTrackCursorgotothespeedcolumn(CCmdUI* pCmdUI);
 	afx_msg void OnViewToolbar();
 	afx_msg void OnUpdateViewToolbar(CCmdUI* pCmdUI);
 	afx_msg void OnViewStatusBar();

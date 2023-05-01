@@ -1,5 +1,7 @@
 #pragma once
 
+#include "resource.h"
+
 // ----------------------------------------------------------------------------
 // GUI color setup
 // The text is defined in IDB_GFX as bitmap font in various colours
@@ -149,14 +151,15 @@
 // ----------------------------------------------------------------------------
 // RMT Player and UI specifications
 //
-#define MPLAY_STOP	0
-#define MPLAY_SONG	1
-#define MPLAY_FROM	2
-#define MPLAY_TRACK	3
-#define MPLAY_BLOCK	4
-#define MPLAY_BOOKMARK 5
-#define MPLAY_SEEK_NEXT	6		// Added for Media keys
-#define MPLAY_SEEK_PREV	7		// Added for Media keys
+#define MPLAY_STOP			ID_PLAY_STOP
+#define MPLAY_START			ID_PLAY_START
+#define MPLAY_FROM			ID_PLAY_FROM
+#define MPLAY_PATTERN		ID_PLAY_PATTERN
+#define MPLAY_BLOCK			ID_BLOCK_PLAY
+#define MPLAY_BOOKMARK		ID_PLAY_BOOKMARK
+
+#define MPLAY_SEEK_NEXT		6	// Added for Media keys
+#define MPLAY_SEEK_PREV		7	// Added for Media keys
 
 #define MPLAY_SAPR_SONG		255	// SAPR dump from song start
 #define MPLAY_SAPR_FROM		254	// SAPR dump from song cursor position

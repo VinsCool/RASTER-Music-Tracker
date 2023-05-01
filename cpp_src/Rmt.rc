@@ -1122,13 +1122,13 @@ BEGIN
     SEPARATOR
     BUTTON      ID_APP_ABOUT
     SEPARATOR
-    BUTTON      ID_PLAY0
-    BUTTON      ID_PLAY1
-    BUTTON      ID_PLAY2
-    BUTTON      ID_PLAY3
-    BUTTON      ID_PLAYSTOP
+    BUTTON      ID_PLAY_BOOKMARK
+    BUTTON      ID_PLAY_START
+    BUTTON      ID_PLAY_FROM
+    BUTTON      ID_PLAY_PATTERN
+    BUTTON      ID_PLAY_STOP
     SEPARATOR
-    BUTTON      ID_PLAYFOLLOW
+    BUTTON      ID_PLAY_FOLLOW
     SEPARATOR
     BUTTON      ID_EM_TRACKS
     BUTTON      ID_EM_INSTRUMENTS
@@ -1527,11 +1527,11 @@ BEGIN
     ID_BUTTON32790          "Play song from current position"
     ID_BUTTON32791          "Cyclic play of track"
     ID_BUTTON32792          "Stop song, mute all sounds"
-    ID_PLAYFOLLOW           "Follow the currently playing position (turn on/off)\nFollow song"
-    ID_PLAY1                "Play song from start position\nPlay from start"
-    ID_PLAY2                "Play song from current position\nPlay"
-    ID_PLAY3                "Play and loop current tracks pattern\nLoop pattern"
-    ID_PLAYSTOP             "Stop playing the song. Mute all sounds.\nStop"
+    ID_PLAY_FOLLOW          "Follow the currently playing position (turn on/off)\nFollow song"
+    ID_PLAY_START           "Play song from start position\nPlay from start"
+    ID_PLAY_FROM            "Play song from current position\nPlay"
+    ID_PLAY_PATTERN         "Play and loop current tracks pattern\nLoop pattern"
+    ID_PLAY_STOP            "Stop playing the song. Mute all sounds.\nStop"
 END
 
 STRINGTABLE
@@ -1563,7 +1563,7 @@ END
 STRINGTABLE
 BEGIN
     ID_BUTTONCOMBO1         "Insert note spacing\nInsert note spacing"
-    ID_PLAY0                "Play song from bookmark position\nPlay from bookmark"
+    ID_PLAY_BOOKMARK        "Play song from bookmark position\nPlay from bookmark"
     ID_FILE_RELOAD          "Reload song from the last saved version\nReload"
 END
 

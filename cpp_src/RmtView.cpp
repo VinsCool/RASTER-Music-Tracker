@@ -69,11 +69,12 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_COMMAND(ID_SONG_COPYLINE, OnSongCopyline)
 	ON_COMMAND(ID_SONG_PASTELINE, OnSongPasteline)
 	ON_COMMAND(ID_SONG_CLEARLINE, OnSongClearline)
-	ON_COMMAND(ID_PLAY1, OnPlay1)
-	ON_COMMAND(ID_PLAY2, OnPlay2)
-	ON_COMMAND(ID_PLAY3, OnPlay3)
-	ON_COMMAND(ID_PLAYSTOP, OnPlaystop)
-	ON_COMMAND(ID_PLAYFOLLOW, OnPlayfollow)
+	ON_COMMAND_EX(ID_PLAY_BOOKMARK, OnPlay)
+	ON_COMMAND_EX(ID_PLAY_START, OnPlay)
+	ON_COMMAND_EX(ID_PLAY_FROM, OnPlay)
+	ON_COMMAND_EX(ID_PLAY_PATTERN, OnPlay)
+	ON_COMMAND(ID_PLAY_STOP, OnPlaystop)
+	ON_COMMAND(ID_PLAY_FOLLOW, OnPlayfollow)
 	ON_COMMAND(ID_EM_INFO, OnEmInfo)
 	ON_COMMAND(ID_EM_INSTRUMENTS, OnEmInstruments)
 	ON_COMMAND(ID_EM_SONG, OnEmSong)
@@ -82,10 +83,7 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_UPDATE_COMMAND_UI(ID_EM_INSTRUMENTS, OnUpdateEmInstruments)
 	ON_UPDATE_COMMAND_UI(ID_EM_INFO, OnUpdateEmInfo)
 	ON_UPDATE_COMMAND_UI(ID_EM_SONG, OnUpdateEmSong)
-	ON_UPDATE_COMMAND_UI(ID_PLAYFOLLOW, OnUpdatePlayfollow)
-	ON_UPDATE_COMMAND_UI(ID_PLAY1, OnUpdatePlay1)
-	ON_UPDATE_COMMAND_UI(ID_PLAY2, OnUpdatePlay2)
-	ON_UPDATE_COMMAND_UI(ID_PLAY3, OnUpdatePlay3)
+	ON_UPDATE_COMMAND_UI_RANGE(ID_PLAY_FOLLOW, ID_PLAY_STOP, OnUpdatePlayMode)
 	ON_COMMAND(ID_PROVEMODE, OnProvemode)
 	ON_UPDATE_COMMAND_UI(ID_PROVEMODE, OnUpdateProvemode)
 	ON_WM_TIMER()
@@ -114,24 +112,8 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_UPDATE_COMMAND_UI(ID_BLOCK_INSTRALL, OnUpdateBlockInstrall)
 	ON_COMMAND(ID_BLOCK_BACKUP, OnBlockBackup)
 	ON_UPDATE_COMMAND_UI(ID_BLOCK_BACKUP, OnUpdateBlockBackup)
-	ON_COMMAND(ID_BLOCK_PLAY, OnBlockPlay)
+	ON_COMMAND_EX(ID_BLOCK_PLAY, OnPlay)
 	ON_UPDATE_COMMAND_UI(ID_BLOCK_PLAY, OnUpdateBlockPlay)
-	ON_COMMAND(ID_CHAN1, OnChan1)
-	ON_COMMAND(ID_CHAN2, OnChan2)
-	ON_COMMAND(ID_CHAN3, OnChan3)
-	ON_COMMAND(ID_CHAN4, OnChan4)
-	ON_COMMAND(ID_CHAN5, OnChan5)
-	ON_COMMAND(ID_CHAN6, OnChan6)
-	ON_COMMAND(ID_CHAN7, OnChan7)
-	ON_COMMAND(ID_CHAN8, OnChan8)
-	ON_UPDATE_COMMAND_UI(ID_CHAN1, OnUpdateChan1)
-	ON_UPDATE_COMMAND_UI(ID_CHAN2, OnUpdateChan2)
-	ON_UPDATE_COMMAND_UI(ID_CHAN3, OnUpdateChan3)
-	ON_UPDATE_COMMAND_UI(ID_CHAN4, OnUpdateChan4)
-	ON_UPDATE_COMMAND_UI(ID_CHAN5, OnUpdateChan5)
-	ON_UPDATE_COMMAND_UI(ID_CHAN6, OnUpdateChan6)
-	ON_UPDATE_COMMAND_UI(ID_CHAN7, OnUpdateChan7)
-	ON_UPDATE_COMMAND_UI(ID_CHAN8, OnUpdateChan8)
 	ON_WM_MOUSEMOVE()
 	ON_WM_SETCURSOR()
 	ON_WM_LBUTTONUP()
@@ -204,8 +186,6 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_COMMAND(ID_SONG_MAKETRACKSDUPLICATE, OnSongMaketracksduplicate)
 	ON_UPDATE_COMMAND_UI(ID_SONG_MAKETRACKSDUPLICATE, OnUpdateSongMaketracksduplicate)
 	ON_WM_MOUSEWHEEL()
-	ON_COMMAND(ID_PLAY0, OnPlay0)
-	ON_UPDATE_COMMAND_UI(ID_PLAY0, OnUpdatePlay0)
 	ON_COMMAND(ID_FILE_RELOAD, OnFileReload)
 	ON_UPDATE_COMMAND_UI(ID_FILE_RELOAD, OnUpdateFileReload)
 	ON_COMMAND(ID_UNDO_UNDO, OnUndoUndo)
@@ -222,8 +202,6 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_COMMAND(ID_INSTRUMENT_PASTESPECIAL_VOLUMERTOLENVELOPEONLY, OnInstrumentPastespecialVolumertolenvelopeonly)
 	ON_UPDATE_COMMAND_UI(ID_INSTRUMENT_PASTESPECIAL_VOLUMERTOLENVELOPEONLY, OnUpdateInstrumentPastespecialVolumertolenvelopeonly)
 	ON_UPDATE_COMMAND_UI(ID_INSTRUMENT_PASTESPECIAL_VOLUMELENVELOPEONLY, OnUpdateInstrumentPastespecialVolumelenvelopeonly)
-	ON_COMMAND(ID_TRACK_CURSORGOTOTHESPEEDCOLUMN, OnTrackCursorgotothespeedcolumn)
-	ON_UPDATE_COMMAND_UI(ID_TRACK_CURSORGOTOTHESPEEDCOLUMN, OnUpdateTrackCursorgotothespeedcolumn)
 	ON_COMMAND(ID_VIEW_TOOLBAR, OnViewToolbar)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_TOOLBAR, OnUpdateViewToolbar)
 	ON_COMMAND(ID_VIEW_STATUS_BAR, OnViewStatusBar)
@@ -270,7 +248,6 @@ void CRmtView::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == m_timerDisplay)
 	{
-		//ChangeTimer(m_timerDisplay, g_timerTick[++g_timerDisplayCount % 3]);
 		ChangeTimer(m_timerDisplay, 16);
 		g_Song.CalculateDisplayFPS();
 		AfxGetApp()->GetMainWnd()->Invalidate();
@@ -1960,11 +1937,59 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	switch (nChar)
 	{
 	case VK_ESCAPE:
-		g_Song.Stop();
+		OnPlaystop();
+		break;
+
+	case VK_F1:
+		OnEmTracks();
+		break;
+
+	case VK_F2:
+		OnEmInstruments();
+		break;
+
+	case VK_F3:
+		OnEmInfo();
+		break;
+
+	case VK_F4:
+		OnEmSong();
 		break;
 
 	case VK_F5:
-		g_Song.Play(MPLAY_SONG, g_Song.GetFollowPlayMode());
+		OnPlay(MPLAY_START);
+		break;
+
+	case VK_F6:
+		OnPlay(MPLAY_PATTERN);
+		break;
+
+	case VK_F7:
+		OnPlay(MPLAY_FROM);
+		break;
+
+	case VK_UP:
+		OnKeyMoveUp(IsPressingAlt(), IsPressingCtrl(), IsPressingShift());
+		break;
+
+	case VK_DOWN:
+		OnKeyMoveDown(IsPressingAlt(), IsPressingCtrl(), IsPressingShift());
+		break;
+
+	case VK_LEFT:
+		OnKeyMoveLeft(IsPressingAlt(), IsPressingCtrl(), IsPressingShift());
+		break;
+
+	case VK_RIGHT:
+		OnKeyMoveRight(IsPressingAlt(), IsPressingCtrl(), IsPressingShift());
+		break;
+
+	case VK_PAGE_UP:
+		OnKeyPageUp(IsPressingAlt(), IsPressingCtrl(), IsPressingShift());
+		break;
+
+	case VK_PAGE_DOWN:
+		OnKeyPageDown(IsPressingAlt(), IsPressingCtrl(), IsPressingShift());
 		break;
 	}
 
@@ -1980,7 +2005,7 @@ void CRmtView::OnSysKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	// All keys will be processed at the same place for convenience
 	OnKeyDown(nChar, nRepCnt, nFlags);
-	//CView::OnSysKeyDown(nChar, nRepCnt, nFlags);	// Not actually required?
+	CView::OnSysKeyDown(nChar, nRepCnt, nFlags);	// Not actually required?
 }
 
 void CRmtView::OnFileOpen() 
@@ -2246,24 +2271,11 @@ void CRmtView::OnUpdateSongMaketracksduplicate(CCmdUI* pCmdUI)
 	pCmdUI->Enable(g_Song.SongGetActiveTrack()>=0);
 }
 
-void CRmtView::OnPlay0() 
+// Play using one of the modes available
+BOOL CRmtView::OnPlay(UINT mode)
 {
-	g_Song.Play(MPLAY_BOOKMARK,g_Song.GetFollowPlayMode());	//from the bookmark - with respect to followplay
-}
-
-void CRmtView::OnPlay1() 
-{
-	g_Song.Play(MPLAY_SONG,g_Song.GetFollowPlayMode());		//whole song from start - with respect to followplay
-}
-
-void CRmtView::OnPlay2() 
-{
-	g_Song.Play(MPLAY_FROM,g_Song.GetFollowPlayMode());		//from the current position - with respect to followplay
-}
-
-void CRmtView::OnPlay3() 
-{
-	g_Song.Play(MPLAY_TRACK,g_Song.GetFollowPlayMode());		//current pattern and loop - with respect to followplay
+	g_Song.Play(mode, g_Song.GetFollowPlayMode());
+	return TRUE;
 }
 
 void CRmtView::OnPlaystop() 
@@ -2299,38 +2311,37 @@ void CRmtView::OnEmSong()
 	g_TrackClipboard.BlockDeselect();
 }
 
-void CRmtView::OnUpdatePlay0(CCmdUI* pCmdUI) 
+void CRmtView::OnUpdatePlayMode(CCmdUI* pCmdUI)
 {
-	//int ch= g_Song.IsBookmark();
-	//pCmdUI->Enable(ch);
-	//ch= (g_Song.GetPlayMode()==MPLAY_BOOKMARK);
-	//pCmdUI->SetCheck(ch);
-	pCmdUI->Enable(0);
-	pCmdUI->SetCheck(0);
-}
+	switch (pCmdUI->m_nID)
+	{
+	case ID_PLAY_FOLLOW:
+		pCmdUI->SetCheck(g_Song.GetFollowPlayMode());
+		break;
 
-void CRmtView::OnUpdatePlay1(CCmdUI* pCmdUI) 
-{
-	int ch= (g_Song.GetPlayMode()==1)? 1 : 0;
-	pCmdUI->SetCheck(ch);
-}
+	case ID_PLAY_BOOKMARK:
+		//pCmdUI->Enable(g_Song.IsBookmark());
+		//pCmdUI->SetCheck(g_Song.GetPlayMode() == MPLAY_BOOKMARK);
+		pCmdUI->Enable(0);
+		pCmdUI->SetCheck(0);
+		break;
 
-void CRmtView::OnUpdatePlay2(CCmdUI* pCmdUI) 
-{
-	int ch= (g_Song.GetPlayMode()==2)? 1 : 0;
-	pCmdUI->SetCheck(ch);
-}
+	case ID_PLAY_START:
+		pCmdUI->SetCheck(g_Song.GetPlayMode() == MPLAY_START);
+		break;
 
-void CRmtView::OnUpdatePlay3(CCmdUI* pCmdUI) 
-{
-	int ch= (g_Song.GetPlayMode()==3)? 1 : 0;
-	pCmdUI->SetCheck(ch);
-}
+	case ID_PLAY_FROM:
+		pCmdUI->SetCheck(g_Song.GetPlayMode() == MPLAY_FROM);
+		break;
 
-void CRmtView::OnUpdatePlayfollow(CCmdUI* pCmdUI) 
-{
-	int ch = g_Song.GetFollowPlayMode();
-	pCmdUI->SetCheck(ch);
+	case ID_PLAY_PATTERN:
+		pCmdUI->SetCheck(g_Song.GetPlayMode() == MPLAY_PATTERN);
+		break;
+
+	case ID_PLAY_STOP:
+		pCmdUI->SetCheck(g_Song.GetPlayMode() == MPLAY_STOP);
+		break;
+	}
 }
 
 void CRmtView::OnUpdateEmTracks(CCmdUI* pCmdUI) 
@@ -2551,99 +2562,10 @@ void CRmtView::OnUpdateBlockBackup(CCmdUI* pCmdUI)
 	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
 }
 
-void CRmtView::OnBlockPlay() 
-{
-	g_Song.Play(MPLAY_BLOCK,g_Song.GetFollowPlayMode());	//selected block and loop - with respect to followplay
-}
-
 void CRmtView::OnUpdateBlockPlay(CCmdUI* pCmdUI) 
 {
-	int ch= (g_Song.GetPlayMode()==4)? 1 : 0;
-	pCmdUI->SetCheck(ch);
+	pCmdUI->SetCheck(g_Song.GetPlayMode() == MPLAY_BLOCK);
 	pCmdUI->Enable(g_TrackClipboard.IsBlockSelected());
-}
-
-//----------------------------------------------------------------------------
-//CHANNELS
-
-void CRmtView::OnChan1() 
-{
-	// TODO: Add your command handler code here
-}
-
-void CRmtView::OnChan2() 
-{
-	// TODO: Add your command handler code here
-}
-
-void CRmtView::OnChan3() 
-{
-	// TODO: Add your command handler code here
-}
-
-void CRmtView::OnChan4() 
-{
-	// TODO: Add your command handler code here
-}
-
-void CRmtView::OnChan5() 
-{
-	// TODO: Add your command handler code here
-}
-
-void CRmtView::OnChan6() 
-{
-	// TODO: Add your command handler code here
-}
-
-void CRmtView::OnChan7() 
-{
-	// TODO: Add your command handler code here
-}
-
-void CRmtView::OnChan8() 
-{
-	// TODO: Add your command handler code here
-}
-
-void CRmtView::OnUpdateChan1(CCmdUI* pCmdUI) 
-{
-	// TODO: Add your command update UI handler code here
-}
-
-void CRmtView::OnUpdateChan2(CCmdUI* pCmdUI) 
-{
-	// TODO: Add your command update UI handler code here
-}
-
-void CRmtView::OnUpdateChan3(CCmdUI* pCmdUI) 
-{
-	// TODO: Add your command update UI handler code here
-}
-
-void CRmtView::OnUpdateChan4(CCmdUI* pCmdUI) 
-{
-	// TODO: Add your command update UI handler code here
-}
-
-void CRmtView::OnUpdateChan5(CCmdUI* pCmdUI) 
-{
-	pCmdUI->Enable((g_tracks4_8>4));
-}
-
-void CRmtView::OnUpdateChan6(CCmdUI* pCmdUI) 
-{
-	pCmdUI->Enable((g_tracks4_8>4));
-}
-
-void CRmtView::OnUpdateChan7(CCmdUI* pCmdUI) 
-{
-	pCmdUI->Enable((g_tracks4_8>4));
-}
-
-void CRmtView::OnUpdateChan8(CCmdUI* pCmdUI) 
-{
-	pCmdUI->Enable((g_tracks4_8>4));
 }
 
 void CRmtView::OnMidionoff() 
@@ -3101,12 +3023,139 @@ void CRmtView::OnWantExit() // Called from the menu File/Exit ID_WANTEXIT instea
 	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE, 0, 0);
 }
 
-void CRmtView::OnTrackCursorgotothespeedcolumn() 
+//---------------------------------------------------------------------------
+// CRmtView functions for movements and actions executed from keyboard inputs
+
+void CRmtView::OnKeyMoveUp(bool keyAlt, bool keyCtrl, bool keyShift)
 {
-	//g_Song.CursorToSpeedColumn();
+	switch (g_activepart)
+	{
+	case PART_INFO:
+		break;
+
+	case PART_TRACKS:
+		if (keyAlt && !keyCtrl && !keyShift)
+			g_Song.SonglineUp();
+		else
+			g_Song.PatternUp(g_linesafter);
+		break;
+
+	case PART_INSTRUMENTS:
+		break;
+
+	case PART_SONG:
+		g_Song.SonglineUp();
+		break;
+	}
 }
 
-void CRmtView::OnUpdateTrackCursorgotothespeedcolumn(CCmdUI* pCmdUI) 
+void CRmtView::OnKeyMoveDown(bool keyAlt, bool keyCtrl, bool keyShift)
 {
-	pCmdUI->Enable(	g_activepart==PART_TRACKS && g_Song.SongGetActiveTrack()>=0 );
+	switch (g_activepart)
+	{
+	case PART_INFO:
+		break;
+
+	case PART_TRACKS:
+		if (keyAlt && !keyCtrl && !keyShift)
+			g_Song.SonglineDown();
+		else
+			g_Song.PatternDown(g_linesafter);
+		break;
+
+	case PART_INSTRUMENTS:
+		break;
+
+	case PART_SONG:
+		g_Song.SonglineDown();
+		break;
+	}
+}
+
+void CRmtView::OnKeyMoveLeft(bool keyAlt, bool keyCtrl, bool keyShift)
+{
+	switch (g_activepart)
+	{
+	case PART_INFO:
+		break;
+
+	case PART_TRACKS:
+		if (keyAlt && !keyCtrl && !keyShift)
+			g_Song.ChannelLeft();
+		else
+			g_Song.PatternLeft();
+		break;
+
+	case PART_INSTRUMENTS:
+		break;
+
+	case PART_SONG:
+		g_Song.ChannelLeft();
+		break;
+	}
+}
+
+void CRmtView::OnKeyMoveRight(bool keyAlt, bool keyCtrl, bool keyShift)
+{
+	switch (g_activepart)
+	{
+	case PART_INFO:
+		break;
+
+	case PART_TRACKS:
+		if (keyAlt && !keyCtrl && !keyShift)
+			g_Song.ChannelRight();
+		else
+			g_Song.PatternRight();
+		break;
+
+	case PART_INSTRUMENTS:
+		break;
+
+	case PART_SONG:
+		g_Song.ChannelRight();
+		break;
+	}
+}
+
+void CRmtView::OnKeyPageUp(bool keyAlt, bool keyCtrl, bool keyShift)
+{
+	switch (g_activepart)
+	{
+	case PART_TRACKS:
+		if (keyAlt && !keyCtrl && !keyShift)
+			g_Song.SeekPreviousSubtune();
+		else if (keyCtrl && !keyAlt && !keyShift)
+			g_Song.SonglineUp();
+		else
+			g_Song.PatternUp(g_trackLinePrimaryHighlight);
+		break;
+
+	default:
+		if (keyAlt && !keyCtrl && !keyShift)
+			g_Song.SeekPreviousSubtune();
+		else
+			g_Song.SonglineUp();
+	}
+}
+
+void CRmtView::OnKeyPageDown(bool keyAlt, bool keyCtrl, bool keyShift)
+{
+	switch (g_activepart)
+	{
+	case PART_TRACKS:
+		if (keyAlt && !keyCtrl && !keyShift)
+			g_Song.SeekNextSubtune();
+		else if (keyCtrl && !keyAlt && !keyShift)
+			g_Song.SonglineDown();
+		else
+			g_Song.PatternDown(g_trackLinePrimaryHighlight);
+		break;
+
+	default:
+		if (keyAlt && !keyCtrl && !keyShift)
+			g_Song.SeekNextSubtune();
+		else
+			g_Song.SonglineDown();
+	}
 }

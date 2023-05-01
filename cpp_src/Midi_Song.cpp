@@ -145,7 +145,7 @@ void CSong::MidiEvent(DWORD dwParam)
 
 				case 115:	//LOOP key
 					if (!pr2) break;	//no key press
-					Play(MPLAY_TRACK, m_isFollowPlay, 0);
+					Play(MPLAY_PATTERN, m_isFollowPlay, 0);
 					break;
 
 				case 116:	//STOP key
@@ -155,7 +155,7 @@ void CSong::MidiEvent(DWORD dwParam)
 
 				case 117:	//PLAY key
 					if (!pr2) break;	//no key press
-					Play(MPLAY_SONG, m_isFollowPlay, 0);
+					Play(MPLAY_START, m_isFollowPlay, 0);
 					break;
 
 				case 118:	//REC key
@@ -366,7 +366,7 @@ void CSong::MidiEvent(DWORD dwParam)
 					{
 						//volume > 0 => write note
 						//Quantization
-						if (m_playMode && m_isFollowPlay && (m_speeda < (m_speed / 2)))
+						if (m_playMode != MPLAY_STOP && m_isFollowPlay && (m_speedTimer < (m_playSpeed / 2)))
 						{
 							m_quantization_note = note;
 							m_quantization_instr = m_activeinstr;
@@ -396,7 +396,7 @@ void CSong::MidiEvent(DWORD dwParam)
 						//volume = 0 => noteOff => delete note and write only volume 0
 						if (g_Midi.m_LastNoteOnChannel[atc] == note) //is it really the last one pressed?
 						{
-							if (m_playMode && m_isFollowPlay && (m_speed < (m_speed / 2)))
+							if (m_playMode != MPLAY_STOP && m_isFollowPlay && (m_playSpeed < (m_playSpeed / 2)))
 							{
 								m_quantization_note = -2;
 							}
@@ -409,7 +409,7 @@ void CSong::MidiEvent(DWORD dwParam)
 					if (0) //inside jumps only through goto
 					{
 					NextLine_midi_test:
-						if (!(m_playMode && m_isFollowPlay)) PatternDown(g_linesafter);	//scrolls only when there is no followplay
+						if (!(m_playMode != MPLAY_STOP && m_isFollowPlay)) PatternDown(g_linesafter);	//scrolls only when there is no followplay
 					Prove_midi_test:
 						//SetPlayPressedTonesTNIV(m_trackactivecol, note, m_activeinstr, vol);
 						SetPlayPressedTonesTNIV(atc, note, m_activeinstr, vol);
@@ -445,7 +445,7 @@ void CSong::MidiEvent(DWORD dwParam)
 			{
 				m_heldkeys--;
 				if (m_heldkeys < 0) m_heldkeys = 0;				//if by any mean the count is desynced, force it to be 0
-				track = (m_trackactivecol + m_heldkeys) % 4;	//offset to the previous channel
+				track = (m_activeChannel + m_heldkeys) % 4;	//offset to the previous channel
 				for (int i = 0; i < 4; i++)
 				{
 					if (note == g_Midi.m_LastNoteOnChannel[i])
@@ -462,7 +462,7 @@ void CSong::MidiEvent(DWORD dwParam)
 			//MIDI NOTE ON events
 			if (cmd == 0x90)
 			{
-				track = (m_trackactivecol + m_heldkeys) % 4;
+				track = (m_activeChannel + m_heldkeys) % 4;
 				m_heldkeys++;
 				for (int i = 0; i < 4; i++)
 				{
@@ -616,7 +616,7 @@ void CSong::MidiEvent(DWORD dwParam)
 				{
 					//volume > 0 => write note
 					//Quantization
-					if (m_playMode && m_isFollowPlay && (m_speeda < (m_speed / 2)))
+					if (m_playMode != MPLAY_STOP && m_isFollowPlay && (m_speedTimer < (m_playSpeed / 2)))
 					{
 						m_quantization_note = note;
 						m_quantization_instr = m_activeinstr;
@@ -641,7 +641,7 @@ void CSong::MidiEvent(DWORD dwParam)
 					//volume = 0 => noteOff => delete note and write only volume 0
 					if (g_Midi.m_LastNoteOnChannel[chn] == note) //is it really the last one pressed?
 					{
-						if (m_playMode && m_isFollowPlay && (m_speed < (m_speed / 2)))
+						if (m_playMode != MPLAY_STOP && m_isFollowPlay && (m_playSpeed < (m_playSpeed / 2)))
 						{
 							m_quantization_note = -2;
 						}
@@ -654,12 +654,12 @@ void CSong::MidiEvent(DWORD dwParam)
 				if (0) //inside jumps only through goto
 				{
 				NextLine_midi:
-					if (!(m_playMode && m_isFollowPlay)) PatternDown(g_linesafter);	//scrolls only when there is no followplay
+					if (!(m_playMode != MPLAY_STOP && m_isFollowPlay)) PatternDown(g_linesafter);	//scrolls only when there is no followplay
 				Prove_midi:
-					SetPlayPressedTonesTNIV(m_trackactivecol, note, m_activeinstr, vol);
+					SetPlayPressedTonesTNIV(m_activeChannel, note, m_activeinstr, vol);
 					if ((g_prove == PROVE_JAM_STEREO_MODE) && g_tracks4_8 > 4)
 					{	//with control or in prove2 => stereo test
-						SetPlayPressedTonesTNIV((m_trackactivecol + 4) & 0x07, note, m_activeinstr, vol);
+						SetPlayPressedTonesTNIV((m_activeChannel + 4) & 0x07, note, m_activeinstr, vol);
 					}
 				}
 			}

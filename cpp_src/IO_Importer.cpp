@@ -233,7 +233,7 @@ int CSong::ImportTMC(std::ifstream& in)
 	int speco = 0;			//speedcorrection
 
 	//speeds
-	m_mainSpeed = m_speed = mem[bfrom + 30] + 1;
+	m_mainSpeed = m_playSpeed = mem[bfrom + 30] + 1;
 	m_instrumentSpeed = mem[bfrom + 31];
 	if (m_instrumentSpeed > 4)
 	{
@@ -1089,7 +1089,7 @@ int CSong::ImportMOD(std::ifstream& in)
 	for (j = 0; j < 20 && (a = mem[j]); j++) m_songname[j] = a;
 
 	//speeds
-	m_mainSpeed = m_speed = 6;			//default speed
+	m_mainSpeed = m_playSpeed = 6;			//default speed
 	m_instrumentSpeed = 1;
 
 	int maxsmplen = 0;			//maximum sample length

@@ -124,24 +124,25 @@ public:
 	void DrawDebugInfos(TSubtune* p);
 
 	//BOOL InfoKey(int vk, int shift, int control);
-	BOOL InfoCursorGotoSongname(int x);
-	BOOL InfoCursorGotoSpeed(int x);
-	BOOL InfoCursorGotoHighlight(int x);
-	BOOL InfoCursorGotoOctaveSelect(int x, int y);
-	BOOL InfoCursorGotoVolumeSelect(int x, int y);
-	BOOL InfoCursorGotoInstrumentSelect(int x, int y);
+	//BOOL InfoCursorGotoSongname(int x);
+	//BOOL InfoCursorGotoSpeed(int x);
+	//BOOL InfoCursorGotoHighlight(int x);
+	//BOOL InfoCursorGotoOctaveSelect(int x, int y);
+	//BOOL InfoCursorGotoVolumeSelect(int x, int y);
+	//BOOL InfoCursorGotoInstrumentSelect(int x, int y);
 
 	//BOOL InstrKey(int vk, int shift, int control);
 	void ActiveInstrSet(int instr);
-	void ActiveInstrPrev() { g_Undo.Separator(); int instr = (m_activeinstr - 1) & 0x3f; ActiveInstrSet(instr); };
-	void ActiveInstrNext() { g_Undo.Separator(); int instr = (m_activeinstr + 1) & 0x3f; ActiveInstrSet(instr); };
+	//void ActiveInstrPrev() { g_Undo.Separator(); int instr = (m_activeinstr - 1) & 0x3f; ActiveInstrSet(instr); };
+	//void ActiveInstrNext() { g_Undo.Separator(); int instr = (m_activeinstr + 1) & 0x3f; ActiveInstrSet(instr); };
 
 	int GetActiveInstr() { return m_activeinstr; };
-	int GetActiveColumn() { return m_trackactivecol; };
+	int GetActiveColumn() { return m_activeChannel; };
 	int GetActiveLine() { return m_activeRow; };
-	int GetPlayLine() { return m_playRow; };
-	void SetActiveLine(int line) { m_activeRow = line; };
-	void SetPlayLine(int line) { m_playRow = line; };
+	//int GetPlayLine() { return m_playRow; };
+
+	//void SetActiveLine(int line) { m_activeRow = line; };
+	//void SetPlayLine(int line) { m_playRow = line; };
 
 	//BOOL CursorToSpeedColumn();
 	//BOOL ProveKey(int vk, int shift, int control);
@@ -162,22 +163,22 @@ public:
 	void ChannelLeft();
 	void ChannelRight();
 
-	BOOL TrackDelNoteInstrVolSpeed(int noteinstrvolspeed) { return g_Tracks.DelNoteInstrVolSpeed(noteinstrvolspeed, SongGetActiveTrack(), m_activeRow); };
+	//BOOL TrackDelNoteInstrVolSpeed(int noteinstrvolspeed) { return g_Tracks.DelNoteInstrVolSpeed(noteinstrvolspeed, SongGetActiveTrack(), m_activeRow); };
 	BOOL TrackSetNoteActualInstrVol(int note) { return g_Tracks.SetNoteInstrVol(note, m_activeinstr, m_volume, SongGetActiveTrack(), m_activeRow); };
 	BOOL TrackSetNoteInstrVol(int note, int instr, int vol) { return g_Tracks.SetNoteInstrVol(note, instr, vol, SongGetActiveTrack(), m_activeRow); };
-	BOOL TrackSetInstr(int instr) { return g_Tracks.SetInstr(instr, SongGetActiveTrack(), m_activeRow); };
+	//BOOL TrackSetInstr(int instr) { return g_Tracks.SetInstr(instr, SongGetActiveTrack(), m_activeRow); };
 	BOOL TrackSetVol(int vol) { return g_Tracks.SetVol(vol, SongGetActiveTrack(), m_activeRow); };
-	BOOL TrackSetSpeed(int speed) { return g_Tracks.SetSpeed(speed, SongGetActiveTrack(), m_activeRow); };
-	int TrackGetNote() { return g_Tracks.GetNote(SongGetActiveTrack(), m_activeRow); };
-	int TrackGetInstr() { return g_Tracks.GetInstr(SongGetActiveTrack(), m_activeRow); };
+	//BOOL TrackSetSpeed(int speed) { return g_Tracks.SetSpeed(speed, SongGetActiveTrack(), m_activeRow); };
+	//int TrackGetNote() { return g_Tracks.GetNote(SongGetActiveTrack(), m_activeRow); };
+	//int TrackGetInstr() { return g_Tracks.GetInstr(SongGetActiveTrack(), m_activeRow); };
 	int TrackGetVol() { return g_Tracks.GetVol(SongGetActiveTrack(), m_activeRow); };
-	int TrackGetSpeed() { return g_Tracks.GetSpeed(SongGetActiveTrack(), m_activeRow); };
-	BOOL TrackSetEnd() { return g_Tracks.SetEnd(SongGetActiveTrack(), m_activeRow + 1); };
-	int TrackGetLastLine() { return g_Tracks.GetLastLine(SongGetActiveTrack()); };
-	BOOL TrackSetGo() { return g_Tracks.SetGo(SongGetActiveTrack(), m_activeRow); };
-	int TrackGetGoLine() { return g_Tracks.GetGoLine(SongGetActiveTrack()); };
+	//int TrackGetSpeed() { return g_Tracks.GetSpeed(SongGetActiveTrack(), m_activeRow); };
+	//BOOL TrackSetEnd() { return g_Tracks.SetEnd(SongGetActiveTrack(), m_activeRow + 1); };
+	//int TrackGetLastLine() { return g_Tracks.GetLastLine(SongGetActiveTrack()); };
+	//BOOL TrackSetGo() { return g_Tracks.SetGo(SongGetActiveTrack(), m_activeRow); };
+	//int TrackGetGoLine() { return g_Tracks.GetGoLine(SongGetActiveTrack()); };
 	//void RespectBoundaries();
-	void TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol);
+	//void TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol);
 
 	int* GetUECursor(int part);
 	void SetUECursor(int part, int* cursor);
@@ -203,23 +204,23 @@ public:
 	void SeekPreviousSubtune();
 
 	BOOL SongTrackSet(int t);
-	BOOL SongTrackSetByNum(int num);
-	BOOL SongTrackDec();
-	BOOL SongTrackInc();
-	BOOL SongTrackEmpty();
-	int SongGetActiveTrack() { return (m_songgo[m_activeSongline] >= 0) ? -1 : m_song[m_activeSongline][m_trackactivecol]; };
+	//BOOL SongTrackSetByNum(int num);
+	//BOOL SongTrackDec();
+	//BOOL SongTrackInc();
+	//BOOL SongTrackEmpty();
+	int SongGetActiveTrack() { return (m_songgo[m_activeSongline] >= 0) ? -1 : m_song[m_activeSongline][m_activeChannel]; };
 	int SongGetTrack(int songline, int trackcol) { return IsValidSongline(songline) && !IsSongGo(songline) ? m_song[songline][trackcol] : -1; };
-	int SongGetActiveTrackInColumn(int column) { return m_song[m_activeSongline][column]; };
+	//int SongGetActiveTrackInColumn(int column) { return m_song[m_activeSongline][column]; };
 	int SongGetActiveLine() { return m_activeSongline; };
-	int SongGetPlayLine() { return m_playSongline; };
+	//int SongGetPlayLine() { return m_playSongline; };
 	void SongSetActiveLine(int line) { m_activeSongline = line; };
-	void SongSetPlayLine(int line) { m_playSongline = line; };
+	//void SongSetPlayLine(int line) { m_playSongline = line; };
 
-	BOOL SongTrackGoOnOff();
-	int SongGetGo() { return m_songgo[m_activeSongline]; };
+	//BOOL SongTrackGoOnOff();
+	//int SongGetGo() { return m_songgo[m_activeSongline]; };
 	int SongGetGo(int songline) { return m_songgo[songline]; };
-	void SongTrackGoDec() { m_songgo[m_activeSongline] = (m_songgo[m_activeSongline] - 1) & 0xff; };
-	void SongTrackGoInc() { m_songgo[m_activeSongline] = (m_songgo[m_activeSongline] + 1) & 0xff; };
+	//void SongTrackGoDec() { m_songgo[m_activeSongline] = (m_songgo[m_activeSongline] - 1) & 0xff; };
+	//void SongTrackGoInc() { m_songgo[m_activeSongline] = (m_songgo[m_activeSongline] + 1) & 0xff; };
 
 	BOOL SongInsertLine(int line);
 	BOOL SongDeleteLine(int line);
@@ -229,11 +230,11 @@ public:
 	BOOL SongPutnewemptyunusedtrack();
 	BOOL SongMaketracksduplicate();
 
-	BOOL OctaveUp() { if (m_octave < 4) { m_octave++; return 1; } else return 0; };
-	BOOL OctaveDown() { if (m_octave > 0) { m_octave--; return 1; } else return 0; };
+	//BOOL OctaveUp() { if (m_octave < 4) { m_octave++; return 1; } else return 0; };
+	//BOOL OctaveDown() { if (m_octave > 0) { m_octave--; return 1; } else return 0; };
 
-	BOOL VolumeUp() { if (m_volume < MAXVOLUME) { m_volume++; return 1; } else return 0; };
-	BOOL VolumeDown() { if (m_volume > 0) { m_volume--; return 1; } else return 0; };
+	//BOOL VolumeUp() { if (m_volume < MAXVOLUME) { m_volume++; return 1; } else return 0; };
+	//BOOL VolumeDown() { if (m_volume > 0) { m_volume--; return 1; } else return 0; };
 
 	//void ClearBookmark() { m_bookmark.songline = m_bookmark.trackline = m_bookmark.speed = -1; };
 	//BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.GetMaxTrackLength()); };
@@ -247,13 +248,13 @@ public:
 	//BOOL PlayVBI();
 	BOOL PlayPressedTonesInit();
 	BOOL SetPlayPressedTonesTNIV(int t, int n, int i, int v) { m_playptnote[t] = n; m_playptinstr[t] = i; m_playptvolume[t] = v; return 1; };
-	BOOL SetPlayPressedTonesV(int t, int v) { m_playptvolume[t] = v; return 1; };
+	//BOOL SetPlayPressedTonesV(int t, int v) { m_playptvolume[t] = v; return 1; };
 	BOOL SetPlayPressedTonesSilence();
-	BOOL PlayPressedTones();
+	//BOOL PlayPressedTones();
 
 	void TimerRoutine();
 
-	void UpdatePlayTime() { m_playTimeFrameCount += m_playMode ? 1 : 0; };
+	void UpdatePlayTime() { m_playTimeFrameCount += m_playMode != MPLAY_STOP ? 1 : 0; };
 	void ResetPlayTime() { m_playTimeFrameCount = 0; };
 
 	void CalculatePlayTime();
@@ -309,7 +310,7 @@ public:
 
 	bool ExportWav(std::ofstream& ou, LPCTSTR filename);
 
-	void DumpSongToPokeyBuffer(int playmode = MPLAY_SONG, int songline = 0, int trackline = 0);
+	void DumpSongToPokeyBuffer(int playmode = MPLAY_START, int songline = 0, int trackline = 0);
 	int BruteforceOptimalLZSS(unsigned char* src, int srclen, unsigned char* dst);
 
 	bool TestBeforeFileSave();
@@ -362,8 +363,8 @@ public:
 	void MarkTF_USED(BYTE* arrayTRACKSNUM);
 	void MarkTF_NOEMPTY(BYTE* arrayTRACKSNUM);
 
-	int MakeTuningBlock(unsigned char* mem, int addr);
-	int DecodeTuningBlock(unsigned char* mem, int fromAddr, int endAddr);
+	//int MakeTuningBlock(unsigned char* mem, int addr);
+	//int DecodeTuningBlock(unsigned char* mem, int fromAddr, int endAddr);
 	void ResetTuningVariables();
 
 	int MakeModule(unsigned char* mem, int adr, int iotype, BYTE* instrumentSavedFlags, BYTE* trackSavedFlags);
@@ -408,21 +409,21 @@ public:
 	void RenumberAllTracks(int type);
 	void RenumberAllInstruments(int type);
 
-	CString GetFilename() { return m_filename; };
-	int GetFiletype() { return m_filetype; };
+	//CString GetFilename() { return m_filename; };
+	//int GetFiletype() { return m_filetype; };
 
 	int(*GetSong())[SONGLEN][SONGTRACKS]{ return &m_song; };
 	int(*GetSongGo())[SONGLEN] { return &m_songgo; };
 	TBookmark* GetBookmark() { return &m_bookmark; };
 
 	int GetPlayMode() { return m_playMode; };
-	void SetPlayMode(int mode) { m_playMode = mode; };
+	//void SetPlayMode(int mode) { m_playMode = mode; };
 
 	BOOL GetFollowPlayMode() { return m_isFollowPlay; };
 	void SetFollowPlayMode(BOOL follow) { m_isFollowPlay = follow; };
 
-	void GetSongInfoPars(TInfo* info) { memcpy(info->songname, m_songname, SONG_NAME_MAX_LEN); info->speed = m_speed; info->mainspeed = m_mainSpeed; info->instrspeed = m_instrumentSpeed; info->songnamecur = m_songnamecur; };
-	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONG_NAME_MAX_LEN); m_speed = info->speed; m_mainSpeed = info->mainspeed; m_instrumentSpeed = info->instrspeed; m_songnamecur = info->songnamecur; };
+	void GetSongInfoPars(TInfo* info) { memcpy(info->songname, m_songname, SONG_NAME_MAX_LEN); info->speed = m_playSpeed; info->mainspeed = m_mainSpeed; info->instrspeed = m_instrumentSpeed; info->songnamecur = m_songnamecur; };
+	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONG_NAME_MAX_LEN); m_playSpeed = info->speed; m_mainSpeed = info->mainspeed; m_instrumentSpeed = info->instrspeed; m_songnamecur = info->songnamecur; };
 
 	BOOL IsValidSongline(int songline) { return songline >= 0 && songline < SONGLEN; };
 	BOOL IsSongGo(int songline) { return IsValidSongline(songline) ? m_songgo[songline] >= 0 : 0; };
@@ -450,8 +451,8 @@ private:
 
 	int m_activeRow;
 	int volatile m_playRow;				// Which line of a track is currenyly being played
-	int m_trackactivecol;						//0-7
-	int m_trackactivecur;						//0-2
+	int m_activeChannel;						//0-7
+	int m_activeCursor;						//0-2
 
 	int m_trackplayblockstart;
 	int m_trackplayblockend;
@@ -459,6 +460,13 @@ private:
 	int m_activeinstr;
 	int m_volume;
 	int m_octave;
+
+	int volatile m_mainSpeed;				// TODO: Delete
+
+	int volatile m_playSpeed;
+	int volatile m_speedTimer;
+	int volatile m_instrumentSpeed;
+
 
 	//MIDI input variables, used for tests through MIDI CH15 
 	int m_mod_wheel = 0;			// TODO: Delete
@@ -468,13 +476,13 @@ private:
 	BOOL m_ch_offset = 0;			// TODO: Delete
 
 	//POKEY EXPLORER variables, used for tests involving pitch calculations and sound debugging displayed on screen
-	int e_ch_idx = 0;				// TODO: Delete
-	int e_modoffset = 1;			// TODO: Delete
-	int e_coarse_divisor = 1;		// TODO: Delete
-	int e_modulo = 0;				// TODO: Delete
-	BOOL e_valid = 1;				// TODO: Delete
-	double e_divisor = 1;			// TODO: Delete
-	double e_pitch = 0;				// TODO: Delete
+	//int e_ch_idx = 0;				// TODO: Delete
+	//int e_modoffset = 1;			// TODO: Delete
+	//int e_coarse_divisor = 1;		// TODO: Delete
+	//int e_modulo = 0;				// TODO: Delete
+	//BOOL e_valid = 1;				// TODO: Delete
+	//double e_divisor = 1;			// TODO: Delete
+	//double e_pitch = 0;				// TODO: Delete
 
 	int m_infoact;							// TODO: Delete	// Which part of the info area is active for editing: 0 = name, 
 	char m_songname[SONG_NAME_MAX_LEN + 1];	// TODO: Delete
@@ -498,12 +506,6 @@ private:
 	uint64_t m_lastMillisecondCount;
 	uint64_t m_lastSecondCount;
 	double m_averageFrameCount;
-
-	int volatile m_mainSpeed;				// TODO: Delete
-	int volatile m_speed;
-	int volatile m_speeda;
-
-	int volatile m_instrumentSpeed;
 
 	int volatile m_quantization_note;		// TODO: Delete
 	int volatile m_quantization_instr;		// TODO: Delete
@@ -536,16 +538,16 @@ private:
 	//BYTE volatile m_playSongline;
 	//BYTE volatile m_activeRow;
 	//BYTE volatile m_playRow;
-	BYTE volatile m_activeChannel;
-	BYTE volatile m_activeCursor;
+	//BYTE volatile m_activeChannel;
+	//BYTE volatile m_activeCursor;
 	BYTE volatile m_playBlockStart;
 	BYTE volatile m_playBlockEnd;
 	BYTE volatile m_activeInstrument;
 	BYTE volatile m_activeVolume;
 	BYTE volatile m_activeOctave;
 	//BYTE volatile m_activeSpeed;
-	BYTE volatile m_playSpeed;
-	BYTE volatile m_speedTimer;
+	//BYTE volatile m_playSpeed;
+	//BYTE volatile m_speedTimer;
 //	BYTE volatile m_instrumentSpeed;
 //	int volatile m_playTimeFrameCount;
 //	int volatile m_playTimeSecondCount;

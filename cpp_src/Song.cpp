@@ -96,14 +96,14 @@ void CSong::ClearSong(int numOfTracks)
 	PlayPressedTonesInit();
 
 	m_isFollowPlay = 1;
-	m_mainSpeed = m_speed = m_speeda = 16;
+	m_mainSpeed = m_playSpeed = m_speedTimer = 16;
 	m_instrumentSpeed = 1;
 
 	g_activepart = g_active_ti = PART_TRACKS;
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
-	m_trackactivecol = m_trackactivecur = 0;
+	m_activeChannel = m_activeCursor = 0;
 	m_activeinstr = 0;
 	m_octave = 0;
 	m_volume = MAXVOLUME;
@@ -302,6 +302,7 @@ void CSong::MarkTF_NOEMPTY(BYTE* arrayTRACKSNUM)
 	}
 }
 
+/*
 int CSong::MakeTuningBlock(unsigned char* mem, int addr)
 {
 	int len = 80;				// 80 bytes of general data
@@ -350,6 +351,7 @@ int CSong::MakeTuningBlock(unsigned char* mem, int addr)
 
 	return len;
 }
+*/
 
 void CSong::ResetTuningVariables()
 {
@@ -388,6 +390,7 @@ void CSong::ResetTuningVariables()
 	g_OCTAVE_R = 1;
 }
 
+/*
 int CSong::DecodeTuningBlock(unsigned char* mem, int addr, int endAddr)
 {
 	// Check the block header
@@ -434,8 +437,8 @@ int CSong::DecodeTuningBlock(unsigned char* mem, int addr, int endAddr)
 	memcpy(&g_OCTAVE_R, (mem + addr + 0x4A), 2);
 
 	return endAddr - addr;
-
 }
+*/
 
 /// <summary>
 /// Create the RMT data in memory.
@@ -946,6 +949,7 @@ BOOL CSong::SetPlayPressedTonesSilence()
 	return 1;
 }
 
+/*
 BOOL CSong::PlayPressedTones()
 {
 	int t, n, i, v;
@@ -964,7 +968,7 @@ BOOL CSong::PlayPressedTones()
 	}
 	return 1;
 }
-
+*/
 
 void CSong::ActiveInstrSet(int instr)
 {
@@ -1086,26 +1090,26 @@ BOOL CSong::TrackRight(BOOL column)
 
 void CSong::PatternLeft()
 {
-	if (--m_trackactivecur < 0)
+	if (--m_activeCursor < 0)
 	{
 		ChannelLeft();
-		m_trackactivecur = g_Module.GetEffectCommandCount(m_trackactivecol) + 2;
+		m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
 	}
 }
 
 void CSong::PatternRight()
 {
-	if (++m_trackactivecur > g_Module.GetEffectCommandCount(m_trackactivecol) + 2)
+	if (++m_activeCursor > g_Module.GetEffectCommandCount(m_activeChannel) + 2)
 	{
 		ChannelRight();
-		m_trackactivecur = 0;
+		m_activeCursor = 0;
 	}
 }
 
 void CSong::PatternUp(int rows)
 {
 	// Prevent movements during playback if followplay is enabled
-	if (m_playMode && m_isFollowPlay)
+	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 		return;
 
 	if ((m_activeRow -= rows) < 0)
@@ -1122,7 +1126,7 @@ void CSong::PatternUp(int rows)
 void CSong::PatternDown(int rows)
 {
 	// Prevent movements during playback if followplay is enabled
-	if (m_playMode && m_isFollowPlay)
+	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 		return;
 
 	if ((m_activeRow += rows) >= g_Module.GetShortestPatternLength(m_activeSongline))
@@ -1138,13 +1142,25 @@ void CSong::PatternDown(int rows)
 
 void CSong::ChannelLeft()
 {
-	if (--m_trackactivecol < 0)
-		m_trackactivecol += g_Module.GetChannelCount();
+	if (--m_activeChannel < 0)
+		m_activeChannel += g_Module.GetChannelCount();
+
+	if (m_activeCursor < 0)
+		m_activeCursor = 0;
+
+	if (m_activeCursor >= g_Module.GetEffectCommandCount(m_activeChannel) + 2)
+		m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
 }
 
 void CSong::ChannelRight()
 {
-	++m_trackactivecol %= g_Module.GetChannelCount();
+	++m_activeChannel %= g_Module.GetChannelCount();
+
+	if (m_activeCursor < 0)
+		m_activeCursor = 0;
+
+	if (m_activeCursor >= g_Module.GetEffectCommandCount(m_activeChannel) + 2)
+		m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
 }
 
 /*
@@ -1167,6 +1183,7 @@ void CSong::RespectBoundaries()
 }
 */
 
+/*
 void CSong::TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol)
 {
 	// Set the current visible note to a possible goto loop
@@ -1192,6 +1209,7 @@ void CSong::TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& v
 	instr = g_Tracks.GetInstr(track, line);
 	vol = g_Tracks.GetVol(track, line);
 }
+*/
 
 int* CSong::GetUECursor(int part)
 {
@@ -1202,14 +1220,14 @@ int* CSong::GetUECursor(int part)
 			cursor = new int[4];
 			cursor[0] = m_activeSongline;
 			cursor[1] = m_activeRow;
-			cursor[2] = m_trackactivecol;
-			cursor[3] = m_trackactivecur;
+			cursor[2] = m_activeChannel;
+			cursor[3] = m_activeCursor;
 			break;
 
 		case PART_SONG:
 			cursor = new int[2];
 			cursor[0] = m_activeSongline;
-			cursor[1] = m_trackactivecol;
+			cursor[1] = m_activeChannel;
 			break;
 
 		case PART_INSTRUMENTS:
@@ -1246,14 +1264,14 @@ void CSong::SetUECursor(int part, int* cursor)
 		case PART_TRACKS:
 			m_activeSongline = cursor[0];
 			m_activeRow = cursor[1];
-			m_trackactivecol = cursor[2];
-			m_trackactivecur = cursor[3];
+			m_activeChannel = cursor[2];
+			m_activeCursor = cursor[3];
 			g_activepart = g_active_ti = PART_TRACKS;
 			break;
 
 		case PART_SONG:
 			m_activeSongline = cursor[0];
-			m_trackactivecol = cursor[1];
+			m_activeChannel = cursor[1];
 			g_activepart = PART_SONG;
 			break;
 
@@ -1430,6 +1448,12 @@ void CSong::SonglineUp()
 	if (--m_activeSongline < 0)
 		m_activeSongline += g_Module.GetSongLength();
 
+	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
+	{
+		m_playSongline = m_activeSongline;
+		m_playRow = m_activeRow = 0;
+	}
+
 	// Prevent the Active Pattern Row to go out of bounds
 	m_activeRow %= g_Module.GetShortestPatternLength(m_activeSongline);
 }
@@ -1437,6 +1461,12 @@ void CSong::SonglineUp()
 void CSong::SonglineDown()
 {
 	++m_activeSongline %= g_Module.GetSongLength();
+
+	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
+	{
+		m_playSongline = m_activeSongline;
+		m_playRow = m_activeRow = 0;
+	}
 
 	// Prevent the Active Pattern Row to go out of bounds
 	m_activeRow %= g_Module.GetShortestPatternLength(m_activeSongline);
@@ -1452,7 +1482,7 @@ void CSong::SeekNextSubtune()
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
-	m_trackactivecol = m_trackactivecur = 0;
+	m_activeChannel = m_activeCursor = 0;
 }
 
 void CSong::SeekPreviousSubtune()
@@ -1466,7 +1496,7 @@ void CSong::SeekPreviousSubtune()
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
-	m_trackactivecol = m_trackactivecur = 0;
+	m_activeChannel = m_activeCursor = 0;
 }
 
 
@@ -1474,12 +1504,13 @@ BOOL CSong::SongTrackSet(int t)
 {
 	if (t >= -1 && t < TRACKSNUM)
 	{
-		g_Undo.ChangeSong(m_activeSongline, m_trackactivecol, UETYPE_SONGTRACK);
-		m_song[m_activeSongline][m_trackactivecol] = t;
+		g_Undo.ChangeSong(m_activeSongline, m_activeChannel, UETYPE_SONGTRACK);
+		m_song[m_activeSongline][m_activeChannel] = t;
 	}
 	return 1;
 }
 
+/*
 BOOL CSong::SongTrackSetByNum(int num)
 {
 	int i;
@@ -1504,7 +1535,9 @@ BOOL CSong::SongTrackSetByNum(int num)
 		return 1;
 	}
 }
+*/
 
+/*
 BOOL CSong::SongTrackDec()
 {
 	if (m_songgo[m_activeSongline] < 0)
@@ -1557,10 +1590,11 @@ BOOL CSong::SongTrackGoOnOff()
 	m_songgo[m_activeSongline] = (m_songgo[m_activeSongline] < 0) ? 0 : -1;
 	return 1;
 }
+*/
 
 BOOL CSong::SongInsertLine(int line)
 {
-	g_Undo.ChangeSong(line, m_trackactivecol, UETYPE_SONGDATA, 0);
+	g_Undo.ChangeSong(line, m_activeChannel, UETYPE_SONGDATA, 0);
 	int j, go;
 	for (int i = SONGLEN - 2; i >= line; i--)
 	{
@@ -1585,7 +1619,7 @@ BOOL CSong::SongInsertLine(int line)
 
 BOOL CSong::SongDeleteLine(int line)
 {
-	g_Undo.ChangeSong(line, m_trackactivecol, UETYPE_SONGDATA, 0);
+	g_Undo.ChangeSong(line, m_activeChannel, UETYPE_SONGDATA, 0);
 	int j, go;
 	for (int i = line; i < SONGLEN - 1; i++)
 	{
@@ -1776,7 +1810,7 @@ BOOL CSong::SongPutnewemptyunusedtrack()
 	int line = SongGetActiveLine();
 	if (m_songgo[line] >= 0) return 0;		//it can't be done on the "GO TO LINE" line
 
-	g_Undo.ChangeSong(line, m_trackactivecol, UETYPE_SONGTRACK, 0);
+	g_Undo.ChangeSong(line, m_activeChannel, UETYPE_SONGTRACK, 0);
 
 	int cl = GetActiveColumn();
 	int act = m_song[line][cl];
@@ -1925,7 +1959,7 @@ void CSong::BlockPaste(int special)
 		int lastl = m_activeRow + lines - 1;
 		//resets the beginning of the block to this location
 		g_TrackClipboard.BlockDeselect();
-		g_TrackClipboard.BlockSetBegin(m_trackactivecol, SongGetActiveTrack(), m_activeRow);
+		g_TrackClipboard.BlockSetBegin(m_activeChannel, SongGetActiveTrack(), m_activeRow);
 		g_TrackClipboard.BlockSetEnd(lastl);
 		//moves the current line to the last bottom row of the pasted block
 		m_activeRow = lastl;
@@ -2456,14 +2490,14 @@ void CSong::SongCopyLine()
 void CSong::SongPasteLine()
 {
 	if (m_songgoclipboard < -1) return;
-	g_Undo.ChangeSong(m_activeSongline, m_trackactivecol, UETYPE_SONGDATA);
+	g_Undo.ChangeSong(m_activeSongline, m_activeChannel, UETYPE_SONGDATA);
 	for (int i = 0; i < g_tracks4_8; i++) m_song[m_activeSongline][i] = m_songlineclipboard[i];
 	m_songgo[m_activeSongline] = m_songgoclipboard;
 }
 
 void CSong::SongClearLine()
 {
-	g_Undo.ChangeSong(m_activeSongline, m_trackactivecol, UETYPE_SONGDATA);
+	g_Undo.ChangeSong(m_activeSongline, m_activeChannel, UETYPE_SONGDATA);
 	for (int i = 0; i < g_tracks4_8; i++) m_song[m_activeSongline][i] = -1;
 	m_songgo[m_activeSongline] = -1;
 }
@@ -2476,7 +2510,7 @@ void CSong::TracksOrderChange()
 	dlg.m_songlineto.Format("%02X", m_TracksOrderChange_songlineto);
 	if (dlg.DoModal() == IDOK)
 	{
-		g_Undo.ChangeSong(m_activeSongline, m_trackactivecol, UETYPE_SONGDATA, 1);
+		g_Undo.ChangeSong(m_activeSongline, m_activeChannel, UETYPE_SONGDATA, 1);
 
 		int m_buff[8];
 		int i, j;
@@ -2546,7 +2580,7 @@ void CSong::Songswitch4_8(int tracks4_8)
 
 	if (tracks4_8 == 4)
 	{
-		if (m_trackactivecol >= 4) { m_trackactivecol = 3; m_trackactivecur = 0; }
+		if (m_activeChannel >= 4) { m_activeChannel = 3; m_activeCursor = 0; }
 		g_tracks4_8 = 4;
 		for (i = 0; i < SONGLEN; i++)
 		{
@@ -3442,7 +3476,7 @@ void CSong::TimerRoutine()
 	PlayPattern(g_Module.GetSubtuneIndex());
 
 	// Play tones if there are key presses (TODO: Delete)
-	PlayPressedTones();
+	//PlayPressedTones();
 
 	// Rendering of a piece of sound sample (1 / 50s = 20ms)
 	g_Pokey.RenderSound1_50(m_instrumentSpeed);
@@ -3688,13 +3722,13 @@ void CSong::DrawSubtuneInfos(TSubtune* p)
 	TextXY("TIME:", x, y);
 	CalculatePlayTime();
 	s.Format(m_playTimeSecondCount & 1 ? "%02d %02d.%02d" : "%02d:%02d.%02d", m_playTimeMinuteCount, m_playTimeSecondCount, m_playTimeMillisecondCount);
-	TextXY(s, x += 6 * 8, y, m_playMode ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
+	TextXY(s, x += 6 * 8, y, m_playMode != MPLAY_STOP ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 
 	// BPM
 	TextXY("BPM:", x += 10 * 8, y);
 	CalculatePlayBPM();
 	s.Format("%1.2F", m_averageBPM);
-	TextXY(s, x += 5 * 8, y, m_playMode ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
+	TextXY(s, x += 5 * 8, y, m_playMode != MPLAY_STOP ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 
 	// Highlights
 	TextXY("HIGHLIGHT:", x += 9 * 8, y);
@@ -3825,7 +3859,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 	// The cursor position is alway centered regardless of the window size with this simple formula
 	g_cursoractview = activeRow + 8 - g_line_y;
 
-	bool active_smooth = (g_viewDoSmoothScrolling && ((m_playMode && m_isFollowPlay) && (playSpeed > 0 && speedTimer <= playSpeed)));
+	bool active_smooth = (g_viewDoSmoothScrolling && ((m_playMode != MPLAY_STOP && m_isFollowPlay) && (playSpeed > 0 && speedTimer <= playSpeed)));
 	int smooth_y = active_smooth ? speedTimer * 16 / playSpeed - 8 : 0;
 
 	// Standard notation FIXME: create a proper method for the Note and Octave text format
@@ -4133,7 +4167,7 @@ void CSong::Play(int mode, BOOL follow, int special)
 
 	switch (mode)
 	{
-	case MPLAY_SONG:
+	case MPLAY_START:
 		m_playSongline = m_playRow = 0;
 		m_playSpeed = p->songSpeed;
 		break;
@@ -4143,7 +4177,7 @@ void CSong::Play(int mode, BOOL follow, int special)
 		m_playRow = m_activeRow;
 		break;
 
-	case MPLAY_TRACK:
+	case MPLAY_PATTERN:
 		m_playSongline = m_activeSongline;
 		m_playRow = (special) ? m_activeRow : 0;
 		break;
@@ -4288,7 +4322,7 @@ void CSong::PlayPattern(TSubtune* p)
 			PlaySongline(p);
 
 		// Playing and following
-		if (m_playMode && m_isFollowPlay)
+		if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 		{
 			m_activeRow = m_playRow;
 			m_activeSongline = m_playSongline;
