@@ -21,6 +21,7 @@
 
 extern CInstruments	g_Instruments;
 extern CPokeyStream g_PokeyStream;
+extern CModule g_Module;
 
 #define VU_PLAYER_LOOP_FLAG		LZSSP_LOOP_COUNT		// VUPlayer's address for the Loop flag
 #define VU_PLAYER_STEREO_FLAG	LZSSP_IS_STEREO_FLAG	// VUPlayer's address for the Stereo flag 
@@ -373,7 +374,7 @@ bool CSong::ExportLZSS_SAP(std::ofstream& ou)
 	dlg.m_name = str;
 
 	dlg.m_author = "???";
-	GetSubsongParts(dlg.m_subsongs);
+	//GetSubsongParts(dlg.m_subsongs);
 
 	CTime time = CTime::GetCurrentTime();
 	dlg.m_date = time.Format("%d/%m/%Y");
@@ -540,11 +541,12 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	WORD addressFrom, addressTo;
 	BYTE* buff2, * buff3;
 
-	int subsongs = GetSubsongParts(t);
+	//int subsongs = GetSubsongParts(t);
+	int subsongs = g_Module.GetSubtuneCount();
 	int count = 0;
 
-	int subtune[256];
-	memset(subtune, 0, sizeof(subtune));
+	//int subtune[256];
+	//memset(subtune, 0, sizeof(subtune));
 
 	int lzss_chunk = 0;	// Subtune size will be added to be used as the offset to the next one
 	int lzss_total = 0;	// Final offset for LZSS bytes to export
@@ -558,14 +560,14 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	memset(mem, 0, sizeof(mem));
 
 	// GetSubsongParts returns a CString, so the values must be converted back to int first, FIXME
-	for (int i = 0; i < subsongs; i++)
-	{
-		char c[3];
-		c[0] = t[i * 3];
-		c[1] = t[i * 3 + 1];
-		c[2] = '\0';
-		subtune[i] = strtoul(c, NULL, 16);
-	}
+	//for (int i = 0; i < subsongs; i++)
+	//{
+	//	char c[3];
+	//	c[0] = t[i * 3];
+	//	c[1] = t[i * 3 + 1];
+	//	c[2] = '\0';
+	//	subtune[i] = strtoul(c, NULL, 16);
+	//}
 
 	// Load VUPlayerLZSS to memory
 	Atari_LoadOBX(IOTYPE_LZSS_XEX, mem, addressFrom, addressTo);
@@ -584,10 +586,8 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		// a LZSS export will typically make use of intro and loop only, unless specified otherwise
 		int intro = 0, loop = 0;
 
-		// LZSS buffers for each ones of the tune parts being reconstructed
-		//unsigned char buff2[65536], buff3[65536];
-
-		DumpSongToPokeyBuffer(MPLAY_FROM, subtune[count], 0);
+		//DumpSongToPokeyBuffer(MPLAY_FROM, subtune[count], 0);
+		DumpSongToPokeyBuffer();
 
 		//SetStatusBarText("Compressing data ...");
 
@@ -740,8 +740,8 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	CString statusBarLog;
 
 	Stop();					// Make sure RMT is stopped 
-	Atari_InitRMTRoutine();	// Reset the RMT routines 
-	SetChannelOnOff(-1, 0);	// Switch all channels off 
+	//Atari_InitRMTRoutine();	// Reset the RMT routines 
+	//SetChannelOnOff(-1, 0);	// Switch all channels off 
 
 	g_PokeyStream.StartRecording();
 
@@ -758,10 +758,10 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	while (m_playMode != MPLAY_STOP)
 	{
 		// 1 VBI of module playback
-		PlayVBI();
+		PlayPattern(g_Module.GetSubtuneIndex());
 
 		// Increment the timer shown during playback (not actually needed here?)
-		UpdatePlayTime();
+		//UpdatePlayTime();
 
 		// Multiple RMT routine calls will be processed if needed
 		for (int i = 0; i < m_instrumentSpeed; i++)
@@ -785,7 +785,7 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	}
 
 	// End playback now, the SAP-R data should have been dumped successfully!
-	Stop();
+	//Stop();
 
 	statusBarLog.Format("Done... %i frames recorded in total, Loop point found at frame %i", g_PokeyStream.GetCurrentFrame(), g_PokeyStream.GetFirstCountPoint());
 	SetStatusBarText(statusBarLog);

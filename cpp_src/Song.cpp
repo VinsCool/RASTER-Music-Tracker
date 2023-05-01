@@ -30,54 +30,27 @@ extern CXPokey g_Pokey;
 extern CPokeyStream g_PokeyStream;
 extern CModule g_Module;
 
-static volatile BOOL busyInTimer = 0;
-
-/// <summary>
-/// Wait for the Timer Routine to run at least once
-/// </summary>
-void WaitForTimerRoutineProcessed()
-{
-	g_timerRoutineProcessed = 0;
-	while (!g_timerRoutineProcessed && !g_closeApplication);	// Waiting
-}
-
 // ----------------------------------------------------------------------------
 
 void CALLBACK G_TimerRoutine(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR)
 {
-	busyInTimer = 1;
 	g_Song.ChangeTimer(g_ntsc ? g_timerTick[++g_timerRoutineCount % 3] : 20);
 	g_Song.TimerRoutine();
-	g_timerRoutineProcessed = 1;	// TimerRoutine took place
-	busyInTimer = 0;
 }
 
 // ----------------------------------------------------------------------------
 
 CSong::CSong()
 {
-	// Initialise Timer
-	m_timerRoutine = 0;
-	g_timerRoutineProcessed = 0;
-
-	m_quantization_note = -1; // init
-	m_quantization_instr = -1;
-	m_quantization_vol = -1;
+	m_timerRoutine = NULL;
+	m_songVariables = NULL;
+	m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
 }
 
 CSong::~CSong()
 {
-	//KillTimer();
-}
-
-/// <summary>
-/// Stop the timer and make sure that the timer event is not running
-/// </summary>
-void CSong::StopTimer()
-{
-	while (busyInTimer);			// Wait until not in timer handler
-	KillTimer();					// Kill the timer
-	while (busyInTimer);			// Make sure not in the timer handler
+	KillTimer();
+	ClearSongVariables();
 }
 
 /// <summary>
@@ -97,10 +70,9 @@ void CSong::ChangeTimer(int ms)
 void CSong::KillTimer()
 {
 	if (m_timerRoutine) 
-	{ 
 		timeKillEvent(m_timerRoutine);
-		m_timerRoutine = 0;
-	}
+
+	m_timerRoutine = NULL;
 }
 
 /// <summary>
@@ -136,7 +108,7 @@ void CSong::ClearSong(int numOfTracks)
 	m_octave = 0;
 	m_volume = MAXVOLUME;
 
-	ClearBookmark();
+	//ClearBookmark();
 
 	m_infoact = INFO_ACTIVE_NAME;
 
@@ -187,10 +159,65 @@ void CSong::ClearSong(int numOfTracks)
 
 	// Initialise the RMTE Module as well, since it will progressively replace the Legacy format, and will use most of the same functions
 	//g_Module.InitialiseModule();
+
+	// Initialise Song variables
+	InitialiseSongVariables();
+}
+
+void CSong::ClearSongVariables()
+{
+	if (m_songVariables)
+		delete m_songVariables;
+
+	m_songVariables = NULL;
+}
+
+void CSong::InitialiseSongVariables()
+{
+	ClearSongVariables();
+	m_songVariables = new TSongVariables[SONGTRACKS];
+
+	for (int i = 0; i < SONGTRACKS; i++)
+		ResetChannelVariables(&m_songVariables[i]);
+}
+
+void CSong::ResetChannelVariables(TSongVariables* p)
+{
+	if (!p)
+		return;
+
+	p->isDelayEnabled = false;
+	p->isNoteActive = false;
+	p->isNoteRelease = false;
+	p->isNoteSustain = false;
+	p->isNoteTrigger = false;
+	p->isPortamentoEnabled = false;
+	p->isTremoloEnabled = false;
+	p->isVibratoEnabled = false;
+	p->isVolumeOnlyEnabled = false;
+	p->arpeggioScheme = 0x00;
+	p->channelAUDCTL = 0x00;
+	p->channelDistortion = 0xA0;
+	p->channelFreq = 0x0000;
+	p->channelInstrument = INVALID;
+	p->channelNote = INVALID;
+	p->channelVolume = 0x0F;
+	p->delayedRow = NULL;
+	p->delayOffset = 0x00;
+	p->finetuneOffset = EFFECT_PARAMETER_DEFAULT;
+	p->frameCount = 0x00;
+	p->portamentoSpeed = 0x00;
+	p->portamentoTarget = 0x0000;
+	p->tremoloDepth = 0x00;
+	p->tremoloSpeed = 0x00;
+	p->vibratoDepth = 0x00;
+	p->vibratoSpeed = 0x00;
+	p->volumeSlide = 0x00;
 }
 
 //---
 
+/*
 int CSong::GetSubsongParts(CString& resultstr)
 {
 	CString s;
@@ -245,6 +272,7 @@ int CSong::GetSubsongParts(CString& resultstr)
 	}
 	return asub;
 }
+*/
 
 /// <summary>
 /// Mark all tracks that are referenced in the song as USED
@@ -1119,6 +1147,7 @@ void CSong::ChannelRight()
 	++m_trackactivecol %= g_Module.GetChannelCount();
 }
 
+/*
 // FIXME: Not actually needed, but required for working around issues with the Legacy functions...
 void CSong::RespectBoundaries()
 {
@@ -1136,6 +1165,7 @@ void CSong::RespectBoundaries()
 	SetActiveLine(line);
 	SongSetActiveLine(songline);
 }
+*/
 
 void CSong::TrackGetLoopingNoteInstrVol(int track, int& note, int& instr, int& vol)
 {
@@ -1420,7 +1450,6 @@ void CSong::SeekNextSubtune()
 
 	g_Module.SetActiveSubtune(activeSubtune);
 
-	//ClearSong(g_Module.GetChannelCount());
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_trackactivecol = m_trackactivecur = 0;
@@ -1435,7 +1464,6 @@ void CSong::SeekPreviousSubtune()
 
 	g_Module.SetActiveSubtune(activeSubtune);
 
-	//ClearSong(g_Module.GetChannelCount());
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_trackactivecol = m_trackactivecur = 0;
@@ -1547,11 +1575,11 @@ BOOL CSong::SongInsertLine(int line)
 	{
 		if (m_songgo[i] >= line) m_songgo[i]++;
 	}
-	if (IsBookmark() && m_bookmark.songline >= line)
-	{
-		m_bookmark.songline++;
-		if (m_bookmark.songline >= SONGLEN) ClearBookmark(); //just pushed the bookmark out of the song => cancel the bookmark
-	}
+	//if (IsBookmark() && m_bookmark.songline >= line)
+	//{
+	//	m_bookmark.songline++;
+	//	if (m_bookmark.songline >= SONGLEN) ClearBookmark(); //just pushed the bookmark out of the song => cancel the bookmark
+	//}
 	return 1;
 }
 
@@ -1572,11 +1600,11 @@ BOOL CSong::SongDeleteLine(int line)
 	}
 	for (j = 0; j < g_tracks4_8; j++) m_song[SONGLEN - 1][j] = -1;
 	m_songgo[SONGLEN - 1] = -1;
-	if (IsBookmark() && m_bookmark.songline >= line)
-	{
-		m_bookmark.songline--;
-		if (m_bookmark.songline < line) ClearBookmark(); //just deleted the songline with the bookmark
-	}
+	//if (IsBookmark() && m_bookmark.songline >= line)
+	//{
+	//	m_bookmark.songline--;
+	//	if (m_bookmark.songline < line) ClearBookmark(); //just deleted the songline with the bookmark
+	//}
 	return 1;
 }
 
@@ -3109,6 +3137,8 @@ void CSong::RenumberAllInstruments(int type)
 //--------------------------------------------------------------------------------------
 //
 
+
+/*
 // Legacy Function
 BOOL CSong::SetBookmark()
 {
@@ -3239,20 +3269,6 @@ BOOL CSong::Play(int mode, BOOL follow, int special)
 }
 
 // Legacy Function
-void CSong::Stop()
-{
-	if (GetPlayMode() != MPLAY_STOP)
-	{
-		SetPlayMode(MPLAY_STOP);
-		ResetPlayTime();
-		g_Undo.Separator();
-		m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
-		SetPlayPressedTonesSilence();
-		WaitForTimerRoutineProcessed();	// The Timer Routine will run at least once
-	}
-}
-
-// Legacy Function
 BOOL CSong::SongPlayNextLine()
 {
 	m_playRow = 0;	//first track pattern line 
@@ -3334,7 +3350,7 @@ TrackLine:
 		int v = vol[t];
 		if (v >= 0 && v < 16)
 		{
-			if (n >= 0 && n < NOTESNUM /*&& i>=0 && i<INSTRSNUM*/)		//adjustment for routine compatibility
+			if (n >= 0 && n < NOTESNUM) //&& i>=0 && i<INSTRSNUM//)		//adjustment for routine compatibility
 			{
 				if (i < 0 || i >= INSTRSNUM) i = 255;						//adjustment for routine compatibility
 				Atari_SetTrack_NoteInstrVolume(t, n, i, v);
@@ -3411,6 +3427,7 @@ BOOL CSong::PlayVBI()
 
 	return 1;
 }
+*/
 
 /// <summary>
 /// Call this X times per second to handle the playing of the song
@@ -3422,35 +3439,16 @@ void CSong::TimerRoutine()
 		return;
 
 	// Things that are solved 1x for vbi
-	//if (g_isRMTE)
-	//PlayPattern(g_Module.GetSubtuneIndex());
-	//else
-	//	PlayVBI();
-
-	// Play tones if there are key presses
-	//PlayPressedTones();
-
 	PlayPattern(g_Module.GetSubtuneIndex());
+
+	// Play tones if there are key presses (TODO: Delete)
+	PlayPressedTones();
 
 	// Rendering of a piece of sound sample (1 / 50s = 20ms)
 	g_Pokey.RenderSound1_50(m_instrumentSpeed);
 
-	//PlayPattern(g_Module.GetSubtuneIndex());
-
 	// If the Song is currently playing, increment the timer
 	UpdatePlayTime();
-
-	//--- NTSC timing hack during playback ---//
-	// The NTSC timing cannot be divided to an integer
-	// the optimal timing would be 16.666666667ms, which is typically rounded to 17
-	// unfortunately, things run too slow with 17, or too fast 16
-	// a good enough compromise for now is to make use of a '17-17-16' miliseconds "groove"
-	// this isn't proper, but at least, this makes the timing much closer to the actual thing
-	// the only issue with this is that the sound will have very slight jitters during playback 
-	//ChangeTimer(g_ntsc ? m_timerRoutineTick[g_timerGlobalCount % 3] : 20);
-
-	// Increment by one each time Timer Routine was processed
-	//g_timerGlobalCount++;
 }
 
 /// <summary>
@@ -4113,24 +4111,25 @@ void CSong::DrawDebugInfos(TSubtune* p)
 // Prototype C++ RMTE Module Driver functions
 // TODO: Move to a different file later
 
-void CSong::StopV2()
+void CSong::Stop()
 {
 	m_playMode = MPLAY_STOP;
 	ResetPlayTime();
 	m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
 	SetPlayPressedTonesSilence();
 	Atari_InitRMTRoutine();
-	WaitForTimerRoutineProcessed();
+	Sleep(20);	// To ensure the Timer Routine is executed at least once here
 }
 
-void CSong::PlayV2(int mode, BOOL follow, int special)
+void CSong::Play(int mode, BOOL follow, int special)
 {
 	TSubtune* p = g_Module.GetSubtuneIndex();
 
 	if (!p)
 		return;
 
-	StopV2();
+	// Stop and reset the POKEY registers first
+	Stop();
 
 	switch (mode)
 	{
@@ -4160,6 +4159,7 @@ void CSong::PlayV2(int mode, BOOL follow, int special)
 	// Begin playback from here
 	m_playMode = mode;
 	m_speedTimer = 1;
+	g_PokeyStream.CallFromPlay(m_playMode, m_playRow, m_playSongline);
 }
 
 void CSong::PlayRow(TSubtune* p)
@@ -4167,66 +4167,107 @@ void CSong::PlayRow(TSubtune* p)
 	if (!p)
 		return;
 
-	BYTE note, instrument, volume;
 	BYTE speed = m_playSpeed;
 	BYTE row = m_playRow;
 	BYTE songline = m_playSongline;
 
-	// In order to simulate the Legacy 6502 RMT routines behaviour, certain compromises are deliberately introduced here
-	for (int i = 0; i < p->channelCount; i++)
+	// Play Row without the 6502 routines limitation, designed specifically for the RMTE Module format
+	// Ultimatey aimed to become the default payback method, unless specified otherwise (eg: Legacy RMT compatibility)
+	if (g_isRMTE && g_trackerDriverVersion == TRACKER_DRIVER_NONE)
 	{
-		// Get the Pattern Index from the Songline offset
-		BYTE pattern = p->channel[i].songline[songline];
-
-		// Same as Legacy RMT routines
-		if ((note = p->channel[i].pattern[pattern].row[row].note) >= PATTERN_NOTE_COUNT)
-			note = INVALID;
-
-		// Same as Legacy RMT routines
-		if ((instrument = p->channel[i].pattern[pattern].row[row].instrument) >= PATTERN_INSTRUMENT_COUNT)
-			instrument = INVALID;
-
-		// Same as Legacy RMT routines
-		if ((volume = p->channel[i].pattern[pattern].row[row].volume) >= PATTERN_VOLUME_COUNT)
-			volume = INVALID;
-
-		// Compromised to only get the Speed Commands
-		for (int k = 0; k < p->effectCommandCount[i]; k++)
+		// Process all channels
+		for (int i = 0; i < p->channelCount; i++)
 		{
-			BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
-			BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
+			// Get the Pattern Index from the Songline offset, then get data from the associated Row Index
+			BYTE pattern = p->channel[i].songline[songline];
 
-			// If a Bxx command is found, set the next Songline with it
-			if (command == EFFECT_COMMAND_BXX)
+			// Note
+			//BYTE note = p->channel[i].pattern[pattern].row[row].note;
+			PlayNote(p);
+
+			// Instrument
+			//BYTE instrument = p->channel[i].pattern[pattern].row[row].instrument;
+			PlayInstrument(p);
+
+			// Volume;
+			//BYTE volume = p->channel[i].pattern[pattern].row[row].volume;
+			PlayVolume(p);
+
+			// Command(s)
+			for (int k = 0; k < p->effectCommandCount[i]; k++)
 			{
-				m_playRow = INVALID;
-				m_playSongline = parameter;
+				//BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
+				//BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
+				PlayEffect(p);
 			}
-
-			// If a Dxx command is found, the Pattern will end on the next Row
-			if (command == EFFECT_COMMAND_DXX)
-			{
-				m_playRow = INVALID;
-				m_playSongline = (songline + 1) % p->songLength;
-			}
-
-			// If a Fxx command is found, overwrite the speed with it
-			if (command == EFFECT_COMMAND_FXX && parameter)
-				speed = parameter;
 		}
 
-		// Compromised for compatibility with RMTE data
-		if (volume < PATTERN_VOLUME_COUNT)
-		{
-			if (note < PATTERN_NOTE_COUNT)
-				Atari_SetTrack_NoteInstrVolume(i, note, instrument, volume);
-			else
-				Atari_SetTrack_Volume(i, volume);
-		}
 	}
 
-	// Speed will be set at the end, so the last Channel with a Speed value will take priority
-	m_speedTimer = m_playSpeed = speed;
+	// Play Row with Legacy RMT compatibility in mind using the emulated 6502 routines
+	// TODO: Recreate the routine behaviour entirely in software for better compatibility
+	else
+	{
+		// In order to simulate the Legacy 6502 RMT routines behaviour, certain compromises are deliberately introduced here
+		for (int i = 0; i < p->channelCount; i++)
+		{
+			// Get the Pattern Index from the Songline offset
+			BYTE pattern = p->channel[i].songline[songline];
+
+			// Same as Legacy RMT routines
+			BYTE note = p->channel[i].pattern[pattern].row[row].note;
+			if (note >= PATTERN_NOTE_COUNT)
+				note = INVALID;
+			
+			// Same as Legacy RMT routines
+			BYTE instrument = p->channel[i].pattern[pattern].row[row].instrument;
+			if (instrument >= PATTERN_INSTRUMENT_COUNT)
+				instrument = INVALID;
+			
+			// Same as Legacy RMT routines
+			BYTE volume = p->channel[i].pattern[pattern].row[row].volume;
+			if (volume >= PATTERN_VOLUME_COUNT)
+				volume = INVALID;
+
+			// Compromised to only get the Speed Commands
+			for (int k = 0; k < p->effectCommandCount[i]; k++)
+			{
+				BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
+				BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
+
+				// If a Bxx command is found, set the next Songline with it
+				if (command == EFFECT_COMMAND_BXX)
+				{
+					m_playRow = INVALID;
+					m_playSongline = parameter;
+				}
+
+				// If a Dxx command is found, the Pattern will end on the next Row
+				if (command == EFFECT_COMMAND_DXX)
+				{
+					m_playRow = INVALID;
+					m_playSongline = (songline + 1) % p->songLength;
+				}
+
+				// If a Fxx command is found, overwrite the speed with it
+				if (command == EFFECT_COMMAND_FXX && parameter)
+					speed = parameter;
+			}
+
+			// Compromised for compatibility with RMTE data
+			if (volume < PATTERN_VOLUME_COUNT)
+			{
+				if (note < PATTERN_NOTE_COUNT)
+					Atari_SetTrack_NoteInstrVolume(i, note, instrument, volume);
+				else
+					Atari_SetTrack_Volume(i, volume);
+			}
+		}
+
+		// Speed will be set at the end, so the last Channel with a Speed value will take priority
+		m_speedTimer = m_playSpeed = speed;
+	}
+
 }
 
 void CSong::PlayPattern(TSubtune* p)
@@ -4253,8 +4294,6 @@ void CSong::PlayPattern(TSubtune* p)
 			m_activeSongline = m_playSongline;
 		}
 	}
-
-	//m_speedTimer--;
 }
 
 void CSong::PlaySongline(TSubtune* p)
@@ -4264,6 +4303,9 @@ void CSong::PlaySongline(TSubtune* p)
 
 	m_playRow = 0;
 	++m_playSongline %= p->songLength;
+
+	if (g_PokeyStream.TrackSongLine(m_playSongline))
+		Stop();
 }
 
 void CSong::PlayNote(TSubtune* p)
