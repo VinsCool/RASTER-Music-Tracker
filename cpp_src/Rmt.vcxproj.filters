@@ -330,6 +330,7 @@
     <None Include="res\cursorgo.cur">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="..\README.md" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="moduleformatdescription.txt" />
