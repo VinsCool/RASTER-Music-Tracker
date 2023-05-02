@@ -5,6 +5,8 @@
 //
 
 #include "stdafx.h"
+#include <chrono>
+
 #include "Rmt.h"
 #include "RmtDoc.h"
 
@@ -37,6 +39,8 @@ extern CXPokey	g_Pokey;
 extern CInstruments	g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
 extern CModule g_Module;
+
+std::chrono::steady_clock::time_point m_deltaTimerDisplay;
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView
@@ -248,10 +252,9 @@ void CRmtView::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == m_timerDisplay)
 	{
-		ChangeTimer(m_timerDisplay, 16);
-		g_Song.CalculateDisplayFPS();
+		std::this_thread::sleep_until(m_deltaTimerDisplay);
+		m_deltaTimerDisplay = std::chrono::steady_clock::now() + std::chrono::milliseconds(16);
 		AfxGetApp()->GetMainWnd()->Invalidate();
-		g_timerGlobalCount++;
 		SCREENUPDATE;
 	}
 
@@ -1020,7 +1023,7 @@ void CRmtView::OnInitialUpdate()
 	g_Midi.MidiOn();
 
 	//Pal or NTSC
-	g_Song.ChangeTimer((g_ntsc)? 17 : 20);
+	g_Song.ChangeTimer(16);
 
 	//If the tracker was started with an argument, it attempts to load the file, and will return an error if the extention isn't .rmt. 
 	//When no argument is passed, the initialisation continues like normal.

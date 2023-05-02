@@ -88,10 +88,6 @@ int g_tracks4_8;
 BOOL volatile g_screenupdate = 0;
 BOOL volatile g_rmtroutine;
 
-BYTE volatile g_timerDisplayCount = 0;
-BYTE volatile g_timerRoutineCount = 0;
-BYTE const g_timerTick[3] = { 17, 16, 16 };
-
 int volatile g_prove;			// Test notes without editing (0 = off, 1 = mono jam, 2 = stereo jam)
 int volatile g_respectvolume;	//does not change the volume if it is already there
 
@@ -147,16 +143,12 @@ BOOL g_viewDebugDisplay = 1;		// Display Debug informations on screen if enabled
 int g_trackerDriverVersion = TRACKER_DRIVER_PATCH16;
 bool g_isRMTE = true;
 
-int g_timerGlobalCount = 0;			// Initialised once, ticking forever
-
 int g_lastKeyPressed = 0;			// For debugging vk input
 int g_mousebutt = 0;				// Mouse button
 int g_mouseLastPointX = 0;
 int g_mouseLastPointY = 0;
 int g_mouseLastButton = 0;
 int g_mouseLastWheelDelta = 0;
-
-
 
 CString g_prgpath;								// Path to the directory from which the program was started (including a slash at the end)
 

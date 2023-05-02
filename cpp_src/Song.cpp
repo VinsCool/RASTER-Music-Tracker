@@ -32,9 +32,13 @@ extern CModule g_Module;
 
 // ----------------------------------------------------------------------------
 
+std::chrono::steady_clock::time_point m_deltaTimerRoutine;
+static bool volatile m_timerRoutineSwitch;
+
 void CALLBACK G_TimerRoutine(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR)
 {
-	g_Song.ChangeTimer(g_ntsc ? g_timerTick[++g_timerRoutineCount % 3] : 20);
+	std::this_thread::sleep_until(m_deltaTimerRoutine);
+	m_deltaTimerRoutine = std::chrono::steady_clock::now() + std::chrono::milliseconds(g_ntsc ? 16 + (m_timerRoutineSwitch ^= 1) : 20);
 	g_Song.TimerRoutine();
 }
 
@@ -3530,14 +3534,8 @@ void CSong::CalculatePlayBPM()
 /// </summary>
 void CSong::CalculateDisplayFPS()
 {
-	// If not in Debug mode, there is no need for getting the FPS
-	if (!g_viewDebugDisplay)
-		return;
-
-	using namespace std::chrono;
-
-	uint64_t millisecond = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-	uint64_t second = duration_cast<seconds>(system_clock::now().time_since_epoch()).count();
+	uint64_t millisecond = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+	uint64_t second = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 
 	if (m_lastSecondCount != second)
 	{
@@ -4116,6 +4114,8 @@ void CSong::DrawDebugInfos(TSubtune* p)
 		return;
 
 	CString s;
+
+	CalculateDisplayFPS();
 
 	// Don't draw further more than what could fit on screen
 	for (int i = 0; i < g_width / 96; i++)
