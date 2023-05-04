@@ -9,11 +9,11 @@
 
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 #include "General.h"
 
 extern unsigned char g_atarimem[65536];
-extern char g_debugmem[65536];	//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
 
 extern BOOL g_closeApplication;
 extern CDC* g_mem_dc;
@@ -115,7 +115,6 @@ extern int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 extern int g_active_ti;			//1 tracks, 2 instrs
 
 extern BOOL g_isEditingInstrumentName;		//0 no, 1 instrument name is edited
-extern BOOL is_editing_infos;		//0 no, 1 song name is edited
 
 extern int g_line_y;			//active line coordinate, used to reference g_cursoractview to the correct position
 

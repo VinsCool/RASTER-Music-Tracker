@@ -4,19 +4,12 @@
 
 #pragma once
 
-#include <iostream>
-#include <iomanip>
-#include <cstdio>
-#include <fstream>
-#include <cmath>
-#include <limits>
+#include "General.h"
+#include "global.h"
 
-#include "StdAfx.h"
-#include "Rmt.h"
 #include "XPokey.h"
-#include "Atari6502.h"
-#include "Song.h"
 
+/*
 const double temperament_preset[TUNING_PRESETS][PRESETS_LENGTH] =
 {
 	//No Temperament for the first slot, leave it empty
@@ -105,10 +98,12 @@ const double temperament_preset[TUNING_PRESETS][PRESETS_LENGTH] =
 	//19-EDO generated using Scale Workshop
 	{ 1, 1.037155, 1.075690, 1.115657, 1.157110, 1.200102, 1.244692, 1.290939, 1.338904, 1.388651, 1.440246, 1.493759, 1.549259, 1.606822, 1.666524, 1.728443, 1.792664, 1.859270, 1.928352, 2 }
 };
+*/
 
 //Custom tuning ratio is generated in this array, so this is not a constant
-static double CUSTOM[13] = { 0 };
+//static double CUSTOM[13] = { 0 };
 
+/*
 //Table construction structure
 struct TTuning
 {
@@ -117,31 +112,33 @@ struct TTuning
 	int table_179mhz;
 	int table_16bit;
 };
+*/
 
 class CTuning
 {
 public:
-	int get_audf(double pitch, int coarse_divisor, double divisor, int cycle);
-	double get_pitch(int audf, int coarse_divisor, double divisor, int cycle);
-	double generate_freq(int audc, int audf, int audctl, int channel); 
-	double GetTruePitch(double tuning, int temperament, int basenote, int semitone);
-	void init_tuning();
+	double GetPokeyPitch(WORD freq, int coarseDivisor, double fineDivisor, int cycle) { return FREQ_17 / (coarseDivisor * fineDivisor) / (freq + cycle) / 2; };
+	int GetPokeyFreq(double pitch, int coarseDivisor, double fineDivisor, int cycle) { return (int)round(FREQ_17 / (coarseDivisor * fineDivisor) / (2 * pitch) - cycle); };
 
-private:
-	void generate_table(unsigned char* table, int length, int semitone, int timbre, int audctl);
-	int delta_audf(double pitch, int audf, int coarse_divisor, double divisor, int cycle, int timbre);
+	WORD GeneratePokeyFreq(double pitch, int channel, int timbre, int audctl);
+
+	double GetTruePitch(int semitone, int baseNote, double tuning);
+	double GetCentsOff(double pitch, double tuning);
+
+	int DeltaPokeyFreq(double pitch, int freq, int coarseDivisor, double fineDivisor, int cycle, int timbre);
+
+	//int get_audf(double pitch, int coarse_divisor, double divisor, int cycle);
+	//double get_pitch(int audf, int coarse_divisor, double divisor, int cycle);
+	//double generate_freq(int audc, int audf, int audctl, int channel); 
+	//double GetTruePitch(double tuning, int temperament, int basenote, int semitone);
+	//void init_tuning();
+
+//private:
+	//void generate_table(unsigned char* table, int length, int semitone, int timbre, int audctl);
+	//int delta_audf(double pitch, int audf, int coarse_divisor, double divisor, int cycle, int timbre);
 
 /*
-	const TTuning dist_2_bell{ 12, 0, 48, 24 };
-	const TTuning dist_4_smooth{ 12, 0, 24, 24 };
-	const TTuning dist_4_buzzy{ 12, 0, 12, 24 };
-	const TTuning dist_a_pure{ 48, 24, 108, 24 };
-	const TTuning dist_c_buzzy{ 24, 12, 84, 24 };
-	const TTuning dist_c_gritty{ 12, 0, 72, 24 };
-	const TTuning dist_c_unstable{ 36, 0, 96, 24 };
-*/
-
-//multiply by notes per octave to transpose the table
+	// Multiply by notes per octave to transpose the table
 	const TTuning dist_2_bell{ 1, 0, 4, 2 };
 	const TTuning dist_4_smooth{ 1, 0, 2, 2 };
 	const TTuning dist_4_buzzy{ 1, 0, 1, 2 };
@@ -149,7 +146,8 @@ private:
 	const TTuning dist_c_buzzy{ 2, 1, 7, 2 };
 	const TTuning dist_c_gritty{ 1, 0, 6, 2 };
 	const TTuning dist_c_unstable{ 3, 0, 8, 2 };
+*/
 };
 
-extern CTuning g_Tuning;
-extern CSong g_Song;
+//extern CTuning g_Tuning;
+//extern CSong g_Song;

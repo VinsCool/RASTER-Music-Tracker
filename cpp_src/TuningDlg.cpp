@@ -187,7 +187,7 @@ void TuningDlg::OnClickedIdtestnow()
 	g_MAJ_7TH_R = MAJ_7TH_R;
 	g_OCTAVE_R = OCTAVE_R;
 
-	g_Tuning.init_tuning();
+	//g_Tuning.init_tuning();
 }
 
 void TuningDlg::OnClickedIdreset()
@@ -227,7 +227,7 @@ void TuningDlg::OnClickedIdreset()
 	g_MAJ_7TH_R = b_MAJ_7TH_R;
 	g_OCTAVE_R = b_OCTAVE_R;
 
-	g_Tuning.init_tuning();
+	//g_Tuning.init_tuning();
 }
 
 void TuningDlg::OnBnClickedCancel()

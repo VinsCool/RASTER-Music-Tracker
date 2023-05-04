@@ -75,6 +75,8 @@ int Atari6502_Init()
 
 	C6502_Initialise(g_atarimem);
 
+	memset(g_atarimem, 0, 65536);
+
 	g_is6502 = 1;
 
 	return 1;
@@ -100,6 +102,7 @@ int Atari_LoadOBX(int obx, unsigned char* mem, WORD& minadr, WORD& maxadr)
 }
 
 // Load RMT routine to $3400, setnoteinstrvol to $3d00, and setvol to $3e00
+// TODO: Merge with Atari_InitRMTRoutine(), except not really...
 int Atari_LoadRMTRoutines()
 {
 	WORD min, max;
@@ -125,6 +128,7 @@ int Atari_LoadRMTRoutines()
 		bin = tracker_Patch8; size = sizeof tracker_Patch8;
 		break;
 
+	case TRACKER_DRIVER_NONE:
 	case TRACKER_DRIVER_PATCH16:
 		bin = tracker_Patch16; size = sizeof tracker_Patch16;
 		break;
@@ -133,7 +137,7 @@ int Atari_LoadRMTRoutines()
 		bin = tracker_PatchPoP; size = sizeof tracker_PatchPoP;
 		break;
 
-	case TRACKER_DRIVER_NONE:
+	//case TRACKER_DRIVER_NONE:
 	default:
 		g_rmtroutine = 0;
 		return 0;
@@ -143,11 +147,12 @@ int Atari_LoadRMTRoutines()
 	return LoadDataAsBinaryFile(bin, size, g_atarimem, min, max);
 }
 
+// TODO: Repurpose this function for RMT(E) Module Variables initialisation without 6502 emulation
 int Atari_InitRMTRoutine()
 {
 	if (!g_is6502) return 0;
 
-	g_Tuning.init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
+	//g_Tuning.init_tuning();	//input the A-4 frequency for the tuning and generate all the lookup tables needed for the player routines
 
 	WORD adr=RMT_INIT;
 	BYTE a=0, x=0x00, y=0x3f;
@@ -158,6 +163,7 @@ int Atari_InitRMTRoutine()
 	return (int)a;
 }
 
+// TODO: Repurpose this function for RMT(E) Module Playback calls without 6502 emulation
 void Atari_PlayRMT()
 {
 	if (!g_is6502) return;
@@ -172,6 +178,7 @@ void Atari_PlayRMT()
 	C6502_JSR(&adr,&a,&x,&y,&cycles);			//adr,A,X,Y
 }
 
+/*
 void Atari_PlayRMT_P3()
 {
 	if (!g_is6502) return;
@@ -181,7 +188,9 @@ void Atari_PlayRMT_P3()
 	int cycles = (g_ntsc) ? MAXSCREENCYCLES_NTSC : MAXSCREENCYCLES_PAL;
 	C6502_JSR(&adr, &a, &x, &y, &cycles);
 }
+*/
 
+// TODO: Repurpose this function for POKEY registers Read and Write without 6502 emulation
 void Atari_SetPokey()
 {
 	if (!g_is6502) return;
@@ -192,6 +201,7 @@ void Atari_SetPokey()
 	C6502_JSR(&adr, &a, &x, &y, &cycles);
 }
 
+/*
 void Atari_Silence()
 {
 	if (!g_is6502) return;
@@ -202,7 +212,9 @@ void Atari_Silence()
 	int cycles = (g_ntsc) ? MAXSCREENCYCLES_NTSC : MAXSCREENCYCLES_PAL;
 	C6502_JSR(&adr,&a,&x,&y,&cycles);			//adr,A,X,Y
 }
+*/
 
+/*
 void Atari_SetTrack_NoteInstrVolume(int t,int n,int i,int v)
 {
 	if (!g_is6502) return;
@@ -219,7 +231,9 @@ void Atari_SetTrack_NoteInstrVolume(int t,int n,int i,int v)
 
 	g_rmtinstr[t]=i;
 }
+*/
 
+/*
 void Atari_SetTrack_Volume(int t,int v)
 {
 	if (!g_is6502) return;
@@ -229,7 +243,9 @@ void Atari_SetTrack_Volume(int t,int v)
 	int cycles = (g_ntsc) ? MAXSCREENCYCLES_NTSC : MAXSCREENCYCLES_PAL;
 	C6502_JSR(&adr,&a,&x,&y,&cycles);			//adr,A,X,Y
 }
+*/
 
+/*
 void Atari_InstrumentTurnOff(int instr)
 {
 	if (!g_is6502) return;
@@ -247,11 +263,14 @@ void Atari_InstrumentTurnOff(int instr)
 		}
 	}
 }
+*/
 
+/*
 void Memory_Clear()
 {
 	memset(g_atarimem,0,65536);
 }
+*/
 
 bool LoadWord(std::ifstream& in, WORD& w)
 {

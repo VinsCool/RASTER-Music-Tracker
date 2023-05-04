@@ -728,10 +728,10 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 		//tableGoto *= tableSpeed;	// Not decided yet
 
 		// Set the equivalent data to the RMTE instrument, with respect to boundaries
-		ai->tableLength = tableLength < INSTRUMENT_TABLE_INDEX_MAX ? tableLength : 0;	//INVALID	// Not decided yet
+		ai->tableLength = tableLength <= INSTRUMENT_TABLE_INDEX_MAX ? tableLength : 0;	//INVALID	// Not decided yet
 		ai->tableLoop = tableGoto <= tableLength ? tableGoto : 0;	//INVALID	// Not decided yet
-		ai->envelopeLength = envelopeLength < ENVELOPE_MAX_COLUMNS ? envelopeLength : 0;	//INVALID	// Not decided yet
-		ai->envelopeLoop = envelopeGoto > envelopeLength ? envelopeGoto : 0;	//INVALID	// Not decided yet
+		ai->envelopeLength = envelopeLength <= ENVELOPE_MAX_COLUMNS ? envelopeLength : 0;	//INVALID	// Not decided yet
+		ai->envelopeLoop = envelopeGoto <= envelopeLength ? envelopeGoto : 0;	//INVALID	// Not decided yet
 
 		// Fill the equivalent RMTE tables based on the tableMode parameter
 		for (int j = 0; j <= ai->tableLength; j++)
@@ -744,24 +744,40 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 		for (int j = 0; j <= ai->envelopeLength; j++)
 		{
 			// Get the 3 bytes used by the original RMT Envelope format
-			BYTE envelopeVolume = memInstrument[(memInstrument[0] + 1) + (i * 3)];
-			BYTE envelopeCommand = memInstrument[(memInstrument[0] + 1) + (i * 3) + 1];
-			BYTE envelopeParameter = memInstrument[(memInstrument[0] + 1) + (i * 3) + 2];
+			BYTE envelopeVolume = memInstrument[(memInstrument[0] + 1) + (j * 3)];
+			BYTE envelopeCommand = memInstrument[(memInstrument[0] + 1) + (j * 3) + 1];
+			BYTE envelopeParameter = memInstrument[(memInstrument[0] + 1) + (j * 3) + 2];
 			BYTE envelopeEffectCommand = (envelopeCommand >> 4) & 0x07;
+
+			// Envelope Distortion, from 0 to E
+			BYTE distortion = envelopeCommand & 0x0E;
 
 			// The Envelope Effect Command is used for compatibility tweaks, which may or may not provide perfect results
 			switch (envelopeEffectCommand)
 			{
 			case 0x07:	// Overwrite the initialAudctl parameter, for a pseudo AUDCTL envelope when it is used multiple times (Patch16 only)
-				initialAudctl = envelopeParameter;
+				if (envelopeParameter < 0xFD)
+					initialAudctl = envelopeParameter;
 				break;
 			}
 
+			switch (distortion)
+			{
+			case 0x00: distortion = TIMBRE_PINK_NOISE; break;
+			case 0x02: distortion = TIMBRE_BELL; break;
+			case 0x04: distortion = TIMBRE_SMOOTH_4; break;
+			case 0x08: distortion = TIMBRE_WHITE_NOISE; break;
+			case 0x06:
+			case 0x0A: distortion = TIMBRE_PURE; break;
+			case 0x0C: distortion = TIMBRE_BUZZY_C; break;
+			case 0x0E: distortion = TIMBRE_GRITTY_C; break;
+			}
+			
+			// Distortion Envelope, converted the equivalent Timbre parameter
+			ai->distortionEnvelope[j] = distortion;
+
 			// Envelope Volume, only Left POKEY volume is supported by the RMTE format
 			ai->volumeEnvelope[j] = envelopeVolume & 0x0F;
-
-			// Envelope Distortion, from 0 to E
-			ai->audctlEnvelope[j] = envelopeCommand & 0x0E;
 
 			// Envelope AUDCTL
 			ai->audctlEnvelope[j] = initialAudctl;

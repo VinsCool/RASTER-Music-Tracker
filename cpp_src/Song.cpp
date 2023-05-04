@@ -22,6 +22,7 @@
 #include "ChannelControl.h"
 #include "PokeyStream.h"
 #include "ModuleV2.h"
+#include "Tuning.h"
 
 extern CSong g_Song;
 extern CInstruments g_Instruments;
@@ -29,6 +30,7 @@ extern CTrackClipboard g_TrackClipboard;
 extern CXPokey g_Pokey;
 extern CPokeyStream g_PokeyStream;
 extern CModule g_Module;
+extern CTuning g_Tuning;
 
 // ----------------------------------------------------------------------------
 
@@ -48,7 +50,7 @@ CSong::CSong()
 {
 	m_timerRoutine = NULL;
 	m_songVariables = NULL;
-	m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
+	//m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
 }
 
 CSong::~CSong()
@@ -97,7 +99,7 @@ void CSong::ClearSong(int numOfTracks)
 	g_rmtmsxtext = "";					// Clear the text for MSX export
 	g_PrefixForAllAsmLabels = "MUSIC";	// Default label prefix for exporting simple ASM notation
 
-	PlayPressedTonesInit();
+	//PlayPressedTonesInit();
 
 	m_isFollowPlay = 1;
 	m_mainSpeed = m_playSpeed = m_speedTimer = 16;
@@ -201,15 +203,16 @@ void CSong::ResetChannelVariables(TSongVariables* p)
 	p->isVolumeOnlyEnabled = false;
 	p->arpeggioScheme = 0x00;
 	p->channelAUDCTL = 0x00;
-	p->channelDistortion = 0xA0;
+	p->channelDistortion = TIMBRE_PURE;
 	p->channelFreq = 0x0000;
 	p->channelInstrument = INVALID;
 	p->channelNote = INVALID;
-	p->channelVolume = 0x0F;
+	p->channelVolume = 0x00;
 	p->delayedRow = NULL;
 	p->delayOffset = 0x00;
 	p->finetuneOffset = EFFECT_PARAMETER_DEFAULT;
 	p->frameCount = 0x00;
+	p->instrumentVolume = 0x00;
 	p->portamentoSpeed = 0x00;
 	p->portamentoTarget = 0x0000;
 	p->tremoloDepth = 0x00;
@@ -939,19 +942,23 @@ int CSong::DecodeModule(unsigned char* mem, int fromAddr, int endAddr, BYTE* ins
 
 //---
 
+/*
 BOOL CSong::PlayPressedTonesInit()
 {
 	for (int t = 0; t < SONGTRACKS; t++)
 		SetPlayPressedTonesTNIV(t, -1, -1, -1);
 	return 1;
 }
+*/
 
+/*
 BOOL CSong::SetPlayPressedTonesSilence()
 {
 	for (int t = 0; t < SONGTRACKS; t++)
 		SetPlayPressedTonesTNIV(t, -1, -1, 0);
 	return 1;
 }
+*/
 
 /*
 BOOL CSong::PlayPressedTones()
@@ -1487,6 +1494,12 @@ void CSong::SeekNextSubtune()
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_activeChannel = m_activeCursor = 0;
+
+	if (m_playMode != MPLAY_STOP)
+	{
+		Stop();
+		Play(MPLAY_START, m_isFollowPlay);
+	}
 }
 
 void CSong::SeekPreviousSubtune()
@@ -1501,6 +1514,12 @@ void CSong::SeekPreviousSubtune()
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_activeChannel = m_activeCursor = 0;
+
+	if (m_playMode != MPLAY_STOP)
+	{
+		Stop();
+		Play(MPLAY_START, m_isFollowPlay);
+	}
 }
 
 
@@ -1986,7 +2005,7 @@ void CSong::InstrPaste(int special)
 
 	TInstrument* ai = g_Instruments.GetInstrument(i);
 
-	Atari_InstrumentTurnOff(i); //turns off this instrument on all channels
+	//Atari_InstrumentTurnOff(i); //turns off this instrument on all channels
 
 	int x, y;
 	BOOL bl = 0, br = 0, ep = 0;
@@ -3483,7 +3502,9 @@ void CSong::TimerRoutine()
 	//PlayPressedTones();
 
 	// Rendering of a piece of sound sample (1 / 50s = 20ms)
-	g_Pokey.RenderSound1_50(m_instrumentSpeed);
+	//g_Pokey.RenderSound1_50(m_instrumentSpeed);
+
+	g_Pokey.RenderSound_No6502(m_instrumentSpeed);
 
 	// If the Song is currently playing, increment the timer
 	UpdatePlayTime();
@@ -3967,7 +3988,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			case PATTERN_NOTE_RETRIGGER: s.AppendFormat("~~~ "); break;
 			default:
 				if (note < PATTERN_NOTE_MAX)
-					s.AppendFormat("%s%1X ", notesandscales[notation][note % g_notesperoctave], note / g_notesperoctave + 1);
+					s.AppendFormat("%s%1X ", notesandscales[notation][note % g_notesperoctave], note / g_notesperoctave);
 				else
 					s.AppendFormat("??? ");
 			}
@@ -4149,8 +4170,9 @@ void CSong::Stop()
 {
 	m_playMode = MPLAY_STOP;
 	ResetPlayTime();
-	m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
-	SetPlayPressedTonesSilence();
+	InitialiseSongVariables();
+	//m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
+	//SetPlayPressedTonesSilence();
 	Atari_InitRMTRoutine();
 	Sleep(20);	// To ensure the Timer Routine is executed at least once here
 }
@@ -4201,7 +4223,6 @@ void CSong::PlayRow(TSubtune* p)
 	if (!p)
 		return;
 
-	BYTE speed = m_playSpeed;
 	BYTE row = m_playRow;
 	BYTE songline = m_playSongline;
 
@@ -4212,36 +4233,30 @@ void CSong::PlayRow(TSubtune* p)
 		// Process all channels
 		for (int i = 0; i < p->channelCount; i++)
 		{
-			// Get the Pattern Index from the Songline offset, then get data from the associated Row Index
-			BYTE pattern = p->channel[i].songline[songline];
-
 			// Note
-			//BYTE note = p->channel[i].pattern[pattern].row[row].note;
-			PlayNote(p);
+			PlayNote(p, i, songline, row);
 
 			// Instrument
-			//BYTE instrument = p->channel[i].pattern[pattern].row[row].instrument;
-			PlayInstrument(p);
+			PlayInstrument(p, i, songline, row);
 
 			// Volume;
-			//BYTE volume = p->channel[i].pattern[pattern].row[row].volume;
-			PlayVolume(p);
+			PlayVolume(p, i, songline, row);
 
 			// Command(s)
 			for (int k = 0; k < p->effectCommandCount[i]; k++)
-			{
-				//BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
-				//BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
-				PlayEffect(p);
-			}
+				PlayEffect(p, i, songline, row, k);
 		}
 
+		// Set the speed at the end, last Fxx Command used will take priority
+		m_speedTimer = m_playSpeed;
 	}
 
 	// Play Row with Legacy RMT compatibility in mind using the emulated 6502 routines
 	// TODO: Recreate the routine behaviour entirely in software for better compatibility
 	else
 	{
+		BYTE speed = m_playSpeed;
+
 		// In order to simulate the Legacy 6502 RMT routines behaviour, certain compromises are deliberately introduced here
 		for (int i = 0; i < p->channelCount; i++)
 		{
@@ -4289,13 +4304,13 @@ void CSong::PlayRow(TSubtune* p)
 			}
 
 			// Compromised for compatibility with RMTE data
-			if (volume < PATTERN_VOLUME_COUNT)
-			{
-				if (note < PATTERN_NOTE_COUNT)
-					Atari_SetTrack_NoteInstrVolume(i, note, instrument, volume);
-				else
-					Atari_SetTrack_Volume(i, volume);
-			}
+			//if (volume < PATTERN_VOLUME_COUNT)
+			//{
+			//	if (note < PATTERN_NOTE_COUNT)
+			//		Atari_SetTrack_NoteInstrVolume(i, note, instrument, volume);
+			//	else
+			//		Atari_SetTrack_Volume(i, volume);
+			//}
 		}
 
 		// Speed will be set at the end, so the last Channel with a Speed value will take priority
@@ -4318,7 +4333,7 @@ void CSong::PlayPattern(TSubtune* p)
 		PlayRow(p);
 
 		// The next Songline will be played if the Pattern reached the end
-		if (++m_playRow >= p->patternLength)
+		if (++m_playRow >= g_Module.GetShortestPatternLength(p, m_playSongline))	//p->patternLength)
 			PlaySongline(p);
 
 		// Playing and following
@@ -4328,6 +4343,56 @@ void CSong::PlayPattern(TSubtune* p)
 			m_activeSongline = m_playSongline;
 		}
 	}
+
+	//-- Post-play procedure (TODO: Move to its own function) --//
+
+	g_atarimem[RMTPLAYR_V_AUDCTL] = g_atarimem[RMTPLAYR_V_AUDCTL2] = 0x00;
+	g_atarimem[RMTPLAYR_V_SKCTL] = g_atarimem[RMTPLAYR_V_SKCTL2] = 0x03;
+
+	for (int i = 0; i < p->channelCount; i++)
+	{
+		TInstrumentV2* instrument = g_Module.GetInstrument(m_songVariables[i].channelInstrument);
+
+		if (instrument)
+		{
+			BYTE frame = m_songVariables[i].frameCount;
+
+			m_songVariables[i].channelDistortion = instrument->distortionEnvelope[frame];
+			m_songVariables[i].channelAUDCTL = instrument->audctlEnvelope[frame];
+			m_songVariables[i].instrumentVolume = instrument->volumeEnvelope[frame];
+
+			if (++frame >= instrument->envelopeLength)
+				frame = instrument->envelopeLoop;
+
+			m_songVariables[i].frameCount = frame;
+		}
+
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] = m_songVariables[i].channelDistortion & 0xF0;
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] |= m_songVariables[i].channelVolume * m_songVariables[i].instrumentVolume / 0x0F;
+		g_atarimem[i >= 4 ? RMTPLAYR_V_AUDCTL2 : RMTPLAYR_V_AUDCTL] |= m_songVariables[i].channelAUDCTL;
+	}
+
+	for (int i = 0; i < p->channelCount; i++)
+	{
+		BYTE note = m_songVariables[i].channelNote;
+
+		if (note <= PATTERN_NOTE_COUNT)
+		{
+			double pitch = g_Tuning.GetTruePitch(note, g_basenote, g_basetuning);
+			m_songVariables[i].channelFreq = g_Tuning.GeneratePokeyFreq(pitch, i, m_songVariables[i].channelDistortion, g_atarimem[i >= 4 ? RMTPLAYR_V_AUDCTL2 : RMTPLAYR_V_AUDCTL]);
+		}
+
+		// If the value imply we are 16-bit Mode, the registers will be set accordingly
+		if (m_songVariables[i].channelFreq > 0xFF && i % 2 == 1)
+		{
+			g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq >> 8;
+			g_atarimem[RMTPLAYR_TRACKN_AUDF + i - 1] = m_songVariables[i].channelFreq & 0xFF;
+			g_atarimem[RMTPLAYR_TRACKN_AUDC + i - 1] = 0x00;
+		}
+		else
+			g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq & 0xFF;
+	}
+
 }
 
 void CSong::PlaySongline(TSubtune* p)
@@ -4342,26 +4407,123 @@ void CSong::PlaySongline(TSubtune* p)
 		Stop();
 }
 
-void CSong::PlayNote(TSubtune* p)
+void CSong::PlayNote(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
 {
 	if (!p)
 		return;
+
+	BYTE pattern = p->channel[channel].songline[songline];
+	BYTE note = p->channel[channel].pattern[pattern].row[row].note;
+	bool active = m_songVariables[channel].isNoteActive;
+
+	switch (note)
+	{
+	case PATTERN_NOTE_EMPTY:
+		//if (m_songVariables[channel].isNoteActive)
+		//	m_songVariables[channel].isNoteSustain = true;
+		break;
+
+	case PATTERN_NOTE_OFF:
+		m_songVariables[channel].channelNote = INVALID;
+		m_songVariables[channel].isNoteActive = false;
+		break;
+
+	case PATTERN_NOTE_RELEASE:
+		if (active)
+			m_songVariables[channel].isNoteRelease = true;
+		break;
+
+	case PATTERN_NOTE_RETRIGGER:
+		if (active)
+			m_songVariables[channel].isNoteTrigger = true;
+		break;
+
+	default:
+		if (note < PATTERN_NOTE_COUNT)
+		{
+			m_songVariables[channel].channelNote = note;
+			m_songVariables[channel].isNoteActive = true;
+			m_songVariables[channel].isNoteTrigger = true;
+			m_songVariables[channel].frameCount = 0;
+		}
+		//else
+		//	m_songVariables[channel].channelNote = INVALID;
+	}
+
+	//if (m_songVariables[channel].isNoteTrigger)
+	//{
+	//	m_songVariables[channel].isNoteActive = true;
+	//	m_songVariables[channel].isNoteTrigger = false;
+	//	m_songVariables[channel].frameCount = 0;
+	//}
 }
 
-void CSong::PlayInstrument(TSubtune* p)
+void CSong::PlayInstrument(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
 {
 	if (!p)
 		return;
+
+	BYTE pattern = p->channel[channel].songline[songline];
+	BYTE instrument = p->channel[channel].pattern[pattern].row[row].instrument;
+	bool active = m_songVariables[channel].isNoteActive;
+
+	switch (instrument)
+	{
+	case PATTERN_INSTRUMENT_EMPTY:
+		break;
+
+	default:
+		//if (active && instrument < PATTERN_INSTRUMENT_COUNT)
+		if (instrument < PATTERN_INSTRUMENT_COUNT)
+			m_songVariables[channel].channelInstrument = instrument;
+		//else
+		//	m_songVariables[channel].channelInstrument = INVALID;
+	}
 }
 
-void CSong::PlayVolume(TSubtune* p)
+void CSong::PlayVolume(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
 {
 	if (!p)
 		return;
+
+	BYTE pattern = p->channel[channel].songline[songline];
+	BYTE volume = p->channel[channel].pattern[pattern].row[row].volume;
+	bool active = m_songVariables[channel].isNoteActive;
+
+	switch (volume)
+	{
+	case PATTERN_VOLUME_EMPTY:
+		break;
+
+	default:
+		//if (active && volume < PATTERN_VOLUME_COUNT)
+		if (active && volume < PATTERN_VOLUME_COUNT)
+			m_songVariables[channel].channelVolume = volume;
+		//else
+		//	m_songVariables[channel].channelVolume = 0x00;
+	}
+
 }
 
-void CSong::PlayEffect(TSubtune* p)
+void CSong::PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE column)
 {
 	if (!p)
 		return;
+
+	BYTE pattern = p->channel[channel].songline[songline];
+	BYTE command = p->channel[channel].pattern[pattern].row[row].command[column].identifier;
+	BYTE parameter = p->channel[channel].pattern[pattern].row[row].command[column].parameter;
+	//bool active = m_songVariables[channel].isNoteActive;
+
+	switch (command)
+	{
+	case EFFECT_COMMAND_BXX:
+	case EFFECT_COMMAND_DXX:
+		// Do something here, since we specifically want the next Row to trigger the End of Pattern, so this cannot be done for now
+		break;
+
+	case EFFECT_COMMAND_FXX:
+		m_playSpeed = parameter;
+		break;
+	}
 }

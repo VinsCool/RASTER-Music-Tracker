@@ -1,4 +1,6 @@
 #include "StdAfx.h"
+
+/*
 #include <fstream>
 
 #include "GuiHelpers.h"
@@ -31,7 +33,9 @@ extern CInstruments	g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
 extern CXPokey g_Pokey;
 extern CRmtMidi g_Midi;
+*/
 
+/*
 void CSong::MidiEvent(DWORD dwParam)
 {
 	unsigned char chn, cmd, pr1, pr2;
@@ -424,7 +428,7 @@ void CSong::MidiEvent(DWORD dwParam)
 		} ////
 		else //notes (soon...)
 		{
-			int note = pr1 /* - 36 + m_mod_wheel */;			//direct MIDI note mapping, for easier tests, else the older comment applies -> //from the 3rd octave + modulation wheel offset
+			int note = pr1 // - 36 + m_mod_wheel;			//direct MIDI note mapping, for easier tests, else the older comment applies -> //from the 3rd octave + modulation wheel offset
 			int vol = m_volume;									//direct volume value taken from the one of active instrument in memory, controlled by the volume slider
 			int track = 0;										//m_trackactivecol is the active channel to map, so for tests simply moving the cursor should do the trick
 
@@ -676,3 +680,4 @@ void CSong::MidiEvent(DWORD dwParam)
 			}
 		}
 }
+*/

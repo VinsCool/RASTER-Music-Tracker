@@ -24,7 +24,7 @@ void CALLBACK MidiInProc(
 {
 	// Forward MIDI data and error messages to the global song object
 	if (wMsg != MIM_DATA && wMsg != MIM_ERROR) return;
-	g_Song.MidiEvent(dwParam1);
+	//g_Song.MidiEvent(dwParam1);
 }
 
 CRmtMidi::CRmtMidi()

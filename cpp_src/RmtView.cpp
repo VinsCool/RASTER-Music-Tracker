@@ -849,7 +849,7 @@ void CRmtView::OnViewTuning()
 		g_basetuning = dlg.m_basetuning;
 		g_basenote = dlg.m_basenote;
 		g_temperament = dlg.m_temperament;
-		g_Tuning.init_tuning();
+		//g_Tuning.init_tuning();
 	}
 }
 
@@ -1004,7 +1004,7 @@ void CRmtView::OnInitialUpdate()
 	}
 
 	//INITIALISATION OF ATARI RMT ROUTINES
-	Memory_Clear();
+	//Memory_Clear();
 	Atari_LoadRMTRoutines();
 	Atari_InitRMTRoutine();
 	g_Song.SetRMTTitle();
@@ -1969,6 +1969,28 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 	case VK_F7:
 		OnPlay(MPLAY_FROM);
+		break;
+
+	case 48:	// VK_0
+		if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
+			SetChannelOnOff(INVALID, FALSE);	// Turn All Channels Off
+		break;
+
+	case 49:	// VK_1
+	case 50:	// VK_2
+	case 51:	// VK_3
+	case 52:	// VK_4
+	case 53:	// VK_5
+	case 54:	// VK_6
+	case 55:	// VK_7
+	case 56:	// VK_8
+		if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
+			SetChannelOnOff(nChar - 49, INVALID);	// Turn Channel On/Off
+		break;
+
+	case 57:	// VK_9
+		if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
+			SetChannelOnOff(INVALID, TRUE);	// Turn All Channels On
 		break;
 
 	case VK_UP:
