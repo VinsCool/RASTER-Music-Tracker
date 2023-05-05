@@ -40,7 +40,7 @@ extern CInstruments	g_Instruments;
 extern CTrackClipboard g_TrackClipboard;
 extern CModule g_Module;
 
-std::chrono::steady_clock::time_point m_deltaTimerDisplay;
+//std::chrono::steady_clock::time_point m_deltaTimerDisplay;
 
 /////////////////////////////////////////////////////////////////////////////
 // CRmtView
@@ -252,8 +252,8 @@ void CRmtView::OnTimer(UINT_PTR nIDEvent)
 {
 	if (nIDEvent == m_timerDisplay)
 	{
-		std::this_thread::sleep_until(m_deltaTimerDisplay);
-		m_deltaTimerDisplay = std::chrono::steady_clock::now() + std::chrono::milliseconds(16);
+		//std::this_thread::sleep_until(m_deltaTimerDisplay);
+		//m_deltaTimerDisplay = std::chrono::steady_clock::now() + std::chrono::milliseconds(16);
 		AfxGetApp()->GetMainWnd()->Invalidate();
 		SCREENUPDATE;
 	}
