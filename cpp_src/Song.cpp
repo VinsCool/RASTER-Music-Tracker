@@ -193,6 +193,7 @@ void CSong::ResetChannelVariables(TSongVariables* p)
 		return;
 
 	p->isDelayEnabled = false;
+	p->isInstrumentAbsoluteFreq = false;
 	p->isNoteActive = false;
 	p->isNoteRelease = false;
 	p->isNoteSustain = false;
@@ -212,6 +213,12 @@ void CSong::ResetChannelVariables(TSongVariables* p)
 	p->delayOffset = 0x00;
 	p->finetuneOffset = EFFECT_PARAMETER_DEFAULT;
 	p->frameCount = 0x00;
+	p->instrumentEnvelopeOffset = 0x00;
+	p->instrumentEnvelopeSpeed = 0x00;
+	p->instrumentTableOffset = 0x00;
+	p->instrumentTableSpeed = 0x00;
+	p->instrumentNote = 0x00;
+	p->instrumentFreq = 0x0000;
 	p->instrumentVolume = 0x00;
 	p->portamentoSpeed = 0x00;
 	p->portamentoTarget = 0x0000;
@@ -4350,9 +4357,10 @@ void CSong::PlayContinue(TSubtune* p)
 		return;
 
 	TInstrumentV2* instrument;
-
-	BYTE audctl, audctl1, audctl2, skctl, skctl1, skctl2;
-	BYTE note, timbre, frame;
+	BYTE audctl1, audctl2, audctl;
+	BYTE skctl1, skctl2;	// , skctl;
+	BYTE note, timbre, frame, speed, command;
+	WORD freq, parameter;
 
 	for (int i = 0; i < p->channelCount; i++)
 	{
@@ -4360,16 +4368,65 @@ void CSong::PlayContinue(TSubtune* p)
 
 		if (instrument)
 		{
-			frame = m_songVariables[i].frameCount;
+			// Instrument Table
+			frame = m_songVariables[i].instrumentTableOffset;
+			speed = m_songVariables[i].instrumentTableSpeed;
+
+			m_songVariables[i].instrumentNote = instrument->noteTable[frame];
+			m_songVariables[i].instrumentFreq = instrument->freqTable[frame];
+
+			if (++speed >= instrument->tableSpeed)
+			{
+				speed = 0x00;
+
+				if (++frame >= instrument->tableLength)
+					frame = instrument->tableLoop;
+			}
+
+			m_songVariables[i].instrumentTableSpeed = speed;
+			m_songVariables[i].instrumentTableOffset = frame;
+
+			// Instrument Envelope
+			frame = m_songVariables[i].instrumentEnvelopeOffset;
+			speed = m_songVariables[i].instrumentEnvelopeSpeed;
+
+			command = instrument->commandEnvelope[frame];
+			parameter = instrument->parameterEnvelope[frame] & 0xFF;
 
 			m_songVariables[i].channelDistortion = instrument->distortionEnvelope[frame];
 			m_songVariables[i].channelAUDCTL = instrument->audctlEnvelope[frame];
 			m_songVariables[i].instrumentVolume = instrument->volumeEnvelope[frame];
 
-			if (++frame >= instrument->envelopeLength)
-				frame = instrument->envelopeLoop;
+			if (++speed >= instrument->envelopeSpeed)
+			{
+				speed = 0x00;
 
-			m_songVariables[i].frameCount = frame;
+				if (++frame >= instrument->envelopeLength)
+					frame = instrument->envelopeLoop;
+			}
+
+			m_songVariables[i].instrumentEnvelopeSpeed = speed;
+			m_songVariables[i].instrumentEnvelopeOffset = frame;
+
+			// Instrument Command
+			m_songVariables[i].isInstrumentAbsoluteFreq = false;
+
+			switch (command)
+			{
+			case 0x00:
+				m_songVariables[i].instrumentNote += parameter & 0xFF;
+				break;
+
+			case 0x01:
+				m_songVariables[i].instrumentFreq = parameter;
+				m_songVariables[i].isInstrumentAbsoluteFreq = true;	// Hack!!! Not a good way to do this at all!
+				break;
+
+			case 0x02:
+				m_songVariables[i].instrumentFreq += parameter;
+				break;
+			}
+
 		}
 
 	}
@@ -4387,7 +4444,7 @@ void CSong::PlayContinue(TSubtune* p)
 	// Process the Song Variables currently in memory
 	for (int i = 0; i < p->channelCount; i++)
 	{
-		note = m_songVariables[i].channelNote;
+		note = m_songVariables[i].channelNote + m_songVariables[i].instrumentNote;
 		timbre = m_songVariables[i].channelDistortion;
 		audctl = i >= 4 ? audctl2 : audctl1;
 
@@ -4416,18 +4473,24 @@ void CSong::PlayContinue(TSubtune* p)
 	for (int i = 0; i < p->channelCount; i++)
 	{
 		audctl = i >= 4 ? audctl2 : audctl1;
+		freq = (m_songVariables[i].isInstrumentAbsoluteFreq) ? m_songVariables[i].instrumentFreq : m_songVariables[i].channelFreq + m_songVariables[i].instrumentFreq;
 
 		// Update the AUDF using the full 16-bit Freq values, updating 2 Channels at once, if the AUDCTL is in 16-bit mode
 		if ((audctl & 0x10 && audctl & 0x40 && i % 4 == 1) || (audctl & 0x08 && audctl & 0x20 && i % 4 == 3))
 		{
-			g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq >> 8;
-			g_atarimem[RMTPLAYR_TRACKN_AUDF + i - 1] = m_songVariables[i].channelFreq & 0xFF;
+			//g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq >> 8;
+			//g_atarimem[RMTPLAYR_TRACKN_AUDF + i - 1] = m_songVariables[i].channelFreq & 0xFF;
+			g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = freq >> 8;
+			g_atarimem[RMTPLAYR_TRACKN_AUDF + i - 1] = freq & 0xFF;
 			g_atarimem[RMTPLAYR_TRACKN_AUDC + i - 1] = 0x00;
 		}
 
 		// Otherwise, a 8-bit Freq value is be assumed and used as such, no additional check is necessary in this case
 		else
-			g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq & 0xFF;
+		{
+			//g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq & 0xFF;
+			g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = freq & 0xFF;
+		}
 
 		// Update the AUDC using the combined Timbre and Volume values
 		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] = m_songVariables[i].channelDistortion & 0xF0;
@@ -4521,7 +4584,13 @@ void CSong::PlayInstrument(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
 	default:
 		//if (active && instrument < PATTERN_INSTRUMENT_COUNT)
 		if (instrument < PATTERN_INSTRUMENT_COUNT)
+		{
 			m_songVariables[channel].channelInstrument = instrument;
+			m_songVariables[channel].instrumentEnvelopeOffset = 0x00;
+			m_songVariables[channel].instrumentEnvelopeSpeed = 0x00;
+			m_songVariables[channel].instrumentTableOffset = 0x00;
+			m_songVariables[channel].instrumentTableSpeed = 0x00;
+		}
 		//else
 		//	m_songVariables[channel].channelInstrument = INVALID;
 	}

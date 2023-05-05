@@ -64,16 +64,20 @@ void CModule::InitialiseModule()
 		m_instrument[i].envelopeLength = 1;
 		m_instrument[i].envelopeLoop = 0;
 		m_instrument[i].envelopeRelease = 0;
+		m_instrument[i].envelopeSpeed = 0;
 		m_instrument[i].tableLength = 0;
 		m_instrument[i].tableLoop = 0;
 		m_instrument[i].tableRelease = 0;
 		m_instrument[i].tableMode = 0;
+		m_instrument[i].tableSpeed = 0;
 
 		for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
 		{
 			m_instrument[i].volumeEnvelope[j] = 0;
 			m_instrument[i].distortionEnvelope[j] = 0;
 			m_instrument[i].audctlEnvelope[j] = 0;
+			m_instrument[i].commandEnvelope[j] = 0;
+			m_instrument[i].parameterEnvelope[j] = 0;
 		}
 
 		for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
@@ -708,35 +712,37 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 
 		// Get the Envelopes, Tables, and other parameters from the original RMT instrument
 		BYTE envelopePtr = memInstrument[0];
+
 		BYTE tableLength = memInstrument[0] - 12;
 		BYTE tableGoto = memInstrument[1] - 12;
+
 		BYTE envelopeLength = (memInstrument[2] - (memInstrument[0] + 1)) / 3;
 		BYTE envelopeGoto = (memInstrument[3] - (memInstrument[0] + 1)) / 3;
+
 		BYTE tableType = memInstrument[4] >> 7;				// Table Type, 0 = Note, 1 = Freq
-		//BYTE tableMode = (memInstrument[4] >> 6) & 0x01;	// Table Mode, 0 = Set, 1 = Additive, not supported by the RMTE format
-		//BYTE tableSpeed = memInstrument[4] & 0x3F;		// Table Speed, used to offset the equivalent Tables
+		BYTE tableMode = (memInstrument[4] >> 6) & 0x01;	// Table Mode, 0 = Set, 1 = Additive
+		BYTE tableSpeed = memInstrument[4] & 0x3F;			// Table Speed, used to offset the equivalent Tables
+
 		BYTE initialAudctl = memInstrument[5];				// AUDCTL, used to initialise the equivalent Envelope
+
 		//BYTE volumeSlide = memInstrument[6];				// Volume Slide, not supported by the RMTE format
 		//BYTE volumeMinimum = memInstrument[7] >> 4;		// Volume Minimum, not supported by the RMTE format
 		//BYTE vibratoDelay = memInstrument[8];				// Vibrato/Freq Shift Delay, not supported by the RMTE format
 		//BYTE vibrato = memInstrument[9] & 0x03;			// Vibrato, not supported by the RMTE format
 		//BYTE freqShift = memInstrument[10];				// Freq Shift, not supported by the RMTE format
 
-		// Adjust the Tables length and loop point using the Table Speed parameter
-		// Since the size could go as high as 2048 frames, it might be a better idea to simply add a Speed parameter as well...
-		//tableLength *= tableSpeed;	// Not decided yet
-		//tableGoto *= tableSpeed;	// Not decided yet
-
 		// Set the equivalent data to the RMTE instrument, with respect to boundaries
-		ai->tableLength = tableLength <= INSTRUMENT_TABLE_INDEX_MAX ? tableLength : 0;	//INVALID	// Not decided yet
-		ai->tableLoop = tableGoto <= tableLength ? tableGoto : 0;	//INVALID	// Not decided yet
-		ai->envelopeLength = envelopeLength <= ENVELOPE_MAX_COLUMNS ? envelopeLength : 0;	//INVALID	// Not decided yet
-		ai->envelopeLoop = envelopeGoto <= envelopeLength ? envelopeGoto : 0;	//INVALID	// Not decided yet
+		ai->tableLength = tableLength <= INSTRUMENT_TABLE_INDEX_MAX ? tableLength : 0;
+		ai->tableLoop = tableGoto <= tableLength ? tableGoto : 0;
+		ai->tableSpeed = tableSpeed;
+		ai->tableMode = tableMode;
+		ai->envelopeLength = envelopeLength <= ENVELOPE_MAX_COLUMNS ? envelopeLength : 0;
+		ai->envelopeLoop = envelopeGoto <= envelopeLength ? envelopeGoto : 0;
 
 		// Fill the equivalent RMTE tables based on the tableMode parameter
 		for (int j = 0; j <= ai->tableLength; j++)
 		{
-			ai->noteTable[j] = tableType ? memInstrument[12 + j] : 0;
+			ai->noteTable[j] = !tableType ? memInstrument[12 + j] : 0;
 			ai->freqTable[j] = tableType ? memInstrument[12 + j] : 0;
 		}
 
@@ -747,19 +753,28 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 			BYTE envelopeVolume = memInstrument[(memInstrument[0] + 1) + (j * 3)];
 			BYTE envelopeCommand = memInstrument[(memInstrument[0] + 1) + (j * 3) + 1];
 			BYTE envelopeParameter = memInstrument[(memInstrument[0] + 1) + (j * 3) + 2];
-			BYTE envelopeEffectCommand = (envelopeCommand >> 4) & 0x07;
 
-			// Envelope Distortion, from 0 to E
-			BYTE distortion = envelopeCommand & 0x0E;
+			// Envelope Effect Command, from 0 to 7
+			BYTE envelopeEffectCommand = (envelopeCommand >> 4) & 0x07;
 
 			// The Envelope Effect Command is used for compatibility tweaks, which may or may not provide perfect results
 			switch (envelopeEffectCommand)
 			{
 			case 0x07:	// Overwrite the initialAudctl parameter, for a pseudo AUDCTL envelope when it is used multiple times (Patch16 only)
 				if (envelopeParameter < 0xFD)
+				{
 					initialAudctl = envelopeParameter;
+					envelopeParameter = envelopeEffectCommand = 0;
+				}
 				break;
 			}
+
+			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
+			ai->commandEnvelope[j] = envelopeEffectCommand;
+			ai->parameterEnvelope[j] = envelopeParameter;
+
+			// Envelope Distortion, from 0 to E, in steps of 2
+			BYTE distortion = envelopeCommand & 0x0E;
 
 			switch (distortion)
 			{
@@ -784,9 +799,6 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 
 			// Autofilter, not supported (yet?) by the RMTE format
 			//ai->autofilterEnvelope[j] = envelopeCommand >> 7;
-
-			// Instrument Command, not supported (yet?) by the RMTE format
-			//ai->commandEnvelope[j] = (envelopeCommand >> 4) & 0x07;
 
 			// Portamento, not supported (and unlikely to be) by the RMTE format
 			//ai->portamentoEnvelope[j] = envelopeCommand & 0x01;

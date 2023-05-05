@@ -156,13 +156,17 @@ struct TInstrumentV2
 	BYTE envelopeLength;							// Envelope Length, in frames
 	BYTE envelopeLoop;								// Envelope Loop point, in frames
 	BYTE envelopeRelease;							// Envelope Release point, in frames
+	BYTE envelopeSpeed;								// Envelope Speed, in frames
 	BYTE tableLength;								// Table Length, in frames
 	BYTE tableLoop;									// Table Loop point, in frames
 	BYTE tableRelease;								// Table Release point, in frames
-	BYTE tableMode;									// Table Mode, Absolute or Relative
+	BYTE tableMode;									// Table Mode, Absolute or Relative, Additive or Set, any combination thereof
+	BYTE tableSpeed;								// Table Speed, in frames
 	BYTE volumeEnvelope[ENVELOPE_INDEX_MAX];		// Volume Envelope
 	BYTE distortionEnvelope[ENVELOPE_INDEX_MAX];	// Distortion Envelope
-	BYTE audctlEnvelope[ENVELOPE_INDEX_MAX];		// AUDCTL Envelope, may vary between Track Channels
+	BYTE audctlEnvelope[ENVELOPE_INDEX_MAX];		// AUDCTL Envelope
+	BYTE commandEnvelope[ENVELOPE_INDEX_MAX];		// Extended RMT Instrument Commands
+	WORD parameterEnvelope[ENVELOPE_INDEX_MAX];		// Extended RMT Instrument Parameters
 	BYTE noteTable[INSTRUMENT_TABLE_INDEX_MAX];		// Note Table
 	BYTE freqTable[INSTRUMENT_TABLE_INDEX_MAX];		// Freq Table
 };
