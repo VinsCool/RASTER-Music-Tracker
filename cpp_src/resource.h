@@ -217,7 +217,7 @@
 #define IDC_MINOR_7TH_R                 1149
 #define IDC_MAJOR_7TH_R                 1150
 #define IDC_BASENOTE                    1151
-#define IDC_TEMPERAMENT                 1152
+#define IDC_BASEOCTAVE					1152
 #define IDC_RMT_BASE_ADDR               1152
 #define IDC_OCTAVE_L                    1153
 #define IDC_RMT_MODULE_ASM_LABEL        1153

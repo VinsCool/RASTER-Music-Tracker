@@ -118,56 +118,11 @@ bool g_isRMTE = true;			// Hack!!! Necessary until most legacy code is commented
 //-- Tuning Variables (TODO: Move to Tuning.cpp and Tuning.h) --//
 
 // Best known compromise for both regions, they produce identical tables
-double g_basetuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
-int g_basenote = 3;				// 3 = A-
-int g_temperament = 0;			// Each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
-int g_notesperoctave = 12;		// By default there are 12 notes per octave
-
-// Ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!! (TODO: Delete and replace with a better method)
-double g_UNISON = 1;
-double g_MIN_2ND = 1;
-double g_MAJ_2ND = 1;
-double g_MIN_3RD = 1;
-double g_MAJ_3RD = 1;
-double g_PERF_4TH = 1;
-double g_TRITONE = 1;
-double g_PERF_5TH = 1;
-double g_MIN_6TH = 1;
-double g_MAJ_6TH = 1;
-double g_MIN_7TH = 1;
-double g_MAJ_7TH = 1;
-double g_OCTAVE = 2;
-
-// Ratio Left (TODO: Delete and replace with a better method)
-int g_UNISON_L = 1;
-int g_MIN_2ND_L = 40;
-int g_MAJ_2ND_L = 10;
-int g_MIN_3RD_L = 20;
-int g_MAJ_3RD_L = 5;
-int g_PERF_4TH_L = 4;
-int g_TRITONE_L = 60;
-int g_PERF_5TH_L = 3;
-int g_MIN_6TH_L = 30;
-int g_MAJ_6TH_L = 5;
-int g_MIN_7TH_L = 30;
-int g_MAJ_7TH_L = 15;
-int g_OCTAVE_L = 2;
-
-// Ratio Right (TODO: Delete and replace with a better method)
-int g_UNISON_R = 1;
-int g_MIN_2ND_R = 38;
-int g_MAJ_2ND_R = 9;
-int g_MIN_3RD_R = 17;
-int g_MAJ_3RD_R = 4;
-int g_PERF_4TH_R = 3;
-int g_TRITONE_R = 43;
-int g_PERF_5TH_R = 2;
-int g_MIN_6TH_R = 19;
-int g_MAJ_6TH_R = 3;
-int g_MIN_7TH_R = 17;
-int g_MAJ_7TH_R = 8;
-int g_OCTAVE_R = 1;
-
+double g_baseTuning = (g_ntsc) ? 444.895778867913 : 440.83751645933;
+int g_baseNote = 3;				// 3 = A-
+int g_baseOctave = 4;	// 4 * 12 Semitones added to Base Note
+//int g_temperament = 0;			// Each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
+//int g_notesperoctave = 12;		// By default there are 12 notes per octave
 
 //-- RMT Export Variables (TODO: Move elsewhere or replace with a better method) --//
 

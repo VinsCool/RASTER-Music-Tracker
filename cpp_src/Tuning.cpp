@@ -11,7 +11,7 @@
 double CTuning::GetTruePitch(int semitone, int baseNote, double tuning)
 {
 	double ratio = pow(2.0, 1.0 / 12.0);
-	return (tuning / 64) * pow(ratio, semitone + baseNote);
+	return (tuning / 64) * pow(ratio, semitone + baseNote + 12);
 }
 
 double CTuning::GetCentsOff(double pitch, double tuning)

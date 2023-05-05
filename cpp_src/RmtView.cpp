@@ -589,9 +589,10 @@ void CRmtView::ReadTuningConfig()
 
 	CString s;
 	char line[1024];
-	char* tmp, * div, * name, * value, * value2;
+	char* tmp, * name, * value;
 	s.Format("%s%s", g_prgpath, TUNING_FILENAME);
 	std::ifstream in(s);
+
 	if (!in)
 	{
 		MessageBox("Could not find: '" + s + "'\n\nRMT will use the default Tuning parameters.\n", "RMT", MB_ICONEXCLAMATION);
@@ -605,37 +606,17 @@ void CRmtView::ReadTuningConfig()
 	{
 		in.getline(line, 1023);		// Seek for the next character in memory 
 		tmp = strchr(line, '=');	// The tmp pointer will be set at the position of '=' 
-		div = strchr(line, '/');	// The div pointer will be set at the position of '/'
 		if (!tmp) continue;			// Seek for the character until a match is found 
 		tmp[-1] = 0;				// Offset by 1 to compensate the Space   
 		name = line;				// Name set to the current line, terminated by tmp 
 		value = tmp + 2;			// Offset by 1 to compensate the Space 
-		if (div)					// The div pointer is used to get the 2nd Ratio value 
-		{
-			div[-1] = 0;			// Same as above, offset by 1 to compensate the Space(s) 
-			value2 = div + 2;
-		}
 
 		// TUNING 
-		if (NAME("TUNING")) { g_basetuning = atof(value); continue; }
-		if (NAME("BASENOTE")) { g_basenote = atoi(value); continue; }
-		if (NAME("TEMPERAMENT")) { g_temperament = atoi(value); continue; }
-
-		// RATIO
-		if (NAME("UNISON")) { g_UNISON_L = atoi(value); if (div) g_UNISON_R = atoi(value2); continue; }
-		if (NAME("MIN_2ND")) { g_MIN_2ND_L = atoi(value); if (div) g_MIN_2ND_R = atoi(value2); continue; }
-		if (NAME("MAJ_2ND")) { g_MAJ_2ND_L = atoi(value); if (div) g_MAJ_2ND_R = atoi(value2); continue; }
-		if (NAME("MIN_3RD")) { g_MIN_3RD_L = atoi(value); if (div) g_MIN_3RD_R = atoi(value2); continue; }
-		if (NAME("MAJ_3RD")) { g_MAJ_3RD_L = atoi(value); if (div) g_MAJ_3RD_R = atoi(value2); continue; }
-		if (NAME("PERF_4TH")) { g_PERF_4TH_L = atoi(value); if (div) g_PERF_4TH_R = atoi(value2); continue; }
-		if (NAME("TRITONE")) { g_TRITONE_L = atoi(value); if (div) g_TRITONE_R = atoi(value2); continue; }
-		if (NAME("PERF_5TH")) { g_PERF_5TH_L = atoi(value); if (div) g_PERF_5TH_R = atoi(value2); continue; }
-		if (NAME("MIN_6TH")) { g_MIN_6TH_L = atoi(value); if (div) g_MIN_6TH_R = atoi(value2); continue; }
-		if (NAME("MAJ_6TH")) { g_MAJ_6TH_L = atoi(value); if (div) g_MAJ_6TH_R = atoi(value2); continue; }
-		if (NAME("MIN_7TH")) { g_MIN_7TH_L = atoi(value); if (div) g_MIN_7TH_R = atoi(value2); continue; }
-		if (NAME("MAJ_7TH")) { g_MAJ_7TH_L = atoi(value); if (div) g_MAJ_7TH_R = atoi(value2); continue; }
-		if (NAME("OCTAVE")) { g_OCTAVE_L = atoi(value); if (div) g_OCTAVE_R = atoi(value2); continue; }
+		if (NAME("TUNING")) { g_baseTuning = atof(value); continue; }
+		if (NAME("BASENOTE")) { g_baseNote = atoi(value); continue; }
+		if (NAME("BASEOCTAVE")) { g_baseOctave = atoi(value); continue; }
 	}
+
 	in.close();
 }
 
@@ -644,6 +625,7 @@ void CRmtView::WriteTuningConfig()
 	CString s;
 	s.Format("%s%s", g_prgpath, TUNING_FILENAME);
 	std::ofstream ou(s);
+
 	if (!ou)
 	{
 		MessageBox("Could not create: '" + s + "'\n\nThe Tuning parameters won't be saved.\n", "RMT", MB_ICONEXCLAMATION);
@@ -657,24 +639,9 @@ void CRmtView::WriteTuningConfig()
 	ou << std::setprecision(16);
 
 	ou << "\n# TUNING\n" << std::endl;
-	ou << "TUNING = " << g_basetuning << std::endl;
-	ou << "BASENOTE = " << g_basenote << std::endl;
-	ou << "TEMPERAMENT = " << g_temperament << std::endl;
-
-	ou << "\n# RATIO\n" << std::endl;
-	ou << "UNISON = " << g_UNISON_L << " / " << g_UNISON_R << std::endl;
-	ou << "MIN_2ND = " << g_MIN_2ND_L << " / " << g_MIN_2ND_R << std::endl;
-	ou << "MAJ_2ND = " << g_MAJ_2ND_L << " / " << g_MAJ_2ND_R << std::endl;
-	ou << "MIN_3RD = " << g_MIN_3RD_L << " / " << g_MIN_3RD_R << std::endl;
-	ou << "MAJ_3RD = " << g_MAJ_3RD_L << " / " << g_MAJ_3RD_R << std::endl;
-	ou << "PERF_4TH = " << g_PERF_4TH_L << " / " << g_PERF_4TH_R << std::endl;
-	ou << "TRITONE = " << g_TRITONE_L << " / " << g_TRITONE_R << std::endl;
-	ou << "PERF_5TH = " << g_PERF_5TH_L << " / " << g_PERF_5TH_R << std::endl;
-	ou << "MIN_6TH = " << g_MIN_6TH_L << " / " << g_MIN_6TH_R << std::endl;
-	ou << "MAJ_6TH = " << g_MAJ_6TH_L << " / " << g_MAJ_6TH_R << std::endl;
-	ou << "MIN_7TH = " << g_MIN_7TH_L << " / " << g_MIN_7TH_R << std::endl;
-	ou << "MAJ_7TH = " << g_MAJ_7TH_L << " / " << g_MAJ_7TH_R << std::endl;
-	ou << "OCTAVE = " << g_OCTAVE_L << " / " << g_OCTAVE_R << std::endl;
+	ou << "TUNING = " << g_baseTuning << std::endl;
+	ou << "BASENOTE = " << g_baseNote << std::endl;
+	ou << "BASEOCTAVE = " << g_baseOctave << std::endl;
 
 	ou.close();
 }
@@ -727,13 +694,7 @@ void CRmtView::OnViewConfiguration()
 		g_nohwsoundbuffer = dlg.m_nohwsoundbuffer;
 
 		if (g_ntsc != dlg.m_ntsc)
-		{
-			// PAL or NTSC
-			g_ntsc = dlg.m_ntsc;
-			g_basetuning = (g_ntsc) ? (g_basetuning * FREQ_17_NTSC) / FREQ_17_PAL : (g_basetuning * FREQ_17_PAL) / FREQ_17_NTSC;
-			Atari_InitRMTRoutine(); //reset RMT routines
-		}
-		g_ntsc = dlg.m_ntsc;
+			OnRegion();
 
 		if (g_trackerDriverVersion != dlg.m_trackerDriverVersion)
 		{
@@ -779,77 +740,17 @@ void CRmtView::OnViewConfiguration()
 void CRmtView::OnViewTuning()
 {
 	TuningDlg dlg;
-	dlg.m_basetuning = g_basetuning;
-	dlg.m_basenote = g_basenote; 
-	dlg.m_temperament = g_temperament;
 
-	// Ratio left
-	dlg.UNISON_L = g_UNISON_L;
-	dlg.MIN_2ND_L = g_MIN_2ND_L;
-	dlg.MAJ_2ND_L = g_MAJ_2ND_L;
-	dlg.MIN_3RD_L = g_MIN_3RD_L;
-	dlg.MAJ_3RD_L = g_MAJ_3RD_L;
-	dlg.PERF_4TH_L = g_PERF_4TH_L;
-	dlg.TRITONE_L = g_TRITONE_L;
-	dlg.PERF_5TH_L = g_PERF_5TH_L;
-	dlg.MIN_6TH_L = g_MIN_6TH_L;
-	dlg.MAJ_6TH_L = g_MAJ_6TH_L;
-	dlg.MIN_7TH_L = g_MIN_7TH_L;
-	dlg.MAJ_7TH_L = g_MAJ_7TH_L;
-	dlg.OCTAVE_L = g_OCTAVE_L;
-
-	// Ratio right
-	dlg.UNISON_R = g_UNISON_R;
-	dlg.MIN_2ND_R = g_MIN_2ND_R;
-	dlg.MAJ_2ND_R = g_MAJ_2ND_R;
-	dlg.MIN_3RD_R = g_MIN_3RD_R;
-	dlg.MAJ_3RD_R = g_MAJ_3RD_R;
-	dlg.PERF_4TH_R = g_PERF_4TH_R;
-	dlg.TRITONE_R = g_TRITONE_R;
-	dlg.PERF_5TH_R = g_PERF_5TH_R;
-	dlg.MIN_6TH_R = g_MIN_6TH_R;
-	dlg.MAJ_6TH_R = g_MAJ_6TH_R;
-	dlg.MIN_7TH_R = g_MIN_7TH_R;
-	dlg.MAJ_7TH_R = g_MAJ_7TH_R;
-	dlg.OCTAVE_R = g_OCTAVE_R;
+	dlg.m_baseTuning = g_baseTuning;
+	dlg.m_baseNote = g_baseNote; 
+	dlg.m_baseOctave = g_baseOctave;
 
 	if (dlg.DoModal() == IDOK)
 	{
-		// Ratio left
-		g_UNISON_L = dlg.UNISON_L;
-		g_MIN_2ND_L = dlg.MIN_2ND_L;
-		g_MAJ_2ND_L = dlg.MAJ_2ND_L;
-		g_MIN_3RD_L = dlg.MIN_3RD_L;
-		g_MAJ_3RD_L = dlg.MAJ_3RD_L;
-		g_PERF_4TH_L = dlg.PERF_4TH_L;
-		g_TRITONE_L = dlg.TRITONE_L;
-		g_PERF_5TH_L = dlg.PERF_5TH_L;
-		g_MIN_6TH_L = dlg.MIN_6TH_L;
-		g_MAJ_6TH_L = dlg.MAJ_6TH_L;
-		g_MIN_7TH_L = dlg.MIN_7TH_L;
-		g_MAJ_7TH_L = dlg.MAJ_7TH_L;
-		g_OCTAVE_L = dlg.OCTAVE_L;
-
-		// Ratio right
-		g_UNISON_R = dlg.UNISON_R;
-		g_MIN_2ND_R = dlg.MIN_2ND_R;
-		g_MAJ_2ND_R = dlg.MAJ_2ND_R;
-		g_MIN_3RD_R = dlg.MIN_3RD_R;
-		g_MAJ_3RD_R = dlg.MAJ_3RD_R;
-		g_PERF_4TH_R = dlg.PERF_4TH_R;
-		g_TRITONE_R = dlg.TRITONE_R;
-		g_PERF_5TH_R = dlg.PERF_5TH_R;
-		g_MIN_6TH_R = dlg.MIN_6TH_R;
-		g_MAJ_6TH_R = dlg.MAJ_6TH_R;
-		g_MIN_7TH_R = dlg.MIN_7TH_R;
-		g_MAJ_7TH_R = dlg.MAJ_7TH_R;
-		g_OCTAVE_R = dlg.OCTAVE_R;
-		
 		// Update tuning
-		g_basetuning = dlg.m_basetuning;
-		g_basenote = dlg.m_basenote;
-		g_temperament = dlg.m_temperament;
-		//g_Tuning.init_tuning();
+		g_baseTuning = dlg.m_baseTuning;
+		g_baseNote = dlg.m_baseNote;
+		g_baseOctave = dlg.m_baseOctave;
 	}
 }
 
@@ -1971,6 +1872,18 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		OnPlay(MPLAY_FROM);
 		break;
 
+	case VK_F10:
+		OnRegion();
+		break;
+
+	case VK_F11:
+		OnRespectVolume();
+		break;
+
+	case VK_F12:
+		OnPlayfollow();
+		break;
+
 	case 48:	// VK_0
 		if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
 			SetChannelOnOff(INVALID, FALSE);	// Turn All Channels Off
@@ -3046,6 +2959,19 @@ void CRmtView::OnWantExit() // Called from the menu File/Exit ID_WANTEXIT instea
 	WriteRMTConfig();		// Save the current configuration 
 	WriteTuningConfig();	// Save the current Tuning parameters 
 	AfxGetApp()->GetMainWnd()->PostMessage(WM_CLOSE, 0, 0);
+}
+
+void CRmtView::OnRegion()
+{
+	int fromFreq17 = FREQ_17;
+	g_ntsc ^= 1;
+	int toFreq17 = FREQ_17;
+	g_baseTuning = g_baseTuning * toFreq17 / fromFreq17;
+}
+
+void CRmtView::OnRespectVolume()
+{
+	g_respectvolume ^= 1;
 }
 
 //---------------------------------------------------------------------------

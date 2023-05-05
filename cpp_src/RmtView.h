@@ -60,6 +60,10 @@ public:
 	void OnKeyPageUp(bool keyAlt, bool keyCtrl, bool keyShift);
 	void OnKeyPageDown(bool keyAlt, bool keyCtrl, bool keyShift);
 
+	// New functions that might also be used for future afx_msg calls if there is a good use for them
+	void OnRegion();
+	void OnRespectVolume();
+
 	// Used to handle the window size and most dynamic elements related to it
 	void Resize();
 	int  m_width;

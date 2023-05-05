@@ -432,9 +432,10 @@ public:
 	// Prototype C++ RMTE Module Driver functions
 	// TODO: Move to a different file later
 
-	void PlayRow(TSubtune* p);
+	//void PlayRow(TSubtune* p);
 	void PlayPattern(TSubtune* p);
-	void PlaySongline(TSubtune* p);
+	void PlayContinue(TSubtune* p);
+	void PlayNextSongline(TSubtune* p);
 	void PlayNote(TSubtune* p, BYTE channel, BYTE songline, BYTE row);
 	void PlayInstrument(TSubtune* p, BYTE channel, BYTE songline, BYTE row);
 	void PlayVolume(TSubtune* p, BYTE channel, BYTE songline, BYTE row);

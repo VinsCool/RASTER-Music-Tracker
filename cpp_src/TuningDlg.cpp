@@ -21,81 +21,23 @@ static char THIS_FILE[] = __FILE__;
 TuningDlg::TuningDlg(CWnd* pParent /*=nullptr*/)
 	: CDialog(IDD_TUNING, pParent)
 {
-	m_basetuning = 0;
-	m_basenote = 0;
-	m_temperament = 0;
-
-	//ratio L
-	UNISON_L = 1;
-	MIN_2ND_L = 1;
-	MAJ_2ND_L = 1;
-	MIN_3RD_L = 1;
-	MAJ_3RD_L = 1;
-	PERF_4TH_L = 1;
-	TRITONE_L = 1;
-	PERF_5TH_L = 1;
-	MIN_6TH_L = 1;
-	MAJ_6TH_L = 1;
-	MIN_7TH_L = 1;
-	MAJ_7TH_L = 1;
-	OCTAVE_L = 1;
-
-	//ratio R
-	UNISON_R = 1;
-	MIN_2ND_R = 1;
-	MAJ_2ND_R = 1;
-	MIN_3RD_R = 1;
-	MAJ_3RD_R = 1;
-	PERF_4TH_R = 1;
-	TRITONE_R = 1;
-	PERF_5TH_R = 1;
-	MIN_6TH_R = 1;
-	MAJ_6TH_R = 1;
-	MIN_7TH_R = 1;
-	MAJ_7TH_R = 1;
-	OCTAVE_R = 1;
+	m_baseTuning = 0;
+	m_baseNote = 0;
+	m_baseOctave = 0;
 }
 
 void TuningDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
-	DDX_Text(pDX, IDC_BASETUNING, m_basetuning);
-	DDV_MinMaxDouble(pDX, m_basetuning, 6.875, 7040);	//should be more than enough...
-	DDX_CBIndex(pDX, IDC_BASENOTE, m_basenote);
-	DDX_CBIndex(pDX, IDC_TEMPERAMENT, m_temperament);
-	//ratio left values
-	DDX_Text(pDX, IDC_UNISON_L, UNISON_L);
-	DDX_Text(pDX, IDC_MINOR_2ND_L, MIN_2ND_L);
-	DDX_Text(pDX, IDC_MAJOR_2ND_L, MAJ_2ND_L);
-	DDX_Text(pDX, IDC_MINOR_3RD_L, MIN_3RD_L);
-	DDX_Text(pDX, IDC_MAJOR_3RD_L, MAJ_3RD_L);
-	DDX_Text(pDX, IDC_PERFECT_4TH_L, PERF_4TH_L);
-	DDX_Text(pDX, IDC_TRITONE_L, TRITONE_L);
-	DDX_Text(pDX, IDC_PERFECT_5TH_L, PERF_5TH_L);
-	DDX_Text(pDX, IDC_MINOR_6TH_L, MIN_6TH_L);
-	DDX_Text(pDX, IDC_MAJOR_6TH_L, MAJ_6TH_L);
-	DDX_Text(pDX, IDC_MINOR_7TH_L, MIN_7TH_L);
-	DDX_Text(pDX, IDC_MAJOR_7TH_L, MAJ_7TH_L);
-	DDX_Text(pDX, IDC_OCTAVE_L, OCTAVE_L);
-	//ratio right values
-	DDX_Text(pDX, IDC_UNISON_R, UNISON_R);
-	DDX_Text(pDX, IDC_MINOR_2ND_R, MIN_2ND_R);
-	DDX_Text(pDX, IDC_MAJOR_2ND_R, MAJ_2ND_R);
-	DDX_Text(pDX, IDC_MINOR_3RD_R, MIN_3RD_R);
-	DDX_Text(pDX, IDC_MAJOR_3RD_R, MAJ_3RD_R);
-	DDX_Text(pDX, IDC_PERFECT_4TH_R, PERF_4TH_R);
-	DDX_Text(pDX, IDC_TRITONE_R, TRITONE_R);
-	DDX_Text(pDX, IDC_PERFECT_5TH_R, PERF_5TH_R);
-	DDX_Text(pDX, IDC_MINOR_6TH_R, MIN_6TH_R);
-	DDX_Text(pDX, IDC_MAJOR_6TH_R, MAJ_6TH_R);
-	DDX_Text(pDX, IDC_MINOR_7TH_R, MIN_7TH_R);
-	DDX_Text(pDX, IDC_MAJOR_7TH_R, MAJ_7TH_R);
-	DDX_Text(pDX, IDC_OCTAVE_R, OCTAVE_R);
+	DDX_Text(pDX, IDC_BASETUNING, m_baseTuning);
+	DDV_MinMaxDouble(pDX, m_baseTuning, 6.875, 7040);	//should be more than enough...
+	DDX_Control(pDX, IDC_BASENOTE, m_baseNoteSelection);
+	DDX_Control(pDX, IDC_BASEOCTAVE, m_baseOctaveSelection);
 }
 
 BEGIN_MESSAGE_MAP(TuningDlg, CDialog)
-	ON_BN_CLICKED(IDTESTNOW, OnClickedIdtestnow)
-	ON_BN_CLICKED(IDRESET, OnClickedIdreset)
+	ON_BN_CLICKED(IDTESTNOW, OnClickedIdTestNow)
+	ON_BN_CLICKED(IDRESET, OnClickedIdReset)
 	ON_BN_CLICKED(IDCANCEL, OnBnClickedCancel)
 END_MESSAGE_MAP()
 
@@ -104,40 +46,35 @@ BOOL TuningDlg::OnInitDialog()
 {
 	CDialog::OnInitDialog();
 
-	//backup all current values first
-	b_basetuning = g_basetuning;
-	b_basenote = g_basenote;
-	b_temperament = g_temperament;
+	// Backup all values currently used
+	m_backupTuning = g_baseTuning;
+	m_backupNote = g_baseNote;
+	m_backupOctave = g_baseOctave;
 
-	//ratio L
-	b_UNISON_L = g_UNISON_L;
-	b_MIN_2ND_L = g_MIN_2ND_L;
-	b_MAJ_2ND_L = g_MAJ_2ND_L;
-	b_MIN_3RD_L = g_MIN_3RD_L;
-	b_MAJ_3RD_L = g_MAJ_3RD_L;
-	b_PERF_4TH_L = g_PERF_4TH_L;
-	b_TRITONE_L = g_TRITONE_L;
-	b_PERF_5TH_L = g_PERF_5TH_L;
-	b_MIN_6TH_L = g_MIN_6TH_L;
-	b_MAJ_6TH_L = g_MAJ_6TH_L;
-	b_MIN_7TH_L = g_MIN_7TH_L;
-	b_MAJ_7TH_L = g_MAJ_7TH_L;
-	b_OCTAVE_L = g_OCTAVE_L;
+	m_baseNoteSelection.AddString("C-");
+	m_baseNoteSelection.AddString("B-");
+	m_baseNoteSelection.AddString("A#");
+	m_baseNoteSelection.AddString("A-");
+	m_baseNoteSelection.AddString("G#");
+	m_baseNoteSelection.AddString("G-");
+	m_baseNoteSelection.AddString("F#");
+	m_baseNoteSelection.AddString("F-");
+	m_baseNoteSelection.AddString("E-");
+	m_baseNoteSelection.AddString("D#");
+	m_baseNoteSelection.AddString("D-");
+	m_baseNoteSelection.AddString("C#");
+	m_baseNoteSelection.SetCurSel(m_baseNote);
 
-	//ratio R
-	b_UNISON_R = g_UNISON_R;
-	b_MIN_2ND_R = g_MIN_2ND_R;
-	b_MAJ_2ND_R = g_MAJ_2ND_R;
-	b_MIN_3RD_R = g_MIN_3RD_R;
-	b_MAJ_3RD_R = g_MAJ_3RD_R;
-	b_PERF_4TH_R = g_PERF_4TH_R;
-	b_TRITONE_R = g_TRITONE_R;
-	b_PERF_5TH_R = g_PERF_5TH_R;
-	b_MIN_6TH_R = g_MIN_6TH_R;
-	b_MAJ_6TH_R = g_MAJ_6TH_R;
-	b_MIN_7TH_R = g_MIN_7TH_R;
-	b_MAJ_7TH_R = g_MAJ_7TH_R;
-	b_OCTAVE_R = g_OCTAVE_R;
+	m_baseOctaveSelection.AddString("-4");
+	m_baseOctaveSelection.AddString("-3");
+	m_baseOctaveSelection.AddString("-2");
+	m_baseOctaveSelection.AddString("-1");
+	m_baseOctaveSelection.AddString("+0");
+	m_baseOctaveSelection.AddString("+1");
+	m_baseOctaveSelection.AddString("+2");
+	m_baseOctaveSelection.AddString("+3");
+	m_baseOctaveSelection.AddString("+4");
+	m_baseOctaveSelection.SetCurSel(m_baseOctave);
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // EXCEPTION: OCX Property Pages should return FALSE
@@ -145,95 +82,42 @@ BOOL TuningDlg::OnInitDialog()
 
 void TuningDlg::OnOK()
 {
+	m_baseNote = m_baseNoteSelection.GetCurSel();
+	m_baseOctave = m_baseOctaveSelection.GetCurSel();
+
 	CDialog::OnOK();
 }
 
-void TuningDlg::OnClickedIdtestnow()
+void TuningDlg::OnClickedIdTestNow()
 {
 	TuningDlg::UpdateData();
 
-	//backup all current values first
-	g_basetuning = m_basetuning;
-	g_basenote = m_basenote;
-	g_temperament = m_temperament;
-
-	//ratio L
-	g_UNISON_L = UNISON_L;
-	g_MIN_2ND_L = MIN_2ND_L;
-	g_MAJ_2ND_L = MAJ_2ND_L;
-	g_MIN_3RD_L = MIN_3RD_L;
-	g_MAJ_3RD_L = MAJ_3RD_L;
-	g_PERF_4TH_L = PERF_4TH_L;
-	g_TRITONE_L = TRITONE_L;
-	g_PERF_5TH_L = PERF_5TH_L;
-	g_MIN_6TH_L = MIN_6TH_L;
-	g_MAJ_6TH_L = MAJ_6TH_L;
-	g_MIN_7TH_L = MIN_7TH_L;
-	g_MAJ_7TH_L = MAJ_7TH_L;
-	g_OCTAVE_L = OCTAVE_L;
-
-	//ratio R
-	g_UNISON_R = UNISON_R;
-	g_MIN_2ND_R = MIN_2ND_R;
-	g_MAJ_2ND_R = MAJ_2ND_R;
-	g_MIN_3RD_R = MIN_3RD_R;
-	g_MAJ_3RD_R = MAJ_3RD_R;
-	g_PERF_4TH_R = PERF_4TH_R;
-	g_TRITONE_R = TRITONE_R;
-	g_PERF_5TH_R = PERF_5TH_R;
-	g_MIN_6TH_R = MIN_6TH_R;
-	g_MAJ_6TH_R = MAJ_6TH_R;
-	g_MIN_7TH_R = MIN_7TH_R;
-	g_MAJ_7TH_R = MAJ_7TH_R;
-	g_OCTAVE_R = OCTAVE_R;
-
-	//g_Tuning.init_tuning();
+	// Retrieve the values to be tested
+	g_baseTuning = m_baseTuning;
+	g_baseNote = m_baseNote = m_baseNoteSelection.GetCurSel();
+	g_baseOctave = m_baseOctave = m_baseOctaveSelection.GetCurSel();
 }
 
-void TuningDlg::OnClickedIdreset()
+void TuningDlg::OnClickedIdReset()
 {
-	//retrieve the last backed up values first
-	g_basetuning = b_basetuning;
-	g_basenote = b_basenote;
-	g_temperament = b_temperament;
+	TuningDlg::UpdateData();
 
-	//ratio L
-	g_UNISON_L = b_UNISON_L;
-	g_MIN_2ND_L = b_MIN_2ND_L;
-	g_MAJ_2ND_L = b_MAJ_2ND_L;
-	g_MIN_3RD_L = b_MIN_3RD_L;
-	g_MAJ_3RD_L = b_MAJ_3RD_L;
-	g_PERF_4TH_L = b_PERF_4TH_L;
-	g_TRITONE_L = b_TRITONE_L;
-	g_PERF_5TH_L = b_PERF_5TH_L;
-	g_MIN_6TH_L = b_MIN_6TH_L;
-	g_MAJ_6TH_L = b_MAJ_6TH_L;
-	g_MIN_7TH_L = b_MIN_7TH_L;
-	g_MAJ_7TH_L = b_MAJ_7TH_L;
-	g_OCTAVE_L = b_OCTAVE_L;
+	// Retrieve the backed up values
+	g_baseTuning = m_baseTuning = m_backupTuning;
+	g_baseNote = m_baseNote = m_backupNote;
+	g_baseOctave = m_baseOctave = m_backupOctave;
+	m_baseNoteSelection.SetCurSel(m_baseNote);
+	m_baseOctaveSelection.SetCurSel(m_baseOctave);
 
-	//ratio R
-	g_UNISON_R = b_UNISON_R;
-	g_MIN_2ND_R = b_MIN_2ND_R;
-	g_MAJ_2ND_R = b_MAJ_2ND_R;
-	g_MIN_3RD_R = b_MIN_3RD_R;
-	g_MAJ_3RD_R = b_MAJ_3RD_R;
-	g_PERF_4TH_R = b_PERF_4TH_R;
-	g_TRITONE_R = b_TRITONE_R;
-	g_PERF_5TH_R = b_PERF_5TH_R;
-	g_MIN_6TH_R = b_MIN_6TH_R;
-	g_MAJ_6TH_R = b_MAJ_6TH_R;
-	g_MIN_7TH_R = b_MIN_7TH_R;
-	g_MAJ_7TH_R = b_MAJ_7TH_R;
-	g_OCTAVE_R = b_OCTAVE_R;
-
-	//g_Tuning.init_tuning();
+	// Force the Dialog Box to refresh the Base Tuning field
+	OnInitDialog();
 }
 
 void TuningDlg::OnBnClickedCancel()
 {
-	//reset the values from the last backup
-	OnClickedIdreset();
-	//and done, nothing else to be done here 
+	// Reset the values from the last backup
+	OnClickedIdReset();
+
+	// And done, nothing else to be done here 
 	CDialog::OnCancel();
 }
