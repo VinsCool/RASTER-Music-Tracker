@@ -110,9 +110,9 @@ void CSong::ClearSong(int numOfTracks)
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_activeChannel = m_activeCursor = 0;
-	m_activeinstr = 0;
-	m_octave = 0;
-	m_volume = MAXVOLUME;
+	m_activeInstrument = 0;
+	m_activeOctave = 0;
+	m_activeVolume = MAXVOLUME;
 
 	//ClearBookmark();
 
@@ -124,8 +124,8 @@ void CSong::ClearSong(int numOfTracks)
 
 	m_songnamecur = 0;
 
-	m_filename = "";
-	m_filetype = IOTYPE_NONE;
+	m_fileName = "";
+	m_fileType = IOTYPE_NONE;
 	m_lastExportType = IOTYPE_NONE;
 
 	m_TracksOrderChange_songlinefrom = 0x00;
@@ -962,9 +962,9 @@ BOOL CSong::PlayPressedTones()
 
 void CSong::ActiveInstrSet(int instr)
 {
-	g_Instruments.MemorizeOctaveAndVolume(m_activeinstr, m_octave, m_volume);
-	m_activeinstr = instr;
-	g_Instruments.RememberOctaveAndVolume(m_activeinstr, m_octave, m_volume);
+	g_Instruments.MemorizeOctaveAndVolume(m_activeInstrument, m_activeOctave, m_activeVolume);
+	m_activeInstrument = instr;
+	g_Instruments.RememberOctaveAndVolume(m_activeInstrument, m_activeOctave, m_activeVolume);
 }
 
 /*
@@ -1223,8 +1223,8 @@ int* CSong::GetUECursor(int part)
 		case PART_INSTRUMENTS:
 		{
 			cursor = new int[6];
-			cursor[0] = m_activeinstr;
-			TInstrument* in = g_Instruments.GetInstrument(m_activeinstr);
+			cursor[0] = m_activeInstrument;
+			TInstrument* in = g_Instruments.GetInstrument(m_activeInstrument);
 			cursor[1] = in->activeEditSection;
 			cursor[2] = in->editEnvelopeX;
 			cursor[3] = in->editEnvelopeY;
@@ -1266,7 +1266,7 @@ void CSong::SetUECursor(int part, int* cursor)
 			break;
 
 		case PART_INSTRUMENTS:
-			m_activeinstr = cursor[0];
+			m_activeInstrument = cursor[0];
 			//the other parameters 1-5 are within the instrument (TInstrument structure), so it is not necessary to set
 			g_activepart = g_active_ti = PART_INSTRUMENTS;
 			break;

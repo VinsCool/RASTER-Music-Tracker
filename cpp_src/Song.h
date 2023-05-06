@@ -141,13 +141,16 @@ public:
 
 	//BOOL InstrKey(int vk, int shift, int control);
 	void ActiveInstrSet(int instr);
-	//void ActiveInstrPrev() { g_Undo.Separator(); int instr = (m_activeinstr - 1) & 0x3f; ActiveInstrSet(instr); };
-	//void ActiveInstrNext() { g_Undo.Separator(); int instr = (m_activeinstr + 1) & 0x3f; ActiveInstrSet(instr); };
+	//void ActiveInstrPrev() { g_Undo.Separator(); int instr = (m_activeInstrument - 1) & 0x3f; ActiveInstrSet(instr); };
+	//void ActiveInstrNext() { g_Undo.Separator(); int instr = (m_activeInstrument + 1) & 0x3f; ActiveInstrSet(instr); };
 
-	int GetActiveInstr() { return m_activeinstr; };
+	int GetActiveInstr() { return m_activeInstrument; };
 	int GetActiveColumn() { return m_activeChannel; };
 	int GetActiveLine() { return m_activeRow; };
-	//int GetPlayLine() { return m_playRow; };
+	int GetPlayLine() { return m_playRow; };
+	int GetActiveCursor() { return m_activeCursor; };
+	int GetActiveOctave() { return m_activeOctave; };
+	int GetActiveVolume() { return m_activeVolume; };
 
 	//void SetActiveLine(int line) { m_activeRow = line; };
 	//void SetPlayLine(int line) { m_playRow = line; };
@@ -172,7 +175,7 @@ public:
 	void ChannelRight();
 
 	//BOOL TrackDelNoteInstrVolSpeed(int noteinstrvolspeed) { return g_Tracks.DelNoteInstrVolSpeed(noteinstrvolspeed, SongGetActiveTrack(), m_activeRow); };
-	BOOL TrackSetNoteActualInstrVol(int note) { return g_Tracks.SetNoteInstrVol(note, m_activeinstr, m_volume, SongGetActiveTrack(), m_activeRow); };
+	BOOL TrackSetNoteActualInstrVol(int note) { return g_Tracks.SetNoteInstrVol(note, m_activeInstrument, m_activeVolume, SongGetActiveTrack(), m_activeRow); };
 	BOOL TrackSetNoteInstrVol(int note, int instr, int vol) { return g_Tracks.SetNoteInstrVol(note, instr, vol, SongGetActiveTrack(), m_activeRow); };
 	//BOOL TrackSetInstr(int instr) { return g_Tracks.SetInstr(instr, SongGetActiveTrack(), m_activeRow); };
 	BOOL TrackSetVol(int vol) { return g_Tracks.SetVol(vol, SongGetActiveTrack(), m_activeRow); };
@@ -238,11 +241,11 @@ public:
 	BOOL SongPutnewemptyunusedtrack();
 	BOOL SongMaketracksduplicate();
 
-	//BOOL OctaveUp() { if (m_octave < 4) { m_octave++; return 1; } else return 0; };
-	//BOOL OctaveDown() { if (m_octave > 0) { m_octave--; return 1; } else return 0; };
+	//BOOL OctaveUp() { if (m_activeOctave < 4) { m_activeOctave++; return 1; } else return 0; };
+	//BOOL OctaveDown() { if (m_activeOctave > 0) { m_activeOctave--; return 1; } else return 0; };
 
-	//BOOL VolumeUp() { if (m_volume < MAXVOLUME) { m_volume++; return 1; } else return 0; };
-	//BOOL VolumeDown() { if (m_volume > 0) { m_volume--; return 1; } else return 0; };
+	//BOOL VolumeUp() { if (m_activeVolume < MAXVOLUME) { m_activeVolume++; return 1; } else return 0; };
+	//BOOL VolumeDown() { if (m_activeVolume > 0) { m_activeVolume--; return 1; } else return 0; };
 
 	//void ClearBookmark() { m_bookmark.songline = m_bookmark.trackline = m_bookmark.speed = -1; };
 	//BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.GetMaxTrackLength()); };
@@ -273,7 +276,7 @@ public:
 
 	void FileOpen(const char* filename = NULL, BOOL warnOfUnsavedChanges = TRUE);
 	void FileReload();
-	BOOL FileCanBeReloaded() { return (m_filename != "") /*&& (!m_fileunsaved)*/ /*&& g_changes*/; };
+	BOOL FileCanBeReloaded() { return (m_fileName != "") /*&& (!m_fileunsaved)*/ /*&& g_changes*/; };
 	int WarnUnsavedChanges();
 
 	void FileSave();
@@ -417,8 +420,8 @@ public:
 	void RenumberAllTracks(int type);
 	void RenumberAllInstruments(int type);
 
-	//CString GetFilename() { return m_filename; };
-	//int GetFiletype() { return m_filetype; };
+	//CString GetFilename() { return m_fileName; };
+	//int GetFiletype() { return m_fileType; };
 
 	int(*GetSong())[SONGLEN][SONGTRACKS]{ return &m_song; };
 	int(*GetSongGo())[SONGLEN] { return &m_songgo; };
@@ -466,9 +469,9 @@ private:
 	int m_playBlockStart;
 	int m_playBlockEnd;
 
-	int m_activeinstr;
-	int m_volume;
-	int m_octave;
+	int m_activeInstrument;
+	int m_activeVolume;
+	int m_activeOctave;
 
 	int volatile m_mainSpeed;				// TODO: Delete
 
@@ -530,8 +533,8 @@ private:
 
 	UINT m_timerRoutine;
 
-	CString m_filename;
-	int m_filetype;
+	CString m_fileName;
+	int m_fileType;
 	int m_lastExportType;					// Which data format was used to export a file the last time?
 
 	int m_TracksOrderChange_songlinefrom; // TODO: Delete	//is defined as a member variable to keep in use
@@ -551,9 +554,9 @@ private:
 	//BYTE volatile m_activeCursor;
 	//BYTE volatile m_playBlockStart;
 	//BYTE volatile m_playBlockEnd;
-	BYTE volatile m_activeInstrument;
-	BYTE volatile m_activeVolume;
-	BYTE volatile m_activeOctave;
+	//BYTE volatile m_activeInstrument;
+	//BYTE volatile m_activeVolume;
+	//BYTE volatile m_activeOctave;
 	//BYTE volatile m_activeSpeed;
 	//BYTE volatile m_playSpeed;
 	//BYTE volatile m_speedTimer;
@@ -572,8 +575,8 @@ private:
 //	double volatile m_averageFrameCount;
 //	UINT m_timerRoutine;
 //	const BYTE m_timerRoutineTick[3] = { 17, 17, 16 };
-	CString m_fileName;
-	int m_fileType;
+	//CString m_fileName;
+	//int m_fileType;
 //	int m_lastExportType;
 
 };

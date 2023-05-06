@@ -76,7 +76,7 @@ void CSong::SetRMTTitle()
 {
 	CString s, s1, s2;
 
-	if (m_filename == "")
+	if (m_fileName == "")
 	{
 		if (g_changes)
 		{
@@ -92,7 +92,7 @@ void CSong::SetRMTTitle()
 
 	else
 	{
-		s = m_filename;
+		s = m_fileName;
 		if (g_changes) s += " *";
 	}
 

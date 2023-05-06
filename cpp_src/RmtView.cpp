@@ -1887,6 +1887,8 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 48:	// VK_0
 		if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
 			SetChannelOnOff(INVALID, FALSE);	// Turn All Channels Off
+		else
+			goto doProcessKeyboardInput;
 		break;
 
 	case 49:	// VK_1
@@ -1899,11 +1901,15 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case 56:	// VK_8
 		if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
 			SetChannelOnOff(nChar - 49, INVALID);	// Turn Channel On/Off
+		else
+			goto doProcessKeyboardInput;
 		break;
 
 	case 57:	// VK_9
 		if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
 			SetChannelOnOff(INVALID, TRUE);	// Turn All Channels On
+		else
+			goto doProcessKeyboardInput;
 		break;
 
 	case VK_UP:
@@ -1929,6 +1935,10 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_PAGE_DOWN:
 		OnKeyPageDown(IsPressingAlt(), IsPressingCtrl(), IsPressingShift());
 		break;
+
+	default:
+	doProcessKeyboardInput:
+		OnProcessKeyboardInput(nChar, IsPressingAlt(), IsPressingCtrl(), IsPressingShift());
 	}
 
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
@@ -3108,5 +3118,75 @@ void CRmtView::OnKeyPageDown(bool keyAlt, bool keyCtrl, bool keyShift)
 			g_Song.SeekNextSubtune();
 		else
 			g_Song.SonglineDown();
+	}
+}
+
+void CRmtView::OnProcessKeyboardInput(UINT vk, bool keyAlt, bool keyCtrl, bool keyShift)
+{
+	switch (g_activepart)
+	{
+	case PART_TRACKS:
+		PatternEditorKey(vk, keyAlt, keyCtrl, keyShift);
+		break;
+
+	}
+
+}
+
+void CRmtView::PatternEditorKey(UINT vk, bool keyAlt, bool keyCtrl, bool keyShift)
+{
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return;
+
+	int cursor = g_Song.GetActiveCursor();
+	int channel = g_Song.GetActiveColumn();
+	int songline = g_Song.SongGetActiveLine();
+	int row = g_Song.GetActiveLine();
+	int octave = g_Song.GetActiveOctave();
+	int volume = g_Song.GetActiveVolume();
+	int instrument = g_Song.GetActiveInstr();
+	int note = NoteKey(vk);
+	int numbkey = NumbKey(vk);
+
+	switch (cursor)
+	{
+	case 0: // Note Column
+		if (g_Module.IsValidNote(note += octave * 12))
+		{
+			BYTE pattern = p->channel[channel].songline[songline];
+			p->channel[channel].pattern[pattern].row[row].note = note;
+			g_Song.PatternDown(g_linesafter);
+		}
+		break;
+
+	case 1: // Instrument Column
+		if (numbkey > INVALID)
+		{
+			BYTE pattern = p->channel[channel].songline[songline];
+			BYTE index = p->channel[channel].pattern[pattern].row[row].instrument;
+			p->channel[channel].pattern[pattern].row[row].instrument = g_Module.IsValidInstrument(index = ((index & 0x0F) << 4) | numbkey) ? index : index & 0x0F;
+			g_Song.PatternDown(g_linesafter);
+		}
+		break;
+
+	case 2: // Volume Column
+		if (numbkey > INVALID)
+		{
+			BYTE pattern = p->channel[channel].songline[songline];
+			p->channel[channel].pattern[pattern].row[row].volume = numbkey;
+			g_Song.PatternDown(g_linesafter);
+		}
+		break;
+
+	case 3: // Effect Column(s)
+	case 4:
+	case 5:
+	case 6:
+		// TODO: add a new subcolumn index for actually be able to edit data on a nybble by nybble basis
+		// It is literally impossible to set a command because there is no way to identify what is being edited
+		// Setting an instrument is also annoying for pretty much the same reason, but at least it could be worked around
+		break;
 	}
 }

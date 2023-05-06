@@ -59,6 +59,8 @@ public:
 	void OnKeyMoveRight(bool keyAlt, bool keyCtrl, bool keyShift);
 	void OnKeyPageUp(bool keyAlt, bool keyCtrl, bool keyShift);
 	void OnKeyPageDown(bool keyAlt, bool keyCtrl, bool keyShift);
+	void OnProcessKeyboardInput(UINT vk, bool keyAlt, bool keyCtrl, bool keyShift);
+	void PatternEditorKey(UINT vk, bool keyAlt, bool keyCtrl, bool keyShift);
 
 	// New functions that might also be used for future afx_msg calls if there is a good use for them
 	void OnRegion();
