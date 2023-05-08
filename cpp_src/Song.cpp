@@ -109,7 +109,7 @@ void CSong::ClearSong(int numOfTracks)
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
-	m_activeChannel = m_activeCursor = 0;
+	m_activeChannel = m_activeCursor = m_activeColumn = 0;
 	m_activeInstrument = 0;
 	m_activeOctave = 0;
 	m_activeVolume = MAXVOLUME;
@@ -1080,19 +1080,63 @@ BOOL CSong::TrackRight(BOOL column)
 
 void CSong::PatternLeft()
 {
-	if (--m_activeCursor < 0)
+	//if (--m_activeCursor < 0)
+	//{
+	//	ChannelLeft();
+	//	m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
+	//}
+
+	if (--m_activeColumn < 0)
 	{
-		ChannelLeft();
-		m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
+		if (--m_activeCursor < 0)
+		{
+			ChannelLeft();
+			m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
+		}
+
+		switch (m_activeCursor)
+		{
+		case 0:
+		case 2: m_activeColumn = 0; break;
+		case 1: m_activeColumn = 1; break;
+		case 3:
+		case 4:
+		case 5:
+		case 6: m_activeColumn = 2; break;
+		}
 	}
 }
 
 void CSong::PatternRight()
 {
-	if (++m_activeCursor > g_Module.GetEffectCommandCount(m_activeChannel) + 2)
+	//if (++m_activeCursor > g_Module.GetEffectCommandCount(m_activeChannel) + 2)
+	//{
+	//	ChannelRight();
+	//	m_activeCursor = 0;
+	//}
+
+	BYTE max;
+
+	switch (m_activeCursor)
 	{
-		ChannelRight();
-		m_activeCursor = 0;
+	case 0:
+	case 2: max = 0; break;
+	case 1: max = 1; break;
+	case 3:
+	case 4:
+	case 5:
+	case 6: max = 2; break;
+	}
+
+	if (++m_activeColumn > max)
+	{
+		if (++m_activeCursor > g_Module.GetEffectCommandCount(m_activeChannel) + 2)
+		{
+			ChannelRight();
+			m_activeCursor = 0;
+		}
+
+		m_activeColumn = 0;
 	}
 }
 
@@ -1140,6 +1184,25 @@ void CSong::ChannelLeft()
 
 	if (m_activeCursor >= g_Module.GetEffectCommandCount(m_activeChannel) + 2)
 		m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
+
+	if (m_activeColumn < 0)
+		m_activeColumn = 0;
+
+	BYTE max;
+
+	switch (m_activeCursor)
+	{
+	case 0:
+	case 2: max = 0; break;
+	case 1: max = 1; break;
+	case 3:
+	case 4:
+	case 5:
+	case 6: max = 2; break;
+	}
+
+	if (m_activeColumn > max)
+		m_activeColumn = max;
 }
 
 void CSong::ChannelRight()
@@ -1151,6 +1214,25 @@ void CSong::ChannelRight()
 
 	if (m_activeCursor >= g_Module.GetEffectCommandCount(m_activeChannel) + 2)
 		m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
+
+	if (m_activeColumn < 0)
+		m_activeColumn = 0;
+
+	BYTE max;
+
+	switch (m_activeCursor)
+	{
+	case 0:
+	case 2: max = 0; break;
+	case 1: max = 1; break;
+	case 3:
+	case 4:
+	case 5:
+	case 6: max = 2; break;
+	}
+
+	if (m_activeColumn > max)
+		m_activeColumn = max;
 }
 
 /*
@@ -1472,7 +1554,7 @@ void CSong::SeekNextSubtune()
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
-	m_activeChannel = m_activeCursor = 0;
+	m_activeChannel = m_activeCursor = m_activeColumn = 0;
 
 	if (m_playMode != MPLAY_STOP)
 	{
@@ -1492,7 +1574,7 @@ void CSong::SeekPreviousSubtune()
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
-	m_activeChannel = m_activeCursor = 0;
+	m_activeChannel = m_activeCursor = m_activeColumn = 0;
 
 	if (m_playMode != MPLAY_STOP)
 	{
@@ -3843,6 +3925,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 	BYTE activeSongline = m_activeSongline;
 	BYTE playSongline = m_playSongline;
 	BYTE activeCursor = m_activeCursor;
+	BYTE activeColumn = m_activeColumn;
 	BYTE activeChannel = m_activeChannel;
 	BYTE playSpeed = m_playSpeed;
 	BYTE speedTimer = m_speedTimer;
@@ -4012,7 +4095,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			// Draw the formated Pattern Row on screen once it is ready to be output, using the cursor position for highlighted column
-			TextXYCol(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y + smooth_y, isActiveCursor ? activeCursor : INVALID, colour);
+			TextXYCol(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y + smooth_y, isActiveCursor ? activeCursor : INVALID, isActiveCursor ? activeColumn : INVALID, colour);
 		}
 
 		// Update the X offset with the Channel's width, including the Active Effect Commands
@@ -4510,7 +4593,9 @@ void CSong::PlayNextSongline(TSubtune* p)
 		return;
 
 	m_playRow = 0;
-	++m_playSongline %= p->songLength;
+
+	if (m_playMode != MPLAY_PATTERN)
+		++m_playSongline %= p->songLength;
 
 	if (g_PokeyStream.TrackSongLine(m_playSongline))
 		Stop();
@@ -4633,8 +4718,14 @@ void CSong::PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE 
 	switch (command)
 	{
 	case EFFECT_COMMAND_BXX:
+		if (m_playMode != MPLAY_PATTERN)
+		{
+			if (parameter > p->songLength)
+				parameter = 0;
+
+			m_playSongline = parameter - 1;	// The Songline will increment by 1 during playback, subtract 1 to the parameter to work around this
+		}
 		m_playRow = p->patternLength;	// Set the Row to equal the Pattern Length in order to force the next Songline to play (same as Dxx)
-		m_playSongline = parameter - 1;	// The Songline will increment by 1 during playback, subtract 1 to the parameter to work around this
 		break;
 
 	case EFFECT_COMMAND_DXX:
@@ -4645,5 +4736,187 @@ void CSong::PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE 
 	case EFFECT_COMMAND_FXX:
 		m_playSpeed = parameter;		// Set the Play Speed to the parameter directly, it will be applied immediately
 		break;
+	}
+}
+
+
+//-- Editor Functions (TODO: Move elsewhere later) --//
+
+
+bool CSong::TransposeNoteInPattern(BYTE semitone)
+{
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return false;
+
+	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE note = p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note;
+
+	if (note < PATTERN_NOTE_COUNT)
+	{
+		if ((note += semitone) >= PATTERN_NOTE_COUNT)
+			note += PATTERN_NOTE_COUNT;
+		
+		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note % PATTERN_NOTE_COUNT;
+		return true;
+	}
+
+	return false;
+}
+
+bool CSong::SetNoteInPattern(BYTE semitone)
+{
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return false;
+
+	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE note = semitone + m_activeOctave * 12;
+
+	switch (semitone)
+	{
+	case PATTERN_NOTE_OFF:
+	case PATTERN_NOTE_RELEASE:
+	case PATTERN_NOTE_RETRIGGER:
+		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = PATTERN_INSTRUMENT_EMPTY;
+		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = PATTERN_VOLUME_EMPTY;
+
+	case PATTERN_NOTE_EMPTY:
+		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note;
+		return true;
+
+	default:
+		if (semitone < PATTERN_NOTE_COUNT && note < PATTERN_NOTE_COUNT)
+		{
+			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note;
+			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = m_activeInstrument;
+			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = m_activeVolume;
+			return true;
+		}
+		return false;
+	}
+}
+
+bool CSong::SetInstrumentInPattern(BYTE instrument)
+{
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return false;
+
+	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE nybble;
+
+	switch (instrument)
+	{
+	case PATTERN_INSTRUMENT_EMPTY:
+		// The Instrument value will be overwritten regardless of the Active Column offset
+		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
+		return true;
+
+	default:
+		if (instrument < PATTERN_INSTRUMENT_COUNT)
+		{
+			// High Nybble Column -> Instrument 0x?F, where '?' is the value being edited
+			if (m_activeColumn == 0)
+			{
+				if ((nybble = (instrument & 0x0F) << 4) < PATTERN_INSTRUMENT_COUNT)
+					instrument = nybble | ((p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument) & 0x0F);
+				else
+					instrument = PATTERN_INSTRUMENT_COUNT - 1;
+			}
+
+			// Low Nybble Column -> Instrument 0xF?, where '?' is the value being edited
+			else if (m_activeColumn == 1)
+			{
+				if ((nybble = p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument & 0xF0) < PATTERN_INSTRUMENT_COUNT)
+					instrument = nybble | (instrument & 0x0F);
+				else
+					instrument &= 0x0F;
+			}
+
+			// The Instrument value will be overwritten with the combined value from each Nybble
+			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
+			return true;
+		}
+		return false;
+	}
+}
+
+bool CSong::SetVolumeInPattern(BYTE volume)
+{
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return false;
+
+	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+
+	switch (volume)
+	{
+	case PATTERN_VOLUME_EMPTY:
+		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
+		return true;
+
+	default:
+		if (volume < PATTERN_VOLUME_COUNT)
+		{
+			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
+			return true;
+		}
+		return false;
+	}
+}
+
+bool CSong::SetCommandInPattern(BYTE command)
+{
+	TSubtune* p = g_Module.GetSubtuneIndex();
+
+	if (!p)
+		return false;
+
+	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE activeCursor = m_activeCursor - 3;	// Due to Note, Instrument and Volume sharing the variable
+	BYTE nybble;
+
+	switch (command)
+	{
+	case PATTERN_EFFECT_EMPTY:
+		// The Command value will be overwritten regardless of the Active Column offset
+		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].identifier = command;
+		return true;
+
+	default:
+		if (command < PATTERN_EFFECT_COUNT)
+		{
+			// Effect Command Identifier -> Command 0x?FF, where '?' is the value being edited
+			if (m_activeColumn == 0)
+				p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].identifier = command;
+
+			// Allow editing the Effect Command Parameter only when the Command Identifier is not Empty
+			else if (p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].identifier != PATTERN_EFFECT_EMPTY)
+			{
+				// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
+				if (m_activeColumn == 1)
+				{
+					nybble = (command & 0x0F) << 4;
+					command = nybble | ((p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].parameter) & 0x0F);
+				}
+
+				// Effect Command Parameter, Low Nybble -> Command 0xFF?, where '?' is the value being edited
+				else if (m_activeColumn == 2)
+				{
+					nybble = p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].parameter & 0xF0;
+					command = nybble | (command & 0x0F);
+				}
+
+				// The Command Parameter will be overwritten with the combined value from each Nybble
+				p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].parameter = command;
+			}
+			return true;
+		}
+		return false;
 	}
 }

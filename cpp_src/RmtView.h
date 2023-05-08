@@ -53,18 +53,22 @@ public:
 	const bool IsPressedAnyKey(UINT vk) { return (GetKeyState(vk) & 0x80); };
 
 	// Split functions used for movements and actions executed from keyboard inputs
-	void OnKeyMoveUp(bool keyAlt, bool keyCtrl, bool keyShift);
-	void OnKeyMoveDown(bool keyAlt, bool keyCtrl, bool keyShift);
-	void OnKeyMoveLeft(bool keyAlt, bool keyCtrl, bool keyShift);
-	void OnKeyMoveRight(bool keyAlt, bool keyCtrl, bool keyShift);
-	void OnKeyPageUp(bool keyAlt, bool keyCtrl, bool keyShift);
-	void OnKeyPageDown(bool keyAlt, bool keyCtrl, bool keyShift);
-	void OnProcessKeyboardInput(UINT vk, bool keyAlt, bool keyCtrl, bool keyShift);
-	void PatternEditorKey(UINT vk, bool keyAlt, bool keyCtrl, bool keyShift);
+	void OnKeyMoveUp();
+	void OnKeyMoveDown();
+	void OnKeyMoveLeft();
+	void OnKeyMoveRight();
+	void OnKeyPageUp();
+	void OnKeyPageDown();
+	void OnProcessKeyboardInput(UINT vk);
+	void PatternEditorKey(UINT vk);
 
 	// New functions that might also be used for future afx_msg calls if there is a good use for them
 	void OnRegion();
 	void OnRespectVolume();
+	void OnOctaveUp();
+	void OnOctaveDown();
+	void OnVolumeUp();
+	void OnVolumeDown();
 
 	// Used to handle the window size and most dynamic elements related to it
 	void Resize();

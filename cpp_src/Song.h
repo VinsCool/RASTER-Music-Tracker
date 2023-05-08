@@ -243,13 +243,17 @@ public:
 
 	//BOOL OctaveUp() { if (m_activeOctave < 4) { m_activeOctave++; return 1; } else return 0; };
 	//BOOL OctaveDown() { if (m_activeOctave > 0) { m_activeOctave--; return 1; } else return 0; };
-
 	//BOOL VolumeUp() { if (m_activeVolume < MAXVOLUME) { m_activeVolume++; return 1; } else return 0; };
 	//BOOL VolumeDown() { if (m_activeVolume > 0) { m_activeVolume--; return 1; } else return 0; };
 
 	//void ClearBookmark() { m_bookmark.songline = m_bookmark.trackline = m_bookmark.speed = -1; };
 	//BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.GetMaxTrackLength()); };
 	//BOOL SetBookmark();
+
+	void OctaveUp() { if (++m_activeOctave > 7) m_activeOctave = 7; };
+	void OctaveDown() { if (--m_activeOctave < 0) m_activeOctave = 0; };
+	void VolumeUp() { if (++m_activeVolume > MAXVOLUME) m_activeVolume = MAXVOLUME; };
+	void VolumeDown() { if (--m_activeVolume < 0) m_activeVolume = 0; };
 
 	void Play(int mode, BOOL follow, int special = 0);
 	void Stop();
@@ -451,6 +455,12 @@ public:
 	void PlayVolume(TSubtune* p, BYTE channel, BYTE songline, BYTE row);
 	void PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE column);
 
+	bool TransposeNoteInPattern(BYTE semitone);
+	bool SetNoteInPattern(BYTE semitone);
+	bool SetInstrumentInPattern(BYTE instrument);
+	bool SetVolumeInPattern(BYTE volume);
+	bool SetCommandInPattern(BYTE command);
+
 private:
 	// Legacy variables
 	int m_song[SONGLEN][SONGTRACKS];	// TODO: Delete
@@ -458,13 +468,16 @@ private:
 
 	BOOL volatile m_isFollowPlay;
 	int volatile m_playMode;
-	int m_activeSongline;
-	int volatile m_playSongline;				// Which line of the song is currently being played
 
-	int m_activeRow;
-	int volatile m_playRow;				// Which line of a track is currenyly being played
-	int m_activeChannel;						//0-7
-	int m_activeCursor;						//0-2
+	int m_activeSongline;				// Which Songline is currently active
+	int volatile m_playSongline;		// Which Songline is currently played
+
+	int m_activeRow;					// Which Row is currently active
+	int volatile m_playRow;				// Which Row is currently played
+
+	int m_activeChannel;				// 0-7 -> POKEY Channel
+	int m_activeCursor;					// 0 -> Note, 1 -> Instrument, 2 -> Volume, 3-6 -> Command
+	int m_activeColumn;					// 0-3 -> Cursor Offset for Instrument and Command values
 
 	int m_playBlockStart;
 	int m_playBlockEnd;
@@ -540,43 +553,6 @@ private:
 	int m_TracksOrderChange_songlinefrom; // TODO: Delete	//is defined as a member variable to keep in use
 	int m_TracksOrderChange_songlineto;	  // TODO: Delete	//the last values used remain
 
-
-
 	// RMTE variables
 	TSongVariables* m_songVariables;
-	//bool volatile m_isFollowPlay;
-	//BYTE volatile m_playMode;
-	//BYTE volatile m_activeSongline;
-	//BYTE volatile m_playSongline;
-	//BYTE volatile m_activeRow;
-	//BYTE volatile m_playRow;
-	//BYTE volatile m_activeChannel;
-	//BYTE volatile m_activeCursor;
-	//BYTE volatile m_playBlockStart;
-	//BYTE volatile m_playBlockEnd;
-	//BYTE volatile m_activeInstrument;
-	//BYTE volatile m_activeVolume;
-	//BYTE volatile m_activeOctave;
-	//BYTE volatile m_activeSpeed;
-	//BYTE volatile m_playSpeed;
-	//BYTE volatile m_speedTimer;
-//	BYTE volatile m_instrumentSpeed;
-//	int volatile m_playTimeFrameCount;
-//	int volatile m_playTimeSecondCount;
-//	int volatile m_playTimeMinuteCount;
-//	int volatile m_playTimeMillisecondCount;
-//	BYTE volatile m_rowSpeed[8];
-//	double volatile m_averageBPM;
-//	double volatile m_averageSpeed;
-//	uint64_t volatile m_lastDeltaCount;
-//	uint64_t volatile m_lastFrameCount;
-//	uint64_t volatile m_lastMillisecondCount;
-//	uint64_t volatile m_lastSecondCount;
-//	double volatile m_averageFrameCount;
-//	UINT m_timerRoutine;
-//	const BYTE m_timerRoutineTick[3] = { 17, 17, 16 };
-	//CString m_fileName;
-	//int m_fileType;
-//	int m_lastExportType;
-
 };
