@@ -7,8 +7,11 @@
 
 CModule::CModule()
 {
-	m_index = NULL;
+	for (int i = 0; i < SUBTUNE_MAX; i++)
+		m_index[i] = NULL;
+
 	m_instrument = NULL;
+	SetModuleStatus(FALSE);
 	InitialiseModule();
 }
 
@@ -20,42 +23,18 @@ CModule::~CModule()
 void CModule::InitialiseModule()
 {
 	// Create new module data if it doesn't exist
-	if (!m_index) m_index = new TSubtune[MODULE_SUBTUNE_COUNT];
-	if (!m_instrument) m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_COUNT];
+	if (!m_instrument)
+		m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_COUNT];
 
 	// Set default module parameters
 	SetSongName("Noname Song");
 	SetSongAuthor("Unknown");
 	SetSongCopyright("2023");
-	SetSubtuneName(MODULE_DEFAULT_SUBTUNE, "Noname Subtune");
 	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
 	SetSubtuneCount(MODULE_SUBTUNE_COUNT);
-	SetSongLength(MODULE_SONG_LENGTH);
-	SetPatternLength(MODULE_TRACK_LENGTH);
-	SetChannelCount(TRACK_CHANNEL_MAX);	//(MODULE_STEREO);	// FIXME: g_tracks4_8 is NOT initialised when it is called for the first time here!
-	SetSongSpeed(MODULE_SONG_SPEED);
-	SetInstrumentSpeed(MODULE_VBI_SPEED);
 
-	// Clear all data, and set default values
-	for (int i = 0; i < TRACK_CHANNEL_MAX; i++)
-	{
-		// Set all indexed Patterns to 0
-		for (int j = 0; j < SONGLINE_MAX; j++)
-			SetPatternInSongline(i, j, 0);
-
-		// Set all indexed Rows in Patterns to empty values
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-			ClearPattern(GetPattern(i, j));
-
-		// By default, only 1 Effect Command is enabled in all Track Channels
-		SetEffectCommandCount(i, 1);
-	}
-
-	// Clear all Subtunes using the Active Subtune values
-	for (int i = 1; i < GetSubtuneCount(); i++)
-	{
-		CopySubtune(GetSubtuneIndex(GetActiveSubtune()), GetSubtuneIndex(i));
-	}
+	// Create 1 empty Subtune, which will be used by default
+	InitialiseSubtune(m_activeSubtune);
 
 	// Also clear all instruments in the module
 	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
@@ -94,18 +73,62 @@ void CModule::InitialiseModule()
 void CModule::ClearModule()
 {
 	// Don't waste any time, just destroy the module data entirely
-	if (m_index) delete m_index;
-	if (m_instrument) delete m_instrument;
+	if (m_instrument)
+		delete m_instrument;
+
+	m_instrument = NULL;
 
 	// Set the struct pointers to NULL to make sure nothing invalid is accessed
-	m_index = NULL;
-	m_instrument = NULL;
+	for (int i = 0; i < SUBTUNE_MAX; i++)
+	{
+		if (m_index[i])
+			delete m_index[i];
+
+		m_index[i] = NULL;
+	}
 
 	// Module was cleared, and must be initialised before it could be used again
 	SetModuleStatus(FALSE);
 }
 
-void CModule::ImportLegacyRMT(std::ifstream& in)
+void CModule::InitialiseSubtune(int subtune)
+{
+	if (!IsValidSubtune((subtune)))
+		return;
+
+	TSubtune* p = m_index[subtune];
+
+	// If there is no Subtune here, create it now and update the Subtune Index accordingly
+	if (!p)
+	{
+		p = new TSubtune;
+		m_index[subtune] = p;
+	}
+
+	strncpy_s(p->name, "Noname Subtune", SUBTUNE_NAME_MAX);
+	p->songLength = MODULE_SONG_LENGTH;
+	p->patternLength = MODULE_TRACK_LENGTH;
+	p->channelCount = MODULE_STEREO;	//= TRACK_CHANNEL_MAX;
+	p->songSpeed = MODULE_SONG_SPEED;
+	p->instrumentSpeed = MODULE_VBI_SPEED;
+
+	// Clear all data, and set default values
+	for (int i = 0; i < TRACK_CHANNEL_MAX; i++)
+	{
+		// Set all indexed Patterns to 0
+		for (int j = 0; j < SONGLINE_MAX; j++)
+			p->channel[i].songline[j] = 0x00;
+
+		// Set all indexed Rows in Patterns to empty values
+		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+			ClearPattern(&p->channel[i].pattern[j]);
+
+		// By default, only 1 Effect Command is enabled in all Track Channels
+		p->effectCommandCount[i] = 0x01;
+	}
+}
+
+bool CModule::ImportLegacyRMT(std::ifstream& in)
 {
 	CString importLog;
 	importLog.Format("");
@@ -123,10 +146,11 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 	TSubtune* importSubtune = new TSubtune;
 
 	// Clear the current module data
+	ClearModule();
 	InitialiseModule();
 
 	// Copy an empty Subtune to the Temporary Subtune to initialise it
-	CopySubtune(GetSubtuneIndex(MODULE_DEFAULT_SUBTUNE), importSubtune);
+	CopySubtune(GetSubtuneIndex(), importSubtune);
 
 	// Decode the Legacy RMT Module into the Temporary Subtune, and re-construct the imported data if successful
 	if (DecodeLegacyRMT(in, importSubtune, importLog))
@@ -180,9 +204,9 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		SetSubtuneCount(subtuneCount);
 
 		// Clear the current Subtune Index, then create a new one matching the number of Subtunes to be imported
-		delete m_index;
-		m_index = new TSubtune[subtuneCount];
-
+		for (int i = 0; i < subtuneCount; i++)
+			InitialiseSubtune(i);
+		
 		importLog.AppendFormat("Confidently detected %i unique Subtune(s).\n\n", subtuneCount);
 		importLog.AppendFormat("Stage 3 - Optimising Subtunes with compatibility tweaks:\n\n");
 
@@ -290,6 +314,8 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 
 	// Spawn a messagebox with the statistics collected during the Legacy RMT Module import procedure
 	MessageBox(g_hwnd, importLog, "Import Legacy RMT", MB_ICONINFORMATION);
+
+	return true;
 }
 
 // Decode Legacy RMT Module Data, Return True if successful

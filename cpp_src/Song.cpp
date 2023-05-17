@@ -165,6 +165,8 @@ void CSong::ClearSong(int numOfTracks)
 
 	// Initialise the RMTE Module as well, since it will progressively replace the Legacy format, and will use most of the same functions
 	//g_Module.InitialiseModule();
+	g_Module.ClearModule();
+	g_Module.InitialiseModule();
 
 	// Initialise Song variables
 	InitialiseSongVariables();
