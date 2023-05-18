@@ -187,6 +187,7 @@ public:
 
 	void SetModuleStatus(bool status) { m_initialised = status; };
 
+	// TODO: Move the Legacy Import code to IO_Song.cpp or similar, in order to get most of the CModule functions cleared from unrelated stuff 
 	bool ImportLegacyRMT(std::ifstream& in);
 	bool DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log);
 	bool ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress);

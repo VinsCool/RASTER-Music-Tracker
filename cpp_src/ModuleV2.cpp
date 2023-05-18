@@ -305,6 +305,9 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 		// Set the Active Subtune to the Default parameter, once the Legacy RMT Import procedure was completed
 		SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
 
+		// Workaround: Due to the way RMT was originally designed, the "Global" number of channels must be set here as well
+		g_tracks4_8 = GetChannelCount();
+
 		// Final number of Subtunes that were imported
 		importLog.AppendFormat("Processed: %i Subtune(s) with All Size Optimisations.\n\n", GetSubtuneCount());
 	}
