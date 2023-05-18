@@ -1,5 +1,14 @@
 // RMT Module V2 Format Prototype
 // By VinsCool, 2023
+//
+// TODO: Move the Legacy Import code to IO_Song.cpp or similar, in order to get most of the CModule functions cleared from unrelated stuff
+// TODO: Move most of the Editor Functions to CSong or similar for the same reason
+// TODO: Delete the m_initialised variable, it is a vestige from the earliest ideas, which is not needed anymore
+// TODO: Delete the m_subtuneCount variable, it could be derived from the non-Null Subtune Index pointers instead
+// TODO: Move the m_activeSubtune variable to CSong, it would make a lot more sense to use it there directly
+// 
+// FIXME: Null pointers are not properly handled, which is a critical flaw that should be addressed as soon as possible
+// FIXME: Clean up the overengineered approach for Data Integrity, things could be managed in a much, much better way
 
 #pragma once
 
@@ -28,6 +37,7 @@
 #define MODULE_DISPLAY_FLAT_NOTES		g_displayflatnotes					// Display accidentals as Flat instead of Sharp
 #define MODULE_DISPLAY_GERMAN_NOTATION	g_usegermannotation					// Display notes using the German Notation
 #define MODULE_DEFAULT_SUBTUNE			0									// Default Active Subtune
+#define MODULE_DEFAULT_INSTRUMENT		0									// Default Active Instrument
 #define MODULE_SUBTUNE_COUNT			1									// Default Subtune Count
 #define MODULE_TRACK_LENGTH				64									// Default Track Length
 #define MODULE_SONG_LENGTH				1									// Default Song Length
@@ -179,36 +189,40 @@ class CModule
 public:
 	CModule();
 	~CModule();
+	
+	//-- Module Initialisation Functions --//
 
+	//void SetModuleStatus(bool status) { m_initialised = status; };
 	void InitialiseModule();
 	void ClearModule();
-
 	void InitialiseSubtune(int subtune);
+	void InitialiseInstrument(int instrument);
 
-	void SetModuleStatus(bool status) { m_initialised = status; };
+	//-- Legacy RMT Module Import Functions --//
 
-	// TODO: Move the Legacy Import code to IO_Song.cpp or similar, in order to get most of the CModule functions cleared from unrelated stuff 
 	bool ImportLegacyRMT(std::ifstream& in);
 	bool DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log);
 	bool ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress);
 	bool ImportLegacySonglines(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, WORD endAddress);
 	bool ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, BYTE version, BYTE* isLoaded);
 
-	// Booleans for Module index and data integrity
-	bool IsModuleInitialised() { return m_initialised; };
+	//-- Booleans for Module Index and Data integrity --//
+
+	//bool IsModuleInitialised() { return m_initialised; };
 	bool IsValidSubtune(int subtune) { return subtune >= 0 && subtune < SUBTUNE_MAX; };
-	bool IsValidChannel(int channel) { return channel > INVALID && channel < TRACK_CHANNEL_MAX; };
-	bool IsValidSongline(int songline) { return songline > INVALID && songline < SONGLINE_MAX; };
-	bool IsValidPattern(int pattern) { return pattern > INVALID && pattern < TRACK_PATTERN_MAX; };
-	bool IsValidRow(int row) { return row > INVALID && row < TRACK_ROW_MAX; };
-	bool IsValidNote(int note) { return note > INVALID && note < PATTERN_NOTE_MAX; };
-	bool IsValidInstrument(int instrument) { return instrument > INVALID && instrument < PATTERN_INSTRUMENT_MAX; };
-	bool IsValidVolume(int volume) { return volume > INVALID && volume < PATTERN_VOLUME_MAX; };
-	bool IsValidCommand(int command) { return command > INVALID && command < PATTERN_EFFECT_MAX; };
-	bool IsValidCommandColumn(int column) { return column > INVALID && column <= PATTERN_ACTIVE_EFFECT_MAX; };
+	bool IsValidChannel(int channel) { return channel >= 0 && channel < TRACK_CHANNEL_MAX; };
+	bool IsValidSongline(int songline) { return songline >= 0 && songline < SONGLINE_MAX; };
+	bool IsValidPattern(int pattern) { return pattern >= 0 && pattern < TRACK_PATTERN_MAX; };
+	bool IsValidRow(int row) { return row >= 0 && row < TRACK_ROW_MAX; };
+	bool IsValidNote(int note) { return note >= 0 && note < PATTERN_NOTE_MAX; };
+	bool IsValidInstrument(int instrument) { return instrument >= 0 && instrument < PATTERN_INSTRUMENT_MAX; };
+	bool IsValidVolume(int volume) { return volume >= 0 && volume < PATTERN_VOLUME_MAX; };
+	bool IsValidCommand(int command) { return command >= 0 && command < PATTERN_EFFECT_MAX; };
+	bool IsValidCommandColumn(int column) { return column >= 0 && column < PATTERN_ACTIVE_EFFECT_MAX; };
 	bool IsValidPatternRowIndex(int channel, int pattern, int row) { return IsValidChannel(channel) && IsValidPattern(pattern) && IsValidRow(row); };
 
-	// Pointers to Module Structs
+	//-- Pointers to Module Data --//
+
 	TSubtune* GetSubtuneIndex(int subtune) { return IsValidSubtune(subtune) ? m_index[subtune] : NULL; };
 	TSubtune* GetSubtuneIndex() { return IsValidSubtune(m_activeSubtune) ? m_index[m_activeSubtune] : NULL; };
 	TIndex* GetChannelIndex() { return GetSubtuneIndex(m_activeSubtune)->channel; };
@@ -217,15 +231,15 @@ public:
 	TPattern* GetPattern(int channel, int pattern) { return IsValidChannel(channel) && IsValidPattern(pattern) ? &GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern] : NULL; };
 	TPattern* GetIndexedPattern(int channel, int songline) { return GetPattern(channel, GetPatternInSongline(channel, songline)); };
 	TRow* GetRow(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? &GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row] : NULL; };
-	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? &m_instrument[instrument] : NULL; };
+	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument] : NULL; };
 
-	// Getters for Pattern data
+	//-- Getters and Setters for Pattern and Songline Data --//
+
 	const BYTE GetPatternInSongline(int channel, int songline) { return IsValidChannel(channel) && IsValidSongline(songline) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].songline[songline] : INVALID; };
 	const BYTE GetPatternRowNote(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].note : INVALID; };
 	const BYTE GetPatternRowInstrument(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].instrument : INVALID; };
 	const BYTE GetPatternRowVolume(int channel, int pattern, int row) { return IsValidPatternRowIndex(channel, pattern, row) ? GetSubtuneIndex(m_activeSubtune)->channel[channel].pattern[pattern].row[row].volume : INVALID; };
 
-	// Setters for Pattern data
 	void SetPatternInSongline(int channel, int songline, int pattern)
 	{
 		if (IsValidChannel(channel) && IsValidSongline(songline))
@@ -246,27 +260,26 @@ public:
 		}
 	};
 
-	// Getters for Instrument data
-	const char* GetInstrumentName(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].name : "INVALID INSTRUMENT"; };
-	const BYTE GetInstrumentEnvelopeLength(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].envelopeLength : INVALID; };
-	const BYTE GetInstrumentEnvelopeLoop(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].envelopeLoop : INVALID; };
-	const BYTE GetInstrumentEnvelopeRelease(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].envelopeRelease : INVALID; };
-	const BYTE GetInstrumentTableLength(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].tableLength : INVALID; };
-	const BYTE GetInstrumentTableLoop(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].tableLoop : INVALID; };
-	const BYTE GetInstrumentTableRelease(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].tableRelease : INVALID; };
-	const BYTE GetInstrumentTableMode(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].tableMode : INVALID; };
-	const BYTE* GetInstrumentVolumeEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].volumeEnvelope : NULL; };
-	const BYTE* GetInstrumentDistortionEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].distortionEnvelope : NULL; };
-	const BYTE* GetInstrumentAudctlEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].audctlEnvelope : NULL; };
-	const BYTE* GetInstrumentNoteTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].noteTable : NULL; };
-	const BYTE* GetInstrumentFreqTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument].freqTable : NULL; };
+	//-- Getters and Setters for Instrument Data --//
 
-	// Setters for Instrument data
-	void SetInstrumentName(int instrument, const char* name) { if (IsValidInstrument(instrument)) strncpy_s(m_instrument[instrument].name, name, INSTRUMENT_NAME_MAX); };
+	const char* GetInstrumentName(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->name : "INVALID INSTRUMENT"; };
+	const BYTE GetInstrumentEnvelopeLength(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->envelopeLength : INVALID; };
+	const BYTE GetInstrumentEnvelopeLoop(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->envelopeLoop : INVALID; };
+	const BYTE GetInstrumentEnvelopeRelease(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->envelopeRelease : INVALID; };
+	const BYTE GetInstrumentTableLength(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->tableLength : INVALID; };
+	const BYTE GetInstrumentTableLoop(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->tableLoop : INVALID; };
+	const BYTE GetInstrumentTableRelease(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->tableRelease : INVALID; };
+	const BYTE GetInstrumentTableMode(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->tableMode : INVALID; };
+	const BYTE* GetInstrumentVolumeEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->volumeEnvelope : NULL; };
+	const BYTE* GetInstrumentDistortionEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->distortionEnvelope : NULL; };
+	const BYTE* GetInstrumentAudctlEnvelope(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->audctlEnvelope : NULL; };
+	const BYTE* GetInstrumentNoteTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->noteTable : NULL; };
+	const BYTE* GetInstrumentFreqTable(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument]->freqTable : NULL; };
 
-	// TODO: All of the stuff related to editing Instruments
+	void SetInstrumentName(int instrument, const char* name) { if (IsValidInstrument(instrument)) strncpy_s(m_instrument[instrument]->name, name, INSTRUMENT_NAME_MAX); };
 
-	// Getters for Module parameters
+	//-- Getters and Setters for Module Parameters --//
+
 	const char* GetSongName() { return m_songName; };
 	const char* GetSongAuthor() { return m_songAuthor; };
 	const char* GetSongCopyright() { return m_songCopyright; };
@@ -280,7 +293,6 @@ public:
 	const BYTE GetInstrumentSpeed() { return GetSubtuneIndex(m_activeSubtune)->instrumentSpeed; };
 	const BYTE GetEffectCommandCount(int channel) { return IsValidChannel(channel) ? GetSubtuneIndex(m_activeSubtune)->effectCommandCount[channel] : INVALID; };
 
-	// Setters for Module parameters
 	void SetSongName(const char* name) { strncpy_s(m_songName, name, MODULE_TITLE_NAME_MAX); };
 	void SetSongAuthor(const char* author) { strncpy_s(m_songAuthor, author, MODULE_AUTHOR_NAME_MAX); };
 	void SetSongCopyright(const char* copyright) { strncpy_s(m_songCopyright, copyright, MODULE_COPYRIGHT_INFO_MAX); };
@@ -294,7 +306,8 @@ public:
 	void SetInstrumentSpeed(int speed) { GetSubtuneIndex(m_activeSubtune)->instrumentSpeed = speed; };
 	void SetEffectCommandCount(int channel, int column) { if (IsValidChannel(channel) && IsValidCommandColumn(column)) GetSubtuneIndex(m_activeSubtune)->effectCommandCount[channel] = column; };
 
-	// Functions related to Pattern Data editing, and other unsorted things added in the process
+	//-- RMTE Editor Functions --//
+
 	BYTE GetShortestPatternLength(int songline);
 	BYTE GetShortestPatternLength(TSubtune* subtune, int songline);
 	bool DuplicatePatternInSongline(int channel, int songline, int pattern);
@@ -316,15 +329,12 @@ public:
 	void AllSizeOptimisations();
 
 private:
-	TSubtune* m_index[SUBTUNE_MAX];
-	TInstrumentV2* m_instrument;	// FIXME as well
-
-	bool m_initialised;
-
+	bool m_initialised;		// TODO: Delete
+	BYTE m_subtuneCount;	// TODO: Delete
+	BYTE m_activeSubtune;	// TODO: Delete
 	char m_songName[MODULE_TITLE_NAME_MAX + 1];
 	char m_songAuthor[MODULE_AUTHOR_NAME_MAX + 1];
 	char m_songCopyright[MODULE_COPYRIGHT_INFO_MAX + 1];
-
-	BYTE m_activeSubtune;
-	BYTE m_subtuneCount;
+	TSubtune* m_index[SUBTUNE_MAX];
+	TInstrumentV2* m_instrument[PATTERN_INSTRUMENT_COUNT];
 };

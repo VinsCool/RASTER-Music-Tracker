@@ -7,11 +7,16 @@
 
 CModule::CModule()
 {
+	//ClearModule();
+
+	//SetModuleStatus(FALSE);
+
 	for (int i = 0; i < SUBTUNE_MAX; i++)
 		m_index[i] = NULL;
 
-	m_instrument = NULL;
-	SetModuleStatus(FALSE);
+	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+		m_instrument[i] = NULL;
+
 	InitialiseModule();
 }
 
@@ -22,11 +27,9 @@ CModule::~CModule()
 
 void CModule::InitialiseModule()
 {
-	// Create new module data if it doesn't exist
-	if (!m_instrument)
-		m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_COUNT];
+	//ClearModule();
 
-	// Set default module parameters
+	// Set the default Module parameters
 	SetSongName("Noname Song");
 	SetSongAuthor("Unknown");
 	SetSongCopyright("2023");
@@ -34,51 +37,21 @@ void CModule::InitialiseModule()
 	SetSubtuneCount(MODULE_SUBTUNE_COUNT);
 
 	// Create 1 empty Subtune, which will be used by default
-	InitialiseSubtune(m_activeSubtune);
+	InitialiseSubtune(MODULE_DEFAULT_SUBTUNE);
 
-	// Also clear all instruments in the module
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
-	{
-		strcpy(m_instrument[i].name, "New Instrument");
-		m_instrument[i].envelopeLength = 1;
-		m_instrument[i].envelopeLoop = 0;
-		m_instrument[i].envelopeRelease = 0;
-		m_instrument[i].envelopeSpeed = 0;
-		m_instrument[i].tableLength = 0;
-		m_instrument[i].tableLoop = 0;
-		m_instrument[i].tableRelease = 0;
-		m_instrument[i].tableMode = 0;
-		m_instrument[i].tableSpeed = 0;
-
-		for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
-		{
-			m_instrument[i].volumeEnvelope[j] = 0;
-			m_instrument[i].distortionEnvelope[j] = 0;
-			m_instrument[i].audctlEnvelope[j] = 0;
-			m_instrument[i].commandEnvelope[j] = 0;
-			m_instrument[i].parameterEnvelope[j] = 0;
-		}
-
-		for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
-		{
-			m_instrument[i].noteTable[j] = 0;
-			m_instrument[i].freqTable[j] = 0;
-		}
-	}
+	// Same thing for the Instrument
+	InitialiseInstrument(MODULE_DEFAULT_INSTRUMENT);
 
 	// Module was initialised
-	SetModuleStatus(TRUE);
+	//SetModuleStatus(TRUE);
 }
 
 void CModule::ClearModule()
 {
-	// Don't waste any time, just destroy the module data entirely
-	if (m_instrument)
-		delete m_instrument;
+	// Module must be initialised before it could be used again
+	//SetModuleStatus(FALSE);
 
-	m_instrument = NULL;
-
-	// Set the struct pointers to NULL to make sure nothing invalid is accessed
+	// Delete all Module data and set the associated pointers to NULL
 	for (int i = 0; i < SUBTUNE_MAX; i++)
 	{
 		if (m_index[i])
@@ -87,8 +60,13 @@ void CModule::ClearModule()
 		m_index[i] = NULL;
 	}
 
-	// Module was cleared, and must be initialised before it could be used again
-	SetModuleStatus(FALSE);
+	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+	{
+		if (m_instrument[i])
+			delete m_instrument[i];
+
+		m_instrument[i] = NULL;
+	}
 }
 
 void CModule::InitialiseSubtune(int subtune)
@@ -125,6 +103,47 @@ void CModule::InitialiseSubtune(int subtune)
 
 		// By default, only 1 Effect Command is enabled in all Track Channels
 		p->effectCommandCount[i] = 0x01;
+	}
+}
+
+void CModule::InitialiseInstrument(int instrument)
+{
+	if (!IsValidInstrument((instrument)))
+		return;
+
+	TInstrumentV2* p = m_instrument[instrument];
+
+	// If there is no Instrument here, create it now and update the Instrument Index accordingly
+	if (!p)
+	{
+		p = new TInstrumentV2;
+		m_instrument[instrument] = p;
+	}
+
+	strncpy_s(p->name, "New Instrument", INSTRUMENT_NAME_MAX);
+	p->envelopeLength = 1;
+	p->envelopeLoop = 0;
+	p->envelopeRelease = 0;
+	p->envelopeSpeed = 0;
+	p->tableLength = 0;
+	p->tableLoop = 0;
+	p->tableRelease = 0;
+	p->tableMode = 0;
+	p->tableSpeed = 0;
+
+	for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
+	{
+		p->volumeEnvelope[j] = 0;
+		p->distortionEnvelope[j] = 0;
+		p->audctlEnvelope[j] = 0;
+		p->commandEnvelope[j] = 0;
+		p->parameterEnvelope[j] = 0;
+	}
+
+	for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
+	{
+		p->noteTable[j] = 0;
+		p->freqTable[j] = 0;
 	}
 }
 
@@ -734,12 +753,12 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 		if (!ptrOneInstrument)
 			continue;
 
-		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
-
-		// Get the equivalent RMTE Instrument number
+		// Initialise the equivalent RMTE Instrument, then get the pointer to it for the next step
+		InitialiseInstrument(i);
 		TInstrumentV2* ai = GetInstrument(i);
 
-		// Get the Envelopes, Tables, and other parameters from the original RMT instrument
+		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
+		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
 		BYTE envelopePtr = memInstrument[0];
 
 		BYTE tableLength = memInstrument[0] - 12;
