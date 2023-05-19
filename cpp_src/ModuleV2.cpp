@@ -7,17 +7,8 @@
 
 CModule::CModule()
 {
-	//ClearModule();
-
-	//SetModuleStatus(FALSE);
-
-	for (int i = 0; i < SUBTUNE_MAX; i++)
-		m_index[i] = NULL;
-
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
-		m_instrument[i] = NULL;
-
-	InitialiseModule();
+	memset(m_index, NULL, sizeof m_index);
+	memset(m_instrument, NULL, sizeof m_instrument);
 }
 
 CModule::~CModule()
@@ -27,61 +18,72 @@ CModule::~CModule()
 
 void CModule::InitialiseModule()
 {
-	//ClearModule();
-
 	// Set the default Module parameters
 	SetSongName("Noname Song");
 	SetSongAuthor("Unknown");
 	SetSongCopyright("2023");
 	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
-	SetSubtuneCount(MODULE_SUBTUNE_COUNT);
 
 	// Create 1 empty Subtune, which will be used by default
-	InitialiseSubtune(MODULE_DEFAULT_SUBTUNE);
+	CreateSubtune(MODULE_DEFAULT_SUBTUNE);
 
 	// Same thing for the Instrument
-	InitialiseInstrument(MODULE_DEFAULT_INSTRUMENT);
-
-	// Module was initialised
-	//SetModuleStatus(TRUE);
+	CreateInstrument(MODULE_DEFAULT_INSTRUMENT);
 }
 
 void CModule::ClearModule()
 {
-	// Module must be initialised before it could be used again
-	//SetModuleStatus(FALSE);
+	// Set the empty Module parameters
+	SetSongName("");
+	SetSongAuthor("");
+	SetSongCopyright("");
+	SetActiveSubtune(INVALID);
 
 	// Delete all Module data and set the associated pointers to NULL
 	for (int i = 0; i < SUBTUNE_MAX; i++)
-	{
-		if (m_index[i])
-			delete m_index[i];
-
-		m_index[i] = NULL;
-	}
+		DeleteSubtune(i);
 
 	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+		DeleteInstrument(i);
+/*
 	{
 		if (m_instrument[i])
 			delete m_instrument[i];
 
 		m_instrument[i] = NULL;
 	}
+*/
 }
 
-void CModule::InitialiseSubtune(int subtune)
+void CModule::CreateSubtune(int subtune)
 {
 	if (!IsValidSubtune((subtune)))
 		return;
 
-	TSubtune* p = m_index[subtune];
-
 	// If there is no Subtune here, create it now and update the Subtune Index accordingly
+	if (!m_index[subtune])
+		m_index[subtune] = new TSubtune;
+
+	// A new Subtune must be initialised when it is created
+	InitialiseSubtune(m_index[subtune]);
+}
+
+void CModule::DeleteSubtune(int subtune)
+{
+	if (!IsValidSubtune((subtune)))
+		return;
+
+	// If there is a Subtune here, don't waste any time and delete it without further ado
+	if (m_index[subtune])
+		delete m_index[subtune];
+
+	m_index[subtune] = NULL;
+}
+
+void CModule::InitialiseSubtune(TSubtune* p)
+{
 	if (!p)
-	{
-		p = new TSubtune;
-		m_index[subtune] = p;
-	}
+		return;
 
 	strncpy_s(p->name, "Noname Subtune", SUBTUNE_NAME_MAX);
 	p->songLength = MODULE_SONG_LENGTH;
@@ -106,19 +108,35 @@ void CModule::InitialiseSubtune(int subtune)
 	}
 }
 
-void CModule::InitialiseInstrument(int instrument)
+void CModule::CreateInstrument(int instrument)
 {
 	if (!IsValidInstrument((instrument)))
 		return;
 
-	TInstrumentV2* p = m_instrument[instrument];
-
 	// If there is no Instrument here, create it now and update the Instrument Index accordingly
+	if (!m_instrument[instrument])
+		m_instrument[instrument] = new TInstrumentV2;
+
+	// A new Instrument must be initialised when it is created
+	InitialiseInstrument(m_instrument[instrument]);
+}
+
+void CModule::DeleteInstrument(int instrument)
+{
+	if (!IsValidInstrument((instrument)))
+		return;
+
+	// If there is an Instrument here, don't waste any time and delete it without further ado
+	if (m_instrument[instrument])
+		delete m_instrument[instrument];
+
+	m_instrument[instrument] = NULL;
+}
+
+void CModule::InitialiseInstrument(TInstrumentV2* p)
+{
 	if (!p)
-	{
-		p = new TInstrumentV2;
-		m_instrument[instrument] = p;
-	}
+		return;
 
 	strncpy_s(p->name, "New Instrument", INSTRUMENT_NAME_MAX);
 	p->envelopeLength = 1;
@@ -131,6 +149,7 @@ void CModule::InitialiseInstrument(int instrument)
 	p->tableMode = 0;
 	p->tableSpeed = 0;
 
+	// Set Envelopes to Empty
 	for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
 	{
 		p->volumeEnvelope[j] = 0;
@@ -140,6 +159,7 @@ void CModule::InitialiseInstrument(int instrument)
 		p->parameterEnvelope[j] = 0;
 	}
 
+	// Set Tables to Empty
 	for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
 	{
 		p->noteTable[j] = 0;
@@ -163,13 +183,11 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 
 	// Create a Temporary Subtune, to make the Import procedure a much easier task
 	TSubtune* importSubtune = new TSubtune;
+	InitialiseSubtune(importSubtune);
 
 	// Clear the current module data
 	ClearModule();
 	InitialiseModule();
-
-	// Copy an empty Subtune to the Temporary Subtune to initialise it
-	CopySubtune(GetSubtuneIndex(), importSubtune);
 
 	// Decode the Legacy RMT Module into the Temporary Subtune, and re-construct the imported data if successful
 	if (DecodeLegacyRMT(in, importSubtune, importLog))
@@ -219,12 +237,9 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 			}
 		}
 
-		// Set the Subtune count to the number of individual Subtunes identified
-		SetSubtuneCount(subtuneCount);
-
 		// Clear the current Subtune Index, then create a new one matching the number of Subtunes to be imported
 		for (int i = 0; i < subtuneCount; i++)
-			InitialiseSubtune(i);
+			CreateSubtune(i);
 		
 		importLog.AppendFormat("Confidently detected %i unique Subtune(s).\n\n", subtuneCount);
 		importLog.AppendFormat("Stage 3 - Optimising Subtunes with compatibility tweaks:\n\n");
@@ -754,7 +769,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 			continue;
 
 		// Initialise the equivalent RMTE Instrument, then get the pointer to it for the next step
-		InitialiseInstrument(i);
+		CreateInstrument(i);
 		TInstrumentV2* ai = GetInstrument(i);
 
 		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
@@ -866,6 +881,15 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 // These are broken down into generic functions, to make recycling for other uses fairly easy
 //
 
+const BYTE CModule::GetSubtuneCount()
+{
+	BYTE count = 0;
+
+	for (int i = 0; i < SUBTUNE_MAX; i++)
+		count += m_index[i] != NULL;
+
+	return count;
+}
 
 // Identify the shortest pattern length relative to the other ones used in the same Songline
 BYTE CModule::GetShortestPatternLength(int songline)
