@@ -2,7 +2,7 @@
 
 #include "Keyboard2NoteMapping.h"
 
-//QWERTY keys layout 
+// QWERTY Keyboard layout 
 const unsigned char keynotes_QWERTY[256] = 
 {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
@@ -23,7 +23,7 @@ const unsigned char keynotes_QWERTY[256] =
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
 
-//AZERTY keys layout 
+// AZERTY Keyboard layout 
 const unsigned char keynotes_AZERTY[256] =
 {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -43,44 +43,6 @@ const unsigned char keynotes_AZERTY[256] =
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 };
-
-/*
-const char keynotes[256] =
-{
-	//0
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, 27, -1,
-	//50
-	13, 15, -1, 18, 20, 22, -1, 25, -1, -1,
-	-1, -1, -1, -1, -1, -1,  7,  4,  3, 16,
-	-1,  6,  8, 24, 10, -1, 13, 11,  9, 26,
-	28, 12, 17,  1, 19, 23,  5, 14,  2, 21,
-	0, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//100
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//150
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, 15, 30, 12, -1,
-	14, 16, -1, -1, -1, -1, -1, -1, -1, -1,
-	//200
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, 29,
-	-1, 31, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//250
-	-1, -1, -1, -1, -1, -1
-};
-*/
 
 const char keynumbs[256] =
 {
@@ -130,6 +92,27 @@ const char keynumblock09[256] =
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 };
 
-char NoteKey(int vk) { if (g_keyboard_layout == KEYBOARD_QWERTY) { return keynotes_QWERTY[vk]; } else if (g_keyboard_layout == KEYBOARD_AZERTY) { return keynotes_AZERTY[vk]; } else return -1; };
-char NumbKey(int vk) { return keynumbs[vk]; };
-char Numblock09Key(int vk) { return keynumblock09[vk]; };
+char NoteKey(int vk)
+{
+	switch (g_keyboard_layout)
+	{
+	case KEYBOARD_QWERTY:
+		return keynotes_QWERTY[vk];
+
+	case KEYBOARD_AZERTY:
+		return keynotes_AZERTY[vk];
+
+	default:
+		return -1;	// return INVALID;
+	}
+}
+
+char NumbKey(int vk)
+{
+	return keynumbs[vk];
+}
+
+char Numblock09Key(int vk)
+{
+	return keynumblock09[vk];
+}

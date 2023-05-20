@@ -7,9 +7,8 @@
 
 CModule::CModule()
 {
-	m_index = NULL;
-	m_instrument = NULL;
-	InitialiseModule();
+	memset(m_index, NULL, sizeof m_index);
+	memset(m_instrument, NULL, sizeof m_instrument);
 }
 
 CModule::~CModule()
@@ -19,89 +18,156 @@ CModule::~CModule()
 
 void CModule::InitialiseModule()
 {
-	// Create new module data if it doesn't exist
-	if (!m_index) m_index = new TSubtune[MODULE_SUBTUNE_COUNT];
-	if (!m_instrument) m_instrument = new TInstrumentV2[PATTERN_INSTRUMENT_COUNT];
-
-	// Set default module parameters
+	// Set the default Module parameters
 	SetSongName("Noname Song");
 	SetSongAuthor("Unknown");
 	SetSongCopyright("2023");
-	SetSubtuneName(MODULE_DEFAULT_SUBTUNE, "Noname Subtune");
 	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
-	SetSubtuneCount(MODULE_SUBTUNE_COUNT);
-	SetSongLength(MODULE_SONG_LENGTH);
-	SetPatternLength(MODULE_TRACK_LENGTH);
-	SetChannelCount(TRACK_CHANNEL_MAX);	//(MODULE_STEREO);	// FIXME: g_tracks4_8 is NOT initialised when it is called for the first time here!
-	SetSongSpeed(MODULE_SONG_SPEED);
-	SetInstrumentSpeed(MODULE_VBI_SPEED);
+
+	// Create 1 empty Subtune, which will be used by default
+	CreateSubtune(MODULE_DEFAULT_SUBTUNE);
+
+	// Same thing for the Instrument
+	CreateInstrument(MODULE_DEFAULT_INSTRUMENT);
+}
+
+void CModule::ClearModule()
+{
+	// Set the empty Module parameters
+	SetSongName("");
+	SetSongAuthor("");
+	SetSongCopyright("");
+	SetActiveSubtune(INVALID);
+
+	// Delete all Module data and set the associated pointers to NULL
+	for (int i = 0; i < SUBTUNE_MAX; i++)
+		DeleteSubtune(i);
+
+	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+		DeleteInstrument(i);
+/*
+	{
+		if (m_instrument[i])
+			delete m_instrument[i];
+
+		m_instrument[i] = NULL;
+	}
+*/
+}
+
+void CModule::CreateSubtune(int subtune)
+{
+	if (!IsValidSubtune((subtune)))
+		return;
+
+	// If there is no Subtune here, create it now and update the Subtune Index accordingly
+	if (!m_index[subtune])
+		m_index[subtune] = new TSubtune;
+
+	// A new Subtune must be initialised when it is created
+	InitialiseSubtune(m_index[subtune]);
+}
+
+void CModule::DeleteSubtune(int subtune)
+{
+	if (!IsValidSubtune((subtune)))
+		return;
+
+	// If there is a Subtune here, don't waste any time and delete it without further ado
+	if (m_index[subtune])
+		delete m_index[subtune];
+
+	m_index[subtune] = NULL;
+}
+
+void CModule::InitialiseSubtune(TSubtune* p)
+{
+	if (!p)
+		return;
+
+	strncpy_s(p->name, "Noname Subtune", SUBTUNE_NAME_MAX);
+	p->songLength = MODULE_SONG_LENGTH;
+	p->patternLength = MODULE_TRACK_LENGTH;
+	p->channelCount = MODULE_STEREO;	//= TRACK_CHANNEL_MAX;
+	p->songSpeed = MODULE_SONG_SPEED;
+	p->instrumentSpeed = MODULE_VBI_SPEED;
 
 	// Clear all data, and set default values
 	for (int i = 0; i < TRACK_CHANNEL_MAX; i++)
 	{
 		// Set all indexed Patterns to 0
 		for (int j = 0; j < SONGLINE_MAX; j++)
-			SetPatternInSongline(i, j, 0);
+			p->channel[i].songline[j] = 0x00;
 
 		// Set all indexed Rows in Patterns to empty values
 		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-			ClearPattern(GetPattern(i, j));
+			ClearPattern(&p->channel[i].pattern[j]);
 
 		// By default, only 1 Effect Command is enabled in all Track Channels
-		SetEffectCommandCount(i, 1);
+		p->effectCommandCount[i] = 0x01;
 	}
-
-	// Clear all Subtunes using the Active Subtune values
-	for (int i = 1; i < GetSubtuneCount(); i++)
-	{
-		CopySubtune(GetSubtuneIndex(GetActiveSubtune()), GetSubtuneIndex(i));
-	}
-
-	// Also clear all instruments in the module
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
-	{
-		strcpy(m_instrument[i].name, "New Instrument");
-		m_instrument[i].envelopeLength = 1;
-		m_instrument[i].envelopeLoop = 0;
-		m_instrument[i].envelopeRelease = 0;
-		m_instrument[i].tableLength = 0;
-		m_instrument[i].tableLoop = 0;
-		m_instrument[i].tableRelease = 0;
-		m_instrument[i].tableMode = 0;
-
-		for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
-		{
-			m_instrument[i].volumeEnvelope[j] = 0;
-			m_instrument[i].distortionEnvelope[j] = 0;
-			m_instrument[i].audctlEnvelope[j] = 0;
-		}
-
-		for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
-		{
-			m_instrument[i].noteTable[j] = 0;
-			m_instrument[i].freqTable[j] = 0;
-		}
-	}
-
-	// Module was initialised
-	SetModuleStatus(TRUE);
 }
 
-void CModule::ClearModule()
+void CModule::CreateInstrument(int instrument)
 {
-	// Don't waste any time, just destroy the module data entirely
-	if (m_index) delete m_index;
-	if (m_instrument) delete m_instrument;
+	if (!IsValidInstrument((instrument)))
+		return;
 
-	// Set the struct pointers to NULL to make sure nothing invalid is accessed
-	m_index = NULL;
-	m_instrument = NULL;
+	// If there is no Instrument here, create it now and update the Instrument Index accordingly
+	if (!m_instrument[instrument])
+		m_instrument[instrument] = new TInstrumentV2;
 
-	// Module was cleared, and must be initialised before it could be used again
-	SetModuleStatus(FALSE);
+	// A new Instrument must be initialised when it is created
+	InitialiseInstrument(m_instrument[instrument]);
 }
 
-void CModule::ImportLegacyRMT(std::ifstream& in)
+void CModule::DeleteInstrument(int instrument)
+{
+	if (!IsValidInstrument((instrument)))
+		return;
+
+	// If there is an Instrument here, don't waste any time and delete it without further ado
+	if (m_instrument[instrument])
+		delete m_instrument[instrument];
+
+	m_instrument[instrument] = NULL;
+}
+
+void CModule::InitialiseInstrument(TInstrumentV2* p)
+{
+	if (!p)
+		return;
+
+	strncpy_s(p->name, "New Instrument", INSTRUMENT_NAME_MAX);
+	p->envelopeLength = 1;
+	p->envelopeLoop = 0;
+	p->envelopeRelease = 0;
+	p->envelopeSpeed = 0;
+	p->tableLength = 0;
+	p->tableLoop = 0;
+	p->tableRelease = 0;
+	p->tableMode = 0;
+	p->tableSpeed = 0;
+
+	// Set Envelopes to Empty
+	for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
+	{
+		p->volumeEnvelope[j] = 0;
+		p->distortionEnvelope[j] = 0;
+		p->audctlEnvelope[j] = 0;
+		p->commandEnvelope[j] = 0;
+		p->parameterEnvelope[j] = 0;
+	}
+
+	// Set Tables to Empty
+	for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
+	{
+		p->noteTable[j] = 0;
+		p->freqTable[j] = 0;
+	}
+}
+
+bool CModule::ImportLegacyRMT(std::ifstream& in)
 {
 	CString importLog;
 	importLog.Format("");
@@ -117,12 +183,11 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 
 	// Create a Temporary Subtune, to make the Import procedure a much easier task
 	TSubtune* importSubtune = new TSubtune;
+	InitialiseSubtune(importSubtune);
 
 	// Clear the current module data
+	ClearModule();
 	InitialiseModule();
-
-	// Copy an empty Subtune to the Temporary Subtune to initialise it
-	CopySubtune(GetSubtuneIndex(MODULE_DEFAULT_SUBTUNE), importSubtune);
 
 	// Decode the Legacy RMT Module into the Temporary Subtune, and re-construct the imported data if successful
 	if (DecodeLegacyRMT(in, importSubtune, importLog))
@@ -172,13 +237,10 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 			}
 		}
 
-		// Set the Subtune count to the number of individual Subtunes identified
-		SetSubtuneCount(subtuneCount);
-
 		// Clear the current Subtune Index, then create a new one matching the number of Subtunes to be imported
-		delete m_index;
-		m_index = new TSubtune[subtuneCount];
-
+		for (int i = 0; i < subtuneCount; i++)
+			CreateSubtune(i);
+		
 		importLog.AppendFormat("Confidently detected %i unique Subtune(s).\n\n", subtuneCount);
 		importLog.AppendFormat("Stage 3 - Optimising Subtunes with compatibility tweaks:\n\n");
 
@@ -277,6 +339,9 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 		// Set the Active Subtune to the Default parameter, once the Legacy RMT Import procedure was completed
 		SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
 
+		// Workaround: Due to the way RMT was originally designed, the "Global" number of channels must be set here as well
+		g_tracks4_8 = GetChannelCount();
+
 		// Final number of Subtunes that were imported
 		importLog.AppendFormat("Processed: %i Subtune(s) with All Size Optimisations.\n\n", GetSubtuneCount());
 	}
@@ -286,6 +351,8 @@ void CModule::ImportLegacyRMT(std::ifstream& in)
 
 	// Spawn a messagebox with the statistics collected during the Legacy RMT Module import procedure
 	MessageBox(g_hwnd, importLog, "Import Legacy RMT", MB_ICONINFORMATION);
+
+	return true;
 }
 
 // Decode Legacy RMT Module Data, Return True if successful
@@ -701,42 +768,44 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 		if (!ptrOneInstrument)
 			continue;
 
-		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
-
-		// Get the equivalent RMTE Instrument number
+		// Initialise the equivalent RMTE Instrument, then get the pointer to it for the next step
+		CreateInstrument(i);
 		TInstrumentV2* ai = GetInstrument(i);
 
-		// Get the Envelopes, Tables, and other parameters from the original RMT instrument
+		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
+		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
 		BYTE envelopePtr = memInstrument[0];
+
 		BYTE tableLength = memInstrument[0] - 12;
 		BYTE tableGoto = memInstrument[1] - 12;
+
 		BYTE envelopeLength = (memInstrument[2] - (memInstrument[0] + 1)) / 3;
 		BYTE envelopeGoto = (memInstrument[3] - (memInstrument[0] + 1)) / 3;
+
 		BYTE tableType = memInstrument[4] >> 7;				// Table Type, 0 = Note, 1 = Freq
-		//BYTE tableMode = (memInstrument[4] >> 6) & 0x01;	// Table Mode, 0 = Set, 1 = Additive, not supported by the RMTE format
-		//BYTE tableSpeed = memInstrument[4] & 0x3F;		// Table Speed, used to offset the equivalent Tables
+		BYTE tableMode = (memInstrument[4] >> 6) & 0x01;	// Table Mode, 0 = Set, 1 = Additive
+		BYTE tableSpeed = memInstrument[4] & 0x3F;			// Table Speed, used to offset the equivalent Tables
+
 		BYTE initialAudctl = memInstrument[5];				// AUDCTL, used to initialise the equivalent Envelope
+
 		//BYTE volumeSlide = memInstrument[6];				// Volume Slide, not supported by the RMTE format
 		//BYTE volumeMinimum = memInstrument[7] >> 4;		// Volume Minimum, not supported by the RMTE format
 		//BYTE vibratoDelay = memInstrument[8];				// Vibrato/Freq Shift Delay, not supported by the RMTE format
 		//BYTE vibrato = memInstrument[9] & 0x03;			// Vibrato, not supported by the RMTE format
 		//BYTE freqShift = memInstrument[10];				// Freq Shift, not supported by the RMTE format
 
-		// Adjust the Tables length and loop point using the Table Speed parameter
-		// Since the size could go as high as 2048 frames, it might be a better idea to simply add a Speed parameter as well...
-		//tableLength *= tableSpeed;	// Not decided yet
-		//tableGoto *= tableSpeed;	// Not decided yet
-
 		// Set the equivalent data to the RMTE instrument, with respect to boundaries
-		ai->tableLength = tableLength < INSTRUMENT_TABLE_INDEX_MAX ? tableLength : 0;	//INVALID	// Not decided yet
-		ai->tableLoop = tableGoto <= tableLength ? tableGoto : 0;	//INVALID	// Not decided yet
-		ai->envelopeLength = envelopeLength < ENVELOPE_MAX_COLUMNS ? envelopeLength : 0;	//INVALID	// Not decided yet
-		ai->envelopeLoop = envelopeGoto > envelopeLength ? envelopeGoto : 0;	//INVALID	// Not decided yet
+		ai->tableLength = tableLength <= INSTRUMENT_TABLE_INDEX_MAX ? tableLength : 0;
+		ai->tableLoop = tableGoto <= tableLength ? tableGoto : 0;
+		ai->tableSpeed = tableSpeed;
+		ai->tableMode = tableMode;
+		ai->envelopeLength = envelopeLength <= ENVELOPE_MAX_COLUMNS ? envelopeLength : 0;
+		ai->envelopeLoop = envelopeGoto <= envelopeLength ? envelopeGoto : 0;
 
 		// Fill the equivalent RMTE tables based on the tableMode parameter
 		for (int j = 0; j <= ai->tableLength; j++)
 		{
-			ai->noteTable[j] = tableType ? memInstrument[12 + j] : 0;
+			ai->noteTable[j] = !tableType ? memInstrument[12 + j] : 0;
 			ai->freqTable[j] = tableType ? memInstrument[12 + j] : 0;
 		}
 
@@ -744,33 +813,55 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 		for (int j = 0; j <= ai->envelopeLength; j++)
 		{
 			// Get the 3 bytes used by the original RMT Envelope format
-			BYTE envelopeVolume = memInstrument[(memInstrument[0] + 1) + (i * 3)];
-			BYTE envelopeCommand = memInstrument[(memInstrument[0] + 1) + (i * 3) + 1];
-			BYTE envelopeParameter = memInstrument[(memInstrument[0] + 1) + (i * 3) + 2];
+			BYTE envelopeVolume = memInstrument[(memInstrument[0] + 1) + (j * 3)];
+			BYTE envelopeCommand = memInstrument[(memInstrument[0] + 1) + (j * 3) + 1];
+			BYTE envelopeParameter = memInstrument[(memInstrument[0] + 1) + (j * 3) + 2];
+
+			// Envelope Effect Command, from 0 to 7
 			BYTE envelopeEffectCommand = (envelopeCommand >> 4) & 0x07;
 
 			// The Envelope Effect Command is used for compatibility tweaks, which may or may not provide perfect results
 			switch (envelopeEffectCommand)
 			{
 			case 0x07:	// Overwrite the initialAudctl parameter, for a pseudo AUDCTL envelope when it is used multiple times (Patch16 only)
-				initialAudctl = envelopeParameter;
+				if (envelopeParameter < 0xFD)
+				{
+					initialAudctl = envelopeParameter;
+					envelopeParameter = envelopeEffectCommand = 0;
+				}
 				break;
 			}
 
+			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
+			ai->commandEnvelope[j] = envelopeEffectCommand;
+			ai->parameterEnvelope[j] = envelopeParameter;
+
+			// Envelope Distortion, from 0 to E, in steps of 2
+			BYTE distortion = envelopeCommand & 0x0E;
+
+			switch (distortion)
+			{
+			case 0x00: distortion = TIMBRE_PINK_NOISE; break;
+			case 0x02: distortion = TIMBRE_BELL; break;
+			case 0x04: distortion = TIMBRE_SMOOTH_4; break;
+			case 0x08: distortion = TIMBRE_WHITE_NOISE; break;
+			case 0x06:
+			case 0x0A: distortion = TIMBRE_PURE; break;
+			case 0x0C: distortion = TIMBRE_BUZZY_C; break;
+			case 0x0E: distortion = TIMBRE_GRITTY_C; break;
+			}
+			
+			// Distortion Envelope, converted the equivalent Timbre parameter
+			ai->distortionEnvelope[j] = distortion;
+
 			// Envelope Volume, only Left POKEY volume is supported by the RMTE format
 			ai->volumeEnvelope[j] = envelopeVolume & 0x0F;
-
-			// Envelope Distortion, from 0 to E
-			ai->audctlEnvelope[j] = envelopeCommand & 0x0E;
 
 			// Envelope AUDCTL
 			ai->audctlEnvelope[j] = initialAudctl;
 
 			// Autofilter, not supported (yet?) by the RMTE format
 			//ai->autofilterEnvelope[j] = envelopeCommand >> 7;
-
-			// Instrument Command, not supported (yet?) by the RMTE format
-			//ai->commandEnvelope[j] = (envelopeCommand >> 4) & 0x07;
 
 			// Portamento, not supported (and unlikely to be) by the RMTE format
 			//ai->portamentoEnvelope[j] = envelopeCommand & 0x01;
@@ -790,6 +881,15 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 // These are broken down into generic functions, to make recycling for other uses fairly easy
 //
 
+const BYTE CModule::GetSubtuneCount()
+{
+	BYTE count = 0;
+
+	for (int i = 0; i < SUBTUNE_MAX; i++)
+		count += m_index[i] != NULL;
+
+	return count;
+}
 
 // Identify the shortest pattern length relative to the other ones used in the same Songline
 BYTE CModule::GetShortestPatternLength(int songline)

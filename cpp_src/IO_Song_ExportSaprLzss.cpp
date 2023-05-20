@@ -587,7 +587,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 		int intro = 0, loop = 0;
 
 		//DumpSongToPokeyBuffer(MPLAY_FROM, subtune[count], 0);
-		DumpSongToPokeyBuffer();
+		DumpSongToPokeyBuffer(MPLAY_START, count);
 
 		//SetStatusBarText("Compressing data ...");
 
@@ -741,14 +741,15 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 
 	Stop();					// Make sure RMT is stopped 
 	//Atari_InitRMTRoutine();	// Reset the RMT routines 
-	//SetChannelOnOff(-1, 0);	// Switch all channels off 
+	SetChannelOnOff(-1, 0);	// Switch all channels off 
 
 	g_PokeyStream.StartRecording();
 
 	// Play song using the chosen playback parameters
 	// If no argument was passed, Play from start will be assumed
-	m_activeSongline = songline;
-	m_activeRow = trackline;
+	//m_activeSongline = songline;
+	//m_activeRow = trackline;
+	g_Module.SetActiveSubtune(songline);
 	Play(playmode, m_isFollowPlay);
 
 	// Wait in a tight loop pumping messages until the playback stops
@@ -760,6 +761,8 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 		// 1 VBI of module playback
 		PlayPattern(g_Module.GetSubtuneIndex());
 
+		PlayContinue(g_Module.GetSubtuneIndex());
+
 		// Increment the timer shown during playback (not actually needed here?)
 		//UpdatePlayTime();
 
@@ -767,8 +770,10 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 		for (int i = 0; i < m_instrumentSpeed; i++)
 		{
 			// 1 VBI of RMT routine (for instruments)
-			if (g_rmtroutine)
-				Atari_PlayRMT();
+			//if (g_rmtroutine)
+			//	Atari_PlayRMT();
+
+			Atari_SetPokey();
 
 			// Transfer from g_atarimem to POKEY buffer
 			g_PokeyStream.Record();

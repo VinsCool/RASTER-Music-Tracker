@@ -146,7 +146,7 @@ void CSong::FileReload()
 	int answer = MessageBox(g_hwnd, "Discard all changes since your last save?\n\nWarning: Undo operation won't be possible!!!", "Reload", MB_YESNOCANCEL | MB_ICONQUESTION);
 	if (answer == IDYES)
 	{
-		CString filename = m_filename;
+		CString filename = m_fileName;
 		FileOpen((LPCTSTR)filename, 0); // Without Warning for changes
 	}
 }
@@ -177,9 +177,9 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 	else
 		if (!g_defaultSongsPath.IsEmpty()) dlg.m_ofn.lpstrInitialDir = g_defaultSongsPath;
 
-	if (m_filetype == IOTYPE_RMT) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMT;
-	if (m_filetype == IOTYPE_TXT) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_TXT;
-	if (m_filetype == IOTYPE_RMW) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMW;
+	if (m_fileType == IOTYPE_RMT) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMT;
+	if (m_fileType == IOTYPE_TXT) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_TXT;
+	if (m_fileType == IOTYPE_RMW) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMW;
 
 	CString fileToLoad = "";
 	int formatChoiceIndexFromDialog = 0;
@@ -232,17 +232,17 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 		{
 			case FILE_LOADSAVE_FILTER_IDX_RMT: // RMT choice in Dialog
 				loadedOk = LoadRMT(in);
-				m_filetype = IOTYPE_RMT;
+				m_fileType = IOTYPE_RMT;
 				break;
 
 			case FILE_LOADSAVE_FILTER_IDX_TXT: // TXT choice in Dialog
 				loadedOk = LoadTxt(in);
-				m_filetype = IOTYPE_TXT;
+				m_fileType = IOTYPE_TXT;
 				break;
 
 			case FILE_LOADSAVE_FILTER_IDX_RMW: // RMW choice in Dialog
 				loadedOk = LoadRMW(in);
-				m_filetype = IOTYPE_RMW;
+				m_fileType = IOTYPE_RMW;
 				break;
 		}
 		in.close();
@@ -255,8 +255,8 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 			return;
 		}
 
-		m_filename = fileToLoad;
-		m_speed = m_mainSpeed;			// Init speed
+		m_fileName = fileToLoad;
+		m_playSpeed = m_mainSpeed;			// Init speed
 		SetRMTTitle();					// Window name
 		SetChannelOnOff(-1, 1);			// All channels ON (unmute all) -1 = all, 1 = on
 	}
@@ -268,14 +268,14 @@ void CSong::FileSave()
 	//Stop();
 
 	// If the song has no filename, prompt the "save as" dialog first
-	if (m_filename.IsEmpty() || m_filetype == IOTYPE_NONE)
+	if (m_fileName.IsEmpty() || m_fileType == IOTYPE_NONE)
 	{
 		FileSaveAs();
 		return;
 	}
 
 	// If the RMT module hasn't met the conditions required to be valid, it won't be saved/overwritten
-	if (m_filetype == IOTYPE_RMT && !TestBeforeFileSave())
+	if (m_fileType == IOTYPE_RMT && !TestBeforeFileSave())
 	{
 		MessageBox(g_hwnd, "Warning!\nNo data has been saved!", "Warning", MB_ICONEXCLAMATION);
 		SetRMTTitle();
@@ -283,7 +283,7 @@ void CSong::FileSave()
 	}
 
 	// Create the file to save, ios::binary will be assumed if the format isn't TXT
-	std::ofstream out(m_filename, (m_filetype == IOTYPE_TXT) ? std::ios::out : std::ios::binary);
+	std::ofstream out(m_fileName, (m_fileType == IOTYPE_TXT) ? std::ios::out : std::ios::binary);
 	if (!out)
 	{
 		MessageBox(g_hwnd, "Can't create this file", "Write error", MB_ICONERROR);
@@ -291,7 +291,7 @@ void CSong::FileSave()
 	}
 
 	bool saveResult = false;
-	switch (m_filetype)
+	switch (m_fileType)
 	{
 		case IOTYPE_RMT: // RMT
 			saveResult = ExportV2(out, IOTYPE_RMT);
@@ -305,7 +305,7 @@ void CSong::FileSave()
 			// NOTE:
 			// Remembers the current octave and volume for the active instrument (for saving to RMW) 
 			// It is only saved when the instrument is changed and could change the octave or volume before saving without subsequently changing the current instrument
-			g_Instruments.MemorizeOctaveAndVolume(m_activeinstr, m_octave, m_volume);
+			g_Instruments.MemorizeOctaveAndVolume(m_activeInstrument, m_activeOctave, m_activeVolume);
 			saveResult = SaveRMW(out);
 			break;
 	}
@@ -316,7 +316,7 @@ void CSong::FileSave()
 	// TODO: add a method to prevent deleting a valid .rmt by accident when a stripped .rmt export was aborted
 	if (!saveResult) //failed to save
 	{
-		DeleteFile(m_filename);
+		DeleteFile(m_fileName);
 		MessageBox(g_hwnd, "RMT save aborted.\nFile was deleted, beware of data loss!", "Save aborted", MB_ICONEXCLAMATION);
 	}
 	else	//saved successfully
@@ -345,13 +345,13 @@ void CSong::FileSaveAs()
 
 	// Specifies the name of the file according to the last saved one
 	char filenamebuff[1024];
-	if (!m_filename.IsEmpty())
+	if (!m_fileName.IsEmpty())
 	{
-		int pos = m_filename.ReverseFind('\\');
-		if (pos < 0) pos = m_filename.ReverseFind('/');
+		int pos = m_fileName.ReverseFind('\\');
+		if (pos < 0) pos = m_fileName.ReverseFind('/');
 		if (pos >= 0)
 		{
-			CString s = m_filename.Mid(pos + 1);
+			CString s = m_fileName.Mid(pos + 1);
 			memset(filenamebuff, 0, 1024);
 			strcpy(filenamebuff, (char*)(LPCTSTR)s);
 			dlg.m_ofn.lpstrFile = filenamebuff;
@@ -360,9 +360,9 @@ void CSong::FileSaveAs()
 	}
 
 	// Set the type according to the last save
-	if (m_filetype == IOTYPE_RMT) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMT;
-	if (m_filetype == IOTYPE_TXT) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_TXT;
-	if (m_filetype == IOTYPE_RMW) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMW;
+	if (m_fileType == IOTYPE_RMT) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMT;
+	if (m_fileType == IOTYPE_TXT) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_TXT;
+	if (m_fileType == IOTYPE_RMW) dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMW;
 
 	//if not ok, nothing will be saved
 	if (dlg.DoModal() == IDOK)
@@ -375,25 +375,25 @@ void CSong::FileSaveAs()
 			return;
 		}
 
-		m_filename = dlg.GetPathName();
+		m_fileName = dlg.GetPathName();
 		const char* exttype[] = FILE_LOADSAVE_EXTENSIONS_ARRAY;
-		CString ext = m_filename.Right(4).MakeLower();
-		if (ext != exttype[formatChoiceIndexFromDialog - 1]) m_filename += exttype[formatChoiceIndexFromDialog - 1];
+		CString ext = m_fileName.Right(4).MakeLower();
+		if (ext != exttype[formatChoiceIndexFromDialog - 1]) m_fileName += exttype[formatChoiceIndexFromDialog - 1];
 
-		g_lastLoadPath_Songs = GetFilePath(m_filename);
+		g_lastLoadPath_Songs = GetFilePath(m_fileName);
 
 		switch (formatChoiceIndexFromDialog)
 		{
 			case FILE_LOADSAVE_FILTER_IDX_RMT: // RMT choice
-				m_filetype = IOTYPE_RMT;
+				m_fileType = IOTYPE_RMT;
 				break;
 
 			case FILE_LOADSAVE_FILTER_IDX_TXT: // TXT choice
-				m_filetype = IOTYPE_TXT;
+				m_fileType = IOTYPE_TXT;
 				break;
 
 			case FILE_LOADSAVE_FILTER_IDX_RMW: // RWM choice
-				m_filetype = IOTYPE_RMW;
+				m_fileType = IOTYPE_RMW;
 				break;
 
 			default:
@@ -501,28 +501,9 @@ void CSong::FileImport()
 	switch (g_lastImportTypeIndex)
 	{
 	case FILE_IMPORT_FILTER_IDX_RMT:
-		if (successful = LoadRMT(in))
-		{
+		if (successful = g_Module.ImportLegacyRMT(in))
 			SetWindowText(g_hwnd, "Imported: Legacy RMT " + fn);
-
-			// Re-open the file
-			in.close();
-			in.open(fn, std::ios::binary);
-
-			// Keep the Legacy Instruments data in memory since the RMTE tests rely on existing routines
-			for (int i = 0; i < SONGLEN; i++)
-			{
-				for (int j = 0; j < SONGTRACKS; j++)
-					m_song[i][j] = -1;
-				m_songgo[i] = -1;
-			}
-			g_Tracks.InitTracks();
-
-			// Clear the current Module data, then import the Legacy RMT data into it
-			g_Module.ClearModule();
-			g_Module.ImportLegacyRMT(in);
-		}
-	break;
+		break;
 
 	case FILE_IMPORT_FILTER_IDX_MOD:
 		if (successful = ImportMOD(in))
@@ -550,8 +531,8 @@ void CSong::FileImport()
 		return;
 	}
 
-	m_filename = fn;
-	m_speed = m_mainSpeed;	// Init speed
+	m_fileName = fn;
+	m_playSpeed = m_mainSpeed;	// Init speed
 	SetChannelOnOff(-1, 1);	// All channels ON (unmute all) -1 = all, 1 = on
 }
 
@@ -710,7 +691,7 @@ void CSong::FileInstrumentSave()
 			return;
 		}
 
-		g_Instruments.SaveInstrument(m_activeinstr, ou, IOINSTR_RTI);
+		g_Instruments.SaveInstrument(m_activeInstrument, ou, IOINSTR_RTI);
 
 		ou.close();
 	}
@@ -739,7 +720,7 @@ void CSong::FileInstrumentLoad()
 	// If it's not ok, nothing will be loaded
 	if (dlg.DoModal() == IDOK)
 	{
-		g_Undo.ChangeInstrument(m_activeinstr, 0, UETYPE_INSTRDATA, 1);
+		g_Undo.ChangeInstrument(m_activeInstrument, 0, UETYPE_INSTRDATA, 1);
 
 		CString fn = dlg.GetPathName();
 		g_lastLoadPath_Instruments = GetFilePath(fn);	//direct way
@@ -751,7 +732,7 @@ void CSong::FileInstrumentLoad()
 			return;
 		}
 
-		int loadState = g_Instruments.LoadInstrument(m_activeinstr, in, IOINSTR_RTI);
+		int loadState = g_Instruments.LoadInstrument(m_activeInstrument, in, IOINSTR_RTI);
 		in.close();
 
 		if (!loadState)
@@ -911,7 +892,7 @@ void CSong::FileTrackLoad()
 #define RMWMAINPARAMSCOUNT		31		//
 #define DEFINE_MAINPARAMS int* mainparams[RMWMAINPARAMSCOUNT]= {\
 	&g_tracks4_8,												\
-	(int*)&m_speed,(int*)&m_mainSpeed,(int*)&m_instrumentSpeed,	\
+	(int*)&m_playSpeed,(int*)&m_mainSpeed,(int*)&m_instrumentSpeed,	\
 	(int*)&m_activeSongline,(int*)&m_playSongline,				\
 	(int*)&m_activeRow,(int*)&m_playRow,			\
 	(int*)&g_activepart,(int*)&g_active_ti,						\
@@ -928,8 +909,8 @@ void CSong::FileTrackLoad()
 	&g_keyboard_updowncontinue,									\
 	&g_keyboard_RememberOctavesAndVolumes,						\
 	&g_keyboard_escresetatarisound,								\
-	&m_trackactivecol,&m_trackactivecur,						\
-	&m_activeinstr,&m_volume,&m_octave,							\
+	&m_activeChannel,&m_activeCursor,						\
+	&m_activeInstrument,&m_activeVolume,&m_activeOctave,							\
 	&m_infoact,&m_songnamecur									\
 }
 

@@ -54,7 +54,6 @@ const char row2[15] = { ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, RO
 const char row3[15] = { ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_ON, ROW_ON, ROW_ON, ROW_OFF };
 const char row4[15] = { ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF, ROW_OFF };
 const char* colac[] = { row0, row1, row2, row3, row4 };
-*/
 
 void CTracks::DrawTrackHeader(int x, int y, int tr, int col)
 {
@@ -156,3 +155,4 @@ void CTracks::DrawTrackLine(int col, int x, int y, int tr, int line, int aline, 
 	}
 
 }
+*/

@@ -247,6 +247,72 @@ void CXPokey::RenderSoundV2(int instrspeed, BYTE* buffer, int& length)
 	length = renderoffset;
 }
 
+void CXPokey::RenderSound_No6502(int instrspeed)
+{
+	if (!m_soundDriverId || !m_SoundBuffer)
+		return;
+
+	m_SoundBuffer->GetCurrentPosition(&m_PlayCursor, &m_WriteCursor);
+
+	int delta = (m_LoadPos - m_WriteCursor) & (BUFFER_SIZE - 1);
+
+	m_LoadSize = CHUNK_SIZE;
+
+	if (delta > LATENCY_SIZE)
+	{
+		if (delta > (BUFFER_SIZE / 2))
+			m_LoadPos = (m_WriteCursor + LATENCY_SIZE) & (BUFFER_SIZE - 1);
+		else
+		{
+			m_LoadSize = CHUNK_SIZE - (((delta - LATENCY_SIZE) / 16) & (BUFFER_SIZE - 1 - 1));
+			if (m_LoadSize <= 0)
+				return;
+		}
+	}
+	else
+	{
+		m_LoadSize = CHUNK_SIZE + (((LATENCY_SIZE - delta) / 16) & (BUFFER_SIZE - 1 - 1));
+		if (m_LoadSize >= BUFFER_SIZE / 2)
+			return;
+	}
+
+	int rendersize = m_LoadSize;
+	int renderpartsize = 0;
+	int renderoffset = 0;
+
+	for (; instrspeed > 0; instrspeed--)
+	{
+		Atari_SetPokey();
+		MemToPokey();
+		renderpartsize = (rendersize / instrspeed) & 0xfffe;
+
+		switch (m_soundDriverId)
+		{
+		case SOUND_DRIVER_SA_POKEY:
+			Pokey_Process(&m_PlayBuffer[renderoffset], renderpartsize);
+			rendersize -= renderpartsize;
+			renderoffset += renderpartsize;
+			break;
+		}
+	}
+
+	if (!m_SoundBuffer)
+		return;
+
+	m_LoadSize = renderoffset;
+
+	if (m_SoundBuffer->Lock(m_LoadPos, m_LoadSize, &Data1, &dwSize1, &Data2, &dwSize2, 0) == DS_OK)
+	{
+		m_LoadPos = (m_LoadPos + m_LoadSize) & (BUFFER_SIZE - 1);
+		memcpy(Data1, m_PlayBuffer, dwSize1);
+
+		if (Data2)
+			memcpy(Data2, m_PlayBuffer + dwSize1, dwSize2);
+
+		m_SoundBuffer->Unlock(Data1, dwSize1, Data2, dwSize2);
+	}
+}
+
 BOOL CXPokey::InitSound()
 {
 	if (m_soundDriverId || m_pokey_dll) DeInitSound();	// Just in case, everything must be cleared before initialising
@@ -368,7 +434,7 @@ void CXPokey::MemToPokey()
 
 	case SOUND_DRIVER_SA_POKEY:
 		if (resetPokey) 
-			Pokey_SoundInit(FREQ_17, OUTPUTFREQ, (g_tracks4_8 == 8) + 1);
+			Pokey_SoundInit((DWORD)FREQ_17, OUTPUTFREQ, (g_tracks4_8 == 8) + 1);
 		for (int i = 0; i <= 8; i++)	// 0-7 + 8 (AUDCTL)
 		{
 			Pokey_PutByte(i, (i & 0x01) && !GetChannelOnOff(i / 2) ? 0 : g_atarimem[0xd200 + i]);

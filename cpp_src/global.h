@@ -9,11 +9,11 @@
 
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 #include "General.h"
 
 extern unsigned char g_atarimem[65536];
-extern char g_debugmem[65536];	//debug display of g_atarimem bytes directly, slow and terrible, do not use unless there is a purpose for it 
 
 extern BOOL g_closeApplication;
 extern CDC* g_mem_dc;
@@ -25,56 +25,11 @@ extern int g_tracklines;
 extern int g_scaling_percentage;
 
 //best known compromise for both regions, they produce identical tables
-extern double g_basetuning;
-extern int g_basenote;	//3 = A-
-extern int g_temperament;	//each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
-extern int g_notesperoctave;	//by default there are 12 notes per octave
-
-//ratio used for each note => NOTE_L / NOTE_R, must be treated as doubles!!!
-extern double g_UNISON;
-extern double g_MIN_2ND;
-extern double g_MAJ_2ND;
-extern double g_MIN_3RD;
-extern double g_MAJ_3RD;
-extern double g_PERF_4TH;
-extern double g_TRITONE;
-extern double g_PERF_5TH;
-extern double g_MIN_6TH;
-extern double g_MAJ_6TH;
-extern double g_MIN_7TH;
-extern double g_MAJ_7TH;
-extern double g_OCTAVE;
-
-//ratio left
-extern int g_UNISON_L;
-extern int g_MIN_2ND_L;
-extern int g_MAJ_2ND_L;
-extern int g_MIN_3RD_L;
-extern int g_MAJ_3RD_L;
-extern int g_PERF_4TH_L;
-extern int g_TRITONE_L;
-extern int g_PERF_5TH_L;
-extern int g_MIN_6TH_L;
-extern int g_MAJ_6TH_L;
-extern int g_MIN_7TH_L;
-extern int g_MAJ_7TH_L;
-extern int g_OCTAVE_L;
-
-//ratio right
-extern int g_UNISON_R;
-extern int g_MIN_2ND_R;
-extern int g_MAJ_2ND_R;
-extern int g_MIN_3RD_R;
-extern int g_MAJ_3RD_R;
-extern int g_PERF_4TH_R;
-extern int g_TRITONE_R;
-extern int g_PERF_5TH_R;
-extern int g_MIN_6TH_R;
-extern int g_MAJ_6TH_R;
-extern int g_MIN_7TH_R;
-extern int g_MAJ_7TH_R;
-extern int g_OCTAVE_R;
-
+extern double g_baseTuning;
+extern int g_baseNote;	//3 = A-
+extern int g_baseOctave;
+//extern int g_temperament;	//each preset is assigned to a number. 0 means no Temperament, any value that is not assigned defaults to custom
+//extern int g_notesperoctave;	//by default there are 12 notes per octave
 
 extern HWND g_hwnd;
 extern HWND g_viewhwnd;
@@ -91,10 +46,6 @@ extern int g_RmtHasFocus;
 extern int g_tracks4_8;
 extern BOOL volatile g_screenupdate;
 extern BOOL volatile g_rmtroutine;
-
-extern BYTE volatile g_timerDisplayCount;
-extern BYTE volatile g_timerRoutineCount;
-extern BYTE const g_timerTick[3];
 
 extern int volatile g_prove;			//test notes without editing (0 = off, 1 = mono, 2 = stereo)
 extern int volatile g_respectvolume;	//does not change the volume if it is already there
@@ -119,7 +70,6 @@ extern int g_activepart;			//0 info, 1 edittracks, 2 editinstruments, 3 song
 extern int g_active_ti;			//1 tracks, 2 instrs
 
 extern BOOL g_isEditingInstrumentName;		//0 no, 1 instrument name is edited
-extern BOOL is_editing_infos;		//0 no, 1 song name is edited
 
 extern int g_line_y;			//active line coordinate, used to reference g_cursoractview to the correct position
 
@@ -149,8 +99,6 @@ extern BOOL g_viewInstrumentEditHelp;	//1 yes, 0 no
 
 extern int g_trackerDriverVersion;
 extern bool g_isRMTE;
-
-extern int g_timerGlobalCount;	// Initialised once, ticking forever
 
 extern int g_mousebutt;			//mouse button
 

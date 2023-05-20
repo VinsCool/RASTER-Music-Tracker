@@ -232,7 +232,7 @@ void CEffectsDlg::OnRestore()
 
 void CEffectsDlg::OnPlaystop() 
 {
-	if (g_Song.GetPlayMode())
+	if (g_Song.GetPlayMode() != MPLAY_STOP)
 		g_Song.Stop();
 	else
 		g_Song.Play(MPLAY_BLOCK, g_Song.GetFollowPlayMode());

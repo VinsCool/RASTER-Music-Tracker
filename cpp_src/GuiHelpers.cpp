@@ -203,47 +203,31 @@ void TextXYSelN(const char* txt, int n, int x, int y, int color)
 
 // Draw 8x16 chars with given color array per char position
 // TODO: make a lookup table for the cursor highlight position
-void TextXYCol(const char* txt, int x, int y, int acu, int color)
+void TextXYCol(const char* txt, int x, int y, int cursor, int column, int color)
 {
 	color <<= 4;
 
-	int num = 0, curnum = 0, curoff = 0;
-	int col = (g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED) << 4;
-	int cur = COLOR_HOVERED << 4;
+	int contiguous = 0;
+	int highlight = (g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED) << 4;
+	int hover = COLOR_HOVERED << 4;
 
-	// RMTE variables
-	if (g_isRMTE)
+	switch (cursor)
 	{
-		switch (acu)
-		{
-		case 0: acu = 0; num = 3; break;	// Note
-		case 1: acu = 4; num = 2; break;	// Instrument
-		case 2: acu = 7; num = 2; break;	// Volume
-		case 3: acu = 10; num = 3; break;	// Effect(s)
-		case 4: acu = 14; num = 3; break;
-		case 5: acu = 18; num = 3; break;
-		case 6: acu = 22; num = 3; break;
-		case 7: acu = 26; num = 3; break;
-		}
-	}
-
-	// Legacy variables
-	else
-	{
-		switch (acu)
-		{
-		case 0: acu = 1; num = 3; break;	// Note
-		case 1: acu = 5; num = 2; break;	// Instrument
-		case 2: acu = 8; num = 2; break;	// Volume
-		case 3: acu = 11; num = 3; break;	// Effect(s)
-		}
+	case 0: cursor = 0; contiguous = 3; break;				// Note
+	case 1: cursor = 4 + column; contiguous = 1; break;		// Instrument
+	case 2: cursor = 7; contiguous = 2; break;				// Volume
+	case 3:													// Command(s)
+	case 4:
+	case 5:
+	case 6: cursor = 10 + 4 * (cursor - 3) + column; contiguous = 1; break;
 	}
 
 	for (int i = 0; char charToDraw = txt[i]; i++, x += 8)
 	{
-		if (charToDraw == 32) continue;	// Don't draw the space
+		if (charToDraw == 32)
+			continue;	// Don't draw the space
 
-		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7F) << 3, IsHoveredXY(x, y, 8, 16) ? cur : i >= acu && i < acu + num ? col : color, SRCCOPY);
+		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7F) << 3, IsHoveredXY(x, y, 8, 16) ? hover : i >= cursor && i < cursor + contiguous ? highlight : color, SRCCOPY);
 	}
 }
 

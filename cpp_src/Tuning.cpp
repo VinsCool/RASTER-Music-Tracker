@@ -5,10 +5,245 @@
 //
 // TODO: further cleanup, better documentation, better structure, fix any bug I may have missed so far
 
+#include "StdAfx.h"
 #include "tuning.h"
-#include "global.h"
+
+double CTuning::GetTruePitch(int semitone, int baseNote, double tuning)
+{
+	double ratio = pow(2.0, 1.0 / 12.0);
+	return (tuning / 64) * pow(ratio, semitone + baseNote + 12);
+}
+
+double CTuning::GetCentsOff(double pitch, double tuning)
+{
+	double centnum = 1200 * log2(pitch / tuning);
+	int notenum = (int)round(centnum * 0.01) + 60;
+	return (centnum - (notenum - 60) * 100);
+}
+
+WORD CTuning::GeneratePokeyFreq(double pitch, int channel, int timbre, int audctl)
+{
+	// Variables for pitch calculation, divisors must never be 0!
+	double fineDivisor = 1;
+	int coarseDivisor = 1;
+	int cycle = 1;
+
+	// Register variables 
+	bool is15KhzMode = audctl & 0x01;
+	bool isHighPassCh24 = audctl & 0x02;
+	bool isHighPassCh13 = audctl & 0x04;
+	bool isJoinedCh34 = audctl & 0x08;
+	bool isJoinedCh12 = audctl & 0x10;
+	bool is179MhzCh3 = audctl & 0x20;
+	bool is179MhzCh1 = audctl & 0x40;
+	bool isPoly9Noise = audctl & 0x80;
+
+	// Combined modes
+	bool is16BitMode = (isJoinedCh12 && is179MhzCh1 && channel % 4 == 1) || (isJoinedCh34 && is179MhzCh3 && channel % 4 == 3);
+	bool is179MhzMode = (is179MhzCh1 && channel % 4 == 0) || (is179MhzCh3 && channel % 4 == 2);
+
+	// Override, these 2 take priority over 15khz mode if they are enabled at the same time
+	if (is16BitMode || is179MhzMode)
+		is15KhzMode = false;
+
+	if (is16BitMode)
+		cycle = 7;
+	else if (is179MhzMode)
+		cycle = 4;
+	else
+		coarseDivisor = is15KhzMode ? 114 : 28;
+
+	//Use the modulo flags to make sure the correct timbre will be output
+	switch (timbre)
+	{
+	case TIMBRE_PINK_NOISE:
+		break;
+
+	case TIMBRE_BROWNIAN_NOISE:
+		fineDivisor = 36.5;	//Brownian noise, not MOD31 and not MOD73
+		break;
+
+	case TIMBRE_FUZZY_NOISE:
+		fineDivisor = 255.5;	//Fuzzy noise, not MOD7, not MOD31 and not MOD73
+		break;
+
+	case TIMBRE_BELL:
+		fineDivisor = 31;	//Bell tones, not MOD31
+		break;
+
+	case TIMBRE_BUZZY_4:
+		fineDivisor = 232.5;	//Buzzy tones, neither MOD3 or MOD5 or MOD31
+		break;
+
+	case TIMBRE_SMOOTH_4:
+		fineDivisor = 77.5;	//Smooth tones, MOD3 but not MOD5 or MOD31
+		break;
+
+	case TIMBRE_WHITE_NOISE:
+		break;
+
+	case TIMBRE_METALLIC_NOISE:
+		fineDivisor = 36.5;	//Metallic noise, not MOD73
+		break;
+
+	case TIMBRE_BUZZY_NOISE:
+		fineDivisor = 255.5;	//Buzzy noise, not MOD7 and not MOD73
+		break;
+
+	case TIMBRE_PURE:
+		break;
+
+	case TIMBRE_GRITTY_C:
+		fineDivisor = 7.5;	//Gritty tones, neither MOD3 or MOD5
+		break;
+
+	case TIMBRE_BUZZY_C:
+		fineDivisor = 2.5;	//Buzzy tones, MOD3 but not MOD5
+		break;
+
+	case TIMBRE_UNSTABLE_C:
+		fineDivisor = 1.5;	//Unstable Buzzy tones, MOD5 but not MOD3
+		break;
+
+	default:
+		//Distortion A is assumed if no valid parameter is supplied 
+		break;
+	}
+
+	// Get the nearest POKEY frequency using the reference pitch
+	int freq = GetPokeyFreq(pitch, coarseDivisor, fineDivisor, cycle);
+
+	// Many combinations depend entirely on the Modulo of POKEY frequencies to generate different tones
+	// If a value is known to provide unstable results, it may be a better idea to avoid it
+	bool MOD3 = (freq + cycle) % 3 == 0;
+	bool MOD5 = (freq + cycle) % 5 == 0;
+	bool MOD7 = (freq + cycle) % 7 == 0;
+	bool MOD15 = (freq + cycle) % 15 == 0;
+	bool MOD31 = (freq + cycle) % 31 == 0;
+	bool MOD73 = (freq + cycle) % 73 == 0;
+
+	switch (timbre)
+	{
+	case TIMBRE_BELL:
+		if (MOD31)
+			freq = DeltaPokeyFreq(pitch, freq, coarseDivisor, fineDivisor, cycle, timbre);
+		break;
+
+	case TIMBRE_BUZZY_4:
+		if (MOD3 || MOD5 || MOD31)
+			freq = DeltaPokeyFreq(pitch, freq, coarseDivisor, fineDivisor, cycle, timbre);
+		break;
+
+	case TIMBRE_SMOOTH_4:
+		if (!(MOD3 || is15KhzMode) || MOD5)
+			freq = DeltaPokeyFreq(pitch, freq, coarseDivisor, fineDivisor, cycle, timbre);
+		if (!is16BitMode && freq > 0xFF)
+			return GeneratePokeyFreq(pitch, channel, TIMBRE_BUZZY_4, audctl);
+		break;
+
+	case TIMBRE_GRITTY_C:
+		if (MOD3 || MOD5)
+			freq = DeltaPokeyFreq(pitch, freq, coarseDivisor, fineDivisor, cycle, timbre);
+		break;
+
+	case TIMBRE_BUZZY_C:
+		if (!(MOD3 || is15KhzMode) || MOD5)
+			freq = DeltaPokeyFreq(pitch, freq, coarseDivisor, fineDivisor, cycle, timbre);
+		if (!is16BitMode && freq > 0xFF)
+			return GeneratePokeyFreq(pitch, channel, TIMBRE_GRITTY_C, audctl);
+		break;
+
+	case TIMBRE_UNSTABLE_C:
+		if (!MOD5 || MOD3)
+			freq = DeltaPokeyFreq(pitch, freq, coarseDivisor, fineDivisor, cycle, timbre);
+		break;
+	}
+
+	if (freq < 0)
+		freq = 0;
+
+	if (!is16BitMode && freq > 0xFF)
+		freq = 0xFF;
+
+	if (is16BitMode && freq > 0xFFFF)
+		freq = 0xFFFF;
+
+	return freq;
+}
+
+int CTuning::DeltaPokeyFreq(double pitch, int freq, int coarseDivisor, double fineDivisor, int cycle, int timbre)
+{
+	// Begin from the currently invalid Freq
+	int freqUp = freq;
+	int freqDown = freq;
+
+	// The Distortion and Timbre are made up from different combinations, invalid combinations will produce garbage tones
+	switch (timbre)
+	{
+	case TIMBRE_SMOOTH_4:   // Distortion 4 Smooth, verify MOD3 integrity
+		while ((freqUp + cycle) % 3 != 0 || (freqUp + cycle) % 5 == 0 || (freqUp + cycle) % 31 == 0)
+			freqUp++;
+
+		while ((freqDown + cycle) % 3 != 0 || (freqDown + cycle) % 5 == 0 || (freqDown + cycle) % 31 == 0)
+			freqDown--;
+		break;
+
+	case TIMBRE_BUZZY_C:    // Distortion C Buzzy, verify MOD3 integrity
+		if (coarseDivisor == 114)  // 15kHz mode
+		{
+			while ((freqUp + cycle) % 5 == 0)
+				freqUp++;
+
+			while ((freqDown + cycle) % 5 == 0)
+				freqDown--;
+		}
+		else
+		{
+			while ((freqUp + cycle) % 3 != 0 || (freqUp + cycle) % 5 == 0)
+				freqUp++;
+
+			while ((freqDown + cycle) % 3 != 0 || (freqDown + cycle) % 5 == 0)
+				freqDown--;
+		}
+		break;
+
+	case TIMBRE_GRITTY_C:   // Distortion C Gritty, verify neither MOD3 or MOD5 is used
+		if (coarseDivisor == 114)  // 15kHz mode
+		{
+			while ((freqUp + cycle) % 5 == 0)
+				freqUp++;
+
+			while ((freqDown + cycle) % 5 == 0)
+				freqDown--;
+		}
+		else
+		{
+			while ((freqUp + cycle) % 3 == 0 || (freqUp + cycle) % 5 == 0)
+				freqUp++;
+
+			while ((freqDown + cycle) % 3 == 0 || (freqDown + cycle) % 5 == 0)
+				freqDown--;
+		}
+		break;
+
+	default:	// Simpliest delta method, shift up and down by 1
+		freqUp++;
+		freqDown--;
+		break;
+	}
+
+	// First delta, up
+	double pitchUp = pitch - GetPokeyPitch(freqUp, coarseDivisor, fineDivisor, cycle);
+
+	// Second delta, down
+	double pitchDown = GetPokeyPitch(freqDown, coarseDivisor, fineDivisor, cycle) - pitch;
+
+	// Return whichever is nearest to the wanted pitch
+	return pitchDown - pitchUp > 0 ? freqUp : freqDown;
+}
 
 
+/*
 /// <summary> Generate the POKEY audio pitch using the given parameters </summary>
 /// <param name = "audc"> POKEY Distortion and Volume output mode </param>
 /// <param name = "audf"> POKEY Frequency, either 8-bit or 16-bit </param>
@@ -40,13 +275,13 @@ double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 	bool CLOCK_179 = ((CH1_179 && (channel == 0 || channel == 4)) || (CH3_179 && (channel == 2 || channel == 6))) ? 1 : 0;
 	if (JOIN_16BIT || CLOCK_179) CLOCK_15 = 0;	//override, these 2 take priority over 15khz mode if they are enabled at the same time
 
-	/*
+	//
 	//TODO: Sawtooth generation needs to be optimal in order to compromise the high pitched hiss versus the tuning accuracy
 	SAWTOOTH = (CH1_179 && CH3_179 && HPF_CH13 && (dist == 0xA0 || dist == 0xE0) && (i == 0 || i == 4)) ? 1 : 0;
 	SAWTOOTH_INVERTED = 0;
 	if (i % 4 == 0)	//only in valid sawtooth channels
 	audf3 = g_atarimem[idx[i + 2]];
-	*/
+	//
 
 	//TODO: apply Two-Tone timer offset into calculations when channel 1+2 are linked in 1.79mhz mode
 	//This would help generating tables using patterns discovered by synthpopalooza
@@ -106,7 +341,9 @@ double CTuning::generate_freq(int audc, int audf, int audctl, int channel)
 	}
 	return get_pitch(audf, coarse_divisor, divisor, cycle);
 }
+*/
 
+/*
 /// <summary> Generate a POKEY Frequencies lookup table using the given parameters </summary>
 /// <param name = "table"> Memory address the table will be written to, typically the emulated Atari memory </param>
 /// <param name = "length"> Length of the table in number of semitones, 16-bit tables will use twice number of bytes </param>
@@ -284,7 +521,9 @@ void CTuning::generate_table(unsigned char* table, int length, int semitone, int
 	}
 
 }
+*/
 
+/*
 /// <summary> Calculate the POKEY audio pitch using the given parameters </summary>
 /// <param name = "audf"> POKEY Frequency, either 8-bit or 16-bit </param>
 /// <param name = "coarse_divisor"> Coarse division, 28 in 64kHz mode, 114 in 15kHz mode, 1 for no division </param>
@@ -306,7 +545,9 @@ int CTuning::get_audf(double pitch, int coarse_divisor, double divisor, int cycl
 {
 	return (int)round(((((g_ntsc) ? FREQ_17_NTSC : FREQ_17_PAL) / (coarse_divisor * divisor)) / (2 * pitch)) - cycle);
 }
+*/
 
+/*
 /// <summary> Calculate the difference between 2 POKEY frequencies (AUDF) within the conditions intended for the timbre to be output </summary>
 /// <param name = "pitch"> Reference audio pitch (in Hertz) </param>
 /// <param name = "audf"> Invalid POKEY Frequency (AUDF) referenced to find the nearest compromised frequency </param>
@@ -397,7 +638,9 @@ int CTuning::delta_audf(double pitch, int audf, int coarse_divisor, double divis
 	else audf = tmp_audf_down; //negative, meaning delta down is closer than delta up
 	return audf;
 }
+*/
 
+/*
 /// <summary> Calculate the true audio pitch output using the given parameters </summary>
 /// <param name = "tuning"> Tuning base pitch (in Hertz), usually the A-4 note </param>
 /// <param name = "temperament"> Temperament used in calculations, 0 for Equal Temperament, 1 to 29 (inclusive) for Presets, otherwise Custom Ratio will be assumed </param>
@@ -438,7 +681,9 @@ double CTuning::GetTruePitch(double tuning, int temperament, int basenote, int s
 	multi = pow(octave, trunc((semitone + basenote) / notesnum));
 	return (tuning / 64) * (multi * ratio);
 }
+*/
 
+/*
 /// <summary> Initialise the tuning variables, and generate the POKEY frequencies (AUDF) lookup tables into the emulated Atari memory </summary>
 void CTuning::init_tuning()
 {
@@ -511,3 +756,4 @@ void CTuning::init_tuning()
 	generate_table(g_atarimem + RMT_FRQTABLES + 0x480, 64, dist_c_gritty.table_16bit * g_notesperoctave, TIMBRE_GRITTY_C, 0x50);
 	//no 15kHz table...
 }
+*/
