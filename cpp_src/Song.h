@@ -99,6 +99,8 @@ struct TSongVariables
 	BYTE volumeSlide;				// Volume Slide parameter, set using the Axx Command
 };
 
+extern CModule g_Module;
+
 class CSong
 {
 public:
@@ -144,6 +146,8 @@ public:
 	//void ActiveInstrPrev() { g_Undo.Separator(); int instr = (m_activeInstrument - 1) & 0x3f; ActiveInstrSet(instr); };
 	//void ActiveInstrNext() { g_Undo.Separator(); int instr = (m_activeInstrument + 1) & 0x3f; ActiveInstrSet(instr); };
 
+	const BYTE GetActiveSubtune() { return m_activeSubtune; };
+
 	int GetActiveInstr() { return m_activeInstrument; };
 	int GetActiveColumn() { return m_activeChannel; };
 	int GetActiveLine() { return m_activeRow; };
@@ -151,6 +155,8 @@ public:
 	int GetActiveCursor() { return m_activeCursor; };
 	int GetActiveOctave() { return m_activeOctave; };
 	int GetActiveVolume() { return m_activeVolume; };
+
+	void SetActiveSubtune(int subtune) { m_activeSubtune = subtune; };
 
 	//void SetActiveLine(int line) { m_activeRow = line; };
 	//void SetPlayLine(int line) { m_playRow = line; };
@@ -444,7 +450,26 @@ public:
 	BOOL IsSongGo(int songline) { return IsValidSongline(songline) ? m_songgo[songline] >= 0 : 0; };
 
 	// Prototype C++ RMTE Module Driver functions
-	// TODO: Move to a different file later
+
+	TSubtune* GetSubtune() { return g_Module.GetSubtune(m_activeSubtune); };
+	TSubtune* GetSubtune(int subtune) { return g_Module.GetSubtune(subtune); };
+
+	BYTE GetSubtuneCount() { return g_Module.GetSubtuneCount(); };
+
+	BYTE GetEffectCommandCount() { return g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel); };
+	BYTE GetEffectCommandCount(int subtune, int channel) { return g_Module.GetEffectCommandCount(subtune, channel); };
+
+	BYTE GetChannelCount() { return g_Module.GetChannelCount(m_activeSubtune); };
+	BYTE GetChannelCount(int subtune) { return g_Module.GetChannelCount(subtune); };
+
+	BYTE GetSongLength() { return g_Module.GetSongLength(m_activeSubtune); };
+	BYTE GetSongLength(int subtune) { return g_Module.GetSongLength(subtune); };
+
+	BYTE GetSongSpeed() { return g_Module.GetSongSpeed(m_activeSubtune); };
+	BYTE GetSongSpeed(int subtune) { return g_Module.GetSongSpeed(subtune); };
+
+	BYTE GetShortestPatternLength() { return g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline); };
+	BYTE GetShortestPatternLength(int subtune, int songline) { return g_Module.GetShortestPatternLength(subtune, songline); };
 
 	//void PlayRow(TSubtune* p);
 	void PlayPattern(TSubtune* p);
@@ -465,6 +490,8 @@ private:
 	// Legacy variables
 	int m_song[SONGLEN][SONGTRACKS];	// TODO: Delete
 	int m_songgo[SONGLEN];				// TODO: Delete	// If >= 0, then GO applies
+
+	BYTE m_activeSubtune;
 
 	BOOL volatile m_isFollowPlay;
 	int volatile m_playMode;

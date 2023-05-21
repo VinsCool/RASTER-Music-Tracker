@@ -22,7 +22,6 @@ void CModule::InitialiseModule()
 	SetSongName("Noname Song");
 	SetSongAuthor("Unknown");
 	SetSongCopyright("2023");
-	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
 
 	// Create 1 empty Subtune, which will be used by default
 	CreateSubtune(MODULE_DEFAULT_SUBTUNE);
@@ -37,7 +36,6 @@ void CModule::ClearModule()
 	SetSongName("");
 	SetSongAuthor("");
 	SetSongCopyright("");
-	SetActiveSubtune(INVALID);
 
 	// Delete all Module data and set the associated pointers to NULL
 	for (int i = 0; i < SUBTUNE_MAX; i++)
@@ -45,14 +43,6 @@ void CModule::ClearModule()
 
 	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
 		DeleteInstrument(i);
-/*
-	{
-		if (m_instrument[i])
-			delete m_instrument[i];
-
-		m_instrument[i] = NULL;
-	}
-*/
 }
 
 void CModule::CreateSubtune(int subtune)
@@ -198,7 +188,6 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 		importLog.AppendFormat("\"\n");
 		importLog.AppendFormat("Song Length: %02X, Pattern Length: %02X, Channels: %01X\n", importSubtune->songLength, importSubtune->patternLength, importSubtune->channelCount);
 		importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n\n", importSubtune->songSpeed, importSubtune->instrumentSpeed);
-
 		importLog.AppendFormat("Stage 2 - Constructing RMTE Module from imported data:\n\n");
 
 		// Process all indexed Songlines until all the Subtunes are identified
@@ -237,10 +226,6 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 			}
 		}
 
-		// Clear the current Subtune Index, then create a new one matching the number of Subtunes to be imported
-		for (int i = 0; i < subtuneCount; i++)
-			CreateSubtune(i);
-		
 		importLog.AppendFormat("Confidently detected %i unique Subtune(s).\n\n", subtuneCount);
 		importLog.AppendFormat("Stage 3 - Optimising Subtunes with compatibility tweaks:\n\n");
 
@@ -249,20 +234,20 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 		{
 			// The Songline Index won't be overwritten in the process, since we will need it in its current form!
 			for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-				CopyPattern(&importSubtune->channel[0].pattern[j], &importSubtune->channel[i].pattern[j]);
+				CopyPattern(&importSubtune->channel[CH1].pattern[j], &importSubtune->channel[i].pattern[j]);
 
 			// Set the Active Effect Command Columns to the same number for each channels
 			importSubtune->effectCommandCount[i] = 2;
 		}
 
 		// Re-construct all of individual Subtunes that were detected
-		for (int i = 0; i < GetSubtuneCount(); i++)
+		for (int i = 0; i < subtuneCount; i++)
 		{
 			BYTE offset = subtuneOffset[i];
 
 			// Copy the data previously imported from the Temporary Subtune into the Active Subtune
-			SetActiveSubtune(i);
-			CopySubtune(importSubtune, GetSubtuneIndex(i));
+			CreateSubtune(i);
+			CopySubtune(importSubtune, GetSubtune(i));
 
 			// This will be used once again for detecting loop points in Subtunes
 			memset(songlineStep, INVALID, SONGLINE_MAX);
@@ -273,7 +258,7 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 				// If the Songline Step offset is Valid, a loop was completed, and the Songlength will be set here
 				if (IsValidSongline(songlineStep[offset]))
 				{
-					SetSongLength(j - 1);
+					SetSongLength(i, j - 1);
 					break;
 				}
 
@@ -290,57 +275,54 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 				}
 
 				// Fetch the Patterns from the backup Songline Index first
-				for (int k = 0; k < GetChannelCount(); k++)
-					SetPatternInSongline(k, j, importSubtune->channel[k].songline[offset]);
+				for (int k = 0; k < GetChannelCount(i); k++)
+					SetPatternInSongline(i, k, j, importSubtune->channel[k].songline[offset]);
 
 				// Otherwise, the Songline offset will increment by 1 for the next Songline
 				offset++;
 			}
 
 			// Re-arrange all Patterns to make them unique entries for every Songline, so editing them will not overwrite anything intended to be used differently
-			RenumberIndexedPatterns();
+			RenumberIndexedPatterns(i);
 
 			// In order to merge all of the Bxx and Dxx Commands, find all Dxx Commands that were used, and move them to Channel 1, unless a Bxx Command was already used there
-			for (int j = 0; j < GetSongLength(); j++)
+			for (int j = 0; j < GetSongLength(i); j++)
 			{
 				// If the Shortest Pattern Length is below actual Pattern Length, a Dxx Command was already used somewhere, and must be replaced
-				if (GetShortestPatternLength(j) < GetPatternLength())
-					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, EFFECT_COMMAND_DXX, EFFECT_PARAMETER_MIN);
+				if (GetShortestPatternLength(i, j) < GetPatternLength(i))
+					SetPatternRowCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EFFECT_COMMAND_DXX, EFFECT_PARAMETER_MIN);
 
 				// Set the final Goto Songline Command Bxx to the Songline found at the loop point
-				if (j == GetSongLength() - 1)
-					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, EFFECT_COMMAND_BXX, songlineStep[offset] - 1);	// PATTERN_EFFECT_BXX | (songlineStep[offset] - 1));
+				if (j == GetSongLength(i) - 1)
+					SetPatternRowCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EFFECT_COMMAND_BXX, songlineStep[offset] - 1);
 
 				// Skip CH1, since it was already processed above
-				for (int k = CH2; k < GetChannelCount(); k++)
+				for (int k = CH2; k < GetChannelCount(i); k++)
 				{
 					// All Pattern Rows will be edited, regardless of their contents
 					for (int l = 0; l < TRACK_ROW_MAX; l++)
 					{
 						// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
 						for (int m = CMD2; m < PATTERN_ACTIVE_EFFECT_MAX; m++)
-							SetPatternRowCommand(k, GetPatternInSongline(k, j), l, m, PATTERN_EFFECT_EMPTY, EFFECT_PARAMETER_MIN);
+							SetPatternRowCommand(i, k, GetPatternInSongline(i, k, j), l, m, PATTERN_EFFECT_EMPTY, EFFECT_PARAMETER_MIN);
 					}
 				}
 			}
 
 			// Set the final count of Active Effect Command Columns for each channels once they're all processed
-			for (int j = 0; j < GetChannelCount(); j++)
-				SetEffectCommandCount(j, j == CH1 ? 2 : 1);
+			for (int j = 0; j < GetChannelCount(i); j++)
+				SetEffectCommandCount(i, j, j == CH1 ? 2 : 1);
 
 			// Finally, apply the Size Optimisations, the Subtune should have been reconstructed successfully!
-			AllSizeOptimisations();
-			importLog.AppendFormat("Reconstructed: Subtune %02X\n", GetActiveSubtune());
-			importLog.AppendFormat("Song Length: %02X, Pattern Length: %02X, Channels: %01X\n", GetSongLength(), GetPatternLength(), GetChannelCount());
-			importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n", GetSongSpeed(), GetInstrumentSpeed());
+			AllSizeOptimisations(i);
+			importLog.AppendFormat("Reconstructed: Subtune %02X\n", i);
+			importLog.AppendFormat("Song Length: %02X, Pattern Length: %02X, Channels: %01X\n", GetSongLength(i), GetPatternLength(i), GetChannelCount(i));
+			importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n", GetSongSpeed(i), GetInstrumentSpeed(i));
 			importLog.AppendFormat("Loop Point found in Songline %02X\n\n", songlineStep[offset] - 1);
 		}
 
-		// Set the Active Subtune to the Default parameter, once the Legacy RMT Import procedure was completed
-		SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
-
 		// Workaround: Due to the way RMT was originally designed, the "Global" number of channels must be set here as well
-		g_tracks4_8 = GetChannelCount();
+		g_tracks4_8 = GetChannelCount(MODULE_DEFAULT_SUBTUNE);
 
 		// Final number of Subtunes that were imported
 		importLog.AppendFormat("Processed: %i Subtune(s) with All Size Optimisations.\n\n", GetSubtuneCount());
@@ -892,11 +874,14 @@ const BYTE CModule::GetSubtuneCount()
 }
 
 // Identify the shortest pattern length relative to the other ones used in the same Songline
-BYTE CModule::GetShortestPatternLength(int songline)
+// TODO: Move to CSong
+BYTE CModule::GetShortestPatternLength(int subtune, int songline)
 {
-	return GetShortestPatternLength(GetSubtuneIndex(), songline);
+	return GetShortestPatternLength(GetSubtune(subtune), songline);
 }
 
+// Identify the shortest pattern length relative to the other ones used in the same Songline
+// TODO: Move to CSong
 BYTE CModule::GetShortestPatternLength(TSubtune* subtune, int songline)
 {
 	// Make sure the Subtune is not a Null pointer
@@ -937,9 +922,9 @@ BYTE CModule::GetShortestPatternLength(TSubtune* subtune, int songline)
 }
 
 // Return True if a Pattern is used at least once within a Songline Index
-bool CModule::IsUnusedPattern(int channel, int pattern)
+bool CModule::IsUnusedPattern(int subtune, int channel, int pattern)
 {
-	return IsUnusedPattern(GetChannelIndex(channel), pattern);
+	return IsUnusedPattern(GetChannelIndex(subtune, channel), pattern);
 }
 
 // Return True if a Pattern is used at least once within a Songline Index
@@ -950,7 +935,7 @@ bool CModule::IsUnusedPattern(TIndex* index, int pattern)
 		return false;
 
 	// All Songlines in the Channel Index will be processed
-	for (int i = 0; i < GetSongLength(); i++)
+	for (int i = 0; i < SONGLINE_MAX; i++)
 	{
 		// As soon as a match is found, we know for sure the Pattern is used at least once
 		if (index->songline[i] == pattern)
@@ -962,9 +947,9 @@ bool CModule::IsUnusedPattern(TIndex* index, int pattern)
 }
 
 // Return True if a Pattern is Empty
-bool CModule::IsEmptyPattern(int channel, int pattern)
+bool CModule::IsEmptyPattern(int subtune, int channel, int pattern)
 {
-	return IsEmptyPattern(GetPattern(channel, pattern));
+	return IsEmptyPattern(GetPattern(subtune, channel, pattern));
 }
 
 // Return True if a Pattern is Empty
@@ -1040,7 +1025,7 @@ bool CModule::IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationP
 }
 
 // Duplicate a Pattern used in a Songline, Return True if successful
-bool CModule::DuplicatePatternInSongline(int channel, int songline, int pattern)
+bool CModule::DuplicatePatternInSongline(int subtune, int channel, int songline, int pattern)
 {
 	// Find the first empty and unused Pattern that is available
 	for (int i = 0; i < TRACK_PATTERN_MAX; i++)
@@ -1050,20 +1035,14 @@ bool CModule::DuplicatePatternInSongline(int channel, int songline, int pattern)
 			continue;
 
 		// If the Pattern is empty and unused, it will be used for the duplication
-		if (IsUnusedPattern(channel, i) && IsEmptyPattern(channel, i))
+		if (IsUnusedPattern(subtune, channel, i) && IsEmptyPattern(subtune, channel, i))
 		{
-			TPattern* source = GetPattern(channel, pattern);
-			TPattern* destination = GetPattern(channel, i);
-
-			// If the Pattern duplication failed, nothing will be changed
-			if (!CopyPattern(source, destination))
-				break;
-
-			// Replace the Pattern used in the Songline Index with the new one
-			SetPatternInSongline(channel, songline, i);
-
-			// Pattern duplication was completed successfully
-			return true;
+			// Replace the Pattern used in the Songline Index with the new one as well
+			if (CopyPattern(GetPattern(subtune, channel, pattern), GetPattern(subtune, channel, i)))
+			{
+				SetPatternInSongline(subtune, channel, songline, i);
+				return true;
+			}
 		}
 	}
 
@@ -1086,9 +1065,9 @@ bool CModule::CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern)
 }
 
 // Clear data from Pattern, Return True if successful
-bool CModule::ClearPattern(int channel, int pattern)
+bool CModule::ClearPattern(int subtune, int channel, int pattern)
 {
-	return ClearPattern(GetPattern(channel, pattern));
+	return ClearPattern(GetPattern(subtune, channel, pattern));
 }
 
 // Clear data from Pattern, Return True if successful
@@ -1144,120 +1123,144 @@ bool CModule::CopySubtune(TSubtune* sourceSubtune, TSubtune* destinationSubtune)
 	return true;
 }
 
-// Duplicate a Pattern Index from source Channel Index to destination Channel Index, Return True if successful
-bool CModule::DuplicatePatternIndex(int sourceIndex, int destinationIndex)
+// Duplicate a Channel Index in a Subtune, Return True if successful
+bool CModule::DuplicateChannelIndex(int subtune, int sourceIndex, int destinationIndex)
 {
-	// Process all Patterns within the Index, regardless of them being unused or empty
-	for (int i = 0; i < TRACK_PATTERN_MAX; i++)
-	{
-		TPattern* source = GetPattern(sourceIndex, i);
-		TPattern* destination = GetPattern(destinationIndex, i);
+	// If the duplication failed, nothing will be changed
+	if (!CopyIndex(GetChannelIndex(subtune, sourceIndex), GetChannelIndex(subtune, destinationIndex)))
+		return false;
 
-		// If the Pattern duplication failed, abort the procedure immediately
-		if (!CopyPattern(source, destination))
-			return false;
-	}
-
-	// Pattern Index should have been copied successfully
+	// Duplication should have been done successfully
 	return true;
 }
 
 // Find and merge duplicated Patterns, and adjust the Songline Index accordingly
-int CModule::MergeDuplicatedPatterns()
+// TODO: Move to CSong
+void CModule::MergeDuplicatedPatterns(int subtune)
 {
-	int mergedPatterns = 0;
+	MergeDuplicatedPatterns(GetSubtune(subtune));
+}
 
-	for (int i = 0; i < GetChannelCount(); i++)
+// Find and merge duplicated Patterns, and adjust the Songline Index accordingly
+// TODO: Move to CSong
+void CModule::MergeDuplicatedPatterns(TSubtune* subtune)
+{
+	if (!subtune)
+		return;
+
+	for (int i = 0; i < subtune->channelCount; i++)
 	{
-		for (int j = 0; j < GetSongLength(); j++)
+		for (int j = 0; j < subtune->songLength; j++)
 		{
 			// Get the Pattern from which comparisons will be made
-			BYTE reference = GetPatternInSongline(i, j);
+			BYTE reference = subtune->channel[i].songline[j];
 
 			// Compare to every Patterns found in the Channel Index, unused Patterns will be ignored
-			for (int k = 0; k < GetSongLength(); k++)
+			for (int k = 0; k < subtune->songLength; k++)
 			{
 				// Get the Pattern that will be compared to the reference Pattern
-				BYTE compared = GetPatternInSongline(i, k);
+				BYTE compared = subtune->channel[i].songline[k];
 
 				// Comparing a Pattern to itself is pointless
 				if (compared == reference)
 					continue;
 
-				// Get the pointers to Pattern data
-				TPattern* source = GetPattern(i, reference);
-				TPattern* destination = GetPattern(i, compared);
-
 				// Compare the Patterns, and update the Songline Index if they are identical
-				if (IsIdenticalPattern(source, destination))
-				{
-					SetPatternInSongline(i, k, reference);
-					mergedPatterns++;
-				}
+				if (IsIdenticalPattern(&subtune->channel[i].pattern[reference], &subtune->channel[i].pattern[compared]))
+					subtune->channel[i].songline[k] = reference;
 			}
 		}
 	}
-
-	// Return the number of merged patterns, if any change was made
-	return mergedPatterns;
 }
 
 // Renumber all Patterns from first to last Songlines, without optimisations
-void CModule::RenumberIndexedPatterns()
+// TODO: Move to CSong
+void CModule::RenumberIndexedPatterns(int subtune)
 {
-	// Process all Channels within the Module Index
-	for (int i = 0; i < GetChannelCount(); i++)
-	{
-		// Create a Temporary Index that will be used as a buffer
-		TIndex* backupIndex = new TIndex;
+	RenumberIndexedPatterns(GetSubtune(subtune));
+}
 
+// Renumber all Patterns from first to last Songlines, without optimisations
+// TODO: Move to CSong
+void CModule::RenumberIndexedPatterns(TSubtune* subtune)
+{
+	if (!subtune)
+		return;
+
+	// Create a Temporary Index that will be used as a buffer
+	TIndex* backupIndex = new TIndex;
+
+	// Process all Channels within the Module Index
+	for (int i = 0; i < subtune->channelCount; i++)
+	{
 		// Get the current Channel Index
-		TIndex* channelIndex = GetChannelIndex(i);
+		TIndex* channelIndex = &subtune->channel[i];
 
 		// Copy all Indexed Patterns to single Songline entries, effectively duplicating all Patterns used in multiple Songlines
 		for (int j = 0; j < SONGLINE_MAX; j++)
 		{
+			BYTE pattern = channelIndex->songline[j];
+			CopyPattern(&channelIndex->pattern[pattern], &backupIndex->pattern[j]);
 			backupIndex->songline[j] = j;
-			CopyPattern(GetIndexedPattern(i, j), &backupIndex->pattern[j]);
 		}
 
 		// Copy the re-organised data back to the original Channel Index
 		CopyIndex(backupIndex, channelIndex);
-
-		// Delete the Temporary Index once it's no longer needed
-		delete backupIndex;
 	}
+
+	// Delete the Temporary Index once it's no longer needed
+	delete backupIndex;
 }
 
 // Clear all unused Indexed Patterns
-void CModule::ClearUnusedPatterns()
+// TODO: Move to CSong
+void CModule::ClearUnusedPatterns(int subtune)
 {
+	ClearUnusedPatterns(GetSubtune(subtune));
+}
+
+// Clear all unused Indexed Patterns
+// TODO: Move to CSong
+void CModule::ClearUnusedPatterns(TSubtune* subtune)
+{
+	if (!subtune)
+		return;
+
 	// Process all Channels within the Module Index
-	for (int i = 0; i < GetChannelCount(); i++)
+	for (int i = 0; i < subtune->channelCount; i++)
 	{
 		// Search for all unused indexed Patterns
 		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
 		{
 			// If the Pattern is not used anywhere, it will be deleted
-			if (IsUnusedPattern(i, j))
-			{
-				ClearPattern(GetPattern(i, j));
-			}
+			if (IsUnusedPattern(&subtune->channel[i], j))
+				ClearPattern(&subtune->channel[i].pattern[j]);
 		}
 	}
 }
 
 // Renumber all Patterns from first to last Songlines, and optimise them by concatenation
-void CModule::ConcatenateIndexedPatterns()
+// TODO: Move to CSong
+void CModule::ConcatenateIndexedPatterns(int subtune)
 {
-	// Process all Channels within the Module Index
-	for (int i = 0; i < GetChannelCount(); i++)
-	{
-		// Create a Temporary Index that will be used as a buffer
-		TIndex* backupIndex = new TIndex;
+	ConcatenateIndexedPatterns(GetSubtune(subtune));
+}
 
+// Renumber all Patterns from first to last Songlines, and optimise them by concatenation
+// TODO: Move to CSong
+void CModule::ConcatenateIndexedPatterns(TSubtune* subtune)
+{
+	if (!subtune)
+		return;
+
+	// Create a Temporary Index that will be used as a buffer
+	TIndex* backupIndex = new TIndex;
+
+	// Process all Channels within the Module Index
+	for (int i = 0; i < subtune->channelCount; i++)
+	{
 		// Get the current Channel Index
-		TIndex* channelIndex = GetChannelIndex(i);
+		TIndex* channelIndex = &subtune->channel[i];
 
 		// Copy the original data to the Temporary Index first
 		CopyIndex(channelIndex, backupIndex);
@@ -1284,7 +1287,7 @@ void CModule::ConcatenateIndexedPatterns()
 						ClearPattern(source);
 
 						// Replace the Pattern used in the Songline Index with the new one
-						for (int l = 0; l < GetSongLength(); l++)
+						for (int l = 0; l < subtune->songLength; l++)
 						{
 							if (backupIndex->songline[l] == j)
 								backupIndex->songline[l] = k;
@@ -1296,26 +1299,37 @@ void CModule::ConcatenateIndexedPatterns()
 
 		// Copy the re-organised data back to the original Channel Index
 		CopyIndex(backupIndex, channelIndex);
-
-		// Delete the Temporary Index once it's no longer needed
-		delete backupIndex;
 	}
+
+	// Delete the Temporary Index once it's no longer needed
+	delete backupIndex;
 }
 
 // Optimise the RMTE Module, by re-organising everything within the Indexed Structures, in order to remove most of the unused/duplicated data efficiently
-void CModule::AllSizeOptimisations()
+// TODO: Move to CSong
+void CModule::AllSizeOptimisations(int subtune)
 {
+	AllSizeOptimisations(GetSubtune(subtune));
+}
+
+// Optimise the RMTE Module, by re-organising everything within the Indexed Structures, in order to remove most of the unused/duplicated data efficiently
+// TODO: Move to CSong
+void CModule::AllSizeOptimisations(TSubtune* subtune)
+{
+	if (!subtune)
+		return;
+
 	// First, renumber all Patterns
-	RenumberIndexedPatterns();
+	RenumberIndexedPatterns(subtune);
 
 	// Next, merge all duplicated Patterns
-	MergeDuplicatedPatterns();
+	MergeDuplicatedPatterns(subtune);
 
 	// Then, Clear all unused Patterns
-	ClearUnusedPatterns();
+	ClearUnusedPatterns(subtune);
 
 	// Finally, concatenate all Patterns
-	ConcatenateIndexedPatterns();
+	ConcatenateIndexedPatterns(subtune);
 
 	// And then...? Most likely a lot more... That's for another day...
 }

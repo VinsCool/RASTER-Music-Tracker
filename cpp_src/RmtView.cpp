@@ -343,7 +343,7 @@ void CRmtView::DrawAll()
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);
 
 	// Get the current Module Subtune pointer
-	TSubtune* p = g_Module.GetSubtuneIndex();
+	TSubtune* p = g_Song.GetSubtune();
 
 	// Draw the primary screen block first
 	if (g_active_ti == PART_TRACKS)

@@ -107,6 +107,7 @@ void CSong::ClearSong(int numOfTracks)
 
 	g_activepart = g_active_ti = PART_TRACKS;
 
+	m_activeSubtune = 0;
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_activeChannel = m_activeCursor = m_activeColumn = 0;
@@ -1082,18 +1083,12 @@ BOOL CSong::TrackRight(BOOL column)
 
 void CSong::PatternLeft()
 {
-	//if (--m_activeCursor < 0)
-	//{
-	//	ChannelLeft();
-	//	m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
-	//}
-
 	if (--m_activeColumn < 0)
 	{
 		if (--m_activeCursor < 0)
 		{
 			ChannelLeft();
-			m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
+			m_activeCursor = GetEffectCommandCount() + 2;
 		}
 
 		switch (m_activeCursor)
@@ -1111,12 +1106,6 @@ void CSong::PatternLeft()
 
 void CSong::PatternRight()
 {
-	//if (++m_activeCursor > g_Module.GetEffectCommandCount(m_activeChannel) + 2)
-	//{
-	//	ChannelRight();
-	//	m_activeCursor = 0;
-	//}
-
 	BYTE max;
 
 	switch (m_activeCursor)
@@ -1132,7 +1121,7 @@ void CSong::PatternRight()
 
 	if (++m_activeColumn > max)
 	{
-		if (++m_activeCursor > g_Module.GetEffectCommandCount(m_activeChannel) + 2)
+		if (++m_activeCursor > GetEffectCommandCount() + 2)
 		{
 			ChannelRight();
 			m_activeCursor = 0;
@@ -1155,7 +1144,7 @@ void CSong::PatternUp(int rows)
 			SonglineUp();
 		
 		// Adjustment for the Row Index between Songlines, done after updating the Songline
-		m_activeRow += g_Module.GetShortestPatternLength(m_activeSongline);
+		m_activeRow += GetShortestPatternLength();
 	}
 }
 
@@ -1165,10 +1154,10 @@ void CSong::PatternDown(int rows)
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 		return;
 
-	if ((m_activeRow += rows) >= g_Module.GetShortestPatternLength(m_activeSongline))
+	if ((m_activeRow += rows) >= GetShortestPatternLength())
 	{
 		// Adjustment for the Row Index between Songlines, done before updating the Songline
-		m_activeRow %= g_Module.GetShortestPatternLength(m_activeSongline);
+		m_activeRow %= GetShortestPatternLength();
 
 		// Moving between Songlines from Pattern boundaries is enabled
 		if (g_keyboard_updowncontinue)
@@ -1179,13 +1168,13 @@ void CSong::PatternDown(int rows)
 void CSong::ChannelLeft()
 {
 	if (--m_activeChannel < 0)
-		m_activeChannel += g_Module.GetChannelCount();
+		m_activeChannel += GetChannelCount();
 
 	if (m_activeCursor < 0)
 		m_activeCursor = 0;
 
-	if (m_activeCursor >= g_Module.GetEffectCommandCount(m_activeChannel) + 2)
-		m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
+	if (m_activeCursor >= GetEffectCommandCount() + 2)
+		m_activeCursor = GetEffectCommandCount() + 2;
 
 	if (m_activeColumn < 0)
 		m_activeColumn = 0;
@@ -1209,13 +1198,13 @@ void CSong::ChannelLeft()
 
 void CSong::ChannelRight()
 {
-	++m_activeChannel %= g_Module.GetChannelCount();
+	++m_activeChannel %= GetChannelCount();
 
 	if (m_activeCursor < 0)
 		m_activeCursor = 0;
 
-	if (m_activeCursor >= g_Module.GetEffectCommandCount(m_activeChannel) + 2)
-		m_activeCursor = g_Module.GetEffectCommandCount(m_activeChannel) + 2;
+	if (m_activeCursor >= GetEffectCommandCount() + 2)
+		m_activeCursor = GetEffectCommandCount() + 2;
 
 	if (m_activeColumn < 0)
 		m_activeColumn = 0;
@@ -1520,7 +1509,7 @@ BOOL CSong::SongSubsongNext()
 void CSong::SonglineUp()
 {
 	if (--m_activeSongline < 0)
-		m_activeSongline += g_Module.GetSongLength();
+		m_activeSongline += GetSongLength();
 
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 	{
@@ -1529,12 +1518,12 @@ void CSong::SonglineUp()
 	}
 
 	// Prevent the Active Pattern Row to go out of bounds
-	m_activeRow %= g_Module.GetShortestPatternLength(m_activeSongline);
+	m_activeRow %= GetShortestPatternLength();
 }
 
 void CSong::SonglineDown()
 {
-	++m_activeSongline %= g_Module.GetSongLength();
+	++m_activeSongline %= GetSongLength();
 
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 	{
@@ -1543,16 +1532,12 @@ void CSong::SonglineDown()
 	}
 
 	// Prevent the Active Pattern Row to go out of bounds
-	m_activeRow %= g_Module.GetShortestPatternLength(m_activeSongline);
+	m_activeRow %= GetShortestPatternLength();
 }
 
 void CSong::SeekNextSubtune()
 {
-	int activeSubtune = g_Module.GetActiveSubtune();
-
-	++activeSubtune %= g_Module.GetSubtuneCount();
-
-	g_Module.SetActiveSubtune(activeSubtune);
+	++m_activeSubtune %= GetSubtuneCount();
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
@@ -1567,12 +1552,10 @@ void CSong::SeekNextSubtune()
 
 void CSong::SeekPreviousSubtune()
 {
-	int activeSubtune = g_Module.GetActiveSubtune();
+	//if (--m_activeSubtune < 0)
+	//	m_activeSubtune += GetSubtuneCount();
 
-	if (--activeSubtune < 0)
-		activeSubtune += g_Module.GetSubtuneCount();
-
-	g_Module.SetActiveSubtune(activeSubtune);
+	--m_activeSubtune %= GetSubtuneCount();
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
@@ -3558,10 +3541,12 @@ void CSong::TimerRoutine()
 	if (g_PokeyStream.IsRecording())
 		return;
 
-	// Things that are solved 1x for vbi
-	PlayPattern(g_Module.GetSubtuneIndex());
+	TSubtune* subtune = GetSubtune();
 
-	PlayContinue(g_Module.GetSubtuneIndex());
+	// Things that are solved 1x for vbi
+	PlayPattern(subtune);
+
+	PlayContinue(subtune);
 
 	g_Pokey.RenderSound_No6502(m_instrumentSpeed);
 
@@ -3873,7 +3858,8 @@ void CSong::DrawSubtuneInfos(TSubtune* p)
 	TextXY(g_Module.GetSongCopyright(), x, y += 8, colour);
 
 	// Subtune
-	s.Format("SUBTUNE %02X/%02X", g_Module.GetActiveSubtune() + 1, g_Module.GetSubtuneCount());
+	//s.Format("SUBTUNE %02X/%02X", g_Module.GetActiveSubtune() + 1, g_Module.GetSubtuneCount());
+	s.Format("SUBTUNE %02X/%02X", GetActiveSubtune() + 1, GetSubtuneCount());
 	TextMiniXY(s, x, y += 1 * 16 + 8);
 	TextXY(p->name, x, y += 8, colour);
 
@@ -3922,6 +3908,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 
 	// Caching global variables is necessary in order to display Patterns without random "jumps" around during playback 
 	// This is caused by the screen update timing, and this is the main reason why these bugs seem to happen randomly
+	BYTE activeSubtune = m_activeSubtune;
 	BYTE activeRow = m_activeRow;
 	BYTE playRow = m_playRow;
 	BYTE activeSongline = m_activeSongline;
@@ -3974,20 +3961,20 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			BYTE offsetSongline = activeSongline;
 
 			// If the Row Index is out of bounds, wrap around relative to the Shortest Pattern Length itself
-			if (isOutOfBounds = row < 0 || row >= g_Module.GetShortestPatternLength(offsetSongline))
+			if (isOutOfBounds = row < 0 || row >= GetShortestPatternLength(activeSubtune, offsetSongline))
 			{
 				// Add Rows for as many Songlines there are to offset above it
 				while (row < 0)
 				{
 					if (--offsetSongline >= p->songLength)
 						offsetSongline += p->songLength;
-					row += g_Module.GetShortestPatternLength(offsetSongline);
+					row += GetShortestPatternLength(activeSubtune, offsetSongline);
 				}
 
 				// Subtract Rows for as many Songlines there are to offset below it
-				while (row >= g_Module.GetShortestPatternLength(offsetSongline))
+				while (row >= GetShortestPatternLength(activeSubtune, offsetSongline))
 				{
-					row -= g_Module.GetShortestPatternLength(offsetSongline);
+					row -= GetShortestPatternLength(activeSubtune, offsetSongline);
 					++offsetSongline %= p->songLength;
 				}
 			}
@@ -4239,10 +4226,10 @@ void CSong::Stop()
 
 void CSong::Play(int mode, BOOL follow, int special)
 {
-	TSubtune* p = g_Module.GetSubtuneIndex();
+	//TSubtune* p = g_Module.GetSubtuneIndex();
 
-	if (!p)
-		return;
+	//if (!p)
+	//	return;
 
 	// Stop and reset the POKEY registers first
 	Stop();
@@ -4251,7 +4238,7 @@ void CSong::Play(int mode, BOOL follow, int special)
 	{
 	case MPLAY_START:
 		m_playSongline = m_playRow = 0;
-		m_playSpeed = p->songSpeed;
+		m_playSpeed = GetSongSpeed();	//p->songSpeed;
 		break;
 
 	case MPLAY_FROM:
@@ -4747,7 +4734,7 @@ void CSong::PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE 
 
 bool CSong::TransposeNoteInPattern(BYTE semitone)
 {
-	TSubtune* p = g_Module.GetSubtuneIndex();
+	TSubtune* p = GetSubtune();
 
 	if (!p)
 		return false;
@@ -4769,7 +4756,7 @@ bool CSong::TransposeNoteInPattern(BYTE semitone)
 
 bool CSong::SetNoteInPattern(BYTE semitone)
 {
-	TSubtune* p = g_Module.GetSubtuneIndex();
+	TSubtune* p = GetSubtune();
 
 	if (!p)
 		return false;
@@ -4803,7 +4790,7 @@ bool CSong::SetNoteInPattern(BYTE semitone)
 
 bool CSong::SetInstrumentInPattern(BYTE instrument)
 {
-	TSubtune* p = g_Module.GetSubtuneIndex();
+	TSubtune* p = GetSubtune();
 
 	if (!p)
 		return false;
@@ -4849,7 +4836,7 @@ bool CSong::SetInstrumentInPattern(BYTE instrument)
 
 bool CSong::SetVolumeInPattern(BYTE volume)
 {
-	TSubtune* p = g_Module.GetSubtuneIndex();
+	TSubtune* p = GetSubtune();
 
 	if (!p)
 		return false;
@@ -4874,7 +4861,7 @@ bool CSong::SetVolumeInPattern(BYTE volume)
 
 bool CSong::SetCommandInPattern(BYTE command)
 {
-	TSubtune* p = g_Module.GetSubtuneIndex();
+	TSubtune* p = GetSubtune();
 
 	if (!p)
 		return false;

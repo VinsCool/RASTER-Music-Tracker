@@ -738,9 +738,13 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 {
 	CString statusBarLog;
+	TSubtune* subtune = GetSubtune(songline);
 
-	Stop();					// Make sure RMT is stopped 
-	//Atari_InitRMTRoutine();	// Reset the RMT routines 
+	if (!subtune)
+		return;
+
+	Stop();					// Make sure RMT is stopped
+	//Atari_InitRMTRoutine();	// Reset the RMT routines
 	SetChannelOnOff(-1, 0);	// Switch all channels off 
 
 	g_PokeyStream.StartRecording();
@@ -749,7 +753,8 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	// If no argument was passed, Play from start will be assumed
 	//m_activeSongline = songline;
 	//m_activeRow = trackline;
-	g_Module.SetActiveSubtune(songline);
+	m_activeSubtune = songline;
+
 	Play(playmode, m_isFollowPlay);
 
 	// Wait in a tight loop pumping messages until the playback stops
@@ -759,9 +764,9 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	while (m_playMode != MPLAY_STOP)
 	{
 		// 1 VBI of module playback
-		PlayPattern(g_Module.GetSubtuneIndex());
+		PlayPattern(subtune);
 
-		PlayContinue(g_Module.GetSubtuneIndex());
+		PlayContinue(subtune);
 
 		// Increment the timer shown during playback (not actually needed here?)
 		//UpdatePlayTime();
