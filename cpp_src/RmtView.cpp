@@ -343,21 +343,21 @@ void CRmtView::DrawAll()
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);
 
 	// Get the current Module Subtune pointer
-	TSubtune* p = g_Song.GetSubtune();
+	//TSubtune* p = g_Song.GetSubtune();
 
 	// Draw the primary screen block first
 	if (g_active_ti == PART_TRACKS)
-		g_Song.DrawPatternEditor(p);
+		g_Song.DrawPatternEditor();//(p);
 	else
-		g_Song.DrawInstrumentEditor(p);
+		g_Song.DrawInstrumentEditor();//(p);
 
 	// Draw the secondary screen block afterwards
-	g_Song.DrawSonglines(p);
-	g_Song.DrawSubtuneInfos(p);
-	g_Song.DrawRegistersState(p);
+	g_Song.DrawSonglines();//(p);
+	g_Song.DrawSubtuneInfos();//(p);
+	g_Song.DrawRegistersState();//(p);
 
 	// Draw the debug stuff if needed
-	g_Song.DrawDebugInfos(p);
+	g_Song.DrawDebugInfos();//(p);
 }
 
 BOOL CRmtView::OnEraseBkgnd(CDC* pDC) 
@@ -3127,6 +3127,30 @@ void CRmtView::PatternEditorKey(UINT vk)
 		case VK_F2: g_Song.TransposeNoteInPattern(1); return;
 		case VK_F3: g_Song.TransposeNoteInPattern(-12); return;
 		case VK_F4: g_Song.TransposeNoteInPattern(12); return;
+		}
+	}
+
+	// CTRL and SHIFT are pressed, ALT is NOT pressed
+	if (!IsPressingAlt() && IsPressingCtrl() && IsPressingShift())
+	{
+		switch (vk)
+		{
+		case VK_F1: g_Song.TransposePattern(-1); return;
+		case VK_F2: g_Song.TransposePattern(1); return;
+		case VK_F3: g_Song.TransposePattern(-12); return;
+		case VK_F4: g_Song.TransposePattern(12); return;
+		}
+	}
+
+	// ALT, CTRL and SHIFT are pressed simultaneously
+	if (IsPressingAlt() && IsPressingCtrl() && IsPressingShift())
+	{
+		switch (vk)
+		{
+		case VK_F1: g_Song.TransposeSongline(-1); return;
+		case VK_F2: g_Song.TransposeSongline(1); return;
+		case VK_F3: g_Song.TransposeSongline(-12); return;
+		case VK_F4: g_Song.TransposeSongline(12); return;
 		}
 	}
 

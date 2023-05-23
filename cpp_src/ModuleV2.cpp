@@ -7,8 +7,8 @@
 
 CModule::CModule()
 {
-	memset(m_subtuneIndex, NULL, sizeof m_subtuneIndex);
-	memset(m_instrumentIndex, NULL, sizeof m_instrumentIndex);
+	memset(m_subtune, NULL, sizeof m_subtune);
+	memset(m_instrument, NULL, sizeof m_instrument);
 	InitialiseModule();
 }
 
@@ -52,11 +52,11 @@ void CModule::CreateSubtune(int subtune)
 		return;
 
 	// If there is no Subtune here, create it now and update the Subtune Index accordingly
-	if (!m_subtuneIndex[subtune])
-		m_subtuneIndex[subtune] = new TSubtune;
+	if (!m_subtune[subtune])
+		m_subtune[subtune] = new TSubtune;
 
 	// A new Subtune must be initialised when it is created
-	InitialiseSubtune(m_subtuneIndex[subtune]);
+	InitialiseSubtune(m_subtune[subtune]);
 }
 
 void CModule::DeleteSubtune(int subtune)
@@ -65,10 +65,10 @@ void CModule::DeleteSubtune(int subtune)
 		return;
 
 	// If there is a Subtune here, don't waste any time and delete it without further ado
-	if (m_subtuneIndex[subtune])
-		delete m_subtuneIndex[subtune];
+	if (m_subtune[subtune])
+		delete m_subtune[subtune];
 
-	m_subtuneIndex[subtune] = NULL;
+	m_subtune[subtune] = NULL;
 }
 
 void CModule::InitialiseSubtune(TSubtune* pSubtune)
@@ -108,11 +108,11 @@ void CModule::CreateInstrument(int instrument)
 		return;
 
 	// If there is no Instrument here, create it now and update the Instrument Index accordingly
-	if (!m_instrumentIndex[instrument])
-		m_instrumentIndex[instrument] = new TInstrumentV2;
+	if (!m_instrument[instrument])
+		m_instrument[instrument] = new TInstrumentV2;
 
 	// A new Instrument must be initialised when it is created
-	InitialiseInstrument(m_instrumentIndex[instrument]);
+	InitialiseInstrument(m_instrument[instrument]);
 }
 
 void CModule::DeleteInstrument(int instrument)
@@ -121,10 +121,10 @@ void CModule::DeleteInstrument(int instrument)
 		return;
 
 	// If there is an Instrument here, don't waste any time and delete it without further ado
-	if (m_instrumentIndex[instrument])
-		delete m_instrumentIndex[instrument];
+	if (m_instrument[instrument])
+		delete m_instrument[instrument];
 
-	m_instrumentIndex[instrument] = NULL;
+	m_instrument[instrument] = NULL;
 }
 
 void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
@@ -1170,7 +1170,7 @@ const BYTE CModule::GetSubtuneCount()
 	BYTE count = 0;
 
 	for (int i = 0; i < SUBTUNE_MAX; i++)
-		count += m_subtuneIndex[i] != NULL;
+		count += m_subtune[i] != NULL;
 
 	return count;
 }

@@ -60,6 +60,7 @@ typedef struct
 
 // Variables used for RMTE Module playback
 // Loosely inspired by FamiTracker for most of them
+// TODO: Cleanup and manage more efficiently, this is kind of all over the place
 struct TSongVariables
 {
 	bool isNoteTrigger;				// Note Trigger, for new Note initialisation, the Command ~~~ will retrigger the last Note played
@@ -126,12 +127,12 @@ public:
 	//void DrawPlayTimeCounter();
 
 	// RMTE Draw functions
-	void DrawSonglines(TSubtune* p);
-	void DrawSubtuneInfos(TSubtune* p);
-	void DrawRegistersState(TSubtune* p);
-	void DrawPatternEditor(TSubtune* p);
-	void DrawInstrumentEditor(TSubtune* p);
-	void DrawDebugInfos(TSubtune* p);
+	void DrawSonglines(/*TSubtune* p*/);
+	void DrawSubtuneInfos(/*TSubtune* p*/);
+	void DrawRegistersState(/*TSubtune* p*/);
+	void DrawPatternEditor(/*TSubtune* p*/);
+	void DrawInstrumentEditor(/*TSubtune* p*/);
+	void DrawDebugInfos(/*TSubtune* p*/);
 
 	//BOOL InfoKey(int vk, int shift, int control);
 	//BOOL InfoCursorGotoSongname(int x);
@@ -146,7 +147,7 @@ public:
 	//void ActiveInstrPrev() { g_Undo.Separator(); int instr = (m_activeInstrument - 1) & 0x3f; ActiveInstrSet(instr); };
 	//void ActiveInstrNext() { g_Undo.Separator(); int instr = (m_activeInstrument + 1) & 0x3f; ActiveInstrSet(instr); };
 
-	const BYTE GetActiveSubtune() { return m_activeSubtune; };
+	const BYTE GetActiveSubtune() { if (!g_Module.IsValidSubtune(m_activeSubtune)) m_activeSubtune = MODULE_DEFAULT_SUBTUNE; return m_activeSubtune; };
 
 	int GetActiveInstr() { return m_activeInstrument; };
 	int GetActiveColumn() { return m_activeChannel; };
@@ -156,7 +157,7 @@ public:
 	int GetActiveOctave() { return m_activeOctave; };
 	int GetActiveVolume() { return m_activeVolume; };
 
-	void SetActiveSubtune(int subtune) { m_activeSubtune = subtune; };
+	void SetActiveSubtune(int subtune) { if (g_Module.IsValidSubtune(subtune)) m_activeSubtune = subtune; };
 
 	//void SetActiveLine(int line) { m_activeRow = line; };
 	//void SetPlayLine(int line) { m_playRow = line; };
@@ -256,7 +257,7 @@ public:
 	//BOOL IsBookmark() { return (m_bookmark.speed > 0 && m_bookmark.trackline < g_Tracks.GetMaxTrackLength()); };
 	//BOOL SetBookmark();
 
-	void OctaveUp() { if (++m_activeOctave > 7) m_activeOctave = 7; };
+	void OctaveUp() { if (++m_activeOctave > 9) m_activeOctave = 9; };
 	void OctaveDown() { if (--m_activeOctave < 0) m_activeOctave = 0; };
 	void VolumeUp() { if (++m_activeVolume > MAXVOLUME) m_activeVolume = MAXVOLUME; };
 	void VolumeDown() { if (--m_activeVolume < 0) m_activeVolume = 0; };
@@ -451,36 +452,74 @@ public:
 
 	// Prototype C++ RMTE Module Driver functions
 
-	TSubtune* GetSubtune() { return g_Module.GetSubtune(m_activeSubtune); };
+	TSubtune* GetSubtune() { return GetSubtune(m_activeSubtune); };
 	TSubtune* GetSubtune(int subtune) { return g_Module.GetSubtune(subtune); };
 
-	BYTE GetSubtuneCount() { return g_Module.GetSubtuneCount(); };
+	TInstrumentV2* GetInstrument() { return GetInstrument(m_activeInstrument); };
+	TInstrumentV2* GetInstrument(int instrument) { return g_Module.GetInstrument(instrument); };
 
-	BYTE GetEffectCommandCount() { return g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel); };
-	BYTE GetEffectCommandCount(int subtune, int channel) { return g_Module.GetEffectCommandCount(subtune, channel); };
+	const BYTE GetSubtuneCount() { return g_Module.GetSubtuneCount(); };
 
-	BYTE GetChannelCount() { return g_Module.GetChannelCount(m_activeSubtune); };
-	BYTE GetChannelCount(int subtune) { return g_Module.GetChannelCount(subtune); };
+	const char* GetSongName() { return g_Module.GetSongName(); };
+	const char* GetSongAuthor() { return g_Module.GetSongAuthor(); };
+	const char* GetSongCopyright() { return g_Module.GetSongCopyright(); };
 
-	BYTE GetSongLength() { return g_Module.GetSongLength(m_activeSubtune); };
-	BYTE GetSongLength(int subtune) { return g_Module.GetSongLength(subtune); };
+	const char* GetSubtuneName() { return GetSubtuneName(m_activeSubtune); };
+	const char* GetSubtuneName(int subtune) { return g_Module.GetSubtuneName(subtune); };
 
-	BYTE GetSongSpeed() { return g_Module.GetSongSpeed(m_activeSubtune); };
-	BYTE GetSongSpeed(int subtune) { return g_Module.GetSongSpeed(subtune); };
+	const BYTE GetEffectCommandCount() { return GetEffectCommandCount(m_activeSubtune, m_activeChannel); };
+	const BYTE GetEffectCommandCount(int subtune, int channel) { return g_Module.GetEffectCommandCount(subtune, channel); };
 
-	BYTE GetShortestPatternLength() { return g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline); };
-	BYTE GetShortestPatternLength(int subtune, int songline) { return g_Module.GetShortestPatternLength(subtune, songline); };
+	const BYTE GetChannelCount() { return GetChannelCount(m_activeSubtune); };
+	const BYTE GetChannelCount(int subtune) { return g_Module.GetChannelCount(subtune); };
 
-	//void PlayRow(TSubtune* p);
-	void PlayPattern(TSubtune* p);
-	void PlayContinue(TSubtune* p);
-	void PlayNextSongline(TSubtune* p);
-	void PlayNote(TSubtune* p, BYTE channel, BYTE songline, BYTE row);
-	void PlayInstrument(TSubtune* p, BYTE channel, BYTE songline, BYTE row);
-	void PlayVolume(TSubtune* p, BYTE channel, BYTE songline, BYTE row);
-	void PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE column);
+	const BYTE GetSongLength() { return GetSongLength(m_activeSubtune); };
+	const BYTE GetSongLength(int subtune) { return g_Module.GetSongLength(subtune); };
+
+	const BYTE GetPatternLength() { return GetPatternLength(m_activeSubtune); };
+	const BYTE GetPatternLength(int pattern) { return g_Module.GetPatternLength(pattern); };
+
+	const BYTE GetSongSpeed() { return GetSongSpeed(m_activeSubtune); };
+	const BYTE GetSongSpeed(int subtune) { return g_Module.GetSongSpeed(subtune); };
+
+	const BYTE GetInstrumentSpeed() { return GetInstrumentSpeed(m_activeSubtune); };
+	const BYTE GetInstrumentSpeed(int subtune) { return g_Module.GetInstrumentSpeed(subtune); };
+
+	const BYTE GetPatternInSongline() { return GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline); };
+	const BYTE GetPatternInSongline(int subtune, int channel, int songline) { return g_Module.GetPatternInSongline(subtune, channel, songline); };
+
+	const BYTE GetShortestPatternLength() { return GetShortestPatternLength(m_activeSubtune, m_activeSongline); };
+	const BYTE GetShortestPatternLength(int subtune, int songline) { return g_Module.GetShortestPatternLength(subtune, songline); };
+
+	const BYTE GetPatternRowNote() { return GetPatternRowNote(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
+	const BYTE GetPatternRowNote(int subtune, int channel, int pattern, int row) { return g_Module.GetPatternRowNote(subtune, channel, pattern, row); };
+
+	const BYTE GetPatternRowInstrument() { return GetPatternRowInstrument(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
+	const BYTE GetPatternRowInstrument(int subtune, int channel, int pattern, int row) { return g_Module.GetPatternRowInstrument(subtune, channel, pattern, row); };
+
+	const BYTE GetPatternRowVolume() { return GetPatternRowVolume(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
+	const BYTE GetPatternRowVolume(int subtune, int channel, int pattern, int row) { return g_Module.GetPatternRowVolume(subtune, channel, pattern, row); };
+
+	const BYTE GetPatternRowEffectCommand() { return GetPatternRowEffectCommand(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow, m_activeColumn); };
+	const BYTE GetPatternRowEffectCommand(int subtune, int channel, int pattern, int row, int column) { return g_Module.GetPatternRowEffectCommand(subtune, channel, pattern, row, column); };
+
+	const BYTE GetPatternRowEffectParameter() { return GetPatternRowEffectParameter(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow, m_activeColumn); };
+	const BYTE GetPatternRowEffectParameter(int subtune, int channel, int pattern, int row, int column) { return g_Module.GetPatternRowEffectParameter(subtune, channel, pattern, row, column); };
+
+	//void PlayRow(TSubtune* pSubtune);
+
+	void PlayPattern(TSubtune* pSubtune);
+	void PlayContinue(TSubtune* pSubtune);
+	void PlayNextSongline(TSubtune* pSubtune);
+	void PlayNote(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row);
+	void PlayInstrument(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row);
+	void PlayVolume(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row);
+	void PlayEffect(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row, BYTE column);
 
 	bool TransposeNoteInPattern(BYTE semitone);
+	bool TransposePattern(BYTE semitone);
+	bool TransposeSongline(BYTE semitone);
+
 	bool SetNoteInPattern(BYTE semitone);
 	bool SetInstrumentInPattern(BYTE instrument);
 	bool SetVolumeInPattern(BYTE volume);

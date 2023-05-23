@@ -542,7 +542,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	BYTE* buff2, * buff3;
 
 	//int subsongs = GetSubsongParts(t);
-	int subsongs = g_Module.GetSubtuneCount();
+	int subsongs = GetSubtuneCount();
 	int count = 0;
 
 	//int subtune[256];
@@ -738,9 +738,9 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 {
 	CString statusBarLog;
-	TSubtune* subtune = GetSubtune(songline);
+	TSubtune* pSubtune = GetSubtune(songline);
 
-	if (!subtune)
+	if (!pSubtune)
 		return;
 
 	Stop();					// Make sure RMT is stopped
@@ -764,9 +764,8 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	while (m_playMode != MPLAY_STOP)
 	{
 		// 1 VBI of module playback
-		PlayPattern(subtune);
-
-		PlayContinue(subtune);
+		PlayPattern(pSubtune);
+		PlayContinue(pSubtune);
 
 		// Increment the timer shown during playback (not actually needed here?)
 		//UpdatePlayTime();

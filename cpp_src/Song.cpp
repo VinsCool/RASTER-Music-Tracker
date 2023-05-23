@@ -3541,12 +3541,11 @@ void CSong::TimerRoutine()
 	if (g_PokeyStream.IsRecording())
 		return;
 
-	TSubtune* subtune = GetSubtune();
+	TSubtune* pSubtune = GetSubtune();
 
 	// Things that are solved 1x for vbi
-	PlayPattern(subtune);
-
-	PlayContinue(subtune);
+	PlayPattern(pSubtune);
+	PlayContinue(pSubtune);
 
 	g_Pokey.RenderSound_No6502(m_instrumentSpeed);
 
@@ -3616,11 +3615,8 @@ void CSong::CalculateDisplayFPS()
 
 // TODO: Move all these functions to GUI_Song.cpp later
 
-void CSong::DrawSonglines(TSubtune* p)
+void CSong::DrawSonglines()
 {
-	if (!p)
-		return;
-
 	CString s;
 	RECT songblock{};
 	const int linescount = 9, linesoffset = -4;
@@ -3633,9 +3629,12 @@ void CSong::DrawSonglines(TSubtune* p)
 	BYTE activeSongline = m_activeSongline;
 	BYTE playSongline = m_playSongline;
 	BYTE activeChannel = m_activeChannel;
+	BYTE activeSubtune = GetActiveSubtune();
+	BYTE channelCount = GetChannelCount();
+	BYTE songLength = GetSongLength();
 
 	// All Channels used in the Subtune will be displayed within the Songline Index
-	for (int i = 0; i < p->channelCount; i++)
+	for (int i = 0; i < channelCount; i++)
 	{
 		// Offset for the X axis, each character use a 8x16 Bitmap tile
 		int x = (3 * 8) + (i * (3 * 8));
@@ -3689,10 +3688,10 @@ void CSong::DrawSonglines(TSubtune* p)
 		BYTE songline = activeSongline + i + linesoffset;
 
 		// If the Songline Index is out of bounds, wrap around relative to the Song Length itself
-		if (isOutOfBounds = songline >= p->songLength)
-			songline += p->songLength;
+		if (isOutOfBounds = songline >= songLength)
+			songline += songLength;
 
-		songline %= p->songLength;
+		songline %= songLength;
 
 		// Default Colour for all Songlines
 		int colour = songline == playSongline ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
@@ -3707,7 +3706,7 @@ void CSong::DrawSonglines(TSubtune* p)
 		TextXY(s, SONGBLOCK_X, SONGBLOCK_Y + y, colour);
 
 		// Draw all Songlines used in every Channels
-		for (int j = 0; j < p->channelCount; j++)
+		for (int j = 0; j < channelCount; j++)
 		{
 			// Offset for the X axis, each character use a 8x16 Bitmap tile
 			int x = (3 * 8) + (j * (3 * 8));
@@ -3729,7 +3728,7 @@ void CSong::DrawSonglines(TSubtune* p)
 				colour = TEXT_COLOR_DARK_GRAY;
 
 			// Fetch the Pattern number used in the Songline's Channel, and draw it in the Songline Block
-			s.Format("%02X", p->channel[j].songline[songline]);
+			s.Format("%02X", GetPatternInSongline(activeSubtune, j, songline));
 			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + y, colour);
 		}
 
@@ -3738,7 +3737,7 @@ void CSong::DrawSonglines(TSubtune* p)
 	// Draw the lines delimiting boundaries between each elements in the Songline block
 	songblock.left = SONGBLOCK_X - 4;
 	songblock.top = SONGBLOCK_Y;
-	songblock.right = SONGBLOCK_X + (3 * 8) + (p->channelCount * (3 * 8)) - 4;
+	songblock.right = SONGBLOCK_X + (3 * 8) + (channelCount * (3 * 8)) - 4;
 	songblock.bottom = SONGBLOCK_Y + (2 * 16) + (linescount * 16);
 
 	// Songline Index and Songline Data:
@@ -3763,11 +3762,8 @@ void CSong::DrawSonglines(TSubtune* p)
 	g_mem_dc->DrawEdge(&songblock, EDGE_BUMP, BF_RECT);
 }
 
-void CSong::DrawSubtuneInfos(TSubtune* p)
+void CSong::DrawSubtuneInfos()
 {
-	if (!p)
-		return;
-
 	CString s;
 	RECT infoblock{};
 	int colour, x, y;
@@ -3809,35 +3805,27 @@ void CSong::DrawSubtuneInfos(TSubtune* p)
 
 	// Song Length
 	TextMiniXY("SONG LENGTH", x, y += 1 * 16 + 8);
-	s.Format("%02X", p->songLength);
+	s.Format("%02X", GetSongLength());
 	TextXY(s, x, y += 8, colour);
 	TextXYSelN("<>", -1, x + 3 * 8, y);
 
 	// Pattern Length
 	TextMiniXY("PATTERN LENGTH", x, y += 1 * 16 + 8);
-	s.Format("%02X", p->patternLength);
+	s.Format("%02X", GetPatternLength());
 	TextXY(s, x, y += 8, colour);
 	TextXYSelN("<>", -1, x + 3 * 8, y);
 
 	// Song Speed
 	TextMiniXY("SONG SPEED", x, y += 1 * 16 + 8);
-	s.Format("%02X", p->songSpeed);
+	s.Format("%02X", GetSongSpeed());
 	TextXY(s, x, y += 8, colour);
 	TextXYSelN("<>", -1, x + 3 * 8, y);
 
 	// Instrument Speed
 	TextMiniXY("INSTRUMENT SPEED", x, y += 1 * 16 + 8);
-	s.Format("%02X", p->instrumentSpeed);
+	s.Format("%02X", GetInstrumentSpeed());
 	TextXY(s, x, y += 8, colour);
 	TextXYSelN("<>", -1, x + 3 * 8, y);
-
-/*
-	// Channel Count
-	TextMiniXY("CHANNEL COUNT", x, y += 1 * 16 + 8);
-	s.Format("%02X", p->channelCount);
-	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", -1, x + 3 * 8, y);
-*/
 
 	//-- Subtune Metadata --//
 
@@ -3847,21 +3835,20 @@ void CSong::DrawSubtuneInfos(TSubtune* p)
 
 	// Module Name
 	TextMiniXY("MODULE NAME", x, y += 1 * 16 + 8);
-	TextXY(g_Module.GetSongName(), x, y += 8, colour);
+	TextXY(GetSongName(), x, y += 8, colour);
 
 	// Author
 	TextMiniXY("AUTHOR", x, y += 1 * 16 + 8);
-	TextXY(g_Module.GetSongAuthor(), x, y += 8, colour);
+	TextXY(GetSongAuthor(), x, y += 8, colour);
 
 	// Copyright
 	TextMiniXY("COPYRIGHT", x, y += 1 * 16 + 8);
-	TextXY(g_Module.GetSongCopyright(), x, y += 8, colour);
+	TextXY(GetSongCopyright(), x, y += 8, colour);
 
 	// Subtune
-	//s.Format("SUBTUNE %02X/%02X", g_Module.GetActiveSubtune() + 1, g_Module.GetSubtuneCount());
 	s.Format("SUBTUNE %02X/%02X", GetActiveSubtune() + 1, GetSubtuneCount());
 	TextMiniXY(s, x, y += 1 * 16 + 8);
-	TextXY(p->name, x, y += 8, colour);
+	TextXY(GetSubtuneName(), x, y += 8, colour);
 
 	//-- Line Boundaries
 
@@ -3889,17 +3876,13 @@ void CSong::DrawSubtuneInfos(TSubtune* p)
 	g_mem_dc->DrawEdge(&infoblock, EDGE_BUMP, BF_RECT);
 }
 
-void CSong::DrawRegistersState(TSubtune* p)
+void CSong::DrawRegistersState()
 {
-	if (!p)
-		return;
+
 }
 
-void CSong::DrawPatternEditor(TSubtune* p)
+void CSong::DrawPatternEditor()
 {
-	if (!p)
-		return;
-
 	CString s;
 	RECT patternblock{};
 
@@ -3913,9 +3896,11 @@ void CSong::DrawPatternEditor(TSubtune* p)
 	BYTE playRow = m_playRow;
 	BYTE activeSongline = m_activeSongline;
 	BYTE playSongline = m_playSongline;
+	BYTE songLength = GetSongLength();
 	BYTE activeCursor = m_activeCursor;
 	BYTE activeColumn = m_activeColumn;
 	BYTE activeChannel = m_activeChannel;
+	BYTE channelCount = GetChannelCount();
 	BYTE playSpeed = m_playSpeed;
 	BYTE speedTimer = m_speedTimer;
 
@@ -3942,7 +3927,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 	//	notation = 4;
 
 	// Process Channels 1 by 1, for all the Patterns to be drawn on screen
-	for (int i = 0; i < p->channelCount; i++)
+	for (int i = 0; i < channelCount; i++)
 	{
 		// The Y offset is always reset to 0 between Channels
 		y = 0;
@@ -3966,8 +3951,8 @@ void CSong::DrawPatternEditor(TSubtune* p)
 				// Add Rows for as many Songlines there are to offset above it
 				while (row < 0)
 				{
-					if (--offsetSongline >= p->songLength)
-						offsetSongline += p->songLength;
+					if (--offsetSongline >= songLength)
+						offsetSongline += songLength;
 					row += GetShortestPatternLength(activeSubtune, offsetSongline);
 				}
 
@@ -3975,14 +3960,14 @@ void CSong::DrawPatternEditor(TSubtune* p)
 				while (row >= GetShortestPatternLength(activeSubtune, offsetSongline))
 				{
 					row -= GetShortestPatternLength(activeSubtune, offsetSongline);
-					++offsetSongline %= p->songLength;
+					++offsetSongline %= songLength;
 				}
 			}
 
 			if (row == 1)
 			{
 				g_mem_dc->MoveTo(x - 12, PATTERNBLOCK_Y - 16 + y + smooth_y);
-				g_mem_dc->LineTo(x - 12 + (13 * 8) + (p->channel[i].effectCount * (4 * 8)), PATTERNBLOCK_Y - 16 + y + smooth_y);
+				g_mem_dc->LineTo(x - 12 + (13 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8)), PATTERNBLOCK_Y - 16 + y + smooth_y);
 			}
 
 			// Highlight Colour used to draw the Pattern Rows, from lowest to highest in priority
@@ -4022,10 +4007,10 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			bool isActiveCursor = g_activepart == PART_TRACKS && row == activeRow && i == activeChannel && !isOutOfBounds;
 
 			// Get the Pattern Index from the Songline offset
-			BYTE pattern = p->channel[i].songline[offsetSongline];
+			BYTE pattern = GetPatternInSongline(activeSubtune, i, offsetSongline);
 
 			// Note and Octave
-			BYTE note = p->channel[i].pattern[pattern].row[row].note;
+			BYTE note = GetPatternRowNote(activeSubtune, i, pattern, row);
 
 			switch (note)
 			{
@@ -4041,7 +4026,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			// Instrument
-			BYTE instrument = p->channel[i].pattern[pattern].row[row].instrument;
+			BYTE instrument = GetPatternRowInstrument(activeSubtune, i, pattern, row);
 
 			switch (instrument)
 			{
@@ -4054,7 +4039,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			// Volume
-			BYTE volume = p->channel[i].pattern[pattern].row[row].volume;
+			BYTE volume = GetPatternRowVolume(activeSubtune, i, pattern, row);
 
 			switch (volume)
 			{
@@ -4067,10 +4052,10 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			// Command(s)
-			for (int k = 0; k < p->channel[i].effectCount; k++)
+			for (int k = 0; k < GetEffectCommandCount(activeSubtune, i); k++)
 			{
-				BYTE command = p->channel[i].pattern[pattern].row[row].effect[k].command;
-				BYTE parameter = p->channel[i].pattern[pattern].row[row].effect[k].parameter;
+				BYTE command = GetPatternRowEffectCommand(activeSubtune, i, pattern, row, k);
+				BYTE parameter = GetPatternRowEffectParameter(activeSubtune, i, pattern, row, k);
 
 				switch (command)
 				{
@@ -4088,7 +4073,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 		}
 
 		// Update the X offset with the Channel's width, including the Active Effect Commands
-		x += (10 * 8) + (p->channel[i].effectCount * (4 * 8));
+		x += (10 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8));
 	}
 
 	// Actual dimensions used by the Pattern Editor block, including the Channels Header
@@ -4120,7 +4105,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 	g_mem_dc->LineTo(patternblock.right, patternblock.top + (3 * 16));
 
 	// Separation between each POKEY Channels, and the Channels Header on top of it
-	for (int i = 0; i < p->channelCount; i++)
+	for (int i = 0; i < channelCount; i++)
 	{
 		y = 0;
 
@@ -4129,7 +4114,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			switch (j)
 			{
 			case 0:
-				s.Format(" PATTERN: %02X", p->channel[i].songline[activeSongline]);
+				s.Format(" PATTERN: %02X", GetPatternInSongline(activeSubtune, i, activeSongline));
 				break;
 
 			case 1:
@@ -4152,7 +4137,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			case 2:
-				s.Format("      FX%i", p->channel[i].effectCount);
+				s.Format("      FX%i", GetEffectCommandCount(activeSubtune, i));
 				TextXYSelN("<>", -1, PATTERNBLOCK_X + x + 10 * 8, PATTERNBLOCK_Y + y);
 				break;
 			}
@@ -4160,7 +4145,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			TextXY(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, GetChannelOnOff(i) == 0);
 		}
 
-		x += (10 * 8) + (p->channel[i].effectCount * (4 * 8));
+		x += (10 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8));
 		g_mem_dc->MoveTo(patternblock.left + x, patternblock.top);
 		g_mem_dc->LineTo(patternblock.left + x, patternblock.bottom);
 	}
@@ -4169,13 +4154,12 @@ void CSong::DrawPatternEditor(TSubtune* p)
 	g_mem_dc->DrawEdge(&patternblock, EDGE_BUMP, BF_RECT);
 }
 
-void CSong::DrawInstrumentEditor(TSubtune* p)
+void CSong::DrawInstrumentEditor()
 {
-	if (!p)
-		return;
+
 }
 
-void CSong::DrawDebugInfos(TSubtune* p)
+void CSong::DrawDebugInfos()
 {
 	// Debug display at the top of the screen, this could be toggled on if needed 
 	if (!g_viewDebugDisplay)
@@ -4198,7 +4182,7 @@ void CSong::DrawDebugInfos(TSubtune* p)
 		case 5: s.Format("MB = %02d", g_mouseLastButton); break;
 		case 6: s.Format("WD = %02d", g_mouseLastWheelDelta); break;
 		case 7: s.Format("CA = %02d", g_cursoractview); break;
-		case 8: s.Format("TA = %02d", m_playRow); break;
+		case 8: s.Format("AR = %02d", m_activeRow); break;
 		case 9: s.Format("DY = %02d", g_mouseLastPointY / 16); break;
 		case 10: s.Format("GTL = %02d", g_tracklines); break;
 		case 11: s.Format("OL = %02d", g_tracklines / 2); break;
@@ -4226,27 +4210,31 @@ void CSong::Stop()
 
 void CSong::Play(int mode, BOOL follow, int special)
 {
-	//TSubtune* p = g_Module.GetSubtuneIndex();
-
-	//if (!p)
-	//	return;
-
 	// Stop and reset the POKEY registers first
-	Stop();
+	//Stop();
 
 	switch (mode)
 	{
 	case MPLAY_START:
+		Stop();
 		m_playSongline = m_playRow = 0;
-		m_playSpeed = GetSongSpeed();	//p->songSpeed;
+		m_playSpeed = GetSongSpeed();
 		break;
 
 	case MPLAY_FROM:
+		if (m_playMode != MPLAY_STOP && m_isFollowPlay)
+		{
+			// If it's already playing and following, do not override, simply update the Play Mode then return
+			m_playMode = mode;
+			return;
+		}
+		Stop();
 		m_playSongline = m_activeSongline;
 		m_playRow = m_activeRow;
 		break;
 
 	case MPLAY_PATTERN:
+		Stop();
 		m_playSongline = m_activeSongline;
 		m_playRow = (special) ? m_activeRow : 0;
 		break;
@@ -4370,9 +4358,9 @@ void CSong::PlayRow(TSubtune* p)
 
 // Play Module without the 6502 RMT routines limitation, designed specifically for the new RMTE Module format
 // Ultimatey, this will become the default payback method, unless specified otherwise (eg: Legacy RMT compatibility)
-void CSong::PlayPattern(TSubtune* p)
+void CSong::PlayPattern(TSubtune* pSubtune)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
 	// If RMT is not playing, there is nothing to do here
@@ -4386,25 +4374,25 @@ void CSong::PlayPattern(TSubtune* p)
 		BYTE songline = m_playSongline;
 
 		// Process all channels
-		for (int i = 0; i < p->channelCount; i++)
+		for (int i = 0; i < pSubtune->channelCount; i++)
 		{
 			// Note
-			PlayNote(p, i, songline, row);
+			PlayNote(pSubtune, i, songline, row);
 
 			// Instrument
-			PlayInstrument(p, i, songline, row);
+			PlayInstrument(pSubtune, i, songline, row);
 
 			// Volume;
-			PlayVolume(p, i, songline, row);
+			PlayVolume(pSubtune, i, songline, row);
 
 			// Command(s)
-			for (int k = 0; k < p->channel[i].effectCount; k++)
-				PlayEffect(p, i, songline, row, k);
+			for (int k = 0; k < pSubtune->channel[i].effectCount; k++)
+				PlayEffect(pSubtune, i, songline, row, k);
 		}
 
 		// The next Songline will be played if the Pattern reached the End position
-		if (++m_playRow >= p->patternLength)
-			PlayNextSongline(p);
+		if (++m_playRow >= pSubtune->patternLength)
+			PlayNextSongline(pSubtune);
 
 		// Set the Speed Timer to the current Play Speed parameter, the last Fxx Command used will take priority
 		m_speedTimer = m_playSpeed;
@@ -4419,9 +4407,9 @@ void CSong::PlayPattern(TSubtune* p)
 }
 
 // Procedure taking care of playing Instruments, executing Effect Commands, and setting up the POKEY registers during playback
-void CSong::PlayContinue(TSubtune* p)
+void CSong::PlayContinue(TSubtune* pSubtune)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
 	// If RMT is not playing, there is nothing to do here
@@ -4434,9 +4422,9 @@ void CSong::PlayContinue(TSubtune* p)
 	BYTE note, timbre, frame, speed, command;
 	WORD freq, parameter;
 
-	for (int i = 0; i < p->channelCount; i++)
+	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
-		instrument = g_Module.GetInstrument(m_songVariables[i].channelInstrument);
+		instrument = GetInstrument(m_songVariables[i].channelInstrument);
 
 		if (instrument)
 		{
@@ -4538,7 +4526,7 @@ void CSong::PlayContinue(TSubtune* p)
 	}
 
 	// Process the Song Variables currently in memory
-	for (int i = 0; i < p->channelCount; i++)
+	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
 		note = m_songVariables[i].channelNote + m_songVariables[i].instrumentNote;
 		timbre = m_songVariables[i].channelDistortion;
@@ -4566,7 +4554,7 @@ void CSong::PlayContinue(TSubtune* p)
 	}
 
 	// Update the AUDC and AUDF registers with the new data the same way
-	for (int i = 0; i < p->channelCount; i++)
+	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
 		audctl = i >= 4 ? audctl2 : audctl1;
 		freq = (m_songVariables[i].isInstrumentAbsoluteFreq) ? m_songVariables[i].instrumentFreq : m_songVariables[i].channelFreq + m_songVariables[i].instrumentFreq;
@@ -4600,27 +4588,27 @@ void CSong::PlayContinue(TSubtune* p)
 	g_atarimem[RMTPLAYR_V_SKCTL2] = skctl2;
 }
 
-void CSong::PlayNextSongline(TSubtune* p)
+void CSong::PlayNextSongline(TSubtune* pSubtune)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
 	m_playRow = 0;
 
 	if (m_playMode != MPLAY_PATTERN)
-		++m_playSongline %= p->songLength;
+		++m_playSongline %= pSubtune->songLength;
 
 	if (g_PokeyStream.TrackSongLine(m_playSongline))
 		Stop();
 }
 
-void CSong::PlayNote(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
+void CSong::PlayNote(TSubtune* pSubtune,  BYTE channel, BYTE songline, BYTE row)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
-	BYTE pattern = p->channel[channel].songline[songline];
-	BYTE note = p->channel[channel].pattern[pattern].row[row].note;
+	BYTE pattern = pSubtune->channel[channel].songline[songline];
+	BYTE note = pSubtune->channel[channel].pattern[pattern].row[row].note;
 	bool active = m_songVariables[channel].isNoteActive;
 
 	switch (note)
@@ -4665,13 +4653,13 @@ void CSong::PlayNote(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
 	//}
 }
 
-void CSong::PlayInstrument(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
+void CSong::PlayInstrument(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
-	BYTE pattern = p->channel[channel].songline[songline];
-	BYTE instrument = p->channel[channel].pattern[pattern].row[row].instrument;
+	BYTE pattern = pSubtune->channel[channel].songline[songline];
+	BYTE instrument = pSubtune->channel[channel].pattern[pattern].row[row].instrument;
 	bool active = m_songVariables[channel].isNoteActive;
 
 	switch (instrument)
@@ -4694,13 +4682,13 @@ void CSong::PlayInstrument(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
 	}
 }
 
-void CSong::PlayVolume(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
+void CSong::PlayVolume(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
-	BYTE pattern = p->channel[channel].songline[songline];
-	BYTE volume = p->channel[channel].pattern[pattern].row[row].volume;
+	BYTE pattern = pSubtune->channel[channel].songline[songline];
+	BYTE volume = pSubtune->channel[channel].pattern[pattern].row[row].volume;
 	bool active = m_songVariables[channel].isNoteActive;
 
 	switch (volume)
@@ -4718,14 +4706,14 @@ void CSong::PlayVolume(TSubtune* p, BYTE channel, BYTE songline, BYTE row)
 
 }
 
-void CSong::PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE column)
+void CSong::PlayEffect(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row, BYTE column)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
-	BYTE pattern = p->channel[channel].songline[songline];
-	BYTE command = p->channel[channel].pattern[pattern].row[row].effect[column].command;
-	BYTE parameter = p->channel[channel].pattern[pattern].row[row].effect[column].parameter;
+	BYTE pattern = pSubtune->channel[channel].songline[songline];
+	BYTE command = pSubtune->channel[channel].pattern[pattern].row[row].effect[column].command;
+	BYTE parameter = pSubtune->channel[channel].pattern[pattern].row[row].effect[column].parameter;
 	//bool active = m_songVariables[channel].isNoteActive;
 
 	switch (command)
@@ -4733,16 +4721,16 @@ void CSong::PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE 
 	case EFFECT_COMMAND_BXX:
 		if (m_playMode != MPLAY_PATTERN)
 		{
-			if (parameter > p->songLength)
+			if (parameter > pSubtune->songLength)
 				parameter = 0;
 
 			m_playSongline = parameter - 1;	// The Songline will increment by 1 during playback, subtract 1 to the parameter to work around this
 		}
-		m_playRow = p->patternLength;	// Set the Row to equal the Pattern Length in order to force the next Songline to play (same as Dxx)
+		m_playRow = pSubtune->patternLength;	// Set the Row to equal the Pattern Length in order to force the next Songline to play (same as Dxx)
 		break;
 
 	case EFFECT_COMMAND_DXX:
-		m_playRow = p->patternLength;	// Set the Row to equal the Pattern Length in order to force the next Songline to play
+		m_playRow = pSubtune->patternLength;	// Set the Row to equal the Pattern Length in order to force the next Songline to play
 		// TODO(?): Add a method to set the next Row to the parameter
 		break;
 
@@ -4758,34 +4746,87 @@ void CSong::PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE 
 
 bool CSong::TransposeNoteInPattern(BYTE semitone)
 {
-	TSubtune* p = GetSubtune();
+	TSubtune* pSubtune = GetSubtune();
 
-	if (!p)
+	if (!pSubtune)
 		return false;
 
-	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
-	BYTE note = p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note;
+	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE note = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note;
 
 	if (note < PATTERN_NOTE_COUNT)
 	{
 		if ((note += semitone) >= PATTERN_NOTE_COUNT)
 			note += PATTERN_NOTE_COUNT;
 		
-		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note % PATTERN_NOTE_COUNT;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note % PATTERN_NOTE_COUNT;
 		return true;
 	}
 
 	return false;
 }
 
-bool CSong::SetNoteInPattern(BYTE semitone)
+bool CSong::TransposePattern(BYTE semitone)
 {
-	TSubtune* p = GetSubtune();
+	TSubtune* pSubtune = GetSubtune();
 
-	if (!p)
+	if (!pSubtune)
 		return false;
 
-	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
+
+	for (int i = 0; i < GetShortestPatternLength(); i++)
+	{
+		BYTE note = pSubtune->channel[m_activeChannel].pattern[pattern].row[i].note;
+
+		if (note < PATTERN_NOTE_COUNT)
+		{
+			if ((note += semitone) >= PATTERN_NOTE_COUNT)
+				note += PATTERN_NOTE_COUNT;
+
+			pSubtune->channel[m_activeChannel].pattern[pattern].row[i].note = note % PATTERN_NOTE_COUNT;
+		}
+	}
+
+	return true;
+}
+
+bool CSong::TransposeSongline(BYTE semitone)
+{
+	TSubtune* pSubtune = GetSubtune();
+
+	if (!pSubtune)
+		return false;
+
+	for (int i = 0; i < pSubtune->channelCount; i++)
+	{
+		BYTE pattern = pSubtune->channel[i].songline[m_activeSongline];
+
+		for (int j = 0; j < GetShortestPatternLength(); j++)
+		{
+			BYTE note = pSubtune->channel[i].pattern[pattern].row[j].note;
+
+			if (note < PATTERN_NOTE_COUNT)
+			{
+				if ((note += semitone) >= PATTERN_NOTE_COUNT)
+					note += PATTERN_NOTE_COUNT;
+
+				pSubtune->channel[i].pattern[pattern].row[j].note = note % PATTERN_NOTE_COUNT;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool CSong::SetNoteInPattern(BYTE semitone)
+{
+	TSubtune* pSubtune = GetSubtune();
+
+	if (!pSubtune)
+		return false;
+
+	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
 	BYTE note = semitone + m_activeOctave * 12;
 
 	switch (semitone)
@@ -4793,19 +4834,19 @@ bool CSong::SetNoteInPattern(BYTE semitone)
 	case PATTERN_NOTE_OFF:
 	case PATTERN_NOTE_RELEASE:
 	case PATTERN_NOTE_RETRIGGER:
-		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = PATTERN_INSTRUMENT_EMPTY;
-		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = PATTERN_VOLUME_EMPTY;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = PATTERN_INSTRUMENT_EMPTY;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = PATTERN_VOLUME_EMPTY;
 
 	case PATTERN_NOTE_EMPTY:
-		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = semitone;
 		return true;
 
 	default:
 		if (semitone < PATTERN_NOTE_COUNT && note < PATTERN_NOTE_COUNT)
 		{
-			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note;
-			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = m_activeInstrument;
-			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = m_activeVolume;
+			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note;
+			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = m_activeInstrument;
+			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = m_activeVolume;
 			return true;
 		}
 		return false;
@@ -4814,19 +4855,19 @@ bool CSong::SetNoteInPattern(BYTE semitone)
 
 bool CSong::SetInstrumentInPattern(BYTE instrument)
 {
-	TSubtune* p = GetSubtune();
+	TSubtune* pSubtune = GetSubtune();
 
-	if (!p)
+	if (!pSubtune)
 		return false;
 
-	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
 	BYTE nybble;
 
 	switch (instrument)
 	{
 	case PATTERN_INSTRUMENT_EMPTY:
 		// The Instrument value will be overwritten regardless of the Active Column offset
-		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
 		return true;
 
 	default:
@@ -4836,7 +4877,7 @@ bool CSong::SetInstrumentInPattern(BYTE instrument)
 			if (m_activeColumn == 0)
 			{
 				if ((nybble = (instrument & 0x0F) << 4) < PATTERN_INSTRUMENT_COUNT)
-					instrument = nybble | ((p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument) & 0x0F);
+					instrument = nybble | ((pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument) & 0x0F);
 				else
 					instrument = PATTERN_INSTRUMENT_COUNT - 1;
 			}
@@ -4844,14 +4885,14 @@ bool CSong::SetInstrumentInPattern(BYTE instrument)
 			// Low Nybble Column -> Instrument 0xF?, where '?' is the value being edited
 			else if (m_activeColumn == 1)
 			{
-				if ((nybble = p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument & 0xF0) < PATTERN_INSTRUMENT_COUNT)
+				if ((nybble = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument & 0xF0) < PATTERN_INSTRUMENT_COUNT)
 					instrument = nybble | (instrument & 0x0F);
 				else
 					instrument &= 0x0F;
 			}
 
 			// The Instrument value will be overwritten with the combined value from each Nybble
-			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
+			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
 			return true;
 		}
 		return false;
@@ -4860,23 +4901,23 @@ bool CSong::SetInstrumentInPattern(BYTE instrument)
 
 bool CSong::SetVolumeInPattern(BYTE volume)
 {
-	TSubtune* p = GetSubtune();
+	TSubtune* pSubtune = GetSubtune();
 
-	if (!p)
+	if (!pSubtune)
 		return false;
 
-	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
 
 	switch (volume)
 	{
 	case PATTERN_VOLUME_EMPTY:
-		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
 		return true;
 
 	default:
 		if (volume < PATTERN_VOLUME_COUNT)
 		{
-			p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
+			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
 			return true;
 		}
 		return false;
@@ -4885,12 +4926,12 @@ bool CSong::SetVolumeInPattern(BYTE volume)
 
 bool CSong::SetCommandInPattern(BYTE command)
 {
-	TSubtune* p = GetSubtune();
+	TSubtune* pSubtune = GetSubtune();
 
-	if (!p)
+	if (!pSubtune)
 		return false;
 
-	BYTE pattern = p->channel[m_activeChannel].songline[m_activeSongline];
+	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
 	BYTE activeCursor = m_activeCursor - 3;	// Due to Note, Instrument and Volume sharing the variable
 	BYTE nybble;
 
@@ -4898,7 +4939,7 @@ bool CSong::SetCommandInPattern(BYTE command)
 	{
 	case PATTERN_EFFECT_EMPTY:
 		// The Command value will be overwritten regardless of the Active Column offset
-		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
 		return true;
 
 	default:
@@ -4906,27 +4947,27 @@ bool CSong::SetCommandInPattern(BYTE command)
 		{
 			// Effect Command Identifier -> Command 0x?FF, where '?' is the value being edited
 			if (m_activeColumn == 0)
-				p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
+				pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
 
 			// Allow editing the Effect Command Parameter only when the Command Identifier is not Empty
-			else if (p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command != PATTERN_EFFECT_EMPTY)
+			else if (pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command != PATTERN_EFFECT_EMPTY)
 			{
 				// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
 				if (m_activeColumn == 1)
 				{
 					nybble = (command & 0x0F) << 4;
-					command = nybble | ((p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter) & 0x0F);
+					command = nybble | ((pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter) & 0x0F);
 				}
 
 				// Effect Command Parameter, Low Nybble -> Command 0xFF?, where '?' is the value being edited
 				else if (m_activeColumn == 2)
 				{
-					nybble = p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter & 0xF0;
+					nybble = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter & 0xF0;
 					command = nybble | (command & 0x0F);
 				}
 
 				// The Command Parameter will be overwritten with the combined value from each Nybble
-				p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter = command;
+				pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter = command;
 			}
 			return true;
 		}

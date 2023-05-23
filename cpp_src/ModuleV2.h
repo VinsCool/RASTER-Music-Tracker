@@ -280,7 +280,7 @@ public:
 
 	//-- Pointers to Module Data --//
 
-	TSubtune* GetSubtune(BYTE subtune) { return IsValidSubtune(subtune) ? m_subtuneIndex[subtune] : NULL; };
+	TSubtune* GetSubtune(BYTE subtune) { return IsValidSubtune(subtune) ? m_subtune[subtune] : NULL; };
 	TChannel* GetChannel(BYTE subtune, BYTE channel);
 	TPattern* GetPattern(BYTE subtune, BYTE channel, BYTE pattern);
 	TPattern* GetIndexedPattern(BYTE subtune, BYTE channel, BYTE songline);
@@ -357,7 +357,7 @@ public:
 
 	//-- Getters and Setters for Instrument Data --//
 
-	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? m_instrumentIndex[instrument] : NULL; };
+	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument] : NULL; };
 
 	const char* GetInstrumentName(int instrument);
 
@@ -390,6 +390,6 @@ private:
 	char m_songName[MODULE_TITLE_NAME_MAX + 1];
 	char m_songAuthor[MODULE_AUTHOR_NAME_MAX + 1];
 	char m_songCopyright[MODULE_COPYRIGHT_INFO_MAX + 1];
-	TSubtune* m_subtuneIndex[SUBTUNE_MAX];
-	TInstrumentV2* m_instrumentIndex[PATTERN_INSTRUMENT_COUNT];
+	TSubtune* m_subtune[SUBTUNE_MAX];
+	TInstrumentV2* m_instrument[PATTERN_INSTRUMENT_COUNT];
 };
