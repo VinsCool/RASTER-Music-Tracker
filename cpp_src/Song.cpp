@@ -3982,7 +3982,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			if (row == 1)
 			{
 				g_mem_dc->MoveTo(x - 12, PATTERNBLOCK_Y - 16 + y + smooth_y);
-				g_mem_dc->LineTo(x - 12 + (13 * 8) + (p->effectCommandCount[i] * (4 * 8)), PATTERNBLOCK_Y - 16 + y + smooth_y);
+				g_mem_dc->LineTo(x - 12 + (13 * 8) + (p->channel[i].effectCommandCount * (4 * 8)), PATTERNBLOCK_Y - 16 + y + smooth_y);
 			}
 
 			// Highlight Colour used to draw the Pattern Rows, from lowest to highest in priority
@@ -4067,7 +4067,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			// Command(s)
-			for (int k = 0; k < p->effectCommandCount[i]; k++)
+			for (int k = 0; k < p->channel[i].effectCommandCount; k++)
 			{
 				BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
 				BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
@@ -4088,7 +4088,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 		}
 
 		// Update the X offset with the Channel's width, including the Active Effect Commands
-		x += (10 * 8) + (p->effectCommandCount[i] * (4 * 8));
+		x += (10 * 8) + (p->channel[i].effectCommandCount * (4 * 8));
 	}
 
 	// Actual dimensions used by the Pattern Editor block, including the Channels Header
@@ -4152,7 +4152,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			case 2:
-				s.Format("      FX%i", p->effectCommandCount[i]);
+				s.Format("      FX%i", p->channel[i].effectCommandCount);
 				TextXYSelN("<>", -1, PATTERNBLOCK_X + x + 10 * 8, PATTERNBLOCK_Y + y);
 				break;
 			}
@@ -4160,7 +4160,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			TextXY(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, GetChannelOnOff(i) == 0);
 		}
 
-		x += (10 * 8) + (p->effectCommandCount[i] * (4 * 8));
+		x += (10 * 8) + (p->channel[i].effectCommandCount * (4 * 8));
 		g_mem_dc->MoveTo(patternblock.left + x, patternblock.top);
 		g_mem_dc->LineTo(patternblock.left + x, patternblock.bottom);
 	}
@@ -4398,7 +4398,7 @@ void CSong::PlayPattern(TSubtune* p)
 			PlayVolume(p, i, songline, row);
 
 			// Command(s)
-			for (int k = 0; k < p->effectCommandCount[i]; k++)
+			for (int k = 0; k < p->channel[i].effectCommandCount; k++)
 				PlayEffect(p, i, songline, row, k);
 		}
 

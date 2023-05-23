@@ -7,8 +7,9 @@
 
 CModule::CModule()
 {
-	memset(m_index, NULL, sizeof m_index);
-	memset(m_instrument, NULL, sizeof m_instrument);
+	memset(m_subtuneIndex, NULL, sizeof m_subtuneIndex);
+	memset(m_instrumentIndex, NULL, sizeof m_instrumentIndex);
+	InitialiseModule();
 }
 
 CModule::~CModule()
@@ -51,11 +52,11 @@ void CModule::CreateSubtune(int subtune)
 		return;
 
 	// If there is no Subtune here, create it now and update the Subtune Index accordingly
-	if (!m_index[subtune])
-		m_index[subtune] = new TSubtune;
+	if (!m_subtuneIndex[subtune])
+		m_subtuneIndex[subtune] = new TSubtune;
 
 	// A new Subtune must be initialised when it is created
-	InitialiseSubtune(m_index[subtune]);
+	InitialiseSubtune(m_subtuneIndex[subtune]);
 }
 
 void CModule::DeleteSubtune(int subtune)
@@ -64,37 +65,40 @@ void CModule::DeleteSubtune(int subtune)
 		return;
 
 	// If there is a Subtune here, don't waste any time and delete it without further ado
-	if (m_index[subtune])
-		delete m_index[subtune];
+	if (m_subtuneIndex[subtune])
+		delete m_subtuneIndex[subtune];
 
-	m_index[subtune] = NULL;
+	m_subtuneIndex[subtune] = NULL;
 }
 
-void CModule::InitialiseSubtune(TSubtune* p)
+void CModule::InitialiseSubtune(TSubtune* pSubtune)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
-	strncpy_s(p->name, "Noname Subtune", SUBTUNE_NAME_MAX);
-	p->songLength = MODULE_SONG_LENGTH;
-	p->patternLength = MODULE_TRACK_LENGTH;
-	p->channelCount = MODULE_STEREO;	//= TRACK_CHANNEL_MAX;
-	p->songSpeed = MODULE_SONG_SPEED;
-	p->instrumentSpeed = MODULE_VBI_SPEED;
+	// Set the default Subtune name TODO(?): Append the Index Number to it
+	strncpy_s(pSubtune->name, "Noname Subtune", SUBTUNE_NAME_MAX);
+
+	// Set the default parameters to all the Subtune variables
+	pSubtune->songLength = MODULE_SONG_LENGTH;
+	pSubtune->patternLength = MODULE_TRACK_LENGTH;
+	pSubtune->channelCount = MODULE_STEREO;	//= TRACK_CHANNEL_MAX;
+	pSubtune->songSpeed = MODULE_SONG_SPEED;
+	pSubtune->instrumentSpeed = MODULE_VBI_SPEED;
 
 	// Clear all data, and set default values
 	for (int i = 0; i < TRACK_CHANNEL_MAX; i++)
 	{
 		// Set all indexed Patterns to 0
 		for (int j = 0; j < SONGLINE_MAX; j++)
-			p->channel[i].songline[j] = 0x00;
+			pSubtune->channel[i].songline[j] = 0x00;
 
 		// Set all indexed Rows in Patterns to empty values
 		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-			ClearPattern(&p->channel[i].pattern[j]);
+			ClearPattern(&pSubtune->channel[i].pattern[j]);
 
 		// By default, only 1 Effect Command is enabled in all Track Channels
-		p->effectCommandCount[i] = 0x01;
+		pSubtune->channel[i].effectCommandCount = 0x01;
 	}
 }
 
@@ -104,11 +108,11 @@ void CModule::CreateInstrument(int instrument)
 		return;
 
 	// If there is no Instrument here, create it now and update the Instrument Index accordingly
-	if (!m_instrument[instrument])
-		m_instrument[instrument] = new TInstrumentV2;
+	if (!m_instrumentIndex[instrument])
+		m_instrumentIndex[instrument] = new TInstrumentV2;
 
 	// A new Instrument must be initialised when it is created
-	InitialiseInstrument(m_instrument[instrument]);
+	InitialiseInstrument(m_instrumentIndex[instrument]);
 }
 
 void CModule::DeleteInstrument(int instrument)
@@ -117,43 +121,46 @@ void CModule::DeleteInstrument(int instrument)
 		return;
 
 	// If there is an Instrument here, don't waste any time and delete it without further ado
-	if (m_instrument[instrument])
-		delete m_instrument[instrument];
+	if (m_instrumentIndex[instrument])
+		delete m_instrumentIndex[instrument];
 
-	m_instrument[instrument] = NULL;
+	m_instrumentIndex[instrument] = NULL;
 }
 
-void CModule::InitialiseInstrument(TInstrumentV2* p)
+void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 {
-	if (!p)
+	if (!pInstrument)
 		return;
 
-	strncpy_s(p->name, "New Instrument", INSTRUMENT_NAME_MAX);
-	p->envelopeLength = 1;
-	p->envelopeLoop = 0;
-	p->envelopeRelease = 0;
-	p->envelopeSpeed = 0;
-	p->tableLength = 0;
-	p->tableLoop = 0;
-	p->tableRelease = 0;
-	p->tableMode = 0;
-	p->tableSpeed = 0;
+	// Set the default Instrument name TODO(?): Append the Index Number to it
+	strncpy_s(pInstrument->name, "New Instrument", INSTRUMENT_NAME_MAX);
+
+	// Set the default parameters to all the Instrument variables
+	pInstrument->envelopeLength = 0x01;
+	pInstrument->envelopeLoop = 0x00;
+	pInstrument->envelopeRelease = 0x00;
+	pInstrument->envelopeSpeed = 0x00;
+	pInstrument->tableLength = 0x00;
+	pInstrument->tableLoop = 0x00;
+	pInstrument->tableRelease = 0x00;
+	pInstrument->tableMode = 0x00;
+	pInstrument->tableSpeed = 0x00;
 
 	// Set Envelopes to Empty
-	for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
+	for (int i = 0; i < ENVELOPE_INDEX_MAX; i++)
 	{
-		p->volumeEnvelope[j] = 0;
-		p->distortionEnvelope[j] = 0;
-		p->audctlEnvelope[j] = 0;
-		p->commandEnvelope[j] = 0;
-		p->parameterEnvelope[j] = 0;
+		pInstrument->volumeEnvelope[i] = 0x00;
+		pInstrument->distortionEnvelope[i] = 0x00;
+		pInstrument->audctlEnvelope[i] = 0x00;
+		pInstrument->commandEnvelope[i] = 0x00;
+		pInstrument->parameterEnvelope[i] = 0x00;
 	}
 
 	// Set Tables to Empty
-	for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
+	for (int i = 0; i < INSTRUMENT_TABLE_INDEX_MAX; i++)
 	{
-		p->noteTable[j] = 0;
-		p->freqTable[j] = 0;
+		pInstrument->noteTable[i] = 0x00;
+		pInstrument->freqTable[i] = 0x00;
 	}
 }
 
@@ -237,7 +244,7 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 				CopyPattern(&importSubtune->channel[CH1].pattern[j], &importSubtune->channel[i].pattern[j]);
 
 			// Set the Active Effect Command Columns to the same number for each channels
-			importSubtune->effectCommandCount[i] = 2;
+			importSubtune->channel[i].effectCommandCount = 2;
 		}
 
 		// Re-construct all of individual Subtunes that were detected
@@ -1076,7 +1083,7 @@ const BYTE CModule::GetEffectCommandCount(BYTE subtune, BYTE channel)
 	TSubtune* pSubtune = GetSubtune(subtune);
 
 	if (pSubtune && IsValidChannel(channel))
-		return pSubtune->effectCommandCount[channel];
+		return pSubtune->channel[channel].effectCommandCount;
 
 	return NULL;
 }
@@ -1135,7 +1142,7 @@ void CModule::SetEffectCommandCount(BYTE subtune, BYTE channel, BYTE column)
 	TSubtune* pSubtune = GetSubtune(subtune);
 
 	if (pSubtune && IsValidChannel(channel) && IsValidCommandColumn(column))
-		pSubtune->effectCommandCount[channel] = column;
+		pSubtune->channel[channel].effectCommandCount = column;
 }
 
 
@@ -1144,7 +1151,7 @@ const BYTE CModule::GetSubtuneCount()
 	BYTE count = 0;
 
 	for (int i = 0; i < SUBTUNE_MAX; i++)
-		count += m_index[i] != NULL;
+		count += m_subtuneIndex[i] != NULL;
 
 	return count;
 }
@@ -1178,7 +1185,7 @@ BYTE CModule::GetShortestPatternLength(TSubtune* subtune, int songline)
 		for (int j = 0; j < patternLength; j++)
 		{
 			// Check for all Effect Commands used in each Row
-			for (int k = 0; k < subtune->effectCommandCount[i]; k++)
+			for (int k = 0; k < subtune->channel[i].effectCommandCount; k++)
 			{
 				// Get the Effect Command Identifier, the Parameter is not needed here
 				BYTE command = subtune->channel[i].pattern[pattern].row[j].command[k].identifier;
@@ -1472,6 +1479,9 @@ void CModule::RenumberIndexedPatterns(TSubtune* subtune)
 	{
 		// Get the current Channel Index
 		TIndex* channelIndex = &subtune->channel[i];
+
+		// Copy the original data to the Temporary Index first
+		CopyIndex(channelIndex, backupIndex);
 
 		// Copy all Indexed Patterns to single Songline entries, effectively duplicating all Patterns used in multiple Songlines
 		for (int j = 0; j < SONGLINE_MAX; j++)
