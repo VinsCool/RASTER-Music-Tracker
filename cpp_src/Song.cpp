@@ -3982,7 +3982,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			if (row == 1)
 			{
 				g_mem_dc->MoveTo(x - 12, PATTERNBLOCK_Y - 16 + y + smooth_y);
-				g_mem_dc->LineTo(x - 12 + (13 * 8) + (p->channel[i].effectCommandCount * (4 * 8)), PATTERNBLOCK_Y - 16 + y + smooth_y);
+				g_mem_dc->LineTo(x - 12 + (13 * 8) + (p->channel[i].effectCount * (4 * 8)), PATTERNBLOCK_Y - 16 + y + smooth_y);
 			}
 
 			// Highlight Colour used to draw the Pattern Rows, from lowest to highest in priority
@@ -4067,10 +4067,10 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			// Command(s)
-			for (int k = 0; k < p->channel[i].effectCommandCount; k++)
+			for (int k = 0; k < p->channel[i].effectCount; k++)
 			{
-				BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
-				BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
+				BYTE command = p->channel[i].pattern[pattern].row[row].effect[k].command;
+				BYTE parameter = p->channel[i].pattern[pattern].row[row].effect[k].parameter;
 
 				switch (command)
 				{
@@ -4088,7 +4088,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 		}
 
 		// Update the X offset with the Channel's width, including the Active Effect Commands
-		x += (10 * 8) + (p->channel[i].effectCommandCount * (4 * 8));
+		x += (10 * 8) + (p->channel[i].effectCount * (4 * 8));
 	}
 
 	// Actual dimensions used by the Pattern Editor block, including the Channels Header
@@ -4152,7 +4152,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			}
 
 			case 2:
-				s.Format("      FX%i", p->channel[i].effectCommandCount);
+				s.Format("      FX%i", p->channel[i].effectCount);
 				TextXYSelN("<>", -1, PATTERNBLOCK_X + x + 10 * 8, PATTERNBLOCK_Y + y);
 				break;
 			}
@@ -4160,7 +4160,7 @@ void CSong::DrawPatternEditor(TSubtune* p)
 			TextXY(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, GetChannelOnOff(i) == 0);
 		}
 
-		x += (10 * 8) + (p->channel[i].effectCommandCount * (4 * 8));
+		x += (10 * 8) + (p->channel[i].effectCount * (4 * 8));
 		g_mem_dc->MoveTo(patternblock.left + x, patternblock.top);
 		g_mem_dc->LineTo(patternblock.left + x, patternblock.bottom);
 	}
@@ -4398,7 +4398,7 @@ void CSong::PlayPattern(TSubtune* p)
 			PlayVolume(p, i, songline, row);
 
 			// Command(s)
-			for (int k = 0; k < p->channel[i].effectCommandCount; k++)
+			for (int k = 0; k < p->channel[i].effectCount; k++)
 				PlayEffect(p, i, songline, row, k);
 		}
 
@@ -4444,15 +4444,15 @@ void CSong::PlayContinue(TSubtune* p)
 			frame = m_songVariables[i].instrumentTableOffset;
 			speed = m_songVariables[i].instrumentTableSpeed;
 
-			m_songVariables[i].instrumentNote = instrument->noteTable[frame];
-			m_songVariables[i].instrumentFreq = instrument->freqTable[frame];
+			m_songVariables[i].instrumentNote = instrument->tableMacro.table[frame].note;
+			m_songVariables[i].instrumentFreq = instrument->tableMacro.table[frame].freq;
 
-			if (++speed >= instrument->tableSpeed)
+			if (++speed >= instrument->tableMacro.speed)
 			{
 				speed = 0x00;
 
-				if (++frame >= instrument->tableLength)
-					frame = instrument->tableLoop;
+				if (++frame >= instrument->tableMacro.length)
+					frame = instrument->tableMacro.loop;
 			}
 
 			m_songVariables[i].instrumentTableSpeed = speed;
@@ -4462,19 +4462,39 @@ void CSong::PlayContinue(TSubtune* p)
 			frame = m_songVariables[i].instrumentEnvelopeOffset;
 			speed = m_songVariables[i].instrumentEnvelopeSpeed;
 
-			command = instrument->commandEnvelope[frame];
-			parameter = instrument->parameterEnvelope[frame] & 0xFF;
+			command = instrument->envelopeMacro.envelope[frame].effect.command;
+			parameter = instrument->envelopeMacro.envelope[frame].effect.parameter & 0xFF;
 
-			m_songVariables[i].channelDistortion = instrument->distortionEnvelope[frame];
-			m_songVariables[i].channelAUDCTL = instrument->audctlEnvelope[frame];
-			m_songVariables[i].instrumentVolume = instrument->volumeEnvelope[frame];
+			m_songVariables[i].channelDistortion = instrument->envelopeMacro.envelope[frame].timbre;
+			m_songVariables[i].channelAUDCTL = instrument->envelopeMacro.envelope[frame].audctl;
+			m_songVariables[i].instrumentVolume = instrument->envelopeMacro.envelope[frame].volume;
 
-			if (++speed >= instrument->envelopeSpeed)
+			// AutoFilter Trigger in Channel 1 or 2, ignored if found in Channel 3 or 4
+			if (instrument->envelopeMacro.envelope[frame].trigger.autoFilter)
+			{
+				if (i % 4 == CH1)
+					m_songVariables[i].channelAUDCTL |= 0x04;
+
+				if (i % 4 == CH2)
+					m_songVariables[i].channelAUDCTL |= 0x02;
+			}
+
+			// Auto16Bit Trigger in Channel 2 or 4
+			if (instrument->envelopeMacro.envelope[frame].trigger.auto16Bit)
+			{
+				if (i % 4 == CH2)
+					m_songVariables[i].channelAUDCTL |= 0x50;
+
+				if (i % 4 == CH4)
+					m_songVariables[i].channelAUDCTL |= 0x28;
+			}
+
+			if (++speed >= instrument->envelopeMacro.speed)
 			{
 				speed = 0x00;
 
-				if (++frame >= instrument->envelopeLength)
-					frame = instrument->envelopeLoop;
+				if (++frame >= instrument->envelopeMacro.length)
+					frame = instrument->envelopeMacro.loop;
 			}
 
 			m_songVariables[i].instrumentEnvelopeSpeed = speed;
@@ -4496,6 +4516,10 @@ void CSong::PlayContinue(TSubtune* p)
 
 			case 0x02:
 				m_songVariables[i].instrumentFreq += parameter;
+				break;
+
+			case 0x06:
+				// TODO: Set the AutoFilter offset and/or other any Effect using CMD6 here
 				break;
 			}
 
@@ -4548,7 +4572,7 @@ void CSong::PlayContinue(TSubtune* p)
 		freq = (m_songVariables[i].isInstrumentAbsoluteFreq) ? m_songVariables[i].instrumentFreq : m_songVariables[i].channelFreq + m_songVariables[i].instrumentFreq;
 
 		// Update the AUDF using the full 16-bit Freq values, updating 2 Channels at once, if the AUDCTL is in 16-bit mode
-		if ((audctl & 0x10 && audctl & 0x40 && i % 4 == 1) || (audctl & 0x08 && audctl & 0x20 && i % 4 == 3))
+		if ((audctl & 0x10 && audctl & 0x40 && i % 4 == CH2) || (audctl & 0x08 && audctl & 0x20 && i % 4 == CH4))
 		{
 			//g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq >> 8;
 			//g_atarimem[RMTPLAYR_TRACKN_AUDF + i - 1] = m_songVariables[i].channelFreq & 0xFF;
@@ -4700,8 +4724,8 @@ void CSong::PlayEffect(TSubtune* p, BYTE channel, BYTE songline, BYTE row, BYTE 
 		return;
 
 	BYTE pattern = p->channel[channel].songline[songline];
-	BYTE command = p->channel[channel].pattern[pattern].row[row].command[column].identifier;
-	BYTE parameter = p->channel[channel].pattern[pattern].row[row].command[column].parameter;
+	BYTE command = p->channel[channel].pattern[pattern].row[row].effect[column].command;
+	BYTE parameter = p->channel[channel].pattern[pattern].row[row].effect[column].parameter;
 	//bool active = m_songVariables[channel].isNoteActive;
 
 	switch (command)
@@ -4874,7 +4898,7 @@ bool CSong::SetCommandInPattern(BYTE command)
 	{
 	case PATTERN_EFFECT_EMPTY:
 		// The Command value will be overwritten regardless of the Active Column offset
-		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].identifier = command;
+		p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
 		return true;
 
 	default:
@@ -4882,27 +4906,27 @@ bool CSong::SetCommandInPattern(BYTE command)
 		{
 			// Effect Command Identifier -> Command 0x?FF, where '?' is the value being edited
 			if (m_activeColumn == 0)
-				p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].identifier = command;
+				p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
 
 			// Allow editing the Effect Command Parameter only when the Command Identifier is not Empty
-			else if (p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].identifier != PATTERN_EFFECT_EMPTY)
+			else if (p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command != PATTERN_EFFECT_EMPTY)
 			{
 				// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
 				if (m_activeColumn == 1)
 				{
 					nybble = (command & 0x0F) << 4;
-					command = nybble | ((p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].parameter) & 0x0F);
+					command = nybble | ((p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter) & 0x0F);
 				}
 
 				// Effect Command Parameter, Low Nybble -> Command 0xFF?, where '?' is the value being edited
 				else if (m_activeColumn == 2)
 				{
-					nybble = p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].parameter & 0xF0;
+					nybble = p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter & 0xF0;
 					command = nybble | (command & 0x0F);
 				}
 
 				// The Command Parameter will be overwritten with the combined value from each Nybble
-				p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].command[activeCursor].parameter = command;
+				p->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter = command;
 			}
 			return true;
 		}

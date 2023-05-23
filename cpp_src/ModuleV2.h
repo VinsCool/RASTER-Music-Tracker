@@ -3,8 +3,6 @@
 //
 // TODO: Move the Legacy Import code to IO_Song.cpp or similar, in order to get most of the CModule functions cleared from unrelated stuff
 // TODO: Move most of the Editor Functions to CSong or similar for the same reason
-// TODO: Apply to Instrument the same cleanup and organisation done to the majority of Module and Subtune
-// TODO: Create new Structures for the Instrument Envelope and Instrument Table data, in order to make things easier to manage later
 
 #pragma once
 
@@ -14,11 +12,14 @@
 // ----------------------------------------------------------------------------
 // Data boundaries constant
 //
+
 #define INVALID							-1									// Failsafe value for invalid data
+
 
 // ----------------------------------------------------------------------------
 // Module Header definition
 //
+
 #define MODULE_VERSION					0									// Module Version number, the highest value is always assumed to be the most recent
 #define MODULE_IDENTIFIER				"RMTE"								// Raster Music Tracker Extended, "DUMB" is another potential identifier
 #define MODULE_REGION					g_ntsc								// 0 for PAL, 1 for NTSC, anything else is also assumed to be NTSC
@@ -43,9 +44,11 @@
 #define MODULE_AUTHOR_NAME_MAX			64									// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64									// Maximum length of Copyright info
 
+
 // ----------------------------------------------------------------------------
 // Song and Track Pattern definition
 //
+
 #define SUBTUNE_NAME_MAX				64									// 0-63 inclusive, Maximum length of Subtune name
 #define SUBTUNE_MAX						64									// 0-63 inclusive, Maximum number of Subtunes in a Module file
 #define SONGLINE_MAX					256									// 0-255 inclusive, Songline index used in Song
@@ -84,49 +87,54 @@
 #define PATTERN_EFFECT_EMPTY			PATTERN_EFFECT_COUNT				// There is no Effect Command in the Pattern Row
 #define PATTERN_EFFECT_MAX				PATTERN_EFFECT_COUNT + 1			// Total for Effect Command index integrity
 
+
 // ----------------------------------------------------------------------------
 // Instrument definition
 //
+
 #define INSTRUMENT_NAME_MAX				64									// Maximum length of instrument name
 #define INSTRUMENT_PARAMETER_MAX		24									// Instrument parameter 0-23, inclusive
 #define INSTRUMENT_TABLE_INDEX_MAX		32									// Instrument note/freq table 0-31, inclusive
 #define ENVELOPE_INDEX_MAX				48									// Instrument envelope 0-47, inclusive
 #define ENVELOPE_PARAMETER_MAX			8									// Instrument envelope parameter 0-7, inclusive
 
+
 // ----------------------------------------------------------------------------
 // Effect Command definition
 //
+
 #define EFFECT_PARAMETER_MAX			0xFF								// 0-255 inclusive, Effect $XY Parameter used in Pattern
 #define EFFECT_PARAMETER_MIN			0x00								// The $XY Parameter of 0 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_DEFAULT		0x80								// The $XY Parameter of 128 may be used to disable certain Effect Commands
-//
+
 #define EFFECT_COMMAND_BXX				0x0B								// Effect Command Bxx -> Goto Songline $xx
 #define EFFECT_COMMAND_DXX				0x0D								// Effect Command Dxx -> End Pattern, no parameter needed(?)
 #define EFFECT_COMMAND_FXX				0x0F								// Effect Command Fxx -> Set Song Speed $xx
-//
+
 #define CMD1							0									// Effect Command identifier for Effect Column 1
 #define CMD2							1									// Effect Command identifier for Effect Column 2
 #define CMD3							2									// Effect Command identifier for Effect Column 3
 #define CMD4							3									// Effect Command identifier for Effect Column 4
 
+
 // ----------------------------------------------------------------------------
-// RMTE Module Structs
+// RMTE Module Structs for Subtune, Pattern, Row, etc
 //
 
 // Effect Command Data, 1 byte for the Identifier, and 1 byte for the Parameter, nothing too complicated
 struct TEffect
 {
-	BYTE identifier;
+	BYTE command;
 	BYTE parameter;
 };
 
 // Row Data, used within the Pattern data, designed to be easy to manage, following a Row by Row approach
 struct TRow
 {
-	BYTE note;										// Note index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
-	BYTE instrument;								// Instrument index
-	BYTE volume;									// Volume index
-	TEffect command[PATTERN_ACTIVE_EFFECT_MAX];		// Effect Command, toggled from the Active Effect Columns in Track Channels
+	BYTE note;										// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
+	BYTE instrument;								// Instrument Index
+	BYTE volume;									// Volume Index
+	TEffect effect[PATTERN_ACTIVE_EFFECT_MAX];		// Effect Command, toggled from the Active Effect Columns in Track Channels
 };
 
 // Pattern Data, indexed by the TRow Struct
@@ -136,9 +144,9 @@ struct TPattern
 };
 
 // Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
-struct TIndex
+struct TChannel
 {
-	BYTE effectCommandCount;						// Number of Effect Commands enabled per Track Channel
+	BYTE effectCount;								// Number of Effect Commands enabled per Track Channel
 	BYTE songline[SONGLINE_MAX];					// Pattern Index for each songline within the Track Channel
 	TPattern pattern[TRACK_PATTERN_MAX];			// Pattern Data for the Track Channel
 };
@@ -146,40 +154,90 @@ struct TIndex
 // Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
 struct TSubtune
 {
-	char name[SUBTUNE_NAME_MAX + 1];				// Subtune name
+	char name[SUBTUNE_NAME_MAX + 1];				// Subtune Name
 	BYTE songLength;								// Song Length, in Songlines
 	BYTE patternLength;								// Pattern Length, in Rows
 	BYTE channelCount;								// Number of Channels used in Subtune
 	BYTE songSpeed;									// Song Speed, in Frames per Row
 	BYTE instrumentSpeed;							// Instrument Speed, in Frames per VBI
-	TIndex channel[TRACK_CHANNEL_MAX];				// Channel Index assigned to the Subtune
+	TChannel channel[TRACK_CHANNEL_MAX];			// Channel Index assigned to the Subtune
 };
 
-// Instrument Data, due to the Legacy TInstrument struct, this is temporarily defined as TInstrumentV2
+
+// ----------------------------------------------------------------------------
+// RMTE Module Structs for Instrument, Envelope, Table, etc
+//
+
+// Instrument AUDCTL/SKCTL Automatic Trigger bits, useful considering each POKEY channel featuring unique properties
+struct TAutoMode
+{
+	bool autoFilter;								// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
+	bool auto16Bit;									// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
+	bool autoReverse16;								// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
+	bool auto179Mhz;								// 1.79Mhz mode, triggered from Channel 1 and/or 3
+	bool auto15Khz;									// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
+	bool autoPoly9;									// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
+	bool autoTwoTone;								// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
+	bool autoToggle;								// Automatic Toggle, for each ones of the possible combination, effectively overriding the AUDCTL Envelope(?)
+};
+
+// Instrument Envelope, used for most of the Instrument functionalities such as Volume, Timbre, AUDCTL, etc
+struct TEnvelope
+{
+	BYTE volume;									// Envelope Volume
+	BYTE timbre;									// Envelope Timbre (Distortion)
+	BYTE audctl;									// Envelope AUDCTL (Absolute)
+	TAutoMode trigger;								// Envelope AUDCTL/SKCTL (Automatic)
+	TEffect effect;									// Extended RMT Instrument Effect Commands (for Legacy RMT Instrument compatibility)
+};
+
+// Instrument Table, used for most of the Instrument functionalities relative to Note and Freq offsets
+struct TTable
+{
+	BYTE note;										// Table Note
+	BYTE freq;										// Table Freq
+};
+
+// Instrument Envelope Macro
+struct TEnvelopeMacro
+{
+	BYTE mode;										// Envelope Mode(?)
+	BYTE length;									// Envelope Length, in frames
+	BYTE loop;										// Envelope Loop point, in frames
+	BYTE release;									// Envelope Release point, in frames
+	BYTE speed;										// Envelope Speed, in frames
+	TEnvelope envelope[ENVELOPE_INDEX_MAX];			// Envelope Data
+};
+
+// Instrument Table Macro
+struct TTableMacro
+{
+	BYTE mode;										// Table Mode, Absolute or Relative, Additive or Set, any combination thereof
+	BYTE length;									// Table Length, in frames
+	BYTE loop;										// Table Loop point, in frames
+	BYTE release;									// Table Release point, in frames
+	BYTE speed;										// Table Speed, in frames
+	TTable table[INSTRUMENT_TABLE_INDEX_MAX];		// Table Data
+};
+
+// Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
 struct TInstrumentV2
 {
-	char name[INSTRUMENT_NAME_MAX + 1];				// Instrument name
-	BYTE envelopeLength;							// Envelope Length, in frames
-	BYTE envelopeLoop;								// Envelope Loop point, in frames
-	BYTE envelopeRelease;							// Envelope Release point, in frames
-	BYTE envelopeSpeed;								// Envelope Speed, in frames
-	BYTE tableLength;								// Table Length, in frames
-	BYTE tableLoop;									// Table Loop point, in frames
-	BYTE tableRelease;								// Table Release point, in frames
-	BYTE tableMode;									// Table Mode, Absolute or Relative, Additive or Set, any combination thereof
-	BYTE tableSpeed;								// Table Speed, in frames
-	BYTE volumeEnvelope[ENVELOPE_INDEX_MAX];		// Volume Envelope
-	BYTE distortionEnvelope[ENVELOPE_INDEX_MAX];	// Distortion Envelope
-	BYTE audctlEnvelope[ENVELOPE_INDEX_MAX];		// AUDCTL Envelope
-	BYTE commandEnvelope[ENVELOPE_INDEX_MAX];		// Extended RMT Instrument Commands
-	WORD parameterEnvelope[ENVELOPE_INDEX_MAX];		// Extended RMT Instrument Parameters
-	BYTE noteTable[INSTRUMENT_TABLE_INDEX_MAX];		// Note Table
-	BYTE freqTable[INSTRUMENT_TABLE_INDEX_MAX];		// Freq Table
+	char name[INSTRUMENT_NAME_MAX + 1];				// Instrument Name
+	BYTE volumeFade;								// Volume Fade, take priority over Pattern Effect Axx
+	BYTE volumeSustain;								// Volume Sustain, Take priority over Pattern Effect Axx
+	BYTE vibrato;									// Vibrato trigger, take priority over Pattern Effect 4xx
+	BYTE freqShift;									// Freq Shift trigger, take priority over Pattern Effect 1xx and 2xx
+	BYTE delay;										// Vibrato and Freq Shift delay, set to 0x01 for no delay, 0x00 to disable
+	TEnvelopeMacro envelopeMacro;					// Instrument Envelope Macro
+	TTableMacro tableMacro;							// Instrument Table Macro
 };
+
 
 // ----------------------------------------------------------------------------
 // RMTE Module Class
 //
+
 class CModule
 {
 public:
@@ -193,7 +251,7 @@ public:
 
 	void CreateSubtune(int subtune);
 	void DeleteSubtune(int subtune);
-	void InitialiseSubtune(TSubtune* p);
+	void InitialiseSubtune(TSubtune* pSubtune);
 
 	void CreateInstrument(int instrument);
 	void DeleteInstrument(int instrument);
@@ -202,10 +260,10 @@ public:
 	//-- Legacy RMT Module Import Functions --//
 
 	bool ImportLegacyRMT(std::ifstream& in);
-	bool DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log);
-	bool ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress);
-	bool ImportLegacySonglines(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, WORD endAddress);
-	bool ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, BYTE version, BYTE* isLoaded);
+	bool DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& log);
+	bool ImportLegacyPatterns(TSubtune* pSubtune, BYTE* sourceMemory, WORD sourceAddress);
+	bool ImportLegacySonglines(TSubtune* pSubtune, BYTE* sourceMemory, WORD sourceAddress, WORD endAddress);
+	bool ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WORD sourceAddress, BYTE version, BYTE* isLoaded);
 
 	//-- Booleans for Module Index and Data integrity --//
 
@@ -223,7 +281,7 @@ public:
 	//-- Pointers to Module Data --//
 
 	TSubtune* GetSubtune(BYTE subtune) { return IsValidSubtune(subtune) ? m_subtuneIndex[subtune] : NULL; };
-	TIndex* GetChannelIndex(BYTE subtune, BYTE channel);
+	TChannel* GetChannel(BYTE subtune, BYTE channel);
 	TPattern* GetPattern(BYTE subtune, BYTE channel, BYTE pattern);
 	TPattern* GetIndexedPattern(BYTE subtune, BYTE channel, BYTE songline);
 	TRow* GetRow(BYTE subtune, BYTE channel, BYTE pattern, BYTE row);
@@ -273,33 +331,37 @@ public:
 
 	const BYTE GetSubtuneCount();
 	BYTE GetShortestPatternLength(int subtune, int songline);
-	BYTE GetShortestPatternLength(TSubtune* subtune, int songline);
+	BYTE GetShortestPatternLength(TSubtune* pSubtune, int songline);
 	bool DuplicatePatternInSongline(int subtune, int channel, int songline, int pattern);
 	bool IsUnusedPattern(int subtune, int channel, int pattern);
-	bool IsUnusedPattern(TIndex* index, int pattern);
+	bool IsUnusedPattern(TChannel* pChannel, int pattern);
 	bool IsEmptyPattern(int subtune, int channel, int pattern);
-	bool IsEmptyPattern(TPattern* pattern);
-	bool IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationPattern);
-	bool CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern);
+	bool IsEmptyPattern(TPattern* pPattern);
+	bool IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern);
+	bool CopyPattern(TPattern* pFromPattern, TPattern* pToPattern);
 	bool ClearPattern(int subtune, int channel, int pattern);
-	bool ClearPattern(TPattern* destinationPattern);
-	bool CopyIndex(TIndex* sourceIndex, TIndex* destinationIndex);
-	bool CopySubtune(TSubtune* sourceSubtune, TSubtune* destinationSubtune);
+	bool ClearPattern(TPattern* pPattern);
+	bool CopyChannel(TChannel* pFromChannel, TChannel* pToChannel);
+	bool CopySubtune(TSubtune* pFromSubtune, TSubtune* pToSubtune);
 	bool DuplicateChannelIndex(int subtune, int sourceIndex, int destinationIndex);
 	void MergeDuplicatedPatterns(int subtune);
-	void MergeDuplicatedPatterns(TSubtune* subtune);
+	void MergeDuplicatedPatterns(TSubtune* pSubtune);
 	void RenumberIndexedPatterns(int subtune);
-	void RenumberIndexedPatterns(TSubtune* subtune);
+	void RenumberIndexedPatterns(TSubtune* pSubtune);
 	void ClearUnusedPatterns(int subtune);
-	void ClearUnusedPatterns(TSubtune* subtune);
+	void ClearUnusedPatterns(TSubtune* pSubtune);
 	void ConcatenateIndexedPatterns(int subtune);
-	void ConcatenateIndexedPatterns(TSubtune* subtune);
+	void ConcatenateIndexedPatterns(TSubtune* pSubtune);
 	void AllSizeOptimisations(int subtune);
-	void AllSizeOptimisations(TSubtune* subtune);
+	void AllSizeOptimisations(TSubtune* pSubtune);
 
 	//-- Getters and Setters for Instrument Data --//
 
 	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? m_instrumentIndex[instrument] : NULL; };
+
+	const char* GetInstrumentName(int instrument);
+
+	void SetInstrumentName(int instrument, const char* name);
 
 /*
 	const char* GetInstrumentName(int instrument) { return IsValidInstrument(instrument) ? m_instrumentIndex[instrument]->name : "INVALID INSTRUMENT"; };
@@ -321,7 +383,7 @@ public:
 	const BYTE* GetInstrumentFreqTable(int instrument) { return IsValidInstrument(instrument) ? m_instrumentIndex[instrument]->freqTable : NULL; };
 */
 
-	void SetInstrumentName(int instrument, const char* name) { if (IsValidInstrument(instrument)) strncpy_s(m_instrumentIndex[instrument]->name, name, INSTRUMENT_NAME_MAX); };
+	//void SetInstrumentName(int instrument, const char* name) { if (IsValidInstrument(instrument)) strncpy_s(m_instrumentIndex[instrument]->name, name, INSTRUMENT_NAME_MAX); };
 
 
 private:
