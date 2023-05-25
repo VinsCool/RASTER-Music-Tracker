@@ -3855,7 +3855,7 @@ void CSong::DrawSubtuneInfos()
 	// Actual dimensions used by the Info block
 	infoblock.left = INFOBLOCK_X - 4;
 	infoblock.top = INFOBLOCK_Y;
-	infoblock.right = INFOBLOCK_X + x + (MODULE_TITLE_NAME_MAX + 1) * 8 - 4;
+	infoblock.right = INFOBLOCK_X + x + (MODULE_SONG_NAME_MAX + 1) * 8 - 4;
 	infoblock.bottom = INFOBLOCK_Y + 11 * 16;
 
 	// Set the coordinates to the correct position on screen to draw lines around certain parts

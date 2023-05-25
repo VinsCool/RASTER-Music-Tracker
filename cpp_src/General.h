@@ -185,6 +185,8 @@
 
 #define IOTYPE_WAV			20
 
+#define IOTYPE_RMTE			100
+
 #define IOTYPE_TMC			101		//import TMC
 
 #define IOINSTR_RTI			1		//corresponding IOTYPE_RMT
@@ -302,6 +304,13 @@
 // ----------------------------------------------------------------------------
 // File open/save dialog format selections
 // .rmt / .txt / .rmw
+#define FILE_LOADSAVE_FILTERS "RMTE Module file (*.rmte)|*.rmte||"
+#define FILE_LOADSAVE_FILTER_IDX_RMTE	1
+#define FILE_LOADSAVE_FILTER_IDX_MIN FILE_LOADSAVE_FILTER_IDX_RMTE
+#define FILE_LOADSAVE_FILTER_IDX_MAX FILE_LOADSAVE_FILTER_IDX_RMTE
+#define FILE_LOADSAVE_EXTENSIONS_ARRAY { ".rmte" }
+
+/*
 #define FILE_LOADSAVE_FILTERS "RMT song file (*.rmt)|*.rmt|TXT song file (*.txt)|*.txt|RMW song work file (*.rmw)|*.rmw||"
 #define FILE_LOADSAVE_FILTER_IDX_RMT 1
 #define FILE_LOADSAVE_FILTER_IDX_TXT 2
@@ -309,6 +318,7 @@
 #define FILE_LOADSAVE_FILTER_IDX_MIN FILE_LOADSAVE_FILTER_IDX_RMT
 #define FILE_LOADSAVE_FILTER_IDX_MAX FILE_LOADSAVE_FILTER_IDX_RMW
 #define FILE_LOADSAVE_EXTENSIONS_ARRAY { ".rmt",".txt",".rmw" }
+*/
 
 // ----------------------------------------------------------------------------
 // File import dialog format selections

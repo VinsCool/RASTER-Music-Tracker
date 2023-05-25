@@ -485,7 +485,7 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& lo
 	s.Format("");
 
 	// Copy the Song Name
-	for (ch = 0; ch < MODULE_TITLE_NAME_MAX && ptrName[ch]; ch++)
+	for (ch = 0; ch < MODULE_SONG_NAME_MAX && ptrName[ch]; ch++)
 		s.AppendFormat("%c", ptrName[ch]);
 
 	SetSongName(s);

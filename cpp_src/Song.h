@@ -311,6 +311,8 @@ public:
 	bool SaveTxt(std::ofstream& ou);
 	bool SaveRMW(std::ofstream& ou);
 
+	bool SaveRMTE(std::ofstream& ou);
+
 	bool LoadRMT(std::ifstream& in);
 	bool LoadTxt(std::ifstream& in);
 	bool LoadRMW(std::ifstream& in);

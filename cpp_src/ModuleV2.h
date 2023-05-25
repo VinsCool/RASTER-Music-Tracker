@@ -24,15 +24,17 @@
 #define MODULE_IDENTIFIER				"RMTE"								// Raster Music Tracker Extended, "DUMB" is another potential identifier
 #define MODULE_REGION					g_ntsc								// 0 for PAL, 1 for NTSC, anything else is also assumed to be NTSC
 #define MODULE_STEREO					g_tracks4_8							// 4 for Mono, 8 for Stereo
-#define MODULE_A4_TUNING				g_basetuning						// Default A-4 Tuning
-#define MODULE_BASE_NOTE				g_basenote							// Default Base Note (A-)
-#define MODULE_TEMPERAMENT				g_temperament						// Default Tuning Temperament
+#define MODULE_A4_TUNING				g_baseTuning						// Default A-4 Tuning
+#define MODULE_BASE_NOTE				g_baseNote							// Default Base Note (A-)
+#define MODULE_BASE_OCTAVE				g_baseOctave						// Default Base Octave (0)
+#define MODULE_TEMPERAMENT				g_baseTemperament					// Default Tuning Temperament
 #define MODULE_PRIMARY_HIGHLIGHT		g_trackLinePrimaryHighlight			// Pattern Primary Highlight
 #define MODULE_SECONDARY_HIGHLIGHT		g_trackLineSecondaryHighlight		// Pattern Secondary Highlight
 #define MODULE_LINE_NUMBERING_MODE		g_tracklinealtnumbering				// Row numbering mode
 #define MODULE_LINE_STEP				g_linesafter						// Line Step between cursor movements
 #define MODULE_DISPLAY_FLAT_NOTES		g_displayflatnotes					// Display accidentals as Flat instead of Sharp
 #define MODULE_DISPLAY_GERMAN_NOTATION	g_usegermannotation					// Display notes using the German Notation
+#define MODULE_SCALING_PERCENTAGE		g_scaling_percentage				// Display scaling percentage
 #define MODULE_DEFAULT_SUBTUNE			0									// Default Active Subtune
 #define MODULE_DEFAULT_INSTRUMENT		0									// Default Active Instrument
 #define MODULE_SUBTUNE_COUNT			1									// Default Subtune Count
@@ -40,7 +42,7 @@
 #define MODULE_SONG_LENGTH				1									// Default Song Length
 #define MODULE_SONG_SPEED				6									// Default Song Speed
 #define MODULE_VBI_SPEED				1									// Default VBI Speed
-#define MODULE_TITLE_NAME_MAX			64									// Maximum length of Song Title
+#define MODULE_SONG_NAME_MAX			64									// Maximum length of Song Title
 #define MODULE_AUTHOR_NAME_MAX			64									// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64									// Maximum length of Copyright info
 
@@ -315,7 +317,7 @@ public:
 	const BYTE GetInstrumentSpeed(BYTE subtune);
 	const BYTE GetEffectCommandCount(BYTE subtune, BYTE channel);
 
-	void SetSongName(const char* name) { strncpy_s(m_songName, name, MODULE_TITLE_NAME_MAX); };
+	void SetSongName(const char* name) { strncpy_s(m_songName, name, MODULE_SONG_NAME_MAX); };
 	void SetSongAuthor(const char* author) { strncpy_s(m_songAuthor, author, MODULE_AUTHOR_NAME_MAX); };
 	void SetSongCopyright(const char* copyright) { strncpy_s(m_songCopyright, copyright, MODULE_COPYRIGHT_INFO_MAX); };
 
@@ -387,7 +389,7 @@ public:
 
 
 private:
-	char m_songName[MODULE_TITLE_NAME_MAX + 1];
+	char m_songName[MODULE_SONG_NAME_MAX + 1];
 	char m_songAuthor[MODULE_AUTHOR_NAME_MAX + 1];
 	char m_songCopyright[MODULE_COPYRIGHT_INFO_MAX + 1];
 	TSubtune* m_subtune[SUBTUNE_MAX];

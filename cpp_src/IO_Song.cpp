@@ -158,6 +158,102 @@ void CSong::FileReload()
 /// <param name="warnOfUnsavedChanges">TRUE if the GUI should warn on unsaved changes</param>
 void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 {
+	//if (warnOfUnsavedChanges && WarnUnsavedChanges())
+	//	return;
+
+	// Open the file open dialog
+	CFileDialog dlg(
+		TRUE,					// Open file
+		NULL,					// Default Extention
+		NULL,					// Filename
+		OFN_HIDEREADONLY,		// Flags, such as "hide read-only files"
+		FILE_LOADSAVE_FILTERS,	// File Format filters
+		NULL,					// Parent Window
+		NULL,					// DWORD Size
+		FALSE					// Vista Style (WTF this thing sucks so bad, the old style is much better!)
+	);
+
+	dlg.m_ofn.lpstrTitle = "Load Module file";
+
+	if (!g_lastLoadPath_Songs.IsEmpty())
+		dlg.m_ofn.lpstrInitialDir = g_lastLoadPath_Songs;
+
+	else if (!g_defaultSongsPath.IsEmpty())
+		dlg.m_ofn.lpstrInitialDir = g_defaultSongsPath;
+
+	if (m_fileType == IOTYPE_RMTE)
+		dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMTE;
+
+	CString fileToLoad = "";
+	int formatChoiceIndexFromDialog = 0;
+
+	if (filename)
+	{
+		fileToLoad = filename;
+		CString ext = fileToLoad.Right(5).MakeLower();
+		if (ext == ".rmte")
+			formatChoiceIndexFromDialog = FILE_LOADSAVE_FILTER_IDX_RMTE;
+	}
+	else
+	{
+		// If not ok, it's over
+		if (dlg.DoModal() != IDOK)
+			return;
+
+		fileToLoad = dlg.GetPathName();
+		formatChoiceIndexFromDialog = dlg.m_ofn.nFilterIndex;
+	}
+
+	// Only when a file was selected in the FileDialog or specified at startup
+	if (!fileToLoad.IsEmpty() && formatChoiceIndexFromDialog)
+	{
+		// Use filename from the FileDialog or from the command line
+		g_lastLoadPath_Songs = GetFilePath(fileToLoad);
+
+		// Make sure .rmt, .txt or .rmw file was selected
+		if (formatChoiceIndexFromDialog < FILE_LOADSAVE_FILTER_IDX_MIN || formatChoiceIndexFromDialog > FILE_LOADSAVE_FILTER_IDX_MAX)
+			return;
+
+		// Open the input file in binary format (even the text file)
+		std::ifstream in(fileToLoad, std::ios::binary);
+
+		if (!in)
+		{
+			MessageBox(g_hwnd, "Can't open this file: " + fileToLoad, "Open error", MB_ICONERROR);
+			return;
+		}
+
+		// Deletes the current song
+		ClearSong(g_tracks4_8);
+
+		bool loadedOk = false;
+
+		switch (formatChoiceIndexFromDialog)
+		{
+		case FILE_LOADSAVE_FILTER_IDX_RMTE:
+			// TODO: something here
+			loadedOk = true;
+			m_fileType = IOTYPE_RMTE;
+			break;
+		}
+
+		in.close();
+
+		if (!loadedOk)
+		{
+			// Something in the Load... function failed
+			ClearSong(g_tracks4_8);		// Erases everything
+			SetRMTTitle();
+			return;
+		}
+
+		m_fileName = fileToLoad;
+
+		SetRMTTitle();					// Window name
+		SetChannelOnOff(-1, 1);			// All channels ON (unmute all) -1 = all, 1 = on
+	}
+
+/*
 	// Stop the music first
 	//Stop();
 
@@ -260,10 +356,47 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 		SetRMTTitle();					// Window name
 		SetChannelOnOff(-1, 1);			// All channels ON (unmute all) -1 = all, 1 = on
 	}
+*/
+
 }
 
 void CSong::FileSave()
 {
+	// If the song has no filename, prompt the "save as" dialog first
+	if (m_fileName.IsEmpty() || m_fileType == IOTYPE_NONE)
+	{
+		FileSaveAs();
+		return;
+	}
+
+	// Create the file to save
+	std::ofstream out(m_fileName, std::ios::binary);
+
+	if (!out)
+	{
+		MessageBox(g_hwnd, "Can't create this file", "Write error", MB_ICONERROR);
+		return;
+	}
+
+	bool saveResult = false;
+
+	switch (m_fileType)
+	{
+	case IOTYPE_RMTE:
+		saveResult = SaveRMTE(out);
+		break;
+	}
+
+	// Closing only when "out" is open (because with IOTYPE_RMT it can be closed earlier)
+	if (out.is_open())
+		out.close();
+
+	// Changes have been saved
+	g_changes = 0;
+
+	SetRMTTitle();
+
+/*
 	// Stop the music first
 	//Stop();
 
@@ -323,10 +456,85 @@ void CSong::FileSave()
 		g_changes = 0;	//changes have been saved
 
 	SetRMTTitle();
+*/
+
 }
 
 void CSong::FileSaveAs()
 {
+	// Open the file open dialog
+	CFileDialog dlg(
+		FALSE,									// Save file
+		NULL,									// Default Extention
+		NULL,									// Filename
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT,	// Flags, such as "hide read-only files"
+		FILE_LOADSAVE_FILTERS,					// File Format filters
+		NULL,									// Parent Window
+		NULL,									// DWORD Size
+		FALSE									// Vista Style (WTF this thing sucks so bad, the old style is much better!)
+	);
+
+	dlg.m_ofn.lpstrTitle = "Save Module as...";
+
+	if (!g_lastLoadPath_Songs.IsEmpty())
+		dlg.m_ofn.lpstrInitialDir = g_lastLoadPath_Songs;
+
+	else if (!g_defaultSongsPath.IsEmpty())
+		dlg.m_ofn.lpstrInitialDir = g_defaultSongsPath;
+
+	// Specifies the name of the file according to the last saved one
+	char filenamebuff[1024];
+
+	if (!m_fileName.IsEmpty())
+	{
+		int pos = m_fileName.ReverseFind('\\');
+		if (pos < 0) pos = m_fileName.ReverseFind('/');
+		if (pos >= 0)
+		{
+			CString s = m_fileName.Mid(pos + 1);
+			memset(filenamebuff, 0, 1024);
+			strcpy(filenamebuff, (char*)(LPCTSTR)s);
+			dlg.m_ofn.lpstrFile = filenamebuff;
+			dlg.m_ofn.nMaxFile = 1020;	// 4 bytes less, just to make sure ;-)
+		}
+	}
+
+	// Set the type according to the last save
+	if (m_fileType == IOTYPE_RMTE)
+		dlg.m_ofn.nFilterIndex = FILE_LOADSAVE_FILTER_IDX_RMTE;
+
+	//if not ok, nothing will be saved
+	if (dlg.DoModal() == IDOK)
+	{
+		// Validate that the file type selection is valid
+		int formatChoiceIndexFromDialog = dlg.m_ofn.nFilterIndex;
+
+		if (formatChoiceIndexFromDialog < FILE_LOADSAVE_FILTER_IDX_MIN || formatChoiceIndexFromDialog > FILE_LOADSAVE_FILTER_IDX_MAX)
+			return;
+
+		m_fileName = dlg.GetPathName();
+		CString ext = m_fileName.Right(5).MakeLower();
+		if (ext != ".rmte" && formatChoiceIndexFromDialog == FILE_LOADSAVE_FILTER_IDX_RMTE)
+			m_fileName += ".rmte";
+
+		g_lastLoadPath_Songs = GetFilePath(m_fileName);
+
+		switch (formatChoiceIndexFromDialog)
+		{
+		case FILE_LOADSAVE_FILTER_IDX_RMTE:
+			m_fileType = IOTYPE_RMTE;
+			break;
+
+		default:
+			// Nothing will be saved if no option was chosen
+			return;
+		}
+
+		// If everything went well, the file will now be saved
+		FileSave();
+	}
+
+/*
 	// Stop the music first
 	//Stop();
 
@@ -403,6 +611,8 @@ void CSong::FileSaveAs()
 		// If everything went well, the file will now be saved
 		FileSave();
 	}
+*/
+
 }
 
 /// <summary>
@@ -1701,5 +1911,166 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 	// Also make sure to delete the buffer once it's no longer needed
 	delete buffer;
 
+	return true;
+}
+
+// Create a RMTE Module file Version 0
+bool CSong::SaveRMTE(std::ofstream& ou)
+{
+	// Memory Addresses to each ones of the Module sections
+	int addressOfModuleStart = 0x00;
+	int addressOfLowHeader = addressOfModuleStart;
+	int addressOfModuleIndex = addressOfLowHeader + 0x20;
+	int addressOfHighHeader = addressOfLowHeader + 0x100;
+	int addressOfSubtuneIndex = addressOfHighHeader;
+	int addressOfInstrumentIndex = addressOfSubtuneIndex + SUBTUNE_MAX * 4;
+	int addressOfDataBlock = addressOfInstrumentIndex + PATTERN_INSTRUMENT_COUNT * 4;
+	int addressOfSubtuneData = addressOfDataBlock;
+	int addressOfInstrumentData = addressOfDataBlock;
+	int addressOfModuleEnd = addressOfDataBlock;
+
+	// Pointer used for most of the Module construction
+	BYTE* pMem;
+
+	// Module data to create before writing to file
+	BYTE* buffer = new BYTE[addressOfDataBlock];
+	memset(buffer, 0x00, addressOfDataBlock);
+
+	//-- Low Header, used for the global parameters and Metadata --//
+	pMem = &buffer[addressOfLowHeader];
+
+	// RMTE identifier, this is the first thing that will be checked when a file is loaded back
+	strncpy((char*)pMem, MODULE_IDENTIFIER, 4);
+
+	// Module Format Version, necessary for handling the future format revisions
+	pMem[0x04] = MODULE_VERSION;
+
+	// PAL or NTSC
+	pMem[0x05] = MODULE_REGION;
+
+	// Row Highlight, used to display beats and bars, and derive BPM calculations
+	pMem[0x06] = MODULE_PRIMARY_HIGHLIGHT;
+	pMem[0x07] = MODULE_SECONDARY_HIGHLIGHT;
+
+	// Row Notation, used to display Flat or Sharp accidentals, as well as B- and H- notes
+	pMem[0x08] = MODULE_DISPLAY_FLAT_NOTES;
+	pMem[0x09] = MODULE_DISPLAY_GERMAN_NOTATION;
+
+	// Row numbering mode
+	pMem[0x0A] = MODULE_LINE_NUMBERING_MODE;
+
+	// Row step count between notes inserted
+	pMem[0x0B] = MODULE_LINE_STEP;
+
+	// Display Scaling Percentage, using 2 bytes since the value could be above 256
+	memcpy(&pMem[0x0C], &MODULE_SCALING_PERCENTAGE, 2);
+
+	// Base A-4 Tuning, using 8 bytes since the value is a Double
+	memcpy(&pMem[0x10], &MODULE_A4_TUNING, 8);
+
+	// Base Note
+	pMem[0x18] = MODULE_BASE_NOTE;
+
+	// Base Octave
+	pMem[0x19] = MODULE_BASE_OCTAVE;
+
+	// Base Temperament, the parameter is currently missing, but we will pretend it is here anyway
+	pMem[0x1A] = 0x00;	// MODULE_BASE_TEMPERAMENT;
+
+	// Module Metadata, used for the Song Name, Author and Copyright, using 64 characters each
+	strncpy((char*)pMem + 0x40, GetSongName(), MODULE_SONG_NAME_MAX);
+	strncpy((char*)pMem + 0x80, GetSongAuthor(), MODULE_AUTHOR_NAME_MAX);
+	strncpy((char*)pMem + 0xC0, GetSongCopyright(), MODULE_COPYRIGHT_INFO_MAX);
+
+	//-- High Header, used for the data Address Tables --//
+	pMem = &buffer[addressOfSubtuneIndex];
+
+	// Set the Subtune addresses, Empty Subtunes will be set to Null, and won't be referenced in the Module file
+	for (int i = 0; i < SUBTUNE_MAX; i++)
+	{
+		// Fetch the pointer to Subtune i
+		TSubtune* pSubtune = GetSubtune(i);
+
+		// If the Subtune is Empty, it won't be referenced
+		if (!pSubtune)
+		{
+			pMem[i * 4] = NULL;
+			continue;
+		}
+
+		// Set the Subtune offset in the Address Table
+		memcpy(&pMem[i * 4], &addressOfSubtuneData, 4);
+		addressOfSubtuneData += sizeof TSubtune;
+	}
+
+	// Update the Address of Instrument data to match the updated address of Subtune data
+	addressOfInstrumentData = addressOfSubtuneData;
+
+	// Move the pMem pointer to the Instrument Address Table position of the High Header
+	pMem = &buffer[addressOfInstrumentIndex];
+
+	// Set the Instrument addresses, Empty Instruments will be set to Null, and won't be referenced in the Module file
+	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+	{
+		// Fetch the pointer to Instrument i
+		TInstrumentV2* pInstrument = GetInstrument(i);
+
+		// If the Instrument is Empty, it won't be referenced
+		if (!pInstrument)
+		{
+			pMem[i * 4] = NULL;
+			continue;
+		}
+
+		// Set the Instrument offset in the Address Table
+		memcpy(&pMem[i * 4], &addressOfInstrumentData, 4);
+		addressOfInstrumentData += sizeof TInstrumentV2;
+	}
+
+	// Update the Address of Module End to match the updated address of Instrument data
+	addressOfModuleEnd = addressOfInstrumentData;
+
+	// Move the pMem pointer to the Module Index section of the Low Header
+	pMem = &buffer[addressOfModuleIndex];
+
+	// Write all the Module Index addresses in there
+	memcpy(&pMem[0x00], &addressOfSubtuneIndex, 4);
+	memcpy(&pMem[0x04], &addressOfInstrumentIndex, 4);
+	memcpy(&pMem[0x08], &addressOfDataBlock, 4);
+	memcpy(&pMem[0x0C], &addressOfModuleEnd, 4);
+
+	// Write the fully constructed Module Header to file once it is ready
+	ou.write((char*)buffer, addressOfDataBlock);
+
+	// From this point, write all non-Null Subtunes to file in contiguous order
+	for (int i = 0; i < SUBTUNE_MAX; i++)
+	{
+		// Fetch the pointer to Subtune i
+		TSubtune* pSubtune = GetSubtune(i);
+
+		// If the Subtune is Empty, it will be skipped
+		if (!pSubtune)
+			continue;
+
+		ou.write((char*)pSubtune, sizeof TSubtune);
+	}
+
+	// And do the same for all non-Null Instruments
+	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+	{
+		// Fetch the pointer to Instrument i
+		TInstrumentV2* pInstrument = GetInstrument(i);
+
+		// If the Instrument is Empty, it will be skipped
+		if (!pInstrument)
+			continue;
+
+		ou.write((char*)pInstrument, sizeof TInstrumentV2);
+	}
+
+	// Delete the temporary buffer once it is no longer needed
+	delete buffer;
+
+	// Module file should have been successfully created
 	return true;
 }
