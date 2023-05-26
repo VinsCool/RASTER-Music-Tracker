@@ -312,6 +312,9 @@ public:
 	bool SaveRMW(std::ofstream& ou);
 
 	bool SaveRMTE(std::ofstream& ou);
+	bool LoadRMTE(std::ifstream& in);
+
+	bool DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, BYTE& moduleVersion);
 
 	bool LoadRMT(std::ifstream& in);
 	bool LoadTxt(std::ifstream& in);
@@ -452,10 +455,14 @@ public:
 	BOOL IsValidSongline(int songline) { return songline >= 0 && songline < SONGLEN; };
 	BOOL IsSongGo(int songline) { return IsValidSongline(songline) ? m_songgo[songline] >= 0 : 0; };
 
+
 	// Prototype C++ RMTE Module Driver functions
 
 	TSubtune* GetSubtune() { return GetSubtune(m_activeSubtune); };
 	TSubtune* GetSubtune(int subtune) { return g_Module.GetSubtune(subtune); };
+
+	void CreateSubtune() { CreateSubtune(m_activeSubtune); };
+	void CreateSubtune(int subtune) { g_Module.CreateSubtune(subtune); };
 
 	TInstrumentV2* GetInstrument() { return GetInstrument(m_activeInstrument); };
 	TInstrumentV2* GetInstrument(int instrument) { return g_Module.GetInstrument(instrument); };
@@ -465,6 +472,10 @@ public:
 	const char* GetSongName() { return g_Module.GetSongName(); };
 	const char* GetSongAuthor() { return g_Module.GetSongAuthor(); };
 	const char* GetSongCopyright() { return g_Module.GetSongCopyright(); };
+
+	void SetSongName(const char* name) { g_Module.SetSongName(name); };
+	void SetSongAuthor(const char* name) { g_Module.SetSongAuthor(name); };
+	void SetSongCopyright(const char* name) { g_Module.SetSongCopyright(name); };
 
 	const char* GetSubtuneName() { return GetSubtuneName(m_activeSubtune); };
 	const char* GetSubtuneName(int subtune) { return g_Module.GetSubtuneName(subtune); };

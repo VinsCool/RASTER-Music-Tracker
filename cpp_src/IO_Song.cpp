@@ -231,8 +231,7 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 		switch (formatChoiceIndexFromDialog)
 		{
 		case FILE_LOADSAVE_FILTER_IDX_RMTE:
-			// TODO: something here
-			loadedOk = true;
+			loadedOk = LoadRMTE(in);
 			m_fileType = IOTYPE_RMTE;
 			break;
 		}
@@ -2073,4 +2072,153 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 	// Module file should have been successfully created
 	return true;
+}
+
+// Load a RMTE Module file Version 0
+bool CSong::LoadRMTE(std::ifstream& in)
+{
+	// Memory Addresses to each ones of the Module sections
+	int addressOfModuleStart = 0x00;
+	int addressOfLowHeader = addressOfModuleStart;
+	int addressOfModuleIndex = addressOfLowHeader + 0x20;
+	int addressOfHighHeader = addressOfLowHeader + 0x100;
+	int addressOfSubtuneIndex, addressOfInstrumentIndex;
+	int addressOfSubtuneData, addressOfInstrumentData;
+
+	// Pointer used for most of the Module construction
+	BYTE* pMem;
+
+	// Module Format Version, necessary for handling the future format revisions
+	BYTE moduleVersion;
+
+	// Get the Module file size
+	in.seekg(0x00, in.end);
+	int addressOfModuleEnd = (int)in.tellg();
+
+	// Create a temporary buffer the same size of the file
+	BYTE* buffer = new BYTE[addressOfModuleEnd];
+	memset(buffer, 0x00, addressOfModuleEnd);
+
+	// Load the Module data directly into the buffer
+	in.seekg(0x00, in.beg);
+	in.read((char*)buffer, addressOfModuleEnd);
+
+	// Move the pMem pointer to the start of Low Header
+	pMem = &buffer[addressOfLowHeader];
+
+	// Decode the RMTE Header, and fetch most of the main parameters
+	if (DecodeRMTE(pMem, addressOfModuleIndex, addressOfSubtuneIndex, addressOfInstrumentIndex, moduleVersion))
+	{
+		switch (moduleVersion)
+		{
+		case 0x00:
+
+			// Move the pMem pointer to the start of Subtune Address Table
+			pMem = &buffer[addressOfSubtuneIndex];
+
+			// From this point, find load non-Null Subtunes in contiguous order
+			for (int i = 0; i < SUBTUNE_MAX; i++)
+			{
+				// Get the address of Subtune i in the buffer
+				memcpy(&addressOfSubtuneData, &pMem[i * 4], 4);
+
+				// If the Subtune is Empty, it will be skipped
+				if (!addressOfSubtuneData)
+					continue;
+
+				// Create a new Subtune first
+				CreateSubtune(i);
+
+				// Fetch the pointer to Subtune i
+				TSubtune* pToSubtune = GetSubtune(i);
+				TSubtune* pFromSubtune = (TSubtune*)(buffer + addressOfSubtuneData);
+
+				// Copy the entire Subtune directly in memory
+				g_Module.CopySubtune(pFromSubtune, pToSubtune);
+			}
+
+			// Move the pMem pointer to the start of Instrument Address Table
+			pMem = &buffer[addressOfSubtuneIndex];
+
+			// And do the same for all non-Null Instruments
+			for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+			{
+
+			}
+
+			break;
+		}
+	}
+
+	// Delete the temporary buffer once it is no longer needed
+	delete buffer;
+
+	// Module file should have been successfully loaded
+	return true;
+}
+
+bool CSong::DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, BYTE& moduleVersion)
+{
+	// Check that the Low Header starts with "RMTE", any mismatch will flag the entire file as invalid, regardless of its contents
+	if (strncmp((char*)pMem, MODULE_IDENTIFIER, 4) != 0)
+	{
+		MessageBox(g_hwnd, "Invalid identifier from file header, \"RMTE\" was expected.", "DecodeRMTE()", MB_ICONERROR);
+		return false;
+	}
+
+	// The Module Version will always be found on the 5th byte of a RMTE Module
+	moduleVersion = pMem[0x04];
+
+	// Check the Module Version, and process the Module data accordingly if there are differences between Versions
+	switch (moduleVersion)
+	{
+	case 0x00:
+		// PAL or NTSC
+		g_ntsc = pMem[0x05];
+
+		// Row Highlight, used to display beats and bars, and derive BPM calculations
+		g_trackLinePrimaryHighlight = pMem[0x06];
+		g_trackLineSecondaryHighlight = pMem[0x07];
+
+		// Row Notation, used to display Flat or Sharp accidentals, as well as B- and H- notes
+		g_displayflatnotes = pMem[0x08];
+		g_usegermannotation = pMem[0x09];
+
+		// Line numbering mode
+		g_tracklinealtnumbering = pMem[0x0A];
+
+		// Row step count between notes inserted
+		g_linesafter = pMem[0x0B];
+
+		// Display Scaling Percentage, using 2 bytes since the value could be above 256
+		memcpy(&g_scaling_percentage, &pMem[0x0C], 2);
+
+		// Base A-4 Tuning, using 8 bytes since the value is a Double
+		memcpy(&g_baseTuning, &pMem[0x10], 8);
+
+		// Base Note
+		g_baseNote = pMem[0x18];
+
+		// Base Octave
+		g_baseOctave = pMem[0x19];
+
+		// Base Temperament, the parameter is currently missing, but we will pretend it is here anyway
+		//g_baseTemperament = pMem[0x1A];
+
+		// Index of Subtune and Instrument Address Tables
+		memcpy(&addressOfSubtuneIndex, &pMem[addressOfModuleIndex], 4);
+		memcpy(&addressOfInstrumentIndex, &pMem[addressOfModuleIndex + 0x04], 4);
+
+		// Module Metadata, used for the Song Name, Author and Copyright
+		SetSongName((char*)&pMem[0x40]);
+		SetSongAuthor((char*)&pMem[0x80]);
+		SetSongCopyright((char*)&pMem[0xC0]);
+
+		// Module Header should have been successfully decoded
+		return true;
+
+	default:
+		MessageBox(g_hwnd, "Module version is higher than expected.\nMaybe the file was created using a newer RMT version?", "DecodeRMTE()", MB_ICONERROR);
+		return false;
+	}
 }
