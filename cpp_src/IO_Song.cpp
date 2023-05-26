@@ -1914,6 +1914,7 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 }
 
 // Create a RMTE Module file Version 0
+// FIXME: Very poor implementation meant for proof of concept, in case this was not obvious
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
 	// Memory Addresses to each ones of the Module sections
@@ -1977,10 +1978,10 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	pMem[0x1A] = 0x00;	// MODULE_BASE_TEMPERAMENT;
 
 	// Module Metadata, used for the Song Name, Author and Copyright, using 64 characters each
-	strncpy((char*)pMem + 0x40, GetSongName(), MODULE_SONG_NAME_MAX);
-	strncpy((char*)pMem + 0x80, GetSongAuthor(), MODULE_AUTHOR_NAME_MAX);
-	strncpy((char*)pMem + 0xC0, GetSongCopyright(), MODULE_COPYRIGHT_INFO_MAX);
-
+	strncpy((char*)&pMem[0x40], GetSongName(), MODULE_SONG_NAME_MAX);
+	strncpy((char*)&pMem[0x80], GetSongAuthor(), MODULE_AUTHOR_NAME_MAX);
+	strncpy((char*)&pMem[0xC0], GetSongCopyright(), MODULE_COPYRIGHT_INFO_MAX);
+	
 	//-- High Header, used for the data Address Tables --//
 	pMem = &buffer[addressOfSubtuneIndex];
 
@@ -2075,6 +2076,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 }
 
 // Load a RMTE Module file Version 0
+// FIXME: Very poor implementation meant for proof of concept, in case this was not obvious
 bool CSong::LoadRMTE(std::ifstream& in)
 {
 	// Memory Addresses to each ones of the Module sections
@@ -2109,6 +2111,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	// Decode the RMTE Header, and fetch most of the main parameters
 	if (DecodeRMTE(pMem, addressOfModuleIndex, addressOfSubtuneIndex, addressOfInstrumentIndex, moduleVersion))
 	{
+		// Decode the Subtune and Instrument data
 		switch (moduleVersion)
 		{
 		case 0x00:
@@ -2131,19 +2134,35 @@ bool CSong::LoadRMTE(std::ifstream& in)
 
 				// Fetch the pointer to Subtune i
 				TSubtune* pToSubtune = GetSubtune(i);
-				TSubtune* pFromSubtune = (TSubtune*)(buffer + addressOfSubtuneData);
+				TSubtune* pFromSubtune = (TSubtune*)&buffer[addressOfSubtuneData];
 
 				// Copy the entire Subtune directly in memory
 				g_Module.CopySubtune(pFromSubtune, pToSubtune);
 			}
 
 			// Move the pMem pointer to the start of Instrument Address Table
-			pMem = &buffer[addressOfSubtuneIndex];
+			pMem = &buffer[addressOfInstrumentIndex];
 
 			// And do the same for all non-Null Instruments
 			for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
 			{
+				// Get the address of Instrument i in the buffer
+				memcpy(&addressOfInstrumentData, &pMem[i * 4], 4);
 
+				// If the Instrument is Empty, it will be skipped
+				if (!addressOfInstrumentData)
+					continue;
+
+				// Create a new Instrument first
+				g_Module.CreateInstrument(i);
+
+				// Fetch the pointer to Instrument i
+				TInstrumentV2* pToInstrument = GetInstrument(i);
+				TInstrumentV2* pFromInstrument = (TInstrumentV2*)&buffer[addressOfInstrumentData];
+
+				// Copy the entire Instrument directly in memory
+				//g_Module.CopyInstrument(pFromInstrument, pToInstrument);
+				*pToInstrument = *pFromInstrument;
 			}
 
 			break;
@@ -2157,6 +2176,8 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	return true;
 }
 
+// Decode a RMTE Module Header and load the global parameters from it
+// FIXME: Very poor implementation meant for proof of concept, in case this was not obvious
 bool CSong::DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, BYTE& moduleVersion)
 {
 	// Check that the Low Header starts with "RMTE", any mismatch will flag the entire file as invalid, regardless of its contents
