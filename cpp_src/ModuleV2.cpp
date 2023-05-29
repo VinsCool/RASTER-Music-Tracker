@@ -155,7 +155,7 @@ void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	pInstrument->tableMacro.speed = 0x00;
 
 	// Set Envelopes to Empty
-	for (int i = 0; i < ENVELOPE_INDEX_MAX; i++)
+	for (int i = 0; i < INSTRUMENT_ENVELOPE_MAX; i++)
 	{
 		pInstrument->envelopeMacro.envelope[i].volume = 0x00;
 		pInstrument->envelopeMacro.envelope[i].timbre = 0x00;
@@ -173,7 +173,7 @@ void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	}
 
 	// Set Tables to Empty
-	for (int i = 0; i < INSTRUMENT_TABLE_INDEX_MAX; i++)
+	for (int i = 0; i < INSTRUMENT_TABLE_MAX; i++)
 	{
 		pInstrument->tableMacro.table[i].note = 0x00;
 		pInstrument->tableMacro.table[i].freq = 0x00;
@@ -797,13 +797,13 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		pInstrument->vibrato = memInstrument[9] & 0x03;					// Vibrato
 		pInstrument->freqShift = memInstrument[10];						// Freq Shift
 
-		if (pInstrument->tableMacro.length > INSTRUMENT_TABLE_INDEX_MAX)
+		if (pInstrument->tableMacro.length > 32)	//INSTRUMENT_TABLE_MAX)
 			pInstrument->tableMacro.length = 0x00;
 
 		if (pInstrument->tableMacro.loop > pInstrument->tableMacro.length)
 			pInstrument->tableMacro.loop = 0x00;
 
-		if (pInstrument->envelopeMacro.length > ENVELOPE_INDEX_MAX)
+		if (pInstrument->envelopeMacro.length > 48)	//INSTRUMENT_ENVELOPE_MAX)
 			pInstrument->envelopeMacro.length = 0x00;
 
 		if (pInstrument->envelopeMacro.loop > pInstrument->envelopeMacro.length)
@@ -1246,18 +1246,18 @@ BYTE CModule::GetShortestPatternLength(TSubtune* pSubtune, int songline)
 // Return True if a Pattern is used at least once within a Songline Index
 bool CModule::IsUnusedPattern(int subtune, int channel, int pattern)
 {
-	return IsUnusedPattern(GetChannel(subtune, channel), pattern);
+	return IsUnusedPattern(GetChannel(subtune, channel), pattern, GetSongLength(subtune));
 }
 
 // Return True if a Pattern is used at least once within a Songline Index
-bool CModule::IsUnusedPattern(TChannel* pChannel, int pattern)
+bool CModule::IsUnusedPattern(TChannel* pChannel, int pattern, int songlength)
 {
 	// Make sure the Index is not a Null pointer
 	if (!pChannel)
 		return false;
 
 	// All Songlines in the Channel Index will be processed
-	for (int i = 0; i < SONGLINE_MAX; i++)
+	for (int i = 0; i < songlength; i++)
 	{
 		// As soon as a match is found, we know for sure the Pattern is used at least once
 		if (pChannel->songline[i] == pattern)
@@ -1306,6 +1306,43 @@ bool CModule::IsEmptyPattern(TPattern* pPattern)
 	}
 
 	// Otherwise, the Pattern is most likely empty
+	return true;
+}
+
+// Return True if a Row is Empty
+bool CModule::IsEmptyRow(int subtune, int channel, int pattern, int row)
+{
+	return IsEmptyRow(GetRow(subtune, channel, pattern, row));
+}
+
+// Return True if a Row is Empty
+bool CModule::IsEmptyRow(TRow* pRow)
+{
+	// Make sure the Row is not a Null pointer
+	if (!pRow)
+		return false;
+
+	// If there is a Note, it's not empty
+	if (pRow->note != PATTERN_NOTE_EMPTY)
+		return false;
+
+	// If there is an Instrument, it's not empty
+	if (pRow->instrument != PATTERN_INSTRUMENT_EMPTY)
+		return false;
+
+	// If there is a Volume, it's not empty
+	if (pRow->volume != PATTERN_VOLUME_EMPTY)
+		return false;
+
+	// If there is an Effect Command, it's not empty
+	for (int i = 0; i < PATTERN_ACTIVE_EFFECT_MAX; i++)
+	{
+		// Only the Identifier is checked, since the Parameter cannot be used alone
+		if (pRow->effect[i].command != PATTERN_EFFECT_EMPTY)
+			return false;
+	}
+
+	// Otherwise, the Row is most likely empty
 	return true;
 }
 
@@ -1558,7 +1595,7 @@ void CModule::ClearUnusedPatterns(TSubtune* pSubtune)
 		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
 		{
 			// If the Pattern is not used anywhere, it will be deleted
-			if (IsUnusedPattern(&pSubtune->channel[i], j))
+			if (IsUnusedPattern(&pSubtune->channel[i], j, pSubtune->songLength))
 				ClearPattern(&pSubtune->channel[i].pattern[j]);
 		}
 	}
@@ -1594,7 +1631,7 @@ void CModule::ConcatenateIndexedPatterns(TSubtune* pSubtune)
 		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
 		{
 			// If a Pattern is used at least once, see if it could also be concatenated further back
-			if (!IsUnusedPattern(backupIndex, j))
+			if (!IsUnusedPattern(backupIndex, j, pSubtune->songLength))
 			{
 				// Find the first empty and unused Pattern that is available
 				for (int k = 0; k < j; k++)
@@ -1603,7 +1640,7 @@ void CModule::ConcatenateIndexedPatterns(TSubtune* pSubtune)
 					TPattern* destination = &backupIndex->pattern[k];
 
 					// If the Pattern is empty and unused, it will be replaced
-					if (IsUnusedPattern(backupIndex, k) && IsEmptyPattern(destination))
+					if (IsUnusedPattern(backupIndex, k, pSubtune->songLength) && IsEmptyPattern(destination))
 					{
 						// Copy the Pattern from J to K
 						CopyPattern(source, destination);

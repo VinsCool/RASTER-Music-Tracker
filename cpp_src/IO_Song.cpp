@@ -1923,111 +1923,25 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	int addressOfModuleStart = 0x00;
 	int addressOfModuleHeader = addressOfModuleStart;
 	int addressOfModuleIndex = addressOfModuleHeader + 0x20;
-	int addressOfSubtuneIndex = addressOfModuleHeader + 0x100;
-	int addressOfInstrumentIndex = addressOfSubtuneIndex + SUBTUNE_MAX * 4;
-	int addressOfDataBlock = addressOfInstrumentIndex + PATTERN_INSTRUMENT_COUNT * 4;
-	int addressOfSubtuneData = addressOfDataBlock;
-	int addressOfInstrumentData = addressOfDataBlock;
-	int addressOfModuleEnd = addressOfDataBlock;
+	int addressOfSubtuneIndex, addressOfInstrumentIndex, addressOfDataBlock;
+	int addressOfSubtuneData, addressOfInstrumentData, addressOfModuleEnd;
 
 	// Create temporary Header buffer
-	headerBuffer = new BYTE[addressOfDataBlock];
-	memset(headerBuffer, 0x00, addressOfDataBlock);
+	headerBuffer = new BYTE[0x400];
+	memset(headerBuffer, 0x00, 0x400);
 
 	// Move the pMem pointer to the start of Header
 	pMem = &headerBuffer[addressOfModuleHeader];
 
-	// Create the RMTE Module Header
-	MakeModuleHeader(pMem, addressOfModuleIndex, addressOfSubtuneIndex, addressOfInstrumentIndex);
-	
-	// Move the pMem pointer to the start of Subtune Index
-	pMem = &headerBuffer[addressOfSubtuneIndex];
+	// Create the RMTE Module Header and initialise the Index of Address Tables from it
+	MakeModuleHeader(pMem, addressOfModuleIndex, addressOfSubtuneIndex, addressOfInstrumentIndex, addressOfDataBlock);
+	addressOfSubtuneData = addressOfInstrumentData = addressOfModuleEnd = addressOfDataBlock;
 
-	// Identify the size of Subtune data to create, and fill the Subtune Index accordingly
-	for (int i = 0; i < SUBTUNE_MAX; i++)
-	{
-		// Fetch the pointer to Subtune i
-		TSubtune* pSubtune = GetSubtune(i);
-
-		// If the Subtune is Empty, it won't be referenced
-		if (!pSubtune)
-			continue;
-
-		// Offset to Subtune Index
-		int offset = i * 4;
-
-		// Subtune name and parameters
-		int size = SUBTUNE_NAME_MAX + 5;
-
-		// Add Subtune data to size, for all channels
-		for (int j = 0; j < pSubtune->channelCount; j++)
-		{
-			// Channel parameters + Indexed Songlines
-			size += 1 + pSubtune->songLength;
-
-			// Indexed Patterns
-			for (int k = 0; k < TRACK_PATTERN_MAX; k++)
-			{
-				// If the Pattern is referenced at least once, it will be counted
-				for (int l = 0; l < pSubtune->songLength; l++)
-				{
-					// If the Pattern is not referenced, skip it
-					if (k != pSubtune->channel[j].songline[l])
-						continue;
-
-					// If the Pattern is referenced but Empty, a single byte will be used to flag it as such
-					if (g_Module.IsEmptyPattern(&pSubtune->channel[j].pattern[k]))
-						size += 1;
-
-					// Size of Pattern = Number of Rows * (Note + Instrument + Volume + (Number of Effects * 2))
-					else
-						size += pSubtune->patternLength * (3 + (pSubtune->channel[j].effectCount * 2));
-
-					// Patterns could be referenced more than once, break here to process the next one
-					break;
-				}
-			}
-		}
-
-		// Set the Subtune offset in the Address Table
-		memcpy(&pMem[offset], &addressOfSubtuneData, 4);
-
-		// Set the next Subtune Address using the size of Subtune data to offset it
-		addressOfSubtuneData += size;
-	}
-
-	// Update the Address of Instrument data to match the updated address of Subtune data
-	addressOfInstrumentData = addressOfSubtuneData;
-
-	// Move the pMem pointer to the start of Instrument Index
-	pMem = &headerBuffer[addressOfInstrumentIndex];
-
-	// Set the Instrument addresses, Empty Instruments will be set to Null, and won't be referenced in the Module file
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
-	{
-		// Fetch the pointer to Instrument i
-		TInstrumentV2* pInstrument = GetInstrument(i);
-
-		// If the Instrument is Empty, it won't be referenced
-		if (!pInstrument)
-		{
-			pMem[i * 4] = NULL;
-			continue;
-		}
-
-		// Set the Instrument offset in the Address Table
-		memcpy(&pMem[i * 4], &addressOfInstrumentData, 4);
-		addressOfInstrumentData += sizeof TInstrumentV2;
-	}
-
-	// Write the fully constructed Module Header to file once it is ready
+	// Write the partial Module Header to file to set the actual Data Block offset
 	ou.write((char*)headerBuffer, addressOfDataBlock);
 
 	// Create temporary Subtune buffer
 	subtuneBuffer = new BYTE[sizeof TSubtune];
-
-	// Move the pMem pointer to the start of Subtune Buffer
-	pMem = subtuneBuffer;
 
 	// Encode the Subtune data, for all Indexed Subtunes referenced in the Header
 	for (int i = 0; i < SUBTUNE_MAX; i++)
@@ -2042,14 +1956,19 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		// Clear the Subtune buffer from leftover data
 		memset(subtuneBuffer, 0x00, sizeof TSubtune);
 
-		// Subtune name and parameters
-		int size = 0;
+		// Move the pMem pointer to the start of Subtune Buffer
+		pMem = subtuneBuffer;
+
+		// Offset to Subtune Index and Size of Subtune Data
+		int offset = i * 4, size = 0;
 
 		// Subtune name
-		strncpy((char*)&pMem[size], GetSubtuneName(i), SUBTUNE_NAME_MAX);
+		for (int j = 0; j < SUBTUNE_NAME_MAX; j++)
+			if (!(pMem[size++] = pSubtune->name[j]))
+				break;
 
 		// Subtune parameters
-		pMem[size += SUBTUNE_NAME_MAX] = pSubtune->songLength;
+		pMem[size] = pSubtune->songLength;
 		pMem[++size] = pSubtune->patternLength;
 		pMem[++size] = pSubtune->channelCount;
 		pMem[++size] = pSubtune->songSpeed;
@@ -2065,56 +1984,60 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			for (int k = 0; k < pSubtune->songLength; k++)
 				pMem[++size] = pSubtune->channel[j].songline[k];
 
-			// Indexed Patterns
+			// All Indexed Patterns
 			for (int k = 0; k < TRACK_PATTERN_MAX; k++)
 			{
-				// If the Pattern is referenced at least once, it will be counted
-				for (int l = 0; l < pSubtune->songLength; l++)
+				// If the Pattern is Empty, a single byte will be used to flag it as such
+				if (g_Module.IsEmptyPattern(&pSubtune->channel[j].pattern[k]))
 				{
-					// If the Pattern is not referenced, skip it
-					if (k != pSubtune->channel[j].songline[l])
-						continue;
+					pMem[++size] = MODULE_PATTERN_EMPTY;
+					continue;
+				}
 
-					// If the Pattern is referenced but Empty, a single byte will be used to flag it as such
-					if (g_Module.IsEmptyPattern(&pSubtune->channel[j].pattern[k]))
+				// Process all indexed Rows referenced in the Pattern data
+				for (int m = 0; m < pSubtune->patternLength; m++)
+				{
+					// If the Row is made of Empty data, a single byte will be used to flag it as such
+					if (g_Module.IsEmptyRow(&pSubtune->channel[j].pattern[k].row[m]))
 					{
-						pMem[++size] = INVALID;
+						pMem[++size] = MODULE_ROW_EMPTY;
+						continue;
 					}
 
 					// Size of Pattern = Number of Rows * (Note + Instrument + Volume + (Number of Effects * 2))
-					else
+					pMem[++size] = pSubtune->channel[j].pattern[k].row[m].note;
+					pMem[++size] = pSubtune->channel[j].pattern[k].row[m].instrument;
+					pMem[++size] = pSubtune->channel[j].pattern[k].row[m].volume;
+
+					for (int n = 0; n < pSubtune->channel[j].effectCount; n++)
 					{
-						for (int m = 0; m < pSubtune->patternLength; m++)
-						{
-							pMem[++size] = pSubtune->channel[j].pattern[k].row[m].note;
-							pMem[++size] = pSubtune->channel[j].pattern[k].row[m].instrument;
-							pMem[++size] = pSubtune->channel[j].pattern[k].row[m].volume;
-
-							for (int n = 0; n < pSubtune->channel[j].effectCount; n++)
-							{
-								pMem[++size] = pSubtune->channel[j].pattern[k].row[m].effect[n].command;
-								pMem[++size] = pSubtune->channel[j].pattern[k].row[m].effect[n].parameter;
-							}
-						}
+						pMem[++size] = pSubtune->channel[j].pattern[k].row[m].effect[n].command;
+						pMem[++size] = pSubtune->channel[j].pattern[k].row[m].effect[n].parameter;
 					}
-
-					// Patterns could be referenced more than once, break here to process the next one
-					break;
 				}
 			}
 		}
 
 		// Write the fully encoded Subtune data to file once it is ready
 		ou.write((char*)subtuneBuffer, ++size);
+
+		// Move the pMem pointer to the start of Subtune Index
+		pMem = &headerBuffer[addressOfSubtuneIndex];
+
+		// Set the Subtune offset in the Address Table
+		memcpy(&pMem[offset], &addressOfSubtuneData, 4);
+
+		// Set the next Subtune Address using the size of Subtune data as an offset
+		addressOfSubtuneData += size;
 	}
+
+	// Set the Instrument Data address to the last address used by Subtune Data
+	addressOfInstrumentData = addressOfSubtuneData;
 
 	// Create temporary Instrument buffer
 	instrumentBuffer = new BYTE[sizeof TInstrumentV2];
-	memset(instrumentBuffer, 0x00, sizeof TInstrumentV2);
 
-	// Do things here...
-
-	// And do the same for all non-Null Instruments
+	// Encode the Instrument data, for all Indexed Instruments referenced in the Header
 	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
 	{
 		// Fetch the pointer to Instrument i
@@ -2124,18 +2047,100 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		if (!pInstrument)
 			continue;
 
-		ou.write((char*)pInstrument, sizeof TInstrumentV2);
+		// Clear the Instrument buffer from leftover data
+		memset(instrumentBuffer, 0x00, sizeof TInstrumentV2);
+
+		// Move the pMem pointer to the start of Instrument Buffer
+		pMem = instrumentBuffer;
+
+		// Offset to Instrument Index and Size of Instrument Data
+		int offset = i * 4, size = 0;
+
+		// Instrument name
+		for (int j = 0; j < INSTRUMENT_NAME_MAX; j++)
+			if (!(pMem[size++] = pInstrument->name[j]))
+				break;
+
+		// Instrument parameters
+		pMem[size] = pInstrument->volumeFade;
+		pMem[++size] = pInstrument->volumeSustain;
+		pMem[++size] = pInstrument->vibrato;
+		pMem[++size] = pInstrument->freqShift;
+		pMem[++size] = pInstrument->delay;
+
+		// Instrument Envelope parameters
+		pMem[++size] = pInstrument->envelopeMacro.mode;
+		pMem[++size] = pInstrument->envelopeMacro.length;
+		pMem[++size] = pInstrument->envelopeMacro.loop;
+		pMem[++size] = pInstrument->envelopeMacro.release;
+		pMem[++size] = pInstrument->envelopeMacro.speed;
+
+		// Instrument Envelope data
+		for (int j = 0; j < pInstrument->envelopeMacro.length; j++)
+		{
+			// AutoMode Triggers will be assigned a single bit each, saving 8 bytes per Envelope Step
+			BYTE autoMode = 0;
+
+			TAutoMode* trigger = &pInstrument->envelopeMacro.envelope[j].trigger;
+			autoMode |= trigger->autoFilter ? 0b00000001 : 0;
+			autoMode |= trigger->auto16Bit ? 0b00000010 : 0;
+			autoMode |= trigger->autoReverse16 ? 0b00000100 : 0;
+			autoMode |= trigger->auto179Mhz ? 0b00001000 : 0;
+			autoMode |= trigger->auto15Khz ? 0b00010000 : 0;
+			autoMode |= trigger->autoPoly9 ? 0b00100000 : 0;
+			autoMode |= trigger->autoTwoTone ? 0b01000000 : 0;
+			autoMode |= trigger->autoToggle ? 0b10000000 : 0;
+
+			TEnvelope* envelope = &pInstrument->envelopeMacro.envelope[j];
+			pMem[++size] = envelope->volume;
+			pMem[++size] = envelope->timbre;
+			pMem[++size] = envelope->audctl;
+			pMem[++size] = autoMode;
+			pMem[++size] = envelope->effect.command;
+			pMem[++size] = envelope->effect.parameter;
+		}
+
+		// Instrument Table parameters
+		pMem[++size] = pInstrument->tableMacro.mode;
+		pMem[++size] = pInstrument->tableMacro.length;
+		pMem[++size] = pInstrument->tableMacro.loop;
+		pMem[++size] = pInstrument->tableMacro.release;
+		pMem[++size] = pInstrument->tableMacro.speed;
+
+		// Instrument Table data
+		for (int j = 0; j < pInstrument->tableMacro.length; j++)
+		{
+			pMem[++size] = pInstrument->tableMacro.table[j].note;
+			pMem[++size] = pInstrument->tableMacro.table[j].freq;
+		}
+
+		// Write the fully encoded Instrument data to file once it is ready
+		ou.write((char*)instrumentBuffer, ++size);
+
+		// Move the pMem pointer to the start of Instrument Index
+		pMem = &headerBuffer[addressOfInstrumentIndex];
+
+		// Set the Instrument offset in the Address Table
+		memcpy(&pMem[offset], &addressOfInstrumentData, 4);
+
+		// Set the next Instrument Address using the size of Instrument data as an offset
+		addressOfInstrumentData += size;
 	}
+
+	// Write the fully constructed Module Header to file once it is ready
+	ou.seekp(std::ios_base::beg);
+	ou.write((char*)headerBuffer, addressOfDataBlock);
+	ou.seekp(std::ios_base::end);
 
 	// Delete the temporary buffers once they are no longer needed
 	delete headerBuffer, subtuneBuffer, instrumentBuffer;
 
-	// Module file should have been successfully created
+	// RMTE Module file should have been successfully created
 	return true;
 }
 
 // Create a RMTE Module header
-bool CSong::MakeModuleHeader(BYTE* pMem, int addressOfModuleIndex, int addressOfSubtuneIndex, int addressOfInstrumentIndex)
+bool CSong::MakeModuleHeader(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, int& addressOfDataBlock)
 {
 	// RMTE identifier, this is the first thing that will be checked when a file is loaded back
 	strncpy((char*)pMem, MODULE_IDENTIFIER, 4);
@@ -2175,19 +2180,34 @@ bool CSong::MakeModuleHeader(BYTE* pMem, int addressOfModuleIndex, int addressOf
 	// Base Temperament, the parameter is currently missing, but we will pretend it is here anyway
 	pMem[0x1A] = 0x00;	// MODULE_BASE_TEMPERAMENT;
 
-	// Module Metadata, used for the Song Name, Author and Copyright, using 64 characters each
-	strncpy((char*)&pMem[0x40], GetSongName(), MODULE_SONG_NAME_MAX);
-	strncpy((char*)&pMem[0x80], GetSongAuthor(), MODULE_AUTHOR_NAME_MAX);
-	strncpy((char*)&pMem[0xC0], GetSongCopyright(), MODULE_COPYRIGHT_INFO_MAX);
+	int offset = addressOfModuleIndex + 0x10;
+
+	// Module Metadata, used for the Song Name, Author and Copyright, using up to 64 characters each
+	for (int i = 0; i < MODULE_SONG_NAME_MAX; i++)
+		if (!(pMem[offset++] = GetSongName()[i]))
+			break;
+
+	for (int i = 0; i < MODULE_AUTHOR_NAME_MAX; i++)
+		if (!(pMem[offset++] = GetSongAuthor()[i]))
+			break;
+
+	for (int i = 0; i < MODULE_COPYRIGHT_INFO_MAX; i++)
+		if (!(pMem[offset++] = GetSongCopyright()[i]))
+			break;
+
+	// Offset of Index relative to the total size of Module Metadata
+	addressOfSubtuneIndex = offset;
+	addressOfInstrumentIndex = offset + 0x100;
+	addressOfDataBlock = offset + 0x200;
 
 	// Module Index addresses
 	memcpy(&pMem[addressOfModuleIndex], &addressOfSubtuneIndex, 4);
 	memcpy(&pMem[addressOfModuleIndex + 0x04], &addressOfInstrumentIndex, 4);
+	memcpy(&pMem[addressOfModuleIndex + 0x08], &addressOfDataBlock, 4);
 
 	// Module Header should have been created successfully
 	return true;
 }
-
 
 // Load a RMTE Module file
 bool CSong::LoadRMTE(std::ifstream& in)
@@ -2196,10 +2216,8 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	int addressOfModuleStart = 0x00;
 	int addressOfModuleHeader = addressOfModuleStart;
 	int addressOfModuleIndex = addressOfModuleHeader + 0x20;
-	int addressOfSubtuneIndex;
-	int addressOfInstrumentIndex;
-	int addressOfSubtuneData;
-	int addressOfInstrumentData;
+	int addressOfSubtuneIndex, addressOfInstrumentIndex;
+	int addressOfSubtuneData, addressOfInstrumentData;
 	int addressOfModuleEnd;
 
 	// Pointer used for most of the Module construction
@@ -2230,11 +2248,12 @@ bool CSong::LoadRMTE(std::ifstream& in)
 		switch (moduleVersion)
 		{
 		case 0x00:
+
 			// From this point, find and load non-Null Subtunes in contiguous order
 			for (int i = 0; i < SUBTUNE_MAX; i++)
 			{
-				// Offset to Subtune Index
-				int offset = i * 4;
+				// Offset to Subtune Index and Size of Subtune Data
+				int offset = i * 4, size = 0;
 
 				// Move the pMem pointer to the start of Subtune Address Table
 				pMem = &buffer[addressOfSubtuneIndex];
@@ -2255,14 +2274,13 @@ bool CSong::LoadRMTE(std::ifstream& in)
 				// Fetch the pointer to Subtune i
 				TSubtune* pSubtune = GetSubtune(i);
 
-				// Subtune name and parameters
-				int size = 0;
-
 				// Subtune name
-				g_Module.SetSubtuneName(i, (char*)&pMem[size]);
+				for (int j = 0; j < SUBTUNE_NAME_MAX; j++)
+					if (!(pSubtune->name[j] = pMem[size++]))
+						break;
 
 				// Subtune parameters
-				pSubtune->songLength = pMem[size += SUBTUNE_NAME_MAX];
+				pSubtune->songLength = pMem[size];
 				pSubtune->patternLength = pMem[++size];
 				pSubtune->channelCount = pMem[++size];
 				pSubtune->songSpeed = pMem[++size];
@@ -2278,69 +2296,124 @@ bool CSong::LoadRMTE(std::ifstream& in)
 					for (int k = 0; k < pSubtune->songLength; k++)
 						pSubtune->channel[j].songline[k] = pMem[++size];
 
-					// Indexed Patterns
+					// All Indexed Patterns
 					for (int k = 0; k < TRACK_PATTERN_MAX; k++)
 					{
-						// If the Pattern is referenced at least once, it will be counted
-						for (int l = 0; l < pSubtune->songLength; l++)
+						// If the Pattern is Empty, a single byte will be used to flag it as such
+						if (pMem[size + 1] == MODULE_PATTERN_EMPTY)
 						{
-							// If the Pattern is not referenced, skip it
-							if (k != pSubtune->channel[j].songline[l])
-								continue;
+							size++;
+							continue;
+						}
 
-							// If the Pattern is referenced but Empty, a single byte will be used to flag it as such
-							if (pMem[size + 1] == (BYTE)INVALID)
-								size++;
-
-							// Size of Pattern = Number of Rows * (Note + Instrument + Volume + (Number of Effects * 2))
-							else
+						// Process all indexed Rows referenced in the Pattern data
+						for (int m = 0; m < pSubtune->patternLength; m++)
+						{
+							// If the Row is made of Empty data, a single byte will be used to flag it as such
+							if (pMem[size + 1] == MODULE_ROW_EMPTY)
 							{
-								for (int m = 0; m < pSubtune->patternLength; m++)
-								{
-									pSubtune->channel[j].pattern[k].row[m].note = pMem[++size];
-									pSubtune->channel[j].pattern[k].row[m].instrument = pMem[++size];
-									pSubtune->channel[j].pattern[k].row[m].volume = pMem[++size];
-
-									for (int n = 0; n < pSubtune->channel[j].effectCount; n++)
-									{
-										pSubtune->channel[j].pattern[k].row[m].effect[n].command = pMem[++size];
-										pSubtune->channel[j].pattern[k].row[m].effect[n].parameter = pMem[++size];
-									}
-								}
+								size++;
+								continue;
 							}
 
-							// Patterns could be referenced more than once, break here to process the next one
-							break;
+							// Size of Pattern = Number of Rows * (Note + Instrument + Volume + (Number of Effects * 2))
+							pSubtune->channel[j].pattern[k].row[m].note = pMem[++size];
+							pSubtune->channel[j].pattern[k].row[m].instrument = pMem[++size];
+							pSubtune->channel[j].pattern[k].row[m].volume = pMem[++size];
+
+							for (int n = 0; n < pSubtune->channel[j].effectCount; n++)
+							{
+								pSubtune->channel[j].pattern[k].row[m].effect[n].command = pMem[++size];
+								pSubtune->channel[j].pattern[k].row[m].effect[n].parameter = pMem[++size];
+							}
 						}
 					}
 				}
 			}
 
-			// Move the pMem pointer to the start of Instrument Address Table
-			pMem = &buffer[addressOfInstrumentIndex];
-
 			// And do the same for all non-Null Instruments
 			for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
 			{
+				// Offset to Subtune Index and Size of Subtune Data
+				int offset = i * 4, size = 0;
+
+				// Move the pMem pointer to the start of Instrument Address Table
+				pMem = &buffer[addressOfInstrumentIndex];
+
 				// Get the address of Instrument i in the buffer
-				memcpy(&addressOfInstrumentData, &pMem[i * 4], 4);
+				memcpy(&addressOfInstrumentData, &pMem[offset], 4);
 
 				// If the Instrument is Empty, it will be skipped
 				if (!addressOfInstrumentData)
 					continue;
 
+				// Move the pMem pointer to the start of Instrument data
+				pMem = &buffer[addressOfInstrumentData];
+
 				// Create a new Instrument first
 				g_Module.CreateInstrument(i);
 
 				// Fetch the pointer to Instrument i
-				TInstrumentV2* pToInstrument = GetInstrument(i);
-				TInstrumentV2* pFromInstrument = (TInstrumentV2*)&buffer[addressOfInstrumentData];
+				TInstrumentV2* pInstrument = GetInstrument(i);
 
-				// Copy the entire Instrument directly in memory
-				//g_Module.CopyInstrument(pFromInstrument, pToInstrument);
-				*pToInstrument = *pFromInstrument;
+				// Instrument name
+				for (int j = 0; j < INSTRUMENT_NAME_MAX; j++)
+					if (!(pInstrument->name[j] = pMem[size++]))
+						break;
+
+				// Instrument parameters
+				pInstrument->volumeFade = pMem[size];
+				pInstrument->volumeSustain = pMem[++size];
+				pInstrument->vibrato = pMem[++size];
+				pInstrument->freqShift = pMem[++size];
+				pInstrument->delay = pMem[++size];
+
+				// Instrument Envelope parameters
+				pInstrument->envelopeMacro.mode = pMem[++size];
+				pInstrument->envelopeMacro.length = pMem[++size];
+				pInstrument->envelopeMacro.loop = pMem[++size];
+				pInstrument->envelopeMacro.release = pMem[++size];
+				pInstrument->envelopeMacro.speed = pMem[++size];
+
+				// Instrument Envelope data
+				for (int j = 0; j < pInstrument->envelopeMacro.length; j++)
+				{
+					// AutoMode Triggers will be assigned a single bit each, saving 8 bytes per Envelope Step
+					BYTE autoMode = 0;
+
+					TEnvelope* envelope = &pInstrument->envelopeMacro.envelope[j];
+					envelope->volume = pMem[++size];
+					envelope->timbre = pMem[++size];
+					envelope->audctl = pMem[++size];
+					autoMode = pMem[++size];
+					envelope->effect.command = pMem[++size];
+					envelope->effect.parameter = pMem[++size];
+
+					TAutoMode* trigger = &pInstrument->envelopeMacro.envelope[j].trigger;
+					trigger->autoFilter = autoMode & 0b00000001;
+					trigger->auto16Bit = autoMode & 0b00000010;
+					trigger->autoReverse16 = autoMode & 0b00000100;
+					trigger->auto179Mhz = autoMode & 0b00001000;
+					trigger->auto15Khz = autoMode & 0b00010000;
+					trigger->autoPoly9 = autoMode & 0b00100000;
+					trigger->autoTwoTone = autoMode & 0b01000000;
+					trigger->autoToggle = autoMode & 0b10000000;
+				}
+
+				// Instrument Table parameters
+				pInstrument->tableMacro.mode = pMem[++size];
+				pInstrument->tableMacro.length = pMem[++size];
+				pInstrument->tableMacro.loop = pMem[++size];
+				pInstrument->tableMacro.release = pMem[++size];
+				pInstrument->tableMacro.speed = pMem[++size];
+
+				// Instrument Table data
+				for (int j = 0; j < pInstrument->tableMacro.length; j++)
+				{
+					pInstrument->tableMacro.table[j].note = pMem[++size];
+					pInstrument->tableMacro.table[j].freq = pMem[++size];
+				}
 			}
-
 			break;
 		}
 	}
@@ -2367,6 +2440,8 @@ bool CSong::DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubt
 
 	// The Module Version will always be found on the 5th byte of a RMTE Module
 	moduleVersion = pMem[0x04];
+
+	int offset = addressOfModuleIndex + 0x10;
 
 	// Check the Module Version, and process the Module data accordingly if there are differences between Versions
 	switch (moduleVersion)
@@ -2408,10 +2483,18 @@ bool CSong::DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubt
 		memcpy(&addressOfSubtuneIndex, &pMem[addressOfModuleIndex], 4);
 		memcpy(&addressOfInstrumentIndex, &pMem[addressOfModuleIndex + 0x04], 4);
 
-		// Module Metadata, used for the Song Name, Author and Copyright
-		SetSongName((char*)&pMem[0x40]);
-		SetSongAuthor((char*)&pMem[0x80]);
-		SetSongCopyright((char*)&pMem[0xC0]);
+		// Module Metadata, used for the Song Name, Author and Copyright, using up to 64 characters each
+		SetSongName((char*)&pMem[offset]);
+		for (int i = 0; i < MODULE_SONG_NAME_MAX; i++)
+			if (!pMem[offset++])
+				break;
+
+		SetSongAuthor((char*)&pMem[offset]);
+		for (int i = 0; i < MODULE_AUTHOR_NAME_MAX; i++)
+			if (!pMem[offset++])
+				break;
+
+		SetSongCopyright((char*)&pMem[offset]);
 
 		// Module Header should have been successfully decoded
 		return true;

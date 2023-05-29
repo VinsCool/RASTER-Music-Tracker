@@ -45,6 +45,8 @@
 #define MODULE_SONG_NAME_MAX			64									// Maximum length of Song Title
 #define MODULE_AUTHOR_NAME_MAX			64									// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64									// Maximum length of Copyright info
+#define MODULE_PATTERN_EMPTY			0xFF								// Empty Pattern in Module if encountered
+#define MODULE_ROW_EMPTY				0xFE								// Empty Row in Module if encountered
 
 
 // ----------------------------------------------------------------------------
@@ -94,11 +96,10 @@
 // Instrument definition
 //
 
-#define INSTRUMENT_NAME_MAX				64									// Maximum length of instrument name
-#define INSTRUMENT_PARAMETER_MAX		24									// Instrument parameter 0-23, inclusive
-#define INSTRUMENT_TABLE_INDEX_MAX		32									// Instrument note/freq table 0-31, inclusive
-#define ENVELOPE_INDEX_MAX				48									// Instrument envelope 0-47, inclusive
-#define ENVELOPE_PARAMETER_MAX			8									// Instrument envelope parameter 0-7, inclusive
+#define INSTRUMENT_NAME_MAX				64									// Maximum length of Instrument name
+#define INSTRUMENT_TABLE_MAX			256									// Instrument Note/Freq Table 0-255, inclusive
+#define INSTRUMENT_ENVELOPE_MAX			256									// Instrument Envelope 0-255, inclusive
+#define INSTRUMENT_EFFECT_MAX			16									// Instrument Envelope Effect Command 0-15, inclusive
 
 
 // ----------------------------------------------------------------------------
@@ -208,7 +209,7 @@ struct TEnvelopeMacro
 	BYTE loop;										// Envelope Loop point, in frames
 	BYTE release;									// Envelope Release point, in frames
 	BYTE speed;										// Envelope Speed, in frames
-	TEnvelope envelope[ENVELOPE_INDEX_MAX];			// Envelope Data
+	TEnvelope envelope[INSTRUMENT_ENVELOPE_MAX];	// Envelope Data
 };
 
 // Instrument Table Macro
@@ -219,7 +220,7 @@ struct TTableMacro
 	BYTE loop;										// Table Loop point, in frames
 	BYTE release;									// Table Release point, in frames
 	BYTE speed;										// Table Speed, in frames
-	TTable table[INSTRUMENT_TABLE_INDEX_MAX];		// Table Data
+	TTable table[INSTRUMENT_TABLE_MAX];				// Table Data
 };
 
 // Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
@@ -336,9 +337,11 @@ public:
 	BYTE GetShortestPatternLength(TSubtune* pSubtune, int songline);
 	bool DuplicatePatternInSongline(int subtune, int channel, int songline, int pattern);
 	bool IsUnusedPattern(int subtune, int channel, int pattern);
-	bool IsUnusedPattern(TChannel* pChannel, int pattern);
+	bool IsUnusedPattern(TChannel* pChannel, int pattern, int songlength);
 	bool IsEmptyPattern(int subtune, int channel, int pattern);
 	bool IsEmptyPattern(TPattern* pPattern);
+	bool IsEmptyRow(int subtune, int channel, int pattern, int row);
+	bool IsEmptyRow(TRow* pRow);
 	bool IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern);
 	bool CopyPattern(TPattern* pFromPattern, TPattern* pToPattern);
 	bool ClearPattern(int subtune, int channel, int pattern);
@@ -360,9 +363,7 @@ public:
 	//-- Getters and Setters for Instrument Data --//
 
 	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? m_instrument[instrument] : NULL; };
-
 	const char* GetInstrumentName(int instrument);
-
 	void SetInstrumentName(int instrument, const char* name);
 
 /*
@@ -384,9 +385,6 @@ public:
 	const BYTE* GetInstrumentNoteTable(int instrument) { return IsValidInstrument(instrument) ? m_instrumentIndex[instrument]->noteTable : NULL; };
 	const BYTE* GetInstrumentFreqTable(int instrument) { return IsValidInstrument(instrument) ? m_instrumentIndex[instrument]->freqTable : NULL; };
 */
-
-	//void SetInstrumentName(int instrument, const char* name) { if (IsValidInstrument(instrument)) strncpy_s(m_instrumentIndex[instrument]->name, name, INSTRUMENT_NAME_MAX); };
-
 
 private:
 	char m_songName[MODULE_SONG_NAME_MAX + 1];

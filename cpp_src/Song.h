@@ -314,7 +314,7 @@ public:
 	bool SaveRMTE(std::ofstream& ou);
 	bool LoadRMTE(std::ifstream& in);
 
-	bool MakeModuleHeader(BYTE* pMem, int addressOfModuleIndex, int addressOfSubtuneIndex, int addressOfInstrumentIndex);
+	bool MakeModuleHeader(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, int& addressOfDataBlock);
 
 	bool DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, BYTE& moduleVersion);
 
