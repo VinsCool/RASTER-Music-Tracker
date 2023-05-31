@@ -81,6 +81,7 @@ struct TSongVariables
 	BYTE instrumentNote;			// Offset relative to Channel Note
 	WORD instrumentFreq;			// Offset relative to Channel Freq
 	BYTE instrumentVolume;			// AUDC, bits 0-3, Volume level could be 0-15 inclusive (Instrument)
+	bool isInstrumentEnvelopeLoop;	// Instrument Envelope flag for looping, used to trigger Volume Slide if enabled
 	bool isInstrumentAbsoluteFreq;	// A quick and dirty hack just to get 1 specific effect command to work (FIXME: Not clean at all!)
 	bool isVolumeOnlyEnabled;		// AUDC, bit 4, forcing Volume Only output in the Channel when enabled
 	bool isDelayEnabled;			// Delay Toggle, set using the ??? Command (Gxx in FamiTracker)
@@ -97,6 +98,7 @@ struct TSongVariables
 	WORD portamentoTarget;			// Portamento Target Freq, in respect to the channelFreq rules
 	BYTE portamentoSpeed;			// Portamento Speed, higher is faster
 	BYTE finetuneOffset;			// Finetune offset to Freq, in respect to the channelFreq rules
+	bool isVolumeSlideEnabled;		// Volume Slide Toggle, set using the Axx Command, the Instrument Volume Slide Parameter will take priority if enabled
 	BYTE volumeSlide;				// Volume Slide parameter, set using the Axx Command
 };
 
@@ -261,6 +263,8 @@ public:
 	void OctaveDown() { if (--m_activeOctave < 0) m_activeOctave = 0; };
 	void VolumeUp() { if (++m_activeVolume > MAXVOLUME) m_activeVolume = MAXVOLUME; };
 	void VolumeDown() { if (--m_activeVolume < 0) m_activeVolume = 0; };
+	void InstrumentRight() { if (++m_activeInstrument > PATTERN_INSTRUMENT_COUNT - 1) m_activeInstrument = 0; };
+	void InstrumentLeft() { if (--m_activeInstrument < 0) m_activeInstrument = PATTERN_INSTRUMENT_COUNT - 1; };
 
 	void Play(int mode, BOOL follow, int special = 0);
 	void Stop();

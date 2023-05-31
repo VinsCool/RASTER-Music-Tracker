@@ -2979,20 +2979,29 @@ void CRmtView::OnKeyMoveLeft()
 	switch (g_activepart)
 	{
 	case PART_INFO:
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentLeft();
 		break;
 
 	case PART_TRACKS:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentLeft();
+		else if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
 			g_Song.ChannelLeft();
 		else
 			g_Song.PatternLeft();
 		break;
 
 	case PART_INSTRUMENTS:
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentLeft();
 		break;
 
 	case PART_SONG:
-		g_Song.ChannelLeft();
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentLeft();
+		else
+			g_Song.ChannelLeft();
 		break;
 	}
 }
@@ -3002,20 +3011,29 @@ void CRmtView::OnKeyMoveRight()
 	switch (g_activepart)
 	{
 	case PART_INFO:
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentRight();
 		break;
 
 	case PART_TRACKS:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentRight();
+		else if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
 			g_Song.ChannelRight();
 		else
 			g_Song.PatternRight();
 		break;
 
 	case PART_INSTRUMENTS:
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentRight();
 		break;
 
 	case PART_SONG:
-		g_Song.ChannelRight();
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentRight();
+		else
+			g_Song.ChannelRight();
 		break;
 	}
 }

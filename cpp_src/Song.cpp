@@ -197,6 +197,7 @@ void CSong::ResetChannelVariables(TSongVariables* p)
 
 	p->isDelayEnabled = false;
 	p->isInstrumentAbsoluteFreq = false;
+	p->isInstrumentEnvelopeLoop = false;
 	p->isNoteActive = false;
 	p->isNoteRelease = false;
 	p->isNoteSustain = false;
@@ -205,6 +206,7 @@ void CSong::ResetChannelVariables(TSongVariables* p)
 	p->isTremoloEnabled = false;
 	p->isVibratoEnabled = false;
 	p->isVolumeOnlyEnabled = false;
+	p->isVolumeSlideEnabled = false;
 	p->arpeggioScheme = 0x00;
 	p->channelAUDCTL = 0x00;
 	p->channelDistortion = TIMBRE_PURE;
@@ -4156,7 +4158,200 @@ void CSong::DrawPatternEditor()
 
 void CSong::DrawInstrumentEditor()
 {
+	TInstrumentV2* pInstrument = GetInstrument();
 
+	if (!pInstrument)
+		return;
+
+	CString s;
+	RECT instrumentBlock{};
+
+	// Actual dimensions used by the Instrument Editor Block
+	instrumentBlock.left = INSTRUMENTBLOCK_X - 4;
+	instrumentBlock.top = INSTRUMENTBLOCK_Y;
+	instrumentBlock.right = INSTRUMENTBLOCK_X + (22 * 8) + (MODULE_SONG_NAME_MAX + 1) * 8 - 4;
+	instrumentBlock.bottom = INSTRUMENTBLOCK_Y + (g_tracklines * 16);
+
+	// Coordinates used for drawing most of the Pattern Editor block on screen
+	int x = instrumentBlock.left + 4;
+	int y = instrumentBlock.top;
+
+	s.Format("INSTRUMENT %02X", m_activeInstrument);
+	TextXY(s, x, y);
+	s.Format("NAME: ");
+	s.AppendFormat(pInstrument->name);
+	TextXY(s, x, y += 16);
+	TextMiniXY("ENVELOPE", x, y + 24);
+	TextXY("        VOLUME:", x, y += 6 * 16);
+	TextXY("    DISTORTION:", x, y += 16);
+	TextXY("        TIMBRE:", x, y += 16);
+	TextXY("     AUDCTL X/:", x, y += 16);
+	TextXY("     AUDCTL Y\\:", x, y += 16);
+	TextXY("    AUTOFILTER:", x, y += 16);
+	TextXY("     AUTO16BIT:", x, y += 16);
+	TextXY(" AUTOREVERSE16:", x, y += 16);
+	TextXY("    AUTO179MHZ:", x, y += 16);
+	TextXY("     AUTO15KHZ:", x, y += 16);
+	TextXY("     AUTOPOLY9:", x, y += 16);
+	TextXY("   AUTOTWOTONE:", x, y += 16);
+	TextXY("    AUTOTOGGLE:", x, y += 16);
+	TextXY("EFFECT COMMAND:", x, y += 16);
+	TextXY("  PARAMETER X/:", x, y += 16);
+	TextXY("  PARAMETER Y\\:", x, y += 16);
+	TextXY("  LOOP/RELEASE:", x , y += 16);
+
+	x = instrumentBlock.left + 4 + (16 * 8);
+	y = instrumentBlock.top + (7 * 16);
+
+	// Delimitation of the Volume Envelope
+	g_mem_dc->MoveTo(x - 1, y - 2);
+	g_mem_dc->LineTo(x + ENVELOPE_MAX_COLUMNS * 8, y - 2);
+
+	// Volume Envelope markers
+	TextDownXY("\x0E\x0E\x0E\x0E", x - 8 - 1, y - 4 * 16 - 1, TEXT_COLOR_GRAY);
+
+	// Envelope(s)
+	for (int i = 0; i < pInstrument->envelopeMacro.length; i++)
+	{
+		x = instrumentBlock.left + 4 + ((16 + i) * 8);
+		y = instrumentBlock.top + (3 * 16);
+
+		int channel = GetActiveColumn();
+
+		bool isActiveInstrument = m_activeInstrument == m_songVariables[channel].channelInstrument;
+		bool isPlayingFrame = i == m_songVariables[channel].instrumentEnvelopeOffset;
+
+		bool isLoopPoint = i == pInstrument->envelopeMacro.loop;
+		//bool isReleasePoint = i == pInstrument->envelopeMacro.release;
+		bool isEndPoint = i + 1 == pInstrument->envelopeMacro.length;
+		//bool isBetweenPoints = i >= pInstrument->envelopeMacro.loop && i + 1 <= pInstrument->envelopeMacro.length;
+
+		TEnvelope* envelope = &pInstrument->envelopeMacro.envelope[i];
+		//COLORREF fillColour = isBetweenPoints? RGB(143, 254, 237) : RGB(255, 255, 255);
+		COLORREF fillColour = RGB(255, 255, 255);
+		COLORREF playColour = RGB(253, 236, 117);
+
+		if (envelope->volume)
+			g_mem_dc->FillSolidRect(x, y + 4 * (15 - envelope->volume) + 1, 8, envelope->volume * 4, isActiveInstrument && isPlayingFrame ? playColour : fillColour);
+
+		s.Format("%01X", envelope->volume);
+		s.AppendFormat("%01X", envelope->timbre >> 4);
+		s.AppendFormat("%01X", envelope->timbre & 0x0F);
+		s.AppendFormat("%01X", envelope->audctl >> 4);
+		s.AppendFormat("%01X", envelope->audctl & 0x0F);
+		s.AppendFormat(envelope->trigger.autoFilter ? "\x09" : "\x08");
+		s.AppendFormat(envelope->trigger.auto16Bit ? "\x09" : "\x08");
+		s.AppendFormat(envelope->trigger.autoReverse16 ? "\x09" : "\x08");
+		s.AppendFormat(envelope->trigger.auto179Mhz ? "\x09" : "\x08");
+		s.AppendFormat(envelope->trigger.auto15Khz ? "\x09" : "\x08");
+		s.AppendFormat(envelope->trigger.autoPoly9 ? "\x09" : "\x08");
+		s.AppendFormat(envelope->trigger.autoTwoTone ? "\x09" : "\x08");
+		s.AppendFormat(envelope->trigger.autoToggle ? "\x09" : "\x08");
+		s.AppendFormat("%01X", envelope->effect.command);
+		s.AppendFormat("%01X", envelope->effect.parameter >> 4);
+		s.AppendFormat("%01X", envelope->effect.parameter & 0x0F);
+
+		//TextDownXY(s, x, y + 4 * 16, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+		TextDownXY(s, x, y + 4 * 16, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+		if (isLoopPoint && isEndPoint)
+			s.Format("\x16");
+		else if (isLoopPoint)
+			s.Format("\x06");
+		else if (isEndPoint)
+			s.Format("\x07");
+		else
+			s.Format(" ");
+
+		TextXY(s, x, y + 20 * 16);
+
+		//if (isReleasePoint)
+		//	TextXY("!", x, y + 21 * 16);
+
+		// Delimitation of the Envelope Loop Point
+		if (isLoopPoint)
+		{
+			g_mem_dc->MoveTo(x - 1, y);
+			g_mem_dc->LineTo(x - 1, y + 20 * 16 - 2);
+		}
+
+		// Delimitation of the Envelope End Point
+		if (isEndPoint)
+		{
+			g_mem_dc->MoveTo(x + 8, y);
+			g_mem_dc->LineTo(x + 8, y + 20 * 16 - 2);
+		}
+
+	}
+
+	x = instrumentBlock.left + 4;
+	y = instrumentBlock.top + (24 * 16);
+
+	TextMiniXY("TABLE", x, y + 8);
+	TextXY("       NOTE X/:", x, y += 16);
+	TextXY("       NOTE Y\\:", x, y += 16);
+	TextXY("       FREQ X/:", x, y += 16);
+	TextXY("       FREQ Y\\:", x, y += 16);
+	TextXY("  LOOP/RELEASE:", x, y += 16);
+
+	// Tables(s)
+	for (int i = 0; i < pInstrument->tableMacro.length; i++)
+	{
+		x = instrumentBlock.left + 4 + ((16 + i) * 8);
+		y = instrumentBlock.top + (25 * 16);
+
+		int channel = GetActiveColumn();
+
+		bool isActiveInstrument = m_activeInstrument == m_songVariables[channel].channelInstrument;
+		bool isPlayingFrame = i == m_songVariables[channel].instrumentTableOffset;
+
+		bool isLoopPoint = i == pInstrument->tableMacro.loop;
+		//bool isReleasePoint = i == pInstrument->tableMacro.release;
+		bool isEndPoint = i + 1 == pInstrument->tableMacro.length;
+		//bool isBetweenPoints = i >= pInstrument->tableMacro.loop && i + 1 <= pInstrument->tableMacro.length;
+
+		TTable* table = &pInstrument->tableMacro.table[i];
+
+		s.Format("%01X", table->note >> 4);
+		s.AppendFormat("%01X", table->note & 0x0F);
+		s.AppendFormat("%01X", table->freq >> 4);
+		s.AppendFormat("%01X", table->freq & 0x0F);
+
+		//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+		TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+		if (isLoopPoint && isEndPoint)
+			s.Format("\x16");
+		else if (isLoopPoint)
+			s.Format("\x06");
+		else if (isEndPoint)
+			s.Format("\x07");
+		else
+			s.Format(" ");
+
+		TextXY(s, x, y + 4 * 16);
+
+		//if (isReleasePoint)
+		//	TextXY("!", x, y + 25 * 16);
+
+		// Delimitation of the Table Loop Point
+		if (isLoopPoint)
+		{
+			g_mem_dc->MoveTo(x - 1, y);
+			g_mem_dc->LineTo(x - 1, y + 4 * 16 - 2);
+		}
+
+		// Delimitation of the Tabke End Point
+		if (isEndPoint)
+		{
+			g_mem_dc->MoveTo(x + 8, y);
+			g_mem_dc->LineTo(x + 8, y + 4 * 16 - 2);
+		}
+
+	}
+
+	// The Instrument Editor Block itself:
+	g_mem_dc->DrawEdge(&instrumentBlock, EDGE_BUMP, BF_RECT);
 }
 
 void CSong::DrawDebugInfos()
@@ -4482,7 +4677,10 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 				speed = 0x00;
 
 				if (++frame >= instrument->envelopeMacro.length)
+				{
 					frame = instrument->envelopeMacro.loop;
+					m_songVariables[i].isInstrumentEnvelopeLoop = true;	// Trigger Volume Slide on Envelope Loop
+				}
 			}
 
 			m_songVariables[i].instrumentEnvelopeSpeed = speed;
@@ -4509,6 +4707,15 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 			case 0x06:
 				// TODO: Set the AutoFilter offset and/or other any Effect using CMD6 here
 				break;
+			}
+
+			// Instrument Volume Slide
+			if (m_songVariables[i].isInstrumentEnvelopeLoop && m_songVariables[i].channelVolume > instrument->volumeSustain)
+			{
+				WORD volumeFade = (m_songVariables[i].channelVolume << 8) | m_songVariables[i].volumeSlide;
+				volumeFade -= instrument->volumeFade;
+				m_songVariables[i].channelVolume = volumeFade >> 8;
+				m_songVariables[i].volumeSlide = volumeFade & 0xFF;
 			}
 
 		}
@@ -4578,7 +4785,7 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 
 		// Update the AUDC using the combined Timbre and Volume values
 		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] = m_songVariables[i].channelDistortion & 0xF0;
-		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] |= m_songVariables[i].channelVolume * m_songVariables[i].instrumentVolume / 0x0F;
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] |= (int)round((double)(m_songVariables[i].channelVolume * m_songVariables[i].instrumentVolume) / 0x0F);
 	}
 
 	// Update the AUDCTL and SKCTL using the combined values from all Channels
@@ -4676,6 +4883,8 @@ void CSong::PlayInstrument(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE
 			m_songVariables[channel].instrumentEnvelopeSpeed = 0x00;
 			m_songVariables[channel].instrumentTableOffset = 0x00;
 			m_songVariables[channel].instrumentTableSpeed = 0x00;
+			m_songVariables[channel].volumeSlide = 0x00;
+			m_songVariables[channel].isInstrumentEnvelopeLoop = false;
 		}
 		//else
 		//	m_songVariables[channel].channelInstrument = INVALID;

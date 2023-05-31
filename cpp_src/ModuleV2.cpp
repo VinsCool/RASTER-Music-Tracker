@@ -785,10 +785,10 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		BYTE initialAudctl = memInstrument[5];							// AUDCTL, used to initialise the equivalent Envelope
 
 		// Set the equivalent data to the RMTE instrument, with respect to boundaries
-		pInstrument->tableMacro.length = envelopePtr - tablePtr;
-		pInstrument->tableMacro.loop = memInstrument[1] - tablePtr;
-		pInstrument->envelopeMacro.length = (memInstrument[2] - envelopePtr + 1) / 3;
-		pInstrument->envelopeMacro.loop = (memInstrument[3] - envelopePtr + 1) / 3;
+		pInstrument->tableMacro.length = envelopePtr - tablePtr + 1;
+		pInstrument->tableMacro.loop = memInstrument[1] - tablePtr;	// + 1;
+		pInstrument->envelopeMacro.length = ((memInstrument[2] - envelopePtr + 1) / 3) + 1;
+		pInstrument->envelopeMacro.loop = ((memInstrument[3] - envelopePtr + 1) / 3);	// + 1;
 		pInstrument->tableMacro.mode = (memInstrument[4] >> 6) & 0x01;	// Table Mode, 0 = Set, 1 = Additive
 		pInstrument->tableMacro.speed = memInstrument[4] & 0x3F;		// Table Speed, used to offset the equivalent Tables
 		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
@@ -810,14 +810,14 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			pInstrument->envelopeMacro.loop = 0x00;
 
 		// Fill the equivalent RMTE tables based on the tableMode parameter
-		for (int j = 0; j <= pInstrument->tableMacro.length; j++)
+		for (int j = 0; j < pInstrument->tableMacro.length; j++)
 		{
 			pInstrument->tableMacro.table[j].note = !tableType ? memInstrument[tablePtr + j] : 0x00;
 			pInstrument->tableMacro.table[j].freq = tableType ? memInstrument[tablePtr + j] : 0x00;
 		}
 
 		// Fill the equivalent RMTE envelopes, which might include some compromises due to the format differences
-		for (int j = 0; j <= pInstrument->envelopeMacro.length; j++)
+		for (int j = 0; j < pInstrument->envelopeMacro.length; j++)
 		{
 			// Get the 3 bytes used by the original RMT Envelope format
 			BYTE envelopeVolume = memInstrument[envelopePtr + 1 + (j * 3)];
