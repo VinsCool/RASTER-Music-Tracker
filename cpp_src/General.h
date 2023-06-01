@@ -83,6 +83,8 @@
 #define SONGBLOCK_Y			1 * 16
 #define INFOBLOCK_X			2 * 8
 #define INFOBLOCK_Y			1 * 16
+#define REGISTERSBLOCK_X	PATTERNBLOCK_X
+#define REGISTERSBLOCK_Y	PATTERNBLOCK_Y
 
 // Legacy Screen coordinates
 #define TRACKS_X 2*8

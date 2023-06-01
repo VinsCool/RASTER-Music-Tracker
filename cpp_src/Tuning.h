@@ -117,13 +117,15 @@ struct TTuning
 class CTuning
 {
 public:
-	double GetPokeyPitch(WORD freq, int coarseDivisor, double fineDivisor, int cycle) { return FREQ_17 / (coarseDivisor * fineDivisor) / (freq + cycle) / 2; };
-	int GetPokeyFreq(double pitch, int coarseDivisor, double fineDivisor, int cycle) { return (int)round(FREQ_17 / (coarseDivisor * fineDivisor) / (2 * pitch) - cycle); };
+	double GetPokeyPitch(WORD freq, int coarseDivisor, double fineDivisor, int cycle) { return (double)FREQ_17 / (coarseDivisor * fineDivisor) / (freq + cycle) / 2; };
+	int GetPokeyFreq(double pitch, int coarseDivisor, double fineDivisor, int cycle) { return (int)round((double)FREQ_17 / (coarseDivisor * fineDivisor) / (2 * pitch) - cycle); };
 
+	double GeneratePokeyPitch(WORD freq, BYTE audc, BYTE audctl, int channel);
 	WORD GeneratePokeyFreq(double pitch, int channel, int timbre, int audctl);
 
 	double GetTruePitch(int semitone, int baseNote, double tuning);
-	double GetCentsOff(double pitch, double tuning);
+	int GetCentsOff(double pitch, double tuning);
+	int GetNoteNumber(int basenote, double pitch, double tuning);
 
 	int DeltaPokeyFreq(double pitch, int freq, int coarseDivisor, double fineDivisor, int cycle, int timbre);
 

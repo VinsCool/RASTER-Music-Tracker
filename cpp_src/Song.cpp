@@ -3880,7 +3880,121 @@ void CSong::DrawSubtuneInfos()
 
 void CSong::DrawRegistersState()
 {
+	if (!g_viewPokeyRegisters)
+		return;
 
+	CString s;
+	RECT registersBlock{};
+
+	int x, y;
+	int activeSubtune = m_activeSubtune;
+	int channelCount = GetChannelCount(activeSubtune);
+
+	// Set the X offset to match the width used by either the Pattern Editor...
+	if (g_active_ti == PART_TRACKS)
+	{
+		x = REGISTERSBLOCK_X + (4 * 8);
+
+		for (int i = 0; i < channelCount; i++)
+			x += (10 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8));
+	}
+
+	// ...Or the Instrument Editor, depending on which screen is currently active
+	else
+		x = SONGBLOCK_X;
+
+	// The same parameter will be used by Y for either case, however
+	y = REGISTERSBLOCK_Y;
+
+	// Actual dimensions used by the Info block
+	registersBlock.left = x - 4;
+	registersBlock.top = y;
+	registersBlock.right = x + (90 * 8) - 4;
+	registersBlock.bottom = y + (16 * 16);
+
+	// First iteration: Construct and format the Registers View display
+	for (int i = 0; i < channelCount; i++)
+	{
+		int gap = (i / 4) * 16;
+		WORD addressOfPokey = 0xD200 + gap;
+
+		x = registersBlock.left + 4;
+		y = registersBlock.top + ((2 + i) * 8) + (gap * 3) + 4;
+
+		// For any POKEY to be displayed, process these lines only when the Channel 1 is being referenced
+		if (i % 4 == 0)
+		{
+			s.Format("POKEY REGISTERS (ADDRESS $%04X)", addressOfPokey);
+			TextMiniXY(s, x, y - (2 * 8), TEXT_MINI_COLOR_GRAY);
+			s.Format("$%04X: $--", addressOfPokey + 0x08);
+			TextMiniXY(s, x, y + (4 * 8), TEXT_MINI_COLOR_GRAY);
+			s.Format("$%04X: $--", addressOfPokey + 0x0F);
+			TextMiniXY(s, x, y + (5 * 8), TEXT_MINI_COLOR_GRAY);
+		}
+
+		s.Format("$%04X: $-- $--   PITCH = $---- (         HZ ---  +  ), VOL = $-, DIST = $-,", addressOfPokey + ((i % 4) * 2));
+		TextMiniXY(s, x, y, TEXT_MINI_COLOR_GRAY);
+	}
+
+	// Second iteration: Draw the Registers data on top of the block previously constructed
+	for (int i = 0; i < channelCount; i++)
+	{
+		int gap = (i / 4) * 16;
+		WORD addressOfPokey = 0xD200 + gap;
+
+		x = registersBlock.left + 4;
+		y = registersBlock.top + ((2 + i) * 8) + (gap * 3) + 4;
+
+		BYTE audf = g_atarimem[addressOfPokey + ((i % 4) * 2)];
+		BYTE audc = g_atarimem[addressOfPokey + ((i % 4) * 2) + 1];
+		BYTE audctl = g_atarimem[addressOfPokey + 0x08];
+		BYTE skctl = g_atarimem[addressOfPokey + 0x0F];
+
+		BYTE volume = audc & 0x0F;
+		BYTE distortion = (audc >> 4) & 0x0E;
+
+		s.Format("%02X  %02X", audf, audc);
+		TextMiniXY(s, x + (8 * 8), y, TEXT_MINI_COLOR_WHITE);
+
+		s.Format("%01X          %01X", volume, distortion);
+		TextMiniXY(s, x + (62 * 8), y, TEXT_MINI_COLOR_WHITE);
+
+		// For any POKEY to be displayed, process these lines only when the Channel 1 is being referenced
+		if (i % 4 == 0)
+		{
+			s.Format("%02X", audctl);
+			TextMiniXY(s, x + (8 * 8), y + (4 * 8), TEXT_MINI_COLOR_WHITE);
+
+			s.Format("%02X", skctl);
+			TextMiniXY(s, x + (8 * 8), y + (5 * 8), TEXT_MINI_COLOR_WHITE);
+		}
+
+		double pitch = g_Tuning.GeneratePokeyPitch(audf, audc, audctl, i);
+		s.Format("%09.2f", pitch);
+		
+		// Trim the trailing zeroes
+		for (int j = 0; j < 9; j++)
+		{
+			if (s.GetAt(j) != '0')
+				break;
+
+			s.SetAt(j, ' ');
+		}
+
+		TextMiniXY(s, x + (32 * 8), y, TEXT_MINI_COLOR_WHITE);
+
+		int note = g_Tuning.GetNoteNumber(g_baseNote, pitch, g_baseTuning);
+		s.Format("%s%1d ", notesandscales[0][note % 12], note / 12);
+		TextMiniXY(s, x + (44 * 8), y, TEXT_MINI_COLOR_WHITE);
+
+		int cents = g_Tuning.GetCentsOff(pitch, g_baseTuning);
+		s.Format("%03d", cents);
+		TextMiniXY(s, x + (49 * 8), y, TEXT_MINI_COLOR_WHITE);
+		TextMiniXY(cents >= 0 ? "+" : "-", x + (49 * 8), y, TEXT_MINI_COLOR_WHITE);
+	}
+
+	// The Registers Block itself:
+	g_mem_dc->DrawEdge(&registersBlock, EDGE_BUMP, BF_RECT);
 }
 
 void CSong::DrawPatternEditor()

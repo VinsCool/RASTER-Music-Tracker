@@ -14,11 +14,17 @@ double CTuning::GetTruePitch(int semitone, int baseNote, double tuning)
 	return (tuning / 64) * pow(ratio, semitone + baseNote + 12);
 }
 
-double CTuning::GetCentsOff(double pitch, double tuning)
+int CTuning::GetCentsOff(double pitch, double tuning)
 {
 	double centnum = 1200 * log2(pitch / tuning);
 	int notenum = (int)round(centnum * 0.01) + 60;
-	return (centnum - (notenum - 60) * 100);
+	return (int)round(centnum - (notenum - 60) * 100);
+}
+
+int CTuning::GetNoteNumber(int baseNote, double pitch, double tuning)
+{
+	double centnum = 1200 * log2(pitch / tuning);
+	return (int)round(centnum * 0.01) + 60 - baseNote;
 }
 
 WORD CTuning::GeneratePokeyFreq(double pitch, int channel, int timbre, int audctl)
@@ -240,6 +246,133 @@ int CTuning::DeltaPokeyFreq(double pitch, int freq, int coarseDivisor, double fi
 
 	// Return whichever is nearest to the wanted pitch
 	return pitchDown - pitchUp > 0 ? freqUp : freqDown;
+}
+
+double CTuning::GeneratePokeyPitch(WORD freq, BYTE audc, BYTE audctl, int channel)
+{
+	// Variables for pitch calculation, divisors must never be 0!
+	double fineDivisor = 1;
+	int coarseDivisor = 1;
+	int cycle = 1;
+
+	// Register variables 
+	bool is15KhzMode = audctl & 0x01;
+	bool isHighPassCh24 = audctl & 0x02;
+	bool isHighPassCh13 = audctl & 0x04;
+	bool isJoinedCh34 = audctl & 0x08;
+	bool isJoinedCh12 = audctl & 0x10;
+	bool is179MhzCh3 = audctl & 0x20;
+	bool is179MhzCh1 = audctl & 0x40;
+	bool isPoly9Noise = audctl & 0x80;
+
+	// Combined modes
+	bool is16BitMode = (isJoinedCh12 && is179MhzCh1 && channel % 4 == 1) || (isJoinedCh34 && is179MhzCh3 && channel % 4 == 3);
+	bool is179MhzMode = (is179MhzCh1 && channel % 4 == 0) || (is179MhzCh3 && channel % 4 == 2);
+
+	// Override, these 2 take priority over 15khz mode if they are enabled at the same time
+	if (is16BitMode || is179MhzMode)
+		is15KhzMode = false;
+
+	if (is16BitMode)
+		cycle = 7;
+	else if (is179MhzMode)
+		cycle = 4;
+	else
+		coarseDivisor = is15KhzMode ? 114 : 28;
+
+	// Many combinations depend entirely on the Modulo of POKEY frequencies to generate different tones
+	// If a value is known to provide unstable results, it may be a better idea to avoid it
+	bool MOD3 = (freq + cycle) % 3 == 0;
+	bool MOD5 = (freq + cycle) % 5 == 0;
+	bool MOD7 = (freq + cycle) % 7 == 0;
+	bool MOD15 = (freq + cycle) % 15 == 0;
+	bool MOD31 = (freq + cycle) % 31 == 0;
+	bool MOD73 = (freq + cycle) % 73 == 0;
+
+	BYTE distortion = audc & 0xF0;
+
+	switch (distortion)
+	{
+	case 0x00:
+		if (isPoly9Noise)
+		{
+			// Metallic Buzzy
+			fineDivisor = 255.5;
+
+			// Seems to only sound "uniform" in 64kHz mode for some reason 
+			if (MOD7 || (!is15KhzMode && !is179MhzMode && !is16BitMode))
+				fineDivisor = 36.5;
+
+			// MOD31 and MOD73 values are invalid 
+			if (MOD31 || MOD73)
+				return 0;
+		}
+		break;
+
+	case 0x20:
+	case 0x60:
+		// Duplicate of Distortion 2
+		fineDivisor = 31;
+		if (MOD31)
+			return 0;
+		break;
+
+	case 0x40:
+		// Buzzy tones, neither MOD3 or MOD5 or MOD31
+		fineDivisor = 232.5;
+
+		// Smooth tones, MOD3 but not MOD5 or MOD31
+		if (MOD3 || is15KhzMode)
+			fineDivisor = 77.5;
+
+		// Unstable tones #1, MOD5 but not MOD3 or MOD31
+		if (MOD5)
+			fineDivisor = 46.5;
+
+		// Unstables Tones #2 and #3, MOD31, with MOD3 or MOD5 
+		if (MOD31)
+			fineDivisor = (MOD3 || MOD5) ? 2.5 : 7.5;
+
+		// Both MOD3 and MOD5 at once are invalid 
+		if (MOD15 || (MOD5 && is15KhzMode))
+			return 0;
+		break;
+
+	case 0x80:
+		if (isPoly9Noise)
+		{
+			// Metallic Buzzy
+			fineDivisor = 255.5;
+
+			// Seems to only sound "uniform" in 64kHz mode for some reason 
+			if (MOD7 || (!is15KhzMode && !is179MhzMode && !is16BitMode))
+				fineDivisor = 36.5;
+
+			// MOD73 values are invalid
+			if (MOD73)
+				return 0;
+		}
+		break;
+
+	case 0xC0:
+		// Gritty tones, neither MOD3 or MOD5
+		fineDivisor = 7.5;
+
+		// Buzzy tones, MOD3 but not MOD5
+		if (MOD3 || is15KhzMode)
+			fineDivisor = 2.5;
+
+		// Unstable Buzzy tones, MOD5 but not MOD3
+		if (MOD5)
+			fineDivisor = 1.5;
+
+		// Both MOD3 and MOD5 at once are invalid 
+		if (MOD15 || (MOD5 && is15KhzMode))
+			return 0;
+		break;
+	}
+
+	return GetPokeyPitch(freq, coarseDivisor, fineDivisor, cycle);
 }
 
 
