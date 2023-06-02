@@ -3885,10 +3885,19 @@ void CSong::DrawRegistersState()
 
 	CString s;
 	RECT registersBlock{};
+	TPokeyRegisters pokey{};
 
 	int x, y;
 	int activeSubtune = m_activeSubtune;
 	int channelCount = GetChannelCount(activeSubtune);
+
+	bool is16BitMode, is179MhzMode;
+	bool is15KhzMode;
+	bool isHighPassCh24, isHighPassCh13;
+	bool isJoinedCh34, isJoinedCh12;
+	bool is179MhzCh3, is179MhzCh1;
+	bool isPoly9Noise;
+	bool isTwoTone;
 
 	// Set the X offset to match the width used by either the Pattern Editor...
 	if (g_active_ti == PART_TRACKS)
@@ -3936,6 +3945,7 @@ void CSong::DrawRegistersState()
 		TextMiniXY(s, x, y, TEXT_MINI_COLOR_GRAY);
 	}
 
+
 	// Second iteration: Draw the Registers data on top of the block previously constructed
 	for (int i = 0; i < channelCount; i++)
 	{
@@ -3945,31 +3955,101 @@ void CSong::DrawRegistersState()
 		x = registersBlock.left + 4;
 		y = registersBlock.top + ((2 + i) * 8) + (gap * 3) + 4;
 
-		BYTE audf = g_atarimem[addressOfPokey + ((i % 4) * 2)];
-		BYTE audc = g_atarimem[addressOfPokey + ((i % 4) * 2) + 1];
-		BYTE audctl = g_atarimem[addressOfPokey + 0x08];
-		BYTE skctl = g_atarimem[addressOfPokey + 0x0F];
+		// For any POKEY to be displayed, process these lines only when the Channel 1 is being referenced
+		if (i % 4 == 0)
+		{
+			for (int j = 0; j < 4; j++)
+			{
+				pokey.audf[j] = g_atarimem[addressOfPokey + j * 2];
+				pokey.audc[j] = g_atarimem[addressOfPokey + j * 2 + 1];
+			}
 
+			pokey.audctl = g_atarimem[addressOfPokey + 0x08];
+			pokey.skctl = g_atarimem[addressOfPokey + 0x0F];
+
+			s.Format("%02X", pokey.audctl);
+			TextMiniXY(s, x + (8 * 8), y + (4 * 8), TEXT_MINI_COLOR_WHITE);
+
+			s.Format("%02X", pokey.skctl);
+			TextMiniXY(s, x + (8 * 8), y + (5 * 8), TEXT_MINI_COLOR_WHITE);
+
+			// Set the AUDCTL flags for all channels
+			is15KhzMode = pokey.audctl & 0x01;
+			isHighPassCh24 = pokey.audctl & 0x02;
+			isHighPassCh13 = pokey.audctl & 0x04;
+			isJoinedCh34 = pokey.audctl & 0x08;
+			isJoinedCh12 = pokey.audctl & 0x10;
+			is179MhzCh3 = pokey.audctl & 0x20;
+			is179MhzCh1 = pokey.audctl & 0x40;
+			isPoly9Noise = pokey.audctl & 0x80;
+			isTwoTone = pokey.skctl == 0x8B;
+
+			if (isHighPassCh13)
+				TextMiniXY("CH1: HIGH PASS FILTER",x + (32 * 8), y + (4 * 8), TEXT_MINI_COLOR_BLUE);
+
+			if (isHighPassCh24)
+				TextMiniXY("CH2: HIGH PASS FILTER", x + (32 * 8), y + (5 * 8), TEXT_MINI_COLOR_BLUE);
+
+			if (isPoly9Noise)
+				TextMiniXY("POLY9 NOISE ENABLED", x + (11 * 8), y + (4 * 8), TEXT_MINI_COLOR_BLUE);
+
+			if (isTwoTone)
+				TextMiniXY("CH1: TWO TONE FILTER", x + (11 * 8), y + (5 * 8), TEXT_MINI_COLOR_BLUE);
+		}
+
+		BYTE audf = pokey.audf[i % 4];
+		BYTE audc = pokey.audc[i % 4];
 		BYTE volume = audc & 0x0F;
-		BYTE distortion = (audc >> 4) & 0x0E;
+		BYTE distortion = audc >> 4 & 0x0E;
+		WORD freq = pokey.audf16[i % 4 > 1];
+
+		is16BitMode = is179MhzMode = false;
+
+		switch (i % 4)
+		{
+		case CH1:
+			is179MhzMode = is179MhzCh1;
+			break;
+
+		case CH2:
+			is16BitMode = isJoinedCh12;
+			break;
+
+		case CH3:
+			is179MhzMode = is179MhzCh3;
+			break;
+
+		case CH4:
+			is16BitMode = isJoinedCh34;
+			break;
+		}
 
 		s.Format("%02X  %02X", audf, audc);
 		TextMiniXY(s, x + (8 * 8), y, TEXT_MINI_COLOR_WHITE);
 
+		s.Format("%04X", is16BitMode ? freq : audf);
+		TextMiniXY(s, x + (26 * 8), y, TEXT_MINI_COLOR_WHITE);
+
 		s.Format("%01X          %01X", volume, distortion);
 		TextMiniXY(s, x + (62 * 8), y, TEXT_MINI_COLOR_WHITE);
 
-		// For any POKEY to be displayed, process these lines only when the Channel 1 is being referenced
-		if (i % 4 == 0)
-		{
-			s.Format("%02X", audctl);
-			TextMiniXY(s, x + (8 * 8), y + (4 * 8), TEXT_MINI_COLOR_WHITE);
+		if (is16BitMode)
+			s.Format("16-BIT");
 
-			s.Format("%02X", skctl);
-			TextMiniXY(s, x + (8 * 8), y + (5 * 8), TEXT_MINI_COLOR_WHITE);
-		}
+		else if (is179MhzMode)
+			s.Format("1.79MHZ");
 
-		double pitch = g_Tuning.GeneratePokeyPitch(audf, audc, audctl, i);
+		else
+			s.Format(is15KhzMode ? "15KHZ" : "64KHZ");
+
+		TextMiniXY(s, x + (76 * 8), y, TEXT_MINI_COLOR_BLUE);
+
+		double pitch = g_Tuning.GeneratePokeyPitch(pokey, i);
+
+		// If there is no valid pitch returned, skip the remaining part of this loop
+		if (pitch < 1.0)
+			continue;
+
 		s.Format("%09.2f", pitch);
 		
 		// Trim the trailing zeroes
@@ -3984,6 +4064,11 @@ void CSong::DrawRegistersState()
 		TextMiniXY(s, x + (32 * 8), y, TEXT_MINI_COLOR_WHITE);
 
 		int note = g_Tuning.GetNoteNumber(g_baseNote, pitch, g_baseTuning);
+		
+		// Invert the negative Note Index to prevent going out of bounds
+		if (note < 0)
+			note *= -1;
+
 		s.Format("%s%1d ", notesandscales[0][note % 12], note / 12);
 		TextMiniXY(s, x + (44 * 8), y, TEXT_MINI_COLOR_WHITE);
 

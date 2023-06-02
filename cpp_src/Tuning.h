@@ -8,6 +8,7 @@
 #include "global.h"
 
 #include "XPokey.h"
+#include "Song.h"
 
 /*
 const double temperament_preset[TUNING_PRESETS][PRESETS_LENGTH] =
@@ -120,7 +121,7 @@ public:
 	double GetPokeyPitch(WORD freq, int coarseDivisor, double fineDivisor, int cycle) { return (double)FREQ_17 / (coarseDivisor * fineDivisor) / (freq + cycle) / 2; };
 	int GetPokeyFreq(double pitch, int coarseDivisor, double fineDivisor, int cycle) { return (int)round((double)FREQ_17 / (coarseDivisor * fineDivisor) / (2 * pitch) - cycle); };
 
-	double GeneratePokeyPitch(WORD freq, BYTE audc, BYTE audctl, int channel);
+	double GeneratePokeyPitch(TPokeyRegisters& pokey, int channel);
 	WORD GeneratePokeyFreq(double pitch, int channel, int timbre, int audctl);
 
 	double GetTruePitch(int semitone, int baseNote, double tuning);

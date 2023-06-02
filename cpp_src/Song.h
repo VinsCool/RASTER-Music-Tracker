@@ -58,6 +58,20 @@ typedef struct
 
 } tExportDescription;
 
+// POKEY registers typically make use of 8-bit values, but there are cases where 2 Channels may also be joined together in 16-bit mode
+// It is effectively possible to use the same data for either 2 contiguous AUDF Bytes, or a single 16-bit Word, depending on the AUDCTL state
+struct TPokeyRegisters
+{
+	union
+	{
+		BYTE audf[4];
+		WORD audf16[2];
+	};
+	BYTE audc[4];
+	BYTE audctl;
+	BYTE skctl;
+};
+
 // Variables used for RMTE Module playback
 // Loosely inspired by FamiTracker for most of them
 // TODO: Cleanup and manage more efficiently, this is kind of all over the place

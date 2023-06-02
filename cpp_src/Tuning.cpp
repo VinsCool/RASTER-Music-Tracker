@@ -248,37 +248,67 @@ int CTuning::DeltaPokeyFreq(double pitch, int freq, int coarseDivisor, double fi
 	return pitchDown - pitchUp > 0 ? freqUp : freqDown;
 }
 
-double CTuning::GeneratePokeyPitch(WORD freq, BYTE audc, BYTE audctl, int channel)
+double CTuning::GeneratePokeyPitch(TPokeyRegisters& pokey, int channel)
 {
 	// Variables for pitch calculation, divisors must never be 0!
 	double fineDivisor = 1;
 	int coarseDivisor = 1;
 	int cycle = 1;
 
-	// Register variables 
-	bool is15KhzMode = audctl & 0x01;
-	bool isHighPassCh24 = audctl & 0x02;
-	bool isHighPassCh13 = audctl & 0x04;
-	bool isJoinedCh34 = audctl & 0x08;
-	bool isJoinedCh12 = audctl & 0x10;
-	bool is179MhzCh3 = audctl & 0x20;
-	bool is179MhzCh1 = audctl & 0x40;
-	bool isPoly9Noise = audctl & 0x80;
+	// AUDCTL flags
+	bool is15KhzMode = pokey.audctl & 0x01;
+	bool isHighPassCh24 = pokey.audctl & 0x02;
+	bool isHighPassCh13 = pokey.audctl & 0x04;
+	bool isJoinedCh34 = pokey.audctl & 0x08;
+	bool isJoinedCh12 = pokey.audctl & 0x10;
+	bool is179MhzCh3 = pokey.audctl & 0x20;
+	bool is179MhzCh1 = pokey.audctl & 0x40;
+	bool isPoly9Noise = pokey.audctl & 0x80;
+	bool isTwoTone = pokey.skctl == 0x8B;
 
 	// Combined modes
-	bool is16BitMode = (isJoinedCh12 && is179MhzCh1 && channel % 4 == 1) || (isJoinedCh34 && is179MhzCh3 && channel % 4 == 3);
-	bool is179MhzMode = (is179MhzCh1 && channel % 4 == 0) || (is179MhzCh3 && channel % 4 == 2);
+	bool is179MhzMode = false;
+	bool isJoined16 = false;
+	bool isReverse16 = false;
+	bool is16BitFastClock = false;
+	bool isReverse16FastClock = false;
 
-	// Override, these 2 take priority over 15khz mode if they are enabled at the same time
-	if (is16BitMode || is179MhzMode)
-		is15KhzMode = false;
+	// 16-bit Mode is tested for Joined Channels, 1.79mHz Mode, and specifically which POKEY Channel will be used for the output
+	switch (channel % 4)
+	{
+	case CH1:
+		is179MhzMode = is179MhzCh1;
+		isReverse16 = isJoinedCh12;
+		isReverse16FastClock = isReverse16 && is179MhzMode;
+		break;
 
-	if (is16BitMode)
+	case CH2:
+		isJoined16 = isJoinedCh12;
+		is16BitFastClock = isJoined16 && is179MhzCh1;
+		break;
+
+	case CH3:
+		is179MhzMode = is179MhzCh3;
+		isReverse16 = isJoinedCh34;
+		isReverse16FastClock = isReverse16 && is179MhzMode;
+		break;
+
+	case CH4:
+		isJoined16 = isJoinedCh34;
+		is16BitFastClock = isJoined16 && is179MhzCh3;
+		break;
+	}
+
+	// Cycles offset to add to the pitch calculations when either 16-bit Mode and/or 1.79mhz Mode is set, else, only the Coarse Divisor will be set
+	if (is16BitFastClock || isReverse16FastClock)
 		cycle = 7;
 	else if (is179MhzMode)
 		cycle = 4;
 	else
 		coarseDivisor = is15KhzMode ? 114 : 28;
+
+	// If 16-bit Mode is used, the Freq from 2 Channels will be combined into a 16-bit value, in Little Endian order (LSB then MSB)
+	WORD freq = isJoined16 ? pokey.audf16[channel % 4 > 1] : pokey.audf[channel % 4];
 
 	// Many combinations depend entirely on the Modulo of POKEY frequencies to generate different tones
 	// If a value is known to provide unstable results, it may be a better idea to avoid it
@@ -289,7 +319,8 @@ double CTuning::GeneratePokeyPitch(WORD freq, BYTE audc, BYTE audctl, int channe
 	bool MOD31 = (freq + cycle) % 31 == 0;
 	bool MOD73 = (freq + cycle) % 73 == 0;
 
-	BYTE distortion = audc & 0xF0;
+	//BYTE distortion = audc & 0xF0;
+	BYTE distortion = pokey.audc[channel % 4] & 0xF0;
 
 	switch (distortion)
 	{
@@ -300,7 +331,7 @@ double CTuning::GeneratePokeyPitch(WORD freq, BYTE audc, BYTE audctl, int channe
 			fineDivisor = 255.5;
 
 			// Seems to only sound "uniform" in 64kHz mode for some reason 
-			if (MOD7 || (!is15KhzMode && !is179MhzMode && !is16BitMode))
+			if (MOD7 || (!is15KhzMode && !is179MhzMode && !is16BitFastClock))
 				fineDivisor = 36.5;
 
 			// MOD31 and MOD73 values are invalid 
@@ -345,7 +376,7 @@ double CTuning::GeneratePokeyPitch(WORD freq, BYTE audc, BYTE audctl, int channe
 			fineDivisor = 255.5;
 
 			// Seems to only sound "uniform" in 64kHz mode for some reason 
-			if (MOD7 || (!is15KhzMode && !is179MhzMode && !is16BitMode))
+			if (MOD7 || (!is15KhzMode && !is179MhzMode && !is16BitFastClock))
 				fineDivisor = 36.5;
 
 			// MOD73 values are invalid
