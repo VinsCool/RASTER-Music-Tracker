@@ -1944,7 +1944,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	subtuneBuffer = new BYTE[sizeof TSubtune];
 
 	// Encode the Subtune data, for all Indexed Subtunes referenced in the Header
-	for (int i = 0; i < SUBTUNE_MAX; i++)
+	for (int i = 0; i < SUBTUNE_COUNT; i++)
 	{
 		// Fetch the pointer to Subtune i
 		TSubtune* pSubtune = GetSubtune(i);
@@ -1985,7 +1985,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 				pMem[++size] = pSubtune->channel[j].songline[k];
 
 			// All Indexed Patterns
-			for (int k = 0; k < TRACK_PATTERN_MAX; k++)
+			for (int k = 0; k < PATTERN_COUNT; k++)
 			{
 				// If the Pattern is Empty, a single byte will be used to flag it as such
 				if (g_Module.IsEmptyPattern(&pSubtune->channel[j].pattern[k]))
@@ -2038,7 +2038,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	instrumentBuffer = new BYTE[sizeof TInstrumentV2];
 
 	// Encode the Instrument data, for all Indexed Instruments referenced in the Header
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+	for (int i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Fetch the pointer to Instrument i
 		TInstrumentV2* pInstrument = GetInstrument(i);
@@ -2061,6 +2061,9 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			if (!(pMem[size++] = pInstrument->name[j]))
 				break;
 
+		// FIXME: AS SOON AS POSSIBLE!
+
+/*
 		// Instrument parameters
 		pMem[size] = pInstrument->volumeFade;
 		pMem[++size] = pInstrument->volumeSustain;
@@ -2113,6 +2116,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			pMem[++size] = pInstrument->tableMacro.table[j].note;
 			pMem[++size] = pInstrument->tableMacro.table[j].freq;
 		}
+*/
 
 		// Write the fully encoded Instrument data to file once it is ready
 		ou.write((char*)instrumentBuffer, ++size);
@@ -2250,7 +2254,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 		case 0x00:
 
 			// From this point, find and load non-Null Subtunes in contiguous order
-			for (int i = 0; i < SUBTUNE_MAX; i++)
+			for (int i = 0; i < SUBTUNE_COUNT; i++)
 			{
 				// Offset to Subtune Index and Size of Subtune Data
 				int offset = i * 4, size = 0;
@@ -2297,7 +2301,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 						pSubtune->channel[j].songline[k] = pMem[++size];
 
 					// All Indexed Patterns
-					for (int k = 0; k < TRACK_PATTERN_MAX; k++)
+					for (int k = 0; k < PATTERN_COUNT; k++)
 					{
 						// If the Pattern is Empty, a single byte will be used to flag it as such
 						if (pMem[size + 1] == MODULE_PATTERN_EMPTY)
@@ -2332,7 +2336,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 			}
 
 			// And do the same for all non-Null Instruments
-			for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+			for (int i = 0; i < INSTRUMENT_COUNT; i++)
 			{
 				// Offset to Subtune Index and Size of Subtune Data
 				int offset = i * 4, size = 0;
@@ -2361,6 +2365,9 @@ bool CSong::LoadRMTE(std::ifstream& in)
 					if (!(pInstrument->name[j] = pMem[size++]))
 						break;
 
+				// FIXME: AS SOON AS POSSIBLE!
+
+/*
 				// Instrument parameters
 				pInstrument->volumeFade = pMem[size];
 				pInstrument->volumeSustain = pMem[++size];
@@ -2413,7 +2420,9 @@ bool CSong::LoadRMTE(std::ifstream& in)
 					pInstrument->tableMacro.table[j].note = pMem[++size];
 					pInstrument->tableMacro.table[j].freq = pMem[++size];
 				}
+*/
 			}
+
 			break;
 		}
 	}
@@ -2422,7 +2431,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	delete buffer;
 
 	// Set the number of active POKEY channels from the current Subtune
-	MODULE_STEREO = GetChannelCount();
+	MODULE_CHANNEL_COUNT = GetChannelCount();
 
 	// Module file should have been successfully loaded
 	return true;

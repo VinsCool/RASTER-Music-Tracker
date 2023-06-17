@@ -39,6 +39,10 @@ static bool volatile m_timerRoutineSwitch;
 
 void CALLBACK G_TimerRoutine(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR)
 {
+	// If the POKEY Stream is being recorded, the Timer Routine is bypassed entirely to run as fast as possible
+	if (g_PokeyStream.IsRecording())
+		return;
+
 	std::this_thread::sleep_until(m_deltaTimerRoutine);
 	m_deltaTimerRoutine = std::chrono::steady_clock::now() + std::chrono::milliseconds(g_ntsc ? 16 + (m_timerRoutineSwitch ^= 1) : 20);
 	g_Song.TimerRoutine();
@@ -50,13 +54,16 @@ CSong::CSong()
 {
 	m_timerRoutine = NULL;
 	m_songVariables = NULL;
-	//m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
+	m_pokeyBuffer = NULL;
+	CreateSongVariables();
+	CreatePokeyBuffer();
 }
 
 CSong::~CSong()
 {
 	KillTimer();
-	ClearSongVariables();
+	DeleteSongVariables();
+	DeletePokeyBuffer();
 }
 
 /// <summary>
@@ -165,15 +172,36 @@ void CSong::ClearSong(int numOfTracks)
 	Atari_InitRMTRoutine();
 
 	// Initialise the RMTE Module as well, since it will progressively replace the Legacy format, and will use most of the same functions
-	//g_Module.InitialiseModule();
 	g_Module.ClearModule();
 	g_Module.InitialiseModule();
 
-	// Initialise Song variables
-	InitialiseSongVariables();
+	// Clear Song variables
+	ClearSongVariables();
+
+	// Clear POKEY registers buffer
+	ClearPokeyBuffer();
+}
+
+void CSong::ResetChannelVariables(TChannelVariables* pVariables)
+{
+	if (!pVariables)
+		return;
+
+	// Clear all variables in the Channel
+	memset(pVariables, 0x00, sizeof(TChannelVariables));
+
+	// Set default values
+	pVariables->channelNote = INVALID;
+	pVariables->channelTimbre = TIMBRE_PURE;
 }
 
 void CSong::ClearSongVariables()
+{
+	for (int i = 0; i < CHANNEL_COUNT; i++)
+		ResetChannelVariables(&m_songVariables->channel[i]);
+}
+
+void CSong::DeleteSongVariables()
 {
 	if (m_songVariables)
 		delete m_songVariables;
@@ -181,57 +209,34 @@ void CSong::ClearSongVariables()
 	m_songVariables = NULL;
 }
 
-void CSong::InitialiseSongVariables()
+void CSong::CreateSongVariables()
 {
-	ClearSongVariables();
-	m_songVariables = new TSongVariables[SONGTRACKS];
+	if (!m_songVariables)
+		m_songVariables = new TSongVariables;
 
-	for (int i = 0; i < SONGTRACKS; i++)
-		ResetChannelVariables(&m_songVariables[i]);
+	ClearSongVariables();
 }
 
-void CSong::ResetChannelVariables(TSongVariables* p)
+void CSong::ClearPokeyBuffer()
 {
-	if (!p)
-		return;
+	memset(m_pokeyBuffer, 0x00, sizeof(TPokeyBuffer));
+	// Set SKCTL to 0x03 not actually needed here(?)
+}
 
-	p->isDelayEnabled = false;
-	p->isInstrumentAbsoluteFreq = false;
-	p->isInstrumentEnvelopeLoop = false;
-	p->isNoteActive = false;
-	p->isNoteRelease = false;
-	p->isNoteSustain = false;
-	p->isNoteTrigger = false;
-	p->isPortamentoEnabled = false;
-	p->isTremoloEnabled = false;
-	p->isVibratoEnabled = false;
-	p->isVolumeOnlyEnabled = false;
-	p->isVolumeSlideEnabled = false;
-	p->arpeggioScheme = 0x00;
-	p->channelAUDCTL = 0x00;
-	p->channelDistortion = TIMBRE_PURE;
-	p->channelFreq = 0x0000;
-	p->channelInstrument = INVALID;
-	p->channelNote = INVALID;
-	p->channelVolume = 0x00;
-	p->delayedRow = NULL;
-	p->delayOffset = 0x00;
-	p->finetuneOffset = EFFECT_PARAMETER_DEFAULT;
-	p->frameCount = 0x00;
-	p->instrumentEnvelopeOffset = 0x00;
-	p->instrumentEnvelopeSpeed = 0x00;
-	p->instrumentTableOffset = 0x00;
-	p->instrumentTableSpeed = 0x00;
-	p->instrumentNote = 0x00;
-	p->instrumentFreq = 0x0000;
-	p->instrumentVolume = 0x00;
-	p->portamentoSpeed = 0x00;
-	p->portamentoTarget = 0x0000;
-	p->tremoloDepth = 0x00;
-	p->tremoloSpeed = 0x00;
-	p->vibratoDepth = 0x00;
-	p->vibratoSpeed = 0x00;
-	p->volumeSlide = 0x00;
+void CSong::DeletePokeyBuffer()
+{
+	if (m_pokeyBuffer)
+		delete m_pokeyBuffer;
+
+	m_pokeyBuffer = NULL;
+}
+
+void CSong::CreatePokeyBuffer()
+{
+	if (!m_pokeyBuffer)
+		m_pokeyBuffer = new TPokeyBuffer;
+
+	ClearPokeyBuffer();
 }
 
 //---
@@ -3539,16 +3544,16 @@ BOOL CSong::PlayVBI()
 /// </summary>
 void CSong::TimerRoutine()
 {
-	// If the POKEY Stream is being recorded, the Timer Routine is bypassed entirely to run as fast as possible
-	if (g_PokeyStream.IsRecording())
-		return;
-
+	// Get the pointer to the Active Subtune
 	TSubtune* pSubtune = GetSubtune();
 
 	// Things that are solved 1x for vbi
-	PlayPattern(pSubtune);
+	PlayFrame(pSubtune);
+
+	// Post Play stuff, such as Instruments and Effects
 	PlayContinue(pSubtune);
 
+	// Write to POKEY (FIXME: AAAAAAAAAAAAAAA)
 	g_Pokey.RenderSound_No6502(m_instrumentSpeed);
 
 	// If the Song is currently playing, increment the timer
@@ -3621,7 +3626,7 @@ void CSong::DrawSonglines()
 {
 	CString s;
 	RECT songblock{};
-	const int linescount = 9, linesoffset = -4;
+	const int linescount = 11, linesoffset = -5;
 
 	// A Songline Index that is out of bounds will be displayed with a grayed out colour
 	bool isOutOfBounds;
@@ -3634,57 +3639,23 @@ void CSong::DrawSonglines()
 	BYTE activeSubtune = GetActiveSubtune();
 	BYTE channelCount = GetChannelCount();
 	BYTE songLength = GetSongLength();
+	BYTE activeRow = m_activeRow;
+	int patternLength = GetShortestPatternLength() > 0 ? GetShortestPatternLength() : 256;
+	
+	bool active_smooth = (g_viewDoSmoothScrolling && ((m_playMode != MPLAY_STOP && m_isFollowPlay) && (activeRow <= patternLength)));
+	int smooth_y = active_smooth ? activeRow * 16 / patternLength - 8 : 0;
 
-	// All Channels used in the Subtune will be displayed within the Songline Index
-	for (int i = 0; i < channelCount; i++)
-	{
-		// Offset for the X axis, each character use a 8x16 Bitmap tile
-		int x = (3 * 8) + (i * (3 * 8));
-
-		// Default Colour for all Channels
-		int colour = GetChannelOnOff(i) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
-
-		// If the Channel is both Active and Enabled, use the Highlight Colour instead
-		if (GetChannelOnOff(i) && activeChannel == i)
-			colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
-
-		// Each POKEY chips may use up to 4 Channels, numbered between 1 to 4 inclusive
-		s.Format("%i", (i % 4) + 1);
-		TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + 16, colour);
-
-		// For each POKEY chip, display the chip number above the Channel Index
-		if (i % 4 == 0)
-		{
-			bool enabled = false;
-			bool active = false;
-
-			// Check if at least one of the associated Channels is either Enabled or Active
-			for (int j = 0; j < 4; j++)
-			{
-				if (GetChannelOnOff((i + j)))
-					enabled = true;
-
-				if (activeChannel == i + j)
-					active = true;
-			}
-
-			// The same Colour condition is used here, this time for the whole POKEY chip
-			if (active && enabled)
-				colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
-			else
-				colour = enabled ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
-
-			// The POKEY chip number is derived from i, divided by 4, plus 1, due to being a Zero Based Index
-			s.Format("POKEY %i", (i / 4) + 1);
-			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y, colour);
-		}
-	}
+	// Actual Songline block dimensions
+	songblock.left = SONGBLOCK_X - 4;
+	songblock.top = SONGBLOCK_Y;
+	songblock.right = SONGBLOCK_X + (3 * 8) + (channelCount * (3 * 8)) - 4;
+	songblock.bottom = SONGBLOCK_Y + (linescount * 16);
 
 	// Draw all the Indexed Songlines that could be displayed at once
 	for (int i = 0; i < linescount; i++)
 	{
 		// Offset for the Y axis, each character use a 8x16 Bitmap tile
-		int y = (2 * 16) + (i * 16);
+		int y = (1 + i) * 16 - smooth_y;
 
 		// Fetch the actual Songline number relative to the Index Offset
 		BYTE songline = activeSongline + i + linesoffset;
@@ -3733,14 +3704,58 @@ void CSong::DrawSonglines()
 			s.Format("%02X", GetPatternInSongline(activeSubtune, j, songline));
 			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + y, colour);
 		}
+	}
 
+	// Mask out the excess of Songlines used for smooth scroll
+	g_mem_dc->FillSolidRect(songblock.left, songblock.top + 1, songblock.right - songblock.left, 2 * 16, RGB_BACKGROUND);
+	g_mem_dc->FillSolidRect(songblock.left, songblock.bottom - 1, songblock.right - songblock.left, 2 * 16, RGB_BACKGROUND);
+
+	// All Channels used in the Subtune will be displayed within the Songline Index
+	for (int i = 0; i < channelCount; i++)
+	{
+		// Offset for the X axis, each character use a 8x16 Bitmap tile
+		int x = (3 * 8) + (i * (3 * 8));
+
+		// Default Colour for all Channels
+		int colour = GetChannelOnOff(i) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
+
+		// If the Channel is both Active and Enabled, use the Highlight Colour instead
+		if (GetChannelOnOff(i) && activeChannel == i)
+			colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+
+		// Each POKEY chips may use up to 4 Channels, numbered between 1 to 4 inclusive
+		s.Format("%i", (i % 4) + 1);
+		TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + 16, colour);
+
+		// For each POKEY chip, display the chip number above the Channel Index
+		if (i % 4 == 0)
+		{
+			bool enabled = false;
+			bool active = false;
+
+			// Check if at least one of the associated Channels is either Enabled or Active
+			for (int j = 0; j < 4; j++)
+			{
+				if (GetChannelOnOff((i + j)))
+					enabled = true;
+
+				if (activeChannel == i + j)
+					active = true;
+			}
+
+			// The same Colour condition is used here, this time for the whole POKEY chip
+			if (active && enabled)
+				colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
+			else
+				colour = enabled ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
+
+			// The POKEY chip number is derived from i, divided by 4, plus 1, due to being a Zero Based Index
+			s.Format("POKEY %i", (i / 4) + 1);
+			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y, colour);
+		}
 	}
 
 	// Draw the lines delimiting boundaries between each elements in the Songline block
-	songblock.left = SONGBLOCK_X - 4;
-	songblock.top = SONGBLOCK_Y;
-	songblock.right = SONGBLOCK_X + (3 * 8) + (channelCount * (3 * 8)) - 4;
-	songblock.bottom = SONGBLOCK_Y + (2 * 16) + (linescount * 16);
 
 	// Songline Index and Songline Data:
 	g_mem_dc->MoveTo(songblock.left + (3 * 8) - 1, songblock.top);
@@ -3885,7 +3900,7 @@ void CSong::DrawRegistersState()
 
 	CString s;
 	RECT registersBlock{};
-	TPokeyRegisters pokey{};
+	//TPokeyRegisters pokey{};
 
 	int x, y;
 	int activeSubtune = m_activeSubtune;
@@ -3950,7 +3965,9 @@ void CSong::DrawRegistersState()
 	for (int i = 0; i < channelCount; i++)
 	{
 		int gap = (i / 4) * 16;
-		WORD addressOfPokey = 0xD200 + gap;
+		//WORD addressOfPokey = 0xD200 + gap;
+
+		TPokeyRegisters* pPokey = &m_pokeyBuffer->frame[0x00].pokey[0x00];
 
 		x = registersBlock.left + 4;
 		y = registersBlock.top + ((2 + i) * 8) + (gap * 3) + 4;
@@ -3958,31 +3975,31 @@ void CSong::DrawRegistersState()
 		// For any POKEY to be displayed, process these lines only when the Channel 1 is being referenced
 		if (i % 4 == 0)
 		{
-			for (int j = 0; j < 4; j++)
-			{
-				pokey.audf[j] = g_atarimem[addressOfPokey + j * 2];
-				pokey.audc[j] = g_atarimem[addressOfPokey + j * 2 + 1];
-			}
+			//for (int j = 0; j < 4; j++)
+			//{
+			//	pokey.audf[j] = g_atarimem[addressOfPokey + j * 2];
+			//	pokey.audc[j] = g_atarimem[addressOfPokey + j * 2 + 1];
+			//}
 
-			pokey.audctl = g_atarimem[addressOfPokey + 0x08];
-			pokey.skctl = g_atarimem[addressOfPokey + 0x0F];
+			//pokey.audctl = g_atarimem[addressOfPokey + 0x08];
+			//pokey.skctl = g_atarimem[addressOfPokey + 0x0F];
 
-			s.Format("%02X", pokey.audctl);
+			s.Format("%02X", pPokey->audctl);
 			TextMiniXY(s, x + (8 * 8), y + (4 * 8), TEXT_MINI_COLOR_WHITE);
 
-			s.Format("%02X", pokey.skctl);
+			s.Format("%02X", pPokey->skctl);
 			TextMiniXY(s, x + (8 * 8), y + (5 * 8), TEXT_MINI_COLOR_WHITE);
 
 			// Set the AUDCTL flags for all channels
-			is15KhzMode = pokey.audctl & 0x01;
-			isHighPassCh24 = pokey.audctl & 0x02;
-			isHighPassCh13 = pokey.audctl & 0x04;
-			isJoinedCh34 = pokey.audctl & 0x08;
-			isJoinedCh12 = pokey.audctl & 0x10;
-			is179MhzCh3 = pokey.audctl & 0x20;
-			is179MhzCh1 = pokey.audctl & 0x40;
-			isPoly9Noise = pokey.audctl & 0x80;
-			isTwoTone = pokey.skctl == 0x8B;
+			is15KhzMode = pPokey->audctl & 0x01;
+			isHighPassCh24 = pPokey->audctl & 0x02;
+			isHighPassCh13 = pPokey->audctl & 0x04;
+			isJoinedCh34 = pPokey->audctl & 0x08;
+			isJoinedCh12 = pPokey->audctl & 0x10;
+			is179MhzCh3 = pPokey->audctl & 0x20;
+			is179MhzCh1 = pPokey->audctl & 0x40;
+			isPoly9Noise = pPokey->audctl & 0x80;
+			isTwoTone = pPokey->skctl == 0x8B;
 
 			if (isHighPassCh13)
 				TextMiniXY("CH1: HIGH PASS FILTER",x + (32 * 8), y + (4 * 8), TEXT_MINI_COLOR_BLUE);
@@ -3997,11 +4014,11 @@ void CSong::DrawRegistersState()
 				TextMiniXY("CH1: TWO TONE FILTER", x + (11 * 8), y + (5 * 8), TEXT_MINI_COLOR_BLUE);
 		}
 
-		BYTE audf = pokey.audf[i % 4];
-		BYTE audc = pokey.audc[i % 4];
+		BYTE audf = pPokey->audf[i % 4];
+		BYTE audc = pPokey->audc[i % 4];
 		BYTE volume = audc & 0x0F;
 		BYTE distortion = audc >> 4 & 0x0E;
-		WORD freq = pokey.audf16[i % 4 > 1];
+		WORD freq = pPokey->audf16[i % 4 > 1];
 
 		is16BitMode = is179MhzMode = false;
 
@@ -4044,7 +4061,7 @@ void CSong::DrawRegistersState()
 
 		TextMiniXY(s, x + (76 * 8), y, TEXT_MINI_COLOR_BLUE);
 
-		double pitch = g_Tuning.GeneratePokeyPitch(pokey, i);
+		double pitch = g_Tuning.GeneratePokeyPitch(pPokey, i);
 
 		// If there is no valid pitch returned, skip the remaining part of this loop
 		if (pitch < 1.0)
@@ -4102,8 +4119,8 @@ void CSong::DrawPatternEditor()
 	BYTE activeColumn = m_activeColumn;
 	BYTE activeChannel = m_activeChannel;
 	BYTE channelCount = GetChannelCount();
-	BYTE playSpeed = m_playSpeed;
-	BYTE speedTimer = m_speedTimer;
+	int playSpeed = m_playSpeed > 0 ? m_playSpeed : 256;
+	int speedTimer = m_speedTimer > 0 ? m_speedTimer : 256;
 
 	// Coordinates used for drawing most of the Pattern Editor block on screen
 	int x = 3 * 8, y = 0;
@@ -4111,7 +4128,7 @@ void CSong::DrawPatternEditor()
 	// The cursor position is alway centered regardless of the window size with this simple formula
 	g_cursoractview = activeRow + 8 - g_line_y;
 
-	bool active_smooth = (g_viewDoSmoothScrolling && ((m_playMode != MPLAY_STOP && m_isFollowPlay) && (playSpeed > 0 && speedTimer <= playSpeed)));
+	bool active_smooth = (g_viewDoSmoothScrolling && ((m_playMode != MPLAY_STOP && m_isFollowPlay) && (speedTimer <= playSpeed)));
 	int smooth_y = active_smooth ? speedTimer * 16 / playSpeed - 8 : 0;
 
 	// Standard notation FIXME: create a proper method for the Note and Octave text format
@@ -4131,7 +4148,7 @@ void CSong::DrawPatternEditor()
 	for (int i = 0; i < channelCount; i++)
 	{
 		// The Y offset is always reset to 0 between Channels
-		y = 0;
+		y = smooth_y;
 
 		// For as many Pattern Rows there are to display on screen, execute this loop
 		for (int j = 0; j < g_tracklines + active_smooth; j++, y += 16)
@@ -4167,8 +4184,8 @@ void CSong::DrawPatternEditor()
 
 			if (row == 1)
 			{
-				g_mem_dc->MoveTo(x - 12, PATTERNBLOCK_Y - 16 + y + smooth_y);
-				g_mem_dc->LineTo(x - 12 + (13 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8)), PATTERNBLOCK_Y - 16 + y + smooth_y);
+				g_mem_dc->MoveTo(x - 12, PATTERNBLOCK_Y - 16 + y);
+				g_mem_dc->LineTo(x - 12 + (13 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8)), PATTERNBLOCK_Y - 16 + y);
 			}
 
 			// Highlight Colour used to draw the Pattern Rows, from lowest to highest in priority
@@ -4198,7 +4215,7 @@ void CSong::DrawPatternEditor()
 				s.Format("%02X", row);
 
 				// The Colour Highlight for the Playing Row may be used here, regardless of being from a different Songline
-				TextXY(s, PATTERNBLOCK_X, PATTERNBLOCK_Y + y + smooth_y, (row == playRow && row != activeRow && !isOutOfBounds) ? TEXT_COLOR_YELLOW : colour);
+				TextXY(s, PATTERNBLOCK_X, PATTERNBLOCK_Y + y, (row == playRow && row != activeRow && !isOutOfBounds) ? TEXT_COLOR_YELLOW : colour);
 			}
 
 			// Parse all the parameters and format the text for 1 Pattern Row
@@ -4215,12 +4232,12 @@ void CSong::DrawPatternEditor()
 
 			switch (note)
 			{
-			case PATTERN_NOTE_EMPTY: s.AppendFormat("--- "); break;
-			case PATTERN_NOTE_OFF: s.AppendFormat("OFF "); break;
-			case PATTERN_NOTE_RELEASE: s.AppendFormat("=== "); break;
-			case PATTERN_NOTE_RETRIGGER: s.AppendFormat("~~~ "); break;
+			case NOTE_EMPTY: s.AppendFormat("--- "); break;
+			case NOTE_OFF: s.AppendFormat("OFF "); break;
+			case NOTE_RELEASE: s.AppendFormat("=== "); break;
+			case NOTE_RETRIGGER: s.AppendFormat("~~~ "); break;
 			default:
-				if (note < PATTERN_NOTE_MAX)
+				if (note < NOTE_COUNT)
 					s.AppendFormat("%s%1X ", notesandscales[notation][note % 12], note / 12);
 				else
 					s.AppendFormat("??? ");
@@ -4231,9 +4248,9 @@ void CSong::DrawPatternEditor()
 
 			switch (instrument)
 			{
-			case PATTERN_INSTRUMENT_EMPTY: s.AppendFormat("-- "); break;
+			case INSTRUMENT_EMPTY: s.AppendFormat("-- "); break;
 			default:
-				if (instrument < PATTERN_INSTRUMENT_MAX)
+				if (instrument < INSTRUMENT_COUNT)
 					s.AppendFormat("%02X ", instrument);
 				else
 					s.AppendFormat("?? ");
@@ -4244,9 +4261,9 @@ void CSong::DrawPatternEditor()
 
 			switch (volume)
 			{
-			case PATTERN_VOLUME_EMPTY: s.AppendFormat("-- "); break;
+			case VOLUME_EMPTY: s.AppendFormat("-- "); break;
 			default:
-				if (volume < PATTERN_VOLUME_MAX)
+				if (volume < VOLUME_COUNT)
 					s.AppendFormat("v%01X ", volume);
 				else
 					s.AppendFormat("?? ");
@@ -4260,9 +4277,9 @@ void CSong::DrawPatternEditor()
 
 				switch (command)
 				{
-				case PATTERN_EFFECT_EMPTY: s.AppendFormat("--- "); break;
+				case EFFECT_EMPTY: s.AppendFormat("--- "); break;
 				default:
-					if (command < PATTERN_EFFECT_MAX)
+					if (command < PATTERN_EFFECT_COUNT)
 						s.AppendFormat("%01X%02X ", command, parameter);
 					else
 						s.AppendFormat("??? ");
@@ -4270,7 +4287,7 @@ void CSong::DrawPatternEditor()
 			}
 
 			// Draw the formated Pattern Row on screen once it is ready to be output, using the cursor position for highlighted column
-			TextXYCol(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y + smooth_y, isActiveCursor ? activeCursor : INVALID, isActiveCursor ? activeColumn : INVALID, colour);
+			TextXYCol(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, isActiveCursor ? activeCursor : INVALID, isActiveCursor ? activeColumn : INVALID, colour);
 		}
 
 		// Update the X offset with the Channel's width, including the Active Effect Commands
@@ -4365,6 +4382,14 @@ void CSong::DrawInstrumentEditor()
 	CString s;
 	RECT instrumentBlock{};
 
+	BYTE activeChannel = m_activeChannel;
+	BYTE activeInstrument = m_activeInstrument;
+
+	//TChannelVariables* pVariables = m_channelVariables[activeChannel];
+
+	//bool isActiveInstrument = activeInstrument == pVariables->channelInstrument;
+	//bool isActiveInstrument = activeInstrument == pVariables->instrument;
+
 	// Actual dimensions used by the Instrument Editor Block
 	instrumentBlock.left = INSTRUMENTBLOCK_X - 4;
 	instrumentBlock.top = INSTRUMENTBLOCK_Y;
@@ -4375,7 +4400,7 @@ void CSong::DrawInstrumentEditor()
 	int x = instrumentBlock.left + 4;
 	int y = instrumentBlock.top;
 
-	s.Format("INSTRUMENT %02X", m_activeInstrument);
+	s.Format("INSTRUMENT %02X", activeInstrument);
 	TextXY(s, x, y);
 	s.Format("NAME: ");
 	s.AppendFormat(pInstrument->name);
@@ -4397,7 +4422,17 @@ void CSong::DrawInstrumentEditor()
 	TextXY("EFFECT COMMAND:", x, y += 16);
 	TextXY("  PARAMETER X/:", x, y += 16);
 	TextXY("  PARAMETER Y\\:", x, y += 16);
-	TextXY("  LOOP/RELEASE:", x , y += 16);
+	//TextXY("  LOOP/RELEASE:", x , y += 16);
+
+	////x = instrumentBlock.left + 4;
+	////y = instrumentBlock.top + (24 * 16);
+
+	TextMiniXY("TABLE", x, (y += 16) + 8);
+	TextXY("       NOTE X/:", x, y += 16);
+	TextXY("       NOTE Y\\:", x, y += 16);
+	TextXY("       FREQ X/:", x, y += 16);
+	TextXY("       FREQ Y\\:", x, y += 16);
+	//TextXY("  LOOP/RELEASE:", x, y += 16);
 
 	x = instrumentBlock.left + 4 + (16 * 8);
 	y = instrumentBlock.top + (7 * 16);
@@ -4409,6 +4444,302 @@ void CSong::DrawInstrumentEditor()
 	// Volume Envelope markers
 	TextDownXY("\x0E\x0E\x0E\x0E", x - 8 - 1, y - 4 * 16 - 1, TEXT_COLOR_GRAY);
 
+/*
+	// Instrument Macros, used by Envelopes and Tables
+	for (int i = 0; i < InstrumentMacro::COUNT; i++)
+	{
+		TMacro* pChannelMacro = &pVariables->instrumentMacro[i];
+		TMacro* pInstrumentMacro;
+
+		switch (i)
+		{
+		case InstrumentMacro::VOLUME:
+			pInstrumentMacro = &pInstrument->volumeMacro;
+
+			for (int j = 0; j < pInstrumentMacro->length; j++)
+			{
+				x = instrumentBlock.left + 4 + ((16 + j) * 8);
+				y = instrumentBlock.top + (3 * 16);
+
+				bool isPlayingFrame = j == pChannelMacro->length;
+				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
+				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
+				bool isEndPoint = j + 1 == pInstrumentMacro->length;
+				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
+
+				BYTE volume = pInstrument->envelope.volume[j];
+
+				//COLORREF fillColour = isBetweenPoints? RGB(143, 254, 237) : RGB(255, 255, 255);
+				COLORREF fillColour = RGB(255, 255, 255);
+				COLORREF playColour = RGB(253, 236, 117);
+
+				if (volume)
+					g_mem_dc->FillSolidRect(x, y + 4 * (15 - volume) + 1, 8, volume * 4, isActiveInstrument && isPlayingFrame ? playColour : fillColour);
+
+				s.Format("%01X", volume);
+
+				//TextDownXY(s, x, y + 4 * 16, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+				TextDownXY(s, x, y + 4 * 16, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+				// Delimitation of the Envelope Loop Point
+				if (isLoopPoint)
+				{
+					g_mem_dc->MoveTo(x - 1, y);	// +4 * 16);
+					g_mem_dc->LineTo(x - 1, y + 5 * 16 - 2);
+				}
+
+				// Delimitation of the Envelope End Point
+				if (isEndPoint)
+				{
+					g_mem_dc->MoveTo(x + 8, y);	// +4 * 16);
+					g_mem_dc->LineTo(x + 8, y + 5 * 16 - 2);
+				}
+			}
+			break;
+
+		case InstrumentMacro::TIMBRE:
+			pInstrumentMacro = &pInstrument->timbreMacro;
+
+			for (int j = 0; j < pInstrumentMacro->length; j++)
+			{
+				x = instrumentBlock.left + 4 + ((16 + j) * 8);
+				y = instrumentBlock.top + (8 * 16);
+
+				bool isPlayingFrame = j == pChannelMacro->length;
+				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
+				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
+				bool isEndPoint = j + 1 == pInstrumentMacro->length;
+				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
+
+				BYTE timbre = pInstrument->envelope.timbre[j];
+
+				s.Format("%01X", timbre >> 4);
+				s.AppendFormat("%01X", timbre & 0x0F);
+
+				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+				// Delimitation of the Envelope Loop Point
+				if (isLoopPoint)
+				{
+					g_mem_dc->MoveTo(x - 1, y);
+					g_mem_dc->LineTo(x - 1, y + 2 * 16 - 2);
+				}
+
+				// Delimitation of the Envelope End Point
+				if (isEndPoint)
+				{
+					g_mem_dc->MoveTo(x + 8, y);
+					g_mem_dc->LineTo(x + 8, y + 2 * 16 - 2);
+				}
+			}
+			break;
+
+		case InstrumentMacro::AUDCTL:
+			pInstrumentMacro = &pInstrument->audctlMacro;
+
+			for (int j = 0; j < pInstrumentMacro->length; j++)
+			{
+				x = instrumentBlock.left + 4 + ((16 + j) * 8);
+				y = instrumentBlock.top + (10 * 16);
+
+				bool isPlayingFrame = j == pChannelMacro->length;
+				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
+				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
+				bool isEndPoint = j + 1 == pInstrumentMacro->length;
+				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
+
+				BYTE audctl = pInstrument->envelope.audctl[j];
+
+				s.Format("%01X", audctl >> 4);
+				s.AppendFormat("%01X", audctl & 0x0F);
+
+				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+				// Delimitation of the Envelope Loop Point
+				if (isLoopPoint)
+				{
+					g_mem_dc->MoveTo(x - 1, y);
+					g_mem_dc->LineTo(x - 1, y + 2 * 16 - 2);
+				}
+
+				// Delimitation of the Envelope End Point
+				if (isEndPoint)
+				{
+					g_mem_dc->MoveTo(x + 8, y);
+					g_mem_dc->LineTo(x + 8, y + 2 * 16 - 2);
+				}
+			}
+			break;
+
+		case InstrumentMacro::TRIGGER:
+			pInstrumentMacro = &pInstrument->triggerMacro;
+
+			for (int j = 0; j < pInstrumentMacro->length; j++)
+			{
+				x = instrumentBlock.left + 4 + ((16 + j) * 8);
+				y = instrumentBlock.top + (12 * 16);
+
+				bool isPlayingFrame = j == pChannelMacro->length;
+				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
+				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
+				bool isEndPoint = j + 1 == pInstrumentMacro->length;
+				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
+
+				TAutoMode* pTrigger = &pInstrument->envelope.trigger[j];
+
+				s.Format(pTrigger->autoFilter ? "\x09" : "\x08");
+				s.AppendFormat(pTrigger->auto16Bit ? "\x09" : "\x08");
+				s.AppendFormat(pTrigger->autoReverse16 ? "\x09" : "\x08");
+				s.AppendFormat(pTrigger->auto179Mhz ? "\x09" : "\x08");
+				s.AppendFormat(pTrigger->auto15Khz ? "\x09" : "\x08");
+				s.AppendFormat(pTrigger->autoPoly9 ? "\x09" : "\x08");
+				s.AppendFormat(pTrigger->autoTwoTone ? "\x09" : "\x08");
+				s.AppendFormat(pTrigger->autoToggle ? "\x09" : "\x08");
+
+				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+				// Delimitation of the Envelope Loop Point
+				if (isLoopPoint)
+				{
+					g_mem_dc->MoveTo(x - 1, y);
+					g_mem_dc->LineTo(x - 1, y + 8 * 16 - 2);
+				}
+
+				// Delimitation of the Envelope End Point
+				if (isEndPoint)
+				{
+					g_mem_dc->MoveTo(x + 8, y);
+					g_mem_dc->LineTo(x + 8, y + 8 * 16 - 2);
+				}
+			}
+			break;
+
+		case InstrumentMacro::EFFECT:
+			pInstrumentMacro = &pInstrument->effectMacro;
+
+			for (int j = 0; j < pInstrumentMacro->length; j++)
+			{
+				x = instrumentBlock.left + 4 + ((16 + j) * 8);
+				y = instrumentBlock.top + (20 * 16);
+
+				bool isPlayingFrame = j == pChannelMacro->length;
+				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
+				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
+				bool isEndPoint = j + 1 == pInstrumentMacro->length;
+				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
+
+				TEffect* pEffect = &pInstrument->envelope.effect[j];
+
+				s.Format("%01X", pEffect->command);
+				s.AppendFormat("%01X", pEffect->parameter >> 4);
+				s.AppendFormat("%01X", pEffect->parameter & 0x0F);
+
+				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+				// Delimitation of the Envelope Loop Point
+				if (isLoopPoint)
+				{
+					g_mem_dc->MoveTo(x - 1, y);
+					g_mem_dc->LineTo(x - 1, y + 3 * 16 - 2);
+				}
+
+				// Delimitation of the Envelope End Point
+				if (isEndPoint)
+				{
+					g_mem_dc->MoveTo(x + 8, y);
+					g_mem_dc->LineTo(x + 8, y + 3 * 16 - 2);
+				}
+			}
+			break;
+
+		case InstrumentMacro::NOTE:
+			pInstrumentMacro = &pInstrument->noteMacro;
+
+			for (int j = 0; j < pInstrumentMacro->length; j++)
+			{
+				x = instrumentBlock.left + 4 + ((16 + j) * 8);
+				y = instrumentBlock.top + (24 * 16);
+
+				bool isPlayingFrame = j == pChannelMacro->length;
+				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
+				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
+				bool isEndPoint = j + 1 == pInstrumentMacro->length;
+				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
+
+				BYTE note = pInstrument->table.note[j];
+
+				s.Format("%01X", note >> 4);
+				s.AppendFormat("%01X", note & 0x0F);
+
+				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+				// Delimitation of the Envelope Loop Point
+				if (isLoopPoint)
+				{
+					g_mem_dc->MoveTo(x - 1, y);
+					g_mem_dc->LineTo(x - 1, y + 2 * 16 - 2);
+				}
+
+				// Delimitation of the Envelope End Point
+				if (isEndPoint)
+				{
+					g_mem_dc->MoveTo(x + 8, y);
+					g_mem_dc->LineTo(x + 8, y + 2 * 16 - 2);
+				}
+			}
+			break;
+
+		case InstrumentMacro::FREQ:
+			pInstrumentMacro = &pInstrument->freqMacro;
+
+			for (int j = 0; j < pInstrumentMacro->length; j++)
+			{
+				x = instrumentBlock.left + 4 + ((16 + j) * 8);
+				y = instrumentBlock.top + (26 * 16);
+
+				bool isPlayingFrame = j == pChannelMacro->length;
+				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
+				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
+				bool isEndPoint = j + 1 == pInstrumentMacro->length;
+				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
+
+				BYTE freq = pInstrument->table.freq[j];
+
+				s.Format("%01X", freq >> 4);
+				s.AppendFormat("%01X", freq & 0x0F);
+
+				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
+				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+				// Delimitation of the Envelope Loop Point
+				if (isLoopPoint)
+				{
+					g_mem_dc->MoveTo(x - 1, y);
+					g_mem_dc->LineTo(x - 1, y + 2 * 16 - 2);
+				}
+
+				// Delimitation of the Envelope End Point
+				if (isEndPoint)
+				{
+					g_mem_dc->MoveTo(x + 8, y);
+					g_mem_dc->LineTo(x + 8, y + 2 * 16 - 2);
+				}
+			}
+			break;
+
+		}
+
+	}
+*/
+
+
+
+/*
 	// Envelope(s)
 	for (int i = 0; i < pInstrument->envelopeMacro.length; i++)
 	{
@@ -4417,8 +4748,8 @@ void CSong::DrawInstrumentEditor()
 
 		int channel = GetActiveColumn();
 
-		bool isActiveInstrument = m_activeInstrument == m_songVariables[channel].channelInstrument;
-		bool isPlayingFrame = i == m_songVariables[channel].instrumentEnvelopeOffset;
+		bool isActiveInstrument = m_activeInstrument == m_channelVariables[channel]->channelInstrument;
+		bool isPlayingFrame = i == m_channelVariables[channel]->instrumentEnvelopeOffset;
 
 		bool isLoopPoint = i == pInstrument->envelopeMacro.loop;
 		//bool isReleasePoint = i == pInstrument->envelopeMacro.release;
@@ -4491,7 +4822,7 @@ void CSong::DrawInstrumentEditor()
 	TextXY("       NOTE Y\\:", x, y += 16);
 	TextXY("       FREQ X/:", x, y += 16);
 	TextXY("       FREQ Y\\:", x, y += 16);
-	TextXY("  LOOP/RELEASE:", x, y += 16);
+	//TextXY("  LOOP/RELEASE:", x, y += 16);
 
 	// Tables(s)
 	for (int i = 0; i < pInstrument->tableMacro.length; i++)
@@ -4501,8 +4832,8 @@ void CSong::DrawInstrumentEditor()
 
 		int channel = GetActiveColumn();
 
-		bool isActiveInstrument = m_activeInstrument == m_songVariables[channel].channelInstrument;
-		bool isPlayingFrame = i == m_songVariables[channel].instrumentTableOffset;
+		bool isActiveInstrument = m_activeInstrument == m_channelVariables[channel]->channelInstrument;
+		bool isPlayingFrame = i == m_channelVariables[channel]->instrumentTableOffset;
 
 		bool isLoopPoint = i == pInstrument->tableMacro.loop;
 		//bool isReleasePoint = i == pInstrument->tableMacro.release;
@@ -4548,6 +4879,7 @@ void CSong::DrawInstrumentEditor()
 		}
 
 	}
+*/
 
 	// The Instrument Editor Block itself:
 	g_mem_dc->DrawEdge(&instrumentBlock, EDGE_BUMP, BF_RECT);
@@ -4595,23 +4927,19 @@ void CSong::Stop()
 {
 	m_playMode = MPLAY_STOP;
 	ResetPlayTime();
-	InitialiseSongVariables();
-	//m_quantization_note = m_quantization_instr = m_quantization_vol = -1;
-	//SetPlayPressedTonesSilence();
+	ClearSongVariables();
+	ClearPokeyBuffer();
 	Atari_InitRMTRoutine();
 	Sleep(20);	// To ensure the Timer Routine is executed at least once here
 }
 
 void CSong::Play(int mode, BOOL follow, int special)
 {
-	// Stop and reset the POKEY registers first
-	//Stop();
-
 	switch (mode)
 	{
 	case MPLAY_START:
-		Stop();
-		m_playSongline = m_playRow = 0;
+		m_nextSongline = m_playSongline = 0;
+		m_nextRow = m_playRow = 0;
 		m_playSpeed = GetSongSpeed();
 		break;
 
@@ -4622,17 +4950,23 @@ void CSong::Play(int mode, BOOL follow, int special)
 			m_playMode = mode;
 			return;
 		}
-		Stop();
-		m_playSongline = m_activeSongline;
-		m_playRow = m_activeRow;
+		m_nextSongline = m_playSongline = m_activeSongline;
+		m_nextRow = m_playRow = m_activeRow;
 		break;
 
 	case MPLAY_PATTERN:
-		Stop();
-		m_playSongline = m_activeSongline;
-		m_playRow = (special) ? m_activeRow : 0;
+		m_nextSongline = m_playSongline = m_activeSongline;
+		m_nextRow = m_playRow = (special) ? m_activeRow : 0;
 		break;
 	}
+
+	// Stop and reset the POKEY registers if not already stopped
+	if (m_playMode != MPLAY_STOP)
+		Stop();
+
+	// Begin playback from here
+	m_playMode = mode;
+	m_speedTimer = 1;
 
 	// Cursor following the player
 	if (m_isFollowPlay = follow)
@@ -4640,156 +4974,26 @@ void CSong::Play(int mode, BOOL follow, int special)
 		m_activeRow = m_playRow;
 		m_activeSongline = m_playSongline;
 	}
-
-	// Begin playback from here
-	m_playMode = mode;
-	m_speedTimer = 1;
-	g_PokeyStream.CallFromPlay(m_playMode, m_playRow, m_playSongline);
+	
+	//g_PokeyStream.CallFromPlay(m_playMode, m_playRow, m_playSongline);
 }
-
-/*
-void CSong::PlayRow(TSubtune* p)
-{
-	if (!p)
-		return;
-
-	BYTE row = m_playRow;
-	BYTE songline = m_playSongline;
-
-	// Play Row without the 6502 routines limitation, designed specifically for the RMTE Module format
-	// Ultimatey aimed to become the default payback method, unless specified otherwise (eg: Legacy RMT compatibility)
-	if (g_isRMTE && g_trackerDriverVersion == TRACKER_DRIVER_NONE)
-	{
-		// Process all channels
-		for (int i = 0; i < p->channelCount; i++)
-		{
-			// Note
-			PlayNote(p, i, songline, row);
-
-			// Instrument
-			PlayInstrument(p, i, songline, row);
-
-			// Volume;
-			PlayVolume(p, i, songline, row);
-
-			// Command(s)
-			for (int k = 0; k < p->effectCommandCount[i]; k++)
-				PlayEffect(p, i, songline, row, k);
-		}
-
-		// Set the speed at the end, last Fxx Command used will take priority
-		//m_speedTimer = m_playSpeed;
-	}
-
-	// Play Row with Legacy RMT compatibility in mind using the emulated 6502 routines
-	// TODO: Recreate the routine behaviour entirely in software for better compatibility
-	else
-	{
-		BYTE speed = m_playSpeed;
-
-		// In order to simulate the Legacy 6502 RMT routines behaviour, certain compromises are deliberately introduced here
-		for (int i = 0; i < p->channelCount; i++)
-		{
-			// Get the Pattern Index from the Songline offset
-			BYTE pattern = p->channel[i].songline[songline];
-
-			// Same as Legacy RMT routines
-			BYTE note = p->channel[i].pattern[pattern].row[row].note;
-			if (note >= PATTERN_NOTE_COUNT)
-				note = INVALID;
-			
-			// Same as Legacy RMT routines
-			BYTE instrument = p->channel[i].pattern[pattern].row[row].instrument;
-			if (instrument >= PATTERN_INSTRUMENT_COUNT)
-				instrument = INVALID;
-			
-			// Same as Legacy RMT routines
-			BYTE volume = p->channel[i].pattern[pattern].row[row].volume;
-			if (volume >= PATTERN_VOLUME_COUNT)
-				volume = INVALID;
-
-			// Compromised to only get the Speed Commands
-			for (int k = 0; k < p->effectCommandCount[i]; k++)
-			{
-				BYTE command = p->channel[i].pattern[pattern].row[row].command[k].identifier;
-				BYTE parameter = p->channel[i].pattern[pattern].row[row].command[k].parameter;
-
-				// If a Bxx command is found, set the next Songline with it
-				if (command == EFFECT_COMMAND_BXX)
-				{
-					m_playRow = INVALID;
-					m_playSongline = parameter;
-				}
-
-				// If a Dxx command is found, the Pattern will end on the next Row
-				if (command == EFFECT_COMMAND_DXX)
-				{
-					m_playRow = INVALID;
-					m_playSongline = (songline + 1) % p->songLength;
-				}
-
-				// If a Fxx command is found, overwrite the speed with it
-				if (command == EFFECT_COMMAND_FXX && parameter)
-					speed = parameter;
-			}
-
-			// Compromised for compatibility with RMTE data
-			//if (volume < PATTERN_VOLUME_COUNT)
-			//{
-			//	if (note < PATTERN_NOTE_COUNT)
-			//		Atari_SetTrack_NoteInstrVolume(i, note, instrument, volume);
-			//	else
-			//		Atari_SetTrack_Volume(i, volume);
-			//}
-		}
-
-		// Speed will be set at the end, so the last Channel with a Speed value will take priority
-		m_speedTimer = m_playSpeed = speed;
-	}
-
-}
-*/
 
 // Play Module without the 6502 RMT routines limitation, designed specifically for the new RMTE Module format
 // Ultimatey, this will become the default payback method, unless specified otherwise (eg: Legacy RMT compatibility)
-void CSong::PlayPattern(TSubtune* pSubtune)
+void CSong::PlayFrame(TSubtune* pSubtune)
 {
 	if (!pSubtune)
 		return;
-
+	
 	// If RMT is not playing, there is nothing to do here
 	if (m_playMode == MPLAY_STOP)
 		return;
 
-	// Play next Row when it is ready
+	// Decrement the Speed Timer, and process the next Row when it is ready
 	if (--m_speedTimer == 0)
 	{
-		BYTE row = m_playRow;
-		BYTE songline = m_playSongline;
-
-		// Process all channels
-		for (int i = 0; i < pSubtune->channelCount; i++)
-		{
-			// Note
-			PlayNote(pSubtune, i, songline, row);
-
-			// Instrument
-			PlayInstrument(pSubtune, i, songline, row);
-
-			// Volume;
-			PlayVolume(pSubtune, i, songline, row);
-
-			// Command(s)
-			for (int k = 0; k < pSubtune->channel[i].effectCount; k++)
-				PlayEffect(pSubtune, i, songline, row, k);
-		}
-
-		// The next Songline will be played if the Pattern reached the End position
-		if (++m_playRow >= pSubtune->patternLength)
-			PlayNextSongline(pSubtune);
-
-		// Set the Speed Timer to the current Play Speed parameter, the last Fxx Command used will take priority
-		m_speedTimer = m_playSpeed;
+		// Play 1 Row, and update the playback position accordingly
+		PlayRow(pSubtune);
 	}
 
 	// If FollowPlay is enabled, update the Active Row and Active Songline values accordingly
@@ -4810,342 +5014,465 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 	if (m_playMode == MPLAY_STOP)
 		return;
 
-	TInstrumentV2* instrument;
-	BYTE audctl1, audctl2, audctl;
-	BYTE skctl1, skctl2;	// , skctl;
-	BYTE note, timbre, frame, speed, command;
-	WORD freq, parameter;
+	TPokeyRegisters* pPokey = &m_pokeyBuffer->frame[0x00].pokey[0x00];
+	pPokey->audctl = 0x00;
+	pPokey->skctl = 0x03;
 
+	// Process all channels
 	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
-		instrument = GetInstrument(m_songVariables[i].channelInstrument);
+		TChannelVariables* pVariables = &m_songVariables->channel[i];
+		TInstrumentV2* pInstrument = pVariables->pInstrument;
 
-		if (instrument)
+		BYTE instrumentVolume = INVALID;
+		BYTE instrumentTimbre = INVALID;
+		BYTE instrumentAudctl = INVALID;
+
+		if (pInstrument)
 		{
-			// Instrument Table
-			frame = m_songVariables[i].instrumentTableOffset;
-			speed = m_songVariables[i].instrumentTableSpeed;
+			TEnvelopeVariables* pEnvelope = &pVariables->instrumentEnvelope;
+			TInstrumentEnvelope* pVolumeEnvelope = GetVolumeEnvelope(pInstrument->index.volume);
+			TInstrumentEnvelope* pTimbreEnvelope = GetTimbreEnvelope(pInstrument->index.timbre);
+			TInstrumentEnvelope* pAudctlEnvelope = GetAudctlEnvelope(pInstrument->index.audctl);
 
-			m_songVariables[i].instrumentNote = instrument->tableMacro.table[frame].note;
-			m_songVariables[i].instrumentFreq = instrument->tableMacro.table[frame].freq;
-
-			if (++speed >= instrument->tableMacro.speed)
+			if (pVolumeEnvelope)
 			{
-				speed = 0x00;
+				BYTE* pIndex = pVolumeEnvelope->envelope;
+				TFlag* pFlag = &pVolumeEnvelope->flag;
+				TParameter* pParameter = &pVolumeEnvelope->parameter;
+				TActive* pActive = &pEnvelope->volume;
 
-				if (++frame >= instrument->tableMacro.length)
-					frame = instrument->tableMacro.loop;
-			}
+				instrumentVolume = pIndex[pActive->offset];
 
-			m_songVariables[i].instrumentTableSpeed = speed;
-			m_songVariables[i].instrumentTableOffset = frame;
-
-			// Instrument Envelope
-			frame = m_songVariables[i].instrumentEnvelopeOffset;
-			speed = m_songVariables[i].instrumentEnvelopeSpeed;
-
-			command = instrument->envelopeMacro.envelope[frame].effect.command;
-			parameter = instrument->envelopeMacro.envelope[frame].effect.parameter & 0xFF;
-
-			m_songVariables[i].channelDistortion = instrument->envelopeMacro.envelope[frame].timbre;
-			m_songVariables[i].channelAUDCTL = instrument->envelopeMacro.envelope[frame].audctl;
-			m_songVariables[i].instrumentVolume = instrument->envelopeMacro.envelope[frame].volume;
-
-			// AutoFilter Trigger in Channel 1 or 2, ignored if found in Channel 3 or 4
-			if (instrument->envelopeMacro.envelope[frame].trigger.autoFilter)
-			{
-				if (i % 4 == CH1)
-					m_songVariables[i].channelAUDCTL |= 0x04;
-
-				if (i % 4 == CH2)
-					m_songVariables[i].channelAUDCTL |= 0x02;
-			}
-
-			// Auto16Bit Trigger in Channel 2 or 4
-			if (instrument->envelopeMacro.envelope[frame].trigger.auto16Bit)
-			{
-				if (i % 4 == CH2)
-					m_songVariables[i].channelAUDCTL |= 0x50;
-
-				if (i % 4 == CH4)
-					m_songVariables[i].channelAUDCTL |= 0x28;
-			}
-
-			if (++speed >= instrument->envelopeMacro.speed)
-			{
-				speed = 0x00;
-
-				if (++frame >= instrument->envelopeMacro.length)
+				if (--pActive->timer == 0)
 				{
-					frame = instrument->envelopeMacro.loop;
-					m_songVariables[i].isInstrumentEnvelopeLoop = true;	// Trigger Volume Slide on Envelope Loop
+					pActive->timer = pParameter->speed;
+
+					if (++pActive->offset > pParameter->length - 1)
+					{
+						if (pVariables->isInstrumentEnvelopeLooped = pFlag->isLooped)
+							pActive->offset = pParameter->loop;
+						else
+							pActive->offset = pParameter->length - 1;
+					}
+				}
+
+				// Instrument Volume Slide
+				if (pVariables->isInstrumentEnvelopeLooped && pVariables->channelVolume > pInstrument->volumeSustain)
+				{
+					WORD volumeFade = (pVariables->channelVolume << 8) | pVariables->instrumentVolumeSlide;
+					volumeFade -= pInstrument->volumeFade;
+					pVariables->channelVolume = volumeFade >> 8;
+					pVariables->instrumentVolumeSlide = volumeFade & 0xFF;
+				}
+
+			}
+
+			if (pTimbreEnvelope)
+			{
+				BYTE* pIndex = pTimbreEnvelope->envelope;
+				TFlag* pFlag = &pTimbreEnvelope->flag;
+				TParameter* pParameter = &pTimbreEnvelope->parameter;
+				TActive* pActive = &pEnvelope->timbre;
+
+				instrumentTimbre = pIndex[pActive->offset];
+
+				if (--pActive->timer == 0)
+				{
+					pActive->timer = pParameter->speed;
+
+					if (++pActive->offset > pParameter->length - 1)
+					{
+						if (pFlag->isLooped)
+							pActive->offset = pParameter->loop;
+						else
+							pActive->offset = pParameter->length - 1;
+					}
 				}
 			}
 
-			m_songVariables[i].instrumentEnvelopeSpeed = speed;
-			m_songVariables[i].instrumentEnvelopeOffset = frame;
-
-			// Instrument Command
-			m_songVariables[i].isInstrumentAbsoluteFreq = false;
-
-			switch (command)
+			if (pAudctlEnvelope)
 			{
-			case 0x00:
-				m_songVariables[i].instrumentNote += parameter & 0xFF;
-				break;
+				BYTE* pIndex = pAudctlEnvelope->envelope;
+				TFlag* pFlag = &pAudctlEnvelope->flag;
+				TParameter* pParameter = &pAudctlEnvelope->parameter;
+				TActive* pActive = &pEnvelope->audctl;
 
-			case 0x01:
-				m_songVariables[i].instrumentFreq = parameter;
-				m_songVariables[i].isInstrumentAbsoluteFreq = true;	// Hack!!! Not a good way to do this at all!
-				break;
+				instrumentAudctl = pIndex[pActive->offset];
 
-			case 0x02:
-				m_songVariables[i].instrumentFreq += parameter;
-				break;
+				if (--pActive->timer == 0)
+				{
+					pActive->timer = pParameter->speed;
 
-			case 0x06:
-				// TODO: Set the AutoFilter offset and/or other any Effect using CMD6 here
-				break;
+					if (++pActive->offset > pParameter->length - 1)
+					{
+						if (pFlag->isLooped)
+							pActive->offset = pParameter->loop;
+						else
+							pActive->offset = pParameter->length - 1;
+					}
+				}
+			}
+
+		}
+
+		BYTE note = pVariables->channelNote;
+		BYTE timbre = instrumentTimbre != (BYTE)INVALID ? instrumentTimbre : pVariables->channelTimbre;
+		BYTE volume = instrumentVolume != (BYTE)INVALID ? (int)round((double)(pVariables->channelVolume * instrumentVolume) / 0x0F) : pVariables->channelVolume;
+		BYTE audctl = instrumentAudctl != (BYTE)INVALID ? instrumentAudctl : pVariables->channelAudctl;
+
+		double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
+		WORD freq = g_Tuning.GeneratePokeyFreq(pitch, i, timbre, audctl);
+
+		pPokey->audf[i] = freq & 0xFF;
+		pPokey->audc[i] = timbre & 0xF0 | volume;
+		pPokey->audctl |= audctl;
+
+		g_atarimem[RMTPLAYR_V_AUDCTL] = pPokey->audctl;
+		g_atarimem[RMTPLAYR_V_SKCTL] = pPokey->skctl;
+
+		g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = pPokey->audf[i];
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] = pPokey->audc[i];
+
+	}
+
+/*
+	TPokeyRegisters pokey{};
+
+	pokey.audctl = 0x00;
+	pokey.skctl = 0x03;
+
+	// Process all channels
+	for (int i = 0; i < pSubtune->channelCount; i++)
+	{
+		// Get the pointer to the Channel Variables
+		TChannelVariables* pVariables = m_channelVariables[i];
+
+		// Get the pointer to the Active Instrument in Channel
+		TInstrumentV2* pInstrument = GetInstrument(pVariables->channelInstrument);
+
+		if (pInstrument)
+		{
+			// Instrument Envelope
+			if (--pVariables->instrumentEnvelopeSpeed == 0)
+			{
+				TEnvelope* pEnvelope = &pInstrument->envelopeMacro.envelope[pVariables->instrumentEnvelopeOffset];
+
+				pVariables->instrumentVolume = pEnvelope->volume;
+				pVariables->instrumentDistortion = pEnvelope->timbre;
+				pVariables->instrumentAUDCTL = pEnvelope->audctl;
+
+				if (++pVariables->instrumentEnvelopeOffset >= pInstrument->envelopeMacro.length)
+				{
+					pVariables->instrumentEnvelopeOffset = pInstrument->envelopeMacro.loop;
+					pVariables->isInstrumentEnvelopeLoop = true;	// Trigger Volume Slide on Envelope Loop
+				}
+
+				pVariables->instrumentEnvelopeSpeed = pInstrument->envelopeMacro.speed;
+			}
+
+			// Instrument Table
+			if (--pVariables->instrumentTableSpeed == 0)
+			{
+				TTable* pTable = &pInstrument->tableMacro.table[pVariables->instrumentTableOffset];
+
+				pVariables->instrumentNote = pTable->note;
+
+				if (++pVariables->instrumentTableOffset >= pInstrument->tableMacro.length)
+				{
+					pVariables->instrumentTableOffset = pInstrument->tableMacro.loop;
+				}
+
+				pVariables->instrumentTableSpeed = pInstrument->tableMacro.speed;
 			}
 
 			// Instrument Volume Slide
-			if (m_songVariables[i].isInstrumentEnvelopeLoop && m_songVariables[i].channelVolume > instrument->volumeSustain)
+			if (pVariables->isInstrumentEnvelopeLoop && pVariables->channelVolume > pInstrument->volumeSustain)
 			{
-				WORD volumeFade = (m_songVariables[i].channelVolume << 8) | m_songVariables[i].volumeSlide;
-				volumeFade -= instrument->volumeFade;
-				m_songVariables[i].channelVolume = volumeFade >> 8;
-				m_songVariables[i].volumeSlide = volumeFade & 0xFF;
+				WORD volumeFade = (pVariables->channelVolume << 8) | pVariables->volumeSlide;
+				volumeFade -= pInstrument->volumeFade;
+				pVariables->channelVolume = volumeFade >> 8;
+				pVariables->volumeSlide = volumeFade & 0xFF;
 			}
 
 		}
 
+		// Merge AUDCTL bits from this Channel
+		pokey.audctl |= pVariables->channelAUDCTL;
 	}
 
-	// Get the combined AUDCTL and SKCTL values ahead of time, they are mendatory for generating the correct POKEY Frequencies!
-	audctl1 = audctl2 = 0x00;
-	skctl1 = skctl2 = 0x03;
-
-	for (int i = 0; i < 4; i++)
-	{
-		audctl1 |= m_songVariables[i].channelAUDCTL;
-		audctl2 |= m_songVariables[i + 4].channelAUDCTL;
-	}
-
-	// Process the Song Variables currently in memory
 	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
-		note = m_songVariables[i].channelNote + m_songVariables[i].instrumentNote;
-		timbre = m_songVariables[i].channelDistortion;
-		audctl = i >= 4 ? audctl2 : audctl1;
+		// Get the pointer to the Channel Variables
+		TChannelVariables* pVariables = m_channelVariables[i];
 
-		switch (note)
-		{
-		case PATTERN_NOTE_EMPTY:
-			break;
+		int note = pVariables->channelNote + pVariables->instrumentNote;
+		int timbre = pVariables->channelDistortion;
+		int distortion = timbre & 0xF0;
+		int volume = (int)round((double)(pVariables->channelVolume * pVariables->instrumentVolume) / 0x0F);
+		int audctl = pokey.audctl;
+		double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
+		WORD freq = g_Tuning.GeneratePokeyFreq(pitch, i, timbre, audctl);
 
-		case PATTERN_NOTE_OFF:
-			break;
+		pokey.audc[i] = distortion | volume;
+		pokey.audf[i] = freq & 0xFF;
 
-		case PATTERN_NOTE_RELEASE:
-			break;
-
-		case PATTERN_NOTE_RETRIGGER:
-			break;
-
-		default:
-			if (note < PATTERN_NOTE_COUNT)
-				m_songVariables[i].channelFreq = g_Tuning.GeneratePokeyFreq(g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning), i, timbre, audctl);
-		}
-
+		//pokey.audf16[i] = freq;
+		//pokey.audf[i] = freq >> 8;
+		//pokey.audf[i] = freq & 0xFF;
 	}
+
+	// Update the AUDCTL and SKCTL using the combined values from all Channels
+	g_atarimem[RMTPLAYR_V_AUDCTL] = pokey.audctl;
+	g_atarimem[RMTPLAYR_V_SKCTL] = pokey.skctl;
 
 	// Update the AUDC and AUDF registers with the new data the same way
 	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
-		audctl = i >= 4 ? audctl2 : audctl1;
-		freq = (m_songVariables[i].isInstrumentAbsoluteFreq) ? m_songVariables[i].instrumentFreq : m_songVariables[i].channelFreq + m_songVariables[i].instrumentFreq;
+		g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = pokey.audf[i];
+		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] = pokey.audc[i];
+	}
+*/
 
-		// Update the AUDF using the full 16-bit Freq values, updating 2 Channels at once, if the AUDCTL is in 16-bit mode
-		if ((audctl & 0x10 && audctl & 0x40 && i % 4 == CH2) || (audctl & 0x08 && audctl & 0x20 && i % 4 == CH4))
-		{
-			//g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq >> 8;
-			//g_atarimem[RMTPLAYR_TRACKN_AUDF + i - 1] = m_songVariables[i].channelFreq & 0xFF;
-			g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = freq >> 8;
-			g_atarimem[RMTPLAYR_TRACKN_AUDF + i - 1] = freq & 0xFF;
-			g_atarimem[RMTPLAYR_TRACKN_AUDC + i - 1] = 0x00;
-		}
+}
 
-		// Otherwise, a 8-bit Freq value is be assumed and used as such, no additional check is necessary in this case
-		else
-		{
-			//g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = m_songVariables[i].channelFreq & 0xFF;
-			g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = freq & 0xFF;
-		}
+void CSong::PlayRow(TSubtune* pSubtune)
+{
+	if (!pSubtune)
+		return;
 
-		// Update the AUDC using the combined Timbre and Volume values
-		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] = m_songVariables[i].channelDistortion & 0xF0;
-		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] |= (int)round((double)(m_songVariables[i].channelVolume * m_songVariables[i].instrumentVolume) / 0x0F);
+	// If the playback positions were set prior to this point, the values will be used accordingly
+	if (m_nextSongline != INVALID || m_nextRow != INVALID)
+	{
+		// If a Goto Songline (Bxx) command was used, set the new Songline position if it is valid
+		if (m_nextSongline != INVALID)
+			m_playSongline = m_nextSongline;
+
+		// If a End Pattern (Dxx) command was used, set the new Row position if it is valid
+		if (m_nextRow != INVALID)
+			m_playRow = m_nextRow;
+
+		// Invalidate subsequent movements once they're used
+		m_nextSongline = m_nextRow = INVALID;
 	}
 
-	// Update the AUDCTL and SKCTL using the combined values from all Channels
-	g_atarimem[RMTPLAYR_V_AUDCTL] = audctl1;
-	g_atarimem[RMTPLAYR_V_AUDCTL2] = audctl2;
-	g_atarimem[RMTPLAYR_V_SKCTL] = skctl1;
-	g_atarimem[RMTPLAYR_V_SKCTL2] = skctl2;
-}
-
-void CSong::PlayNextSongline(TSubtune* pSubtune)
-{
-	if (!pSubtune)
-		return;
-
-	m_playRow = 0;
-
-	if (m_playMode != MPLAY_PATTERN)
+	// Else, continue playback by incrementing the Row and Songline positions like usual
+	else if ((++m_playRow %= pSubtune->patternLength) == 0)
 		++m_playSongline %= pSubtune->songLength;
 
-	if (g_PokeyStream.TrackSongLine(m_playSongline))
-		Stop();
+	// Check the song boundaries, to prevent invalid movements
+	PlaybackRespectBoundaries(pSubtune);
+
+	// Process all channels
+	for (int i = 0; i < pSubtune->channelCount; i++)
+	{
+		// Get the Pattern found at the Songline position from each Channel Index
+		BYTE pattern = pSubtune->channel[i].songline[m_playSongline];
+
+		// Get the pointer to Row data found within the Pattern
+		TRow* pRow = &pSubtune->channel[i].pattern[pattern].row[m_playRow];
+
+		// Get the pointer to the Channel Variables used for most of the playback routines
+		//TChannelVariables* pVariables = m_channelVariables[i];
+		TChannelVariables* pVariables = &m_songVariables->channel[i];
+
+		// Note
+		ProcessNote(pRow->note, i, pVariables);
+
+		// Instrument
+		ProcessInstrument(pRow->instrument, i, pVariables);
+
+		// Volume;
+		ProcessVolume(pRow->volume, i, pVariables);
+
+		// Command(s)
+		for (int k = 0; k < pSubtune->channel[i].effectCount; k++)
+			ProcessEffect(&pRow->effect[k], i, pVariables);
+	}
+
+	// Set the Speed Timer to the current Play Speed parameter, the last Fxx Command used will take priority
+	m_speedTimer = m_playSpeed;
 }
 
-void CSong::PlayNote(TSubtune* pSubtune,  BYTE channel, BYTE songline, BYTE row)
+
+void CSong::ProcessNote(BYTE note, BYTE channel, TChannelVariables* pVariables)
 {
-	if (!pSubtune)
-		return;
-
-	BYTE pattern = pSubtune->channel[channel].songline[songline];
-	BYTE note = pSubtune->channel[channel].pattern[pattern].row[row].note;
-	bool active = m_songVariables[channel].isNoteActive;
-
 	switch (note)
 	{
-	case PATTERN_NOTE_EMPTY:
-		//if (m_songVariables[channel].isNoteActive)
-		//	m_songVariables[channel].isNoteSustain = true;
+	case NOTE_EMPTY:
 		break;
 
-	case PATTERN_NOTE_OFF:
-		m_songVariables[channel].channelNote = INVALID;
-		m_songVariables[channel].isNoteActive = false;
+	case NOTE_OFF:
+		ResetChannelVariables(pVariables);
 		break;
 
-	case PATTERN_NOTE_RELEASE:
-		if (active)
-			m_songVariables[channel].isNoteRelease = true;
+	case NOTE_RELEASE:
+		if (pVariables->isNoteActive)
+			pVariables->isNoteRelease = true;
 		break;
 
-	case PATTERN_NOTE_RETRIGGER:
-		if (active)
-			m_songVariables[channel].isNoteTrigger = true;
+	case NOTE_RETRIGGER:
+		if (pVariables->isNoteActive)
+			pVariables->isNoteTrigger = true;
 		break;
 
 	default:
-		if (note < PATTERN_NOTE_COUNT)
+		if (note < NOTE_COUNT)
 		{
-			m_songVariables[channel].channelNote = note;
-			m_songVariables[channel].isNoteActive = true;
-			m_songVariables[channel].isNoteTrigger = true;
-			m_songVariables[channel].frameCount = 0;
+			pVariables->channelNote = note;
+			pVariables->isNoteActive = true;
+			pVariables->isNoteTrigger = true;
+			pVariables->frameCount = 0x00;
 		}
-		//else
-		//	m_songVariables[channel].channelNote = INVALID;
 	}
-
-	//if (m_songVariables[channel].isNoteTrigger)
-	//{
-	//	m_songVariables[channel].isNoteActive = true;
-	//	m_songVariables[channel].isNoteTrigger = false;
-	//	m_songVariables[channel].frameCount = 0;
-	//}
 }
 
-void CSong::PlayInstrument(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row)
+void CSong::ProcessInstrument(BYTE instrument, BYTE channel, TChannelVariables* pVariables)
 {
-	if (!pSubtune)
+	// If there is no Active Note, there is nothing to do here
+	if (!pVariables->isNoteActive)
 		return;
-
-	BYTE pattern = pSubtune->channel[channel].songline[songline];
-	BYTE instrument = pSubtune->channel[channel].pattern[pattern].row[row].instrument;
-	bool active = m_songVariables[channel].isNoteActive;
 
 	switch (instrument)
 	{
-	case PATTERN_INSTRUMENT_EMPTY:
+	case INSTRUMENT_EMPTY:
 		break;
 
 	default:
-		//if (active && instrument < PATTERN_INSTRUMENT_COUNT)
-		if (instrument < PATTERN_INSTRUMENT_COUNT)
+		if (instrument < INSTRUMENT_COUNT)
 		{
-			m_songVariables[channel].channelInstrument = instrument;
-			m_songVariables[channel].instrumentEnvelopeOffset = 0x00;
-			m_songVariables[channel].instrumentEnvelopeSpeed = 0x00;
-			m_songVariables[channel].instrumentTableOffset = 0x00;
-			m_songVariables[channel].instrumentTableSpeed = 0x00;
-			m_songVariables[channel].volumeSlide = 0x00;
-			m_songVariables[channel].isInstrumentEnvelopeLoop = false;
+			// Get the Instrument Pointer and save it in the Channel Variables for future references during playback
+			TInstrumentV2* pInstrument = pVariables->pInstrument = GetInstrument(instrument);
+
+			// If the Instrument pointer is Null, there is nothing else to do here
+			if (!pInstrument)
+				return;
+
+			// Get all Instrument Envelope and Tables pointers in order to process their specific parameters accordingly
+			TEnvelopeVariables* pEnvelope = &pVariables->instrumentEnvelope;
+			TInstrumentEnvelope* pVolumeEnvelope = GetVolumeEnvelope(pInstrument->index.volume);
+			TInstrumentEnvelope* pTimbreEnvelope = GetTimbreEnvelope(pInstrument->index.timbre);
+			TInstrumentEnvelope* pAudctlEnvelope = GetAudctlEnvelope(pInstrument->index.audctl);
+			TInstrumentTrigger* pTriggerEnvelope = GetTriggerEnvelope(pInstrument->index.trigger);
+			TInstrumentEffect* pEffectEnvelope = GetEffectEnvelope(pInstrument->index.effect);
+			TInstrumentTable* pNoteTable = GetNoteTable(pInstrument->index.note);
+			TInstrumentTable* pFreqTable = GetFreqTable(pInstrument->index.freq);
+
+			// If the Note was (re)triggered, the Instrument Envelope will play from the beginning
+			if (pVariables->isNoteTrigger)
+			{
+				// Reset all Instrument Envelope variables
+				memset(pEnvelope, 0x00, sizeof(TEnvelopeVariables));
+
+				// Initialise all active Envelope Speed Timer accordingly
+				if (pVolumeEnvelope)
+					pEnvelope->volume.timer = pVolumeEnvelope->parameter.speed;
+
+				if (pTimbreEnvelope)
+					pEnvelope->timbre.timer = pTimbreEnvelope->parameter.speed;
+
+				if (pAudctlEnvelope)
+					pEnvelope->audctl.timer = pAudctlEnvelope->parameter.speed;
+
+				if (pTriggerEnvelope)
+					pEnvelope->trigger.timer = pTriggerEnvelope->parameter.speed;
+
+				if (pEffectEnvelope)
+					pEnvelope->effect.timer = pEffectEnvelope->parameter.speed;
+
+				if (pNoteTable)
+					pEnvelope->note.timer = pNoteTable->parameter.speed;
+
+				if (pFreqTable)
+					pEnvelope->freq.timer = pFreqTable->parameter.speed;
+
+				// Reset the Instrument Volume fadeout
+				pVariables->instrumentVolumeSlide = 0x00;
+				pVariables->isInstrumentEnvelopeLooped = false;
+
+				// The flag is no longer needed after this point
+				pVariables->isNoteTrigger = false;
+			}
+
+			// If the Note was released, the Instrument Envelope will play from the Release point instead
+			if (pVariables->isNoteRelease)
+			{
+				// Update all active Envelope index offset accordingly
+				if (pVolumeEnvelope && pVolumeEnvelope->flag.isReleased)
+					pEnvelope->volume.offset = pVolumeEnvelope->parameter.release;
+
+				if (pTimbreEnvelope && pTimbreEnvelope->flag.isReleased)
+					pEnvelope->timbre.offset = pTimbreEnvelope->parameter.release;
+
+				if (pAudctlEnvelope && pAudctlEnvelope->flag.isReleased)
+					pEnvelope->audctl.offset = pAudctlEnvelope->parameter.release;
+
+				if (pTriggerEnvelope && pTriggerEnvelope->flag.isReleased)
+					pEnvelope->trigger.offset = pTriggerEnvelope->parameter.release;
+
+				if (pEffectEnvelope && pEffectEnvelope->flag.isReleased)
+					pEnvelope->effect.offset = pEffectEnvelope->parameter.release;
+
+				if (pNoteTable && pNoteTable->flag.isReleased)
+					pEnvelope->note.offset = pNoteTable->parameter.release;
+
+				if (pFreqTable && pFreqTable->flag.isReleased)
+					pEnvelope->freq.offset = pFreqTable->parameter.release;
+
+				// The flag is no longer needed after this point
+				pVariables->isNoteRelease = false;
+			}
 		}
-		//else
-		//	m_songVariables[channel].channelInstrument = INVALID;
 	}
 }
 
-void CSong::PlayVolume(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row)
+void CSong::ProcessVolume(BYTE volume, BYTE channel, TChannelVariables* pVariables)
 {
-	if (!pSubtune)
-		return;
-
-	BYTE pattern = pSubtune->channel[channel].songline[songline];
-	BYTE volume = pSubtune->channel[channel].pattern[pattern].row[row].volume;
-	bool active = m_songVariables[channel].isNoteActive;
-
 	switch (volume)
 	{
-	case PATTERN_VOLUME_EMPTY:
+	case VOLUME_EMPTY:
 		break;
 
 	default:
-		//if (active && volume < PATTERN_VOLUME_COUNT)
-		if (active && volume < PATTERN_VOLUME_COUNT)
-			m_songVariables[channel].channelVolume = volume;
-		//else
-		//	m_songVariables[channel].channelVolume = 0x00;
+		if (volume < VOLUME_COUNT)
+			pVariables->channelVolume = volume;
 	}
-
 }
 
-void CSong::PlayEffect(TSubtune* pSubtune, BYTE channel, BYTE songline, BYTE row, BYTE column)
+void CSong::ProcessEffect(TEffect* effect, BYTE channel, TChannelVariables* pVariables)
 {
-	if (!pSubtune)
-		return;
-
-	BYTE pattern = pSubtune->channel[channel].songline[songline];
-	BYTE command = pSubtune->channel[channel].pattern[pattern].row[row].effect[column].command;
-	BYTE parameter = pSubtune->channel[channel].pattern[pattern].row[row].effect[column].parameter;
-	//bool active = m_songVariables[channel].isNoteActive;
-
-	switch (command)
+	switch (effect->command)
 	{
 	case EFFECT_COMMAND_BXX:
-		if (m_playMode != MPLAY_PATTERN)
-		{
-			if (parameter > pSubtune->songLength)
-				parameter = 0;
-
-			m_playSongline = parameter - 1;	// The Songline will increment by 1 during playback, subtract 1 to the parameter to work around this
-		}
-		m_playRow = pSubtune->patternLength;	// Set the Row to equal the Pattern Length in order to force the next Songline to play (same as Dxx)
+		if (m_nextRow == INVALID)
+			m_nextRow = 0;
+		m_nextSongline = effect->parameter;
 		break;
 
 	case EFFECT_COMMAND_DXX:
-		m_playRow = pSubtune->patternLength;	// Set the Row to equal the Pattern Length in order to force the next Songline to play
-		// TODO(?): Add a method to set the next Row to the parameter
+		if (m_nextSongline == INVALID)
+			m_nextSongline = m_playSongline + 1;
+		m_nextRow = effect->parameter;
 		break;
 
 	case EFFECT_COMMAND_FXX:
-		m_playSpeed = parameter;		// Set the Play Speed to the parameter directly, it will be applied immediately
+		m_playSpeed = effect->parameter;
 		break;
 	}
+}
+
+void CSong::PlaybackRespectBoundaries(TSubtune* pSubtune)
+{
+	if (!pSubtune)
+		return;
+
+	// If an Invalid Songline position is detected, reset it to 0
+	if (m_playSongline >= pSubtune->songLength)
+		m_playSongline = 0;
+	
+	// If an Invalid Row position is detected, reset it to 0
+	if (m_playRow >= GetShortestPatternLength(pSubtune, m_playSongline))
+		m_playRow = 0;
 }
 
 
@@ -5162,12 +5489,12 @@ bool CSong::TransposeNoteInPattern(BYTE semitone)
 	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
 	BYTE note = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note;
 
-	if (note < PATTERN_NOTE_COUNT)
+	if (note < NOTE_COUNT)
 	{
-		if ((note += semitone) >= PATTERN_NOTE_COUNT)
-			note += PATTERN_NOTE_COUNT;
+		if ((note += semitone) >= NOTE_COUNT)
+			note += NOTE_COUNT;
 		
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note % PATTERN_NOTE_COUNT;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note % NOTE_COUNT;
 		return true;
 	}
 
@@ -5187,12 +5514,12 @@ bool CSong::TransposePattern(BYTE semitone)
 	{
 		BYTE note = pSubtune->channel[m_activeChannel].pattern[pattern].row[i].note;
 
-		if (note < PATTERN_NOTE_COUNT)
+		if (note < NOTE_COUNT)
 		{
-			if ((note += semitone) >= PATTERN_NOTE_COUNT)
-				note += PATTERN_NOTE_COUNT;
+			if ((note += semitone) >= NOTE_COUNT)
+				note += NOTE_COUNT;
 
-			pSubtune->channel[m_activeChannel].pattern[pattern].row[i].note = note % PATTERN_NOTE_COUNT;
+			pSubtune->channel[m_activeChannel].pattern[pattern].row[i].note = note % NOTE_COUNT;
 		}
 	}
 
@@ -5214,12 +5541,12 @@ bool CSong::TransposeSongline(BYTE semitone)
 		{
 			BYTE note = pSubtune->channel[i].pattern[pattern].row[j].note;
 
-			if (note < PATTERN_NOTE_COUNT)
+			if (note < NOTE_COUNT)
 			{
-				if ((note += semitone) >= PATTERN_NOTE_COUNT)
-					note += PATTERN_NOTE_COUNT;
+				if ((note += semitone) >= NOTE_COUNT)
+					note += NOTE_COUNT;
 
-				pSubtune->channel[i].pattern[pattern].row[j].note = note % PATTERN_NOTE_COUNT;
+				pSubtune->channel[i].pattern[pattern].row[j].note = note % NOTE_COUNT;
 			}
 		}
 	}
@@ -5239,26 +5566,27 @@ bool CSong::SetNoteInPattern(BYTE semitone)
 
 	switch (semitone)
 	{
-	case PATTERN_NOTE_OFF:
-	case PATTERN_NOTE_RELEASE:
-	case PATTERN_NOTE_RETRIGGER:
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = PATTERN_INSTRUMENT_EMPTY;
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = PATTERN_VOLUME_EMPTY;
+	case NOTE_OFF:
+	case NOTE_RELEASE:
+	case NOTE_RETRIGGER:
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = INSTRUMENT_EMPTY;
+		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = VOLUME_EMPTY;
 
-	case PATTERN_NOTE_EMPTY:
+	case NOTE_EMPTY:
 		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = semitone;
 		return true;
 
 	default:
-		if (semitone < PATTERN_NOTE_COUNT && note < PATTERN_NOTE_COUNT)
+		if (semitone < NOTE_COUNT && note < NOTE_COUNT)
 		{
 			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note;
 			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = m_activeInstrument;
 			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = m_activeVolume;
 			return true;
 		}
-		return false;
 	}
+
+	return false;
 }
 
 bool CSong::SetInstrumentInPattern(BYTE instrument)
@@ -5273,27 +5601,31 @@ bool CSong::SetInstrumentInPattern(BYTE instrument)
 
 	switch (instrument)
 	{
-	case PATTERN_INSTRUMENT_EMPTY:
+	case INSTRUMENT_EMPTY:
 		// The Instrument value will be overwritten regardless of the Active Column offset
 		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
 		return true;
 
 	default:
-		if (instrument < PATTERN_INSTRUMENT_COUNT)
+		if (instrument < INSTRUMENT_COUNT)
 		{
 			// High Nybble Column -> Instrument 0x?F, where '?' is the value being edited
 			if (m_activeColumn == 0)
 			{
-				if ((nybble = (instrument & 0x0F) << 4) < PATTERN_INSTRUMENT_COUNT)
+				nybble = (instrument & 0x0F) << 4;
+
+				if (nybble < INSTRUMENT_COUNT)
 					instrument = nybble | ((pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument) & 0x0F);
 				else
-					instrument = PATTERN_INSTRUMENT_COUNT - 1;
+					instrument = INSTRUMENT_COUNT - 1;
 			}
 
 			// Low Nybble Column -> Instrument 0xF?, where '?' is the value being edited
 			else if (m_activeColumn == 1)
 			{
-				if ((nybble = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument & 0xF0) < PATTERN_INSTRUMENT_COUNT)
+				nybble = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument & 0xF0;
+
+				if (instrument < INSTRUMENT_COUNT)
 					instrument = nybble | (instrument & 0x0F);
 				else
 					instrument &= 0x0F;
@@ -5303,8 +5635,9 @@ bool CSong::SetInstrumentInPattern(BYTE instrument)
 			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
 			return true;
 		}
-		return false;
 	}
+
+	return false;
 }
 
 bool CSong::SetVolumeInPattern(BYTE volume)
@@ -5318,18 +5651,19 @@ bool CSong::SetVolumeInPattern(BYTE volume)
 
 	switch (volume)
 	{
-	case PATTERN_VOLUME_EMPTY:
+	case VOLUME_EMPTY:
 		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
 		return true;
 
 	default:
-		if (volume < PATTERN_VOLUME_COUNT)
+		if (volume < VOLUME_COUNT)
 		{
 			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
 			return true;
 		}
-		return false;
 	}
+
+	return false;
 }
 
 bool CSong::SetCommandInPattern(BYTE command)
@@ -5345,7 +5679,7 @@ bool CSong::SetCommandInPattern(BYTE command)
 
 	switch (command)
 	{
-	case PATTERN_EFFECT_EMPTY:
+	case EFFECT_EMPTY:
 		// The Command value will be overwritten regardless of the Active Column offset
 		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
 		return true;
@@ -5358,7 +5692,7 @@ bool CSong::SetCommandInPattern(BYTE command)
 				pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
 
 			// Allow editing the Effect Command Parameter only when the Command Identifier is not Empty
-			else if (pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command != PATTERN_EFFECT_EMPTY)
+			else if (pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command != EFFECT_EMPTY)
 			{
 				// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
 				if (m_activeColumn == 1)
@@ -5379,6 +5713,7 @@ bool CSong::SetCommandInPattern(BYTE command)
 			}
 			return true;
 		}
-		return false;
 	}
+
+	return false;
 }

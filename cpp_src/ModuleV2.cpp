@@ -7,8 +7,15 @@
 
 CModule::CModule()
 {
-	memset(m_subtune, NULL, sizeof m_subtune);
-	memset(m_instrument, NULL, sizeof m_instrument);
+	memset(m_subtuneIndex, NULL, sizeof m_subtuneIndex);
+	memset(m_instrumentIndex, NULL, sizeof m_instrumentIndex);
+	memset(m_volumeIndex, NULL, sizeof m_volumeIndex);
+	memset(m_timbreIndex, NULL, sizeof m_timbreIndex);
+	memset(m_audctlIndex, NULL, sizeof m_audctlIndex);
+	memset(m_triggerIndex, NULL, sizeof m_triggerIndex);
+	memset(m_effectIndex, NULL, sizeof m_effectIndex);
+	memset(m_noteIndex, NULL, sizeof m_noteIndex);
+	memset(m_freqIndex, NULL, sizeof m_freqIndex);
 	InitialiseModule();
 }
 
@@ -39,36 +46,46 @@ void CModule::ClearModule()
 	SetSongCopyright("");
 
 	// Delete all Module data and set the associated pointers to NULL
-	for (int i = 0; i < SUBTUNE_MAX; i++)
+	for (int i = 0; i < SUBTUNE_COUNT; i++)
 		DeleteSubtune(i);
 
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+	// Delete all Instrument data, including Envelopes and Tables
+	for (int i = 0; i < INSTRUMENT_COUNT; i++)
+	{
 		DeleteInstrument(i);
+		DeleteVolumeEnvelope(i);
+		DeleteTimbreEnvelope(i);
+		DeleteAudctlEnvelope(i);
+		DeleteTriggerEnvelope(i);
+		DeleteEffectEnvelope(i);
+		DeleteNoteTable(i);
+		DeleteFreqTable(i);
+	}
 }
 
 void CModule::CreateSubtune(int subtune)
 {
-	if (!IsValidSubtune((subtune)))
+	if (!IsValidSubtune(subtune))
 		return;
 
 	// If there is no Subtune here, create it now and update the Subtune Index accordingly
-	if (!m_subtune[subtune])
-		m_subtune[subtune] = new TSubtune;
+	if (!m_subtuneIndex[subtune])
+		m_subtuneIndex[subtune] = new TSubtune;
 
 	// A new Subtune must be initialised when it is created
-	InitialiseSubtune(m_subtune[subtune]);
+	InitialiseSubtune(m_subtuneIndex[subtune]);
 }
 
 void CModule::DeleteSubtune(int subtune)
 {
-	if (!IsValidSubtune((subtune)))
+	if (!IsValidSubtune(subtune))
 		return;
 
 	// If there is a Subtune here, don't waste any time and delete it without further ado
-	if (m_subtune[subtune])
-		delete m_subtune[subtune];
+	if (m_subtuneIndex[subtune])
+		delete m_subtuneIndex[subtune];
 
-	m_subtune[subtune] = NULL;
+	m_subtuneIndex[subtune] = NULL;
 }
 
 void CModule::InitialiseSubtune(TSubtune* pSubtune)
@@ -80,21 +97,21 @@ void CModule::InitialiseSubtune(TSubtune* pSubtune)
 	strncpy_s(pSubtune->name, "Noname Subtune", SUBTUNE_NAME_MAX);
 
 	// Set the default parameters to all the Subtune variables
-	pSubtune->songLength = MODULE_SONG_LENGTH;
-	pSubtune->patternLength = MODULE_TRACK_LENGTH;
-	pSubtune->channelCount = MODULE_STEREO;	//= TRACK_CHANNEL_MAX;
-	pSubtune->songSpeed = MODULE_SONG_SPEED;
-	pSubtune->instrumentSpeed = MODULE_VBI_SPEED;
+	pSubtune->songLength = MODULE_DEFAULT_SONG_LENGTH;
+	pSubtune->patternLength = MODULE_DEFAULT_PATTERN_LENGTH;
+	pSubtune->channelCount = MODULE_CHANNEL_COUNT;
+	pSubtune->songSpeed = MODULE_DEFAULT_SONG_SPEED;
+	pSubtune->instrumentSpeed = MODULE_DEFAULT_VBI_SPEED;
 
 	// Clear all data, and set default values
-	for (int i = 0; i < TRACK_CHANNEL_MAX; i++)
+	for (int i = 0; i < CHANNEL_COUNT; i++)
 	{
 		// Set all indexed Patterns to 0
-		for (int j = 0; j < SONGLINE_MAX; j++)
+		for (int j = 0; j < SONGLINE_COUNT; j++)
 			pSubtune->channel[i].songline[j] = 0x00;
 
 		// Set all indexed Rows in Patterns to empty values
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+		for (int j = 0; j < PATTERN_COUNT; j++)
 			ClearPattern(&pSubtune->channel[i].pattern[j]);
 
 		// By default, only 1 Effect Command is enabled in all Track Channels
@@ -104,27 +121,27 @@ void CModule::InitialiseSubtune(TSubtune* pSubtune)
 
 void CModule::CreateInstrument(int instrument)
 {
-	if (!IsValidInstrument((instrument)))
+	if (!IsValidInstrument(instrument))
 		return;
 
 	// If there is no Instrument here, create it now and update the Instrument Index accordingly
-	if (!m_instrument[instrument])
-		m_instrument[instrument] = new TInstrumentV2;
+	if (!m_instrumentIndex[instrument])
+		m_instrumentIndex[instrument] = new TInstrumentV2;
 
 	// A new Instrument must be initialised when it is created
-	InitialiseInstrument(m_instrument[instrument]);
+	InitialiseInstrument(m_instrumentIndex[instrument]);
 }
 
 void CModule::DeleteInstrument(int instrument)
 {
-	if (!IsValidInstrument((instrument)))
+	if (!IsValidInstrument(instrument))
 		return;
 
 	// If there is an Instrument here, don't waste any time and delete it without further ado
-	if (m_instrument[instrument])
-		delete m_instrument[instrument];
+	if (m_instrumentIndex[instrument])
+		delete m_instrumentIndex[instrument];
 
-	m_instrument[instrument] = NULL;
+	m_instrumentIndex[instrument] = NULL;
 }
 
 void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
@@ -132,64 +149,242 @@ void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	if (!pInstrument)
 		return;
 
+	// Clear all values
+	memset(pInstrument, 0x00, sizeof(TInstrumentV2));
+
+	// Set Macros to default, the data itself won't be edited
+	memset(&pInstrument->index, 0x80, sizeof(TMacro));
+
 	// Set the default Instrument name TODO(?): Append the Index Number to it
 	strncpy_s(pInstrument->name, "New Instrument", INSTRUMENT_NAME_MAX);
-
-	// Set the default parameters to all the Instrument variables
-	pInstrument->volumeFade = 0x00;
-	pInstrument->volumeSustain = 0x00;
-	pInstrument->vibrato = 0x00;
-	pInstrument->freqShift = 0x00;
-	pInstrument->delay = 0x00;
-
-	pInstrument->envelopeMacro.mode = 0x00;
-	pInstrument->envelopeMacro.length = 0x01;
-	pInstrument->envelopeMacro.loop = 0x00;
-	pInstrument->envelopeMacro.release = 0x00;
-	pInstrument->envelopeMacro.speed = 0x00;
-
-	pInstrument->tableMacro.mode = 0x00;
-	pInstrument->tableMacro.length = 0x00;
-	pInstrument->tableMacro.loop = 0x00;
-	pInstrument->tableMacro.release = 0x00;
-	pInstrument->tableMacro.speed = 0x00;
-
-	// Set Envelopes to Empty
-	for (int i = 0; i < INSTRUMENT_ENVELOPE_MAX; i++)
-	{
-		pInstrument->envelopeMacro.envelope[i].volume = 0x00;
-		pInstrument->envelopeMacro.envelope[i].timbre = 0x00;
-		pInstrument->envelopeMacro.envelope[i].audctl = 0x00;
-		pInstrument->envelopeMacro.envelope[i].trigger.autoFilter = false;
-		pInstrument->envelopeMacro.envelope[i].trigger.auto16Bit = false;
-		pInstrument->envelopeMacro.envelope[i].trigger.autoReverse16 = false;
-		pInstrument->envelopeMacro.envelope[i].trigger.auto179Mhz = false;
-		pInstrument->envelopeMacro.envelope[i].trigger.auto15Khz = false;
-		pInstrument->envelopeMacro.envelope[i].trigger.autoPoly9 = false;
-		pInstrument->envelopeMacro.envelope[i].trigger.autoTwoTone = false;
-		pInstrument->envelopeMacro.envelope[i].trigger.autoToggle = false;
-		pInstrument->envelopeMacro.envelope[i].effect.command = 0x00;
-		pInstrument->envelopeMacro.envelope[i].effect.parameter = 0x00;
-	}
-
-	// Set Tables to Empty
-	for (int i = 0; i < INSTRUMENT_TABLE_MAX; i++)
-	{
-		pInstrument->tableMacro.table[i].note = 0x00;
-		pInstrument->tableMacro.table[i].freq = 0x00;
-	}
 }
+
+
+void CModule::CreateVolumeEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_volumeIndex[envelope])
+		m_volumeIndex[envelope] = new TInstrumentEnvelope;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentEnvelope(m_volumeIndex[envelope]);
+}
+
+void CModule::DeleteVolumeEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_volumeIndex[envelope])
+		delete m_volumeIndex[envelope];
+
+	m_volumeIndex[envelope] = NULL;
+}
+
+void CModule::CreateTimbreEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_timbreIndex[envelope])
+		m_timbreIndex[envelope] = new TInstrumentEnvelope;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentEnvelope(m_timbreIndex[envelope]);
+}
+
+void CModule::DeleteTimbreEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_timbreIndex[envelope])
+		delete m_timbreIndex[envelope];
+
+	m_timbreIndex[envelope] = NULL;
+}
+
+void CModule::CreateAudctlEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_audctlIndex[envelope])
+		m_audctlIndex[envelope] = new TInstrumentEnvelope;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentEnvelope(m_audctlIndex[envelope]);
+}
+
+void CModule::DeleteAudctlEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_audctlIndex[envelope])
+		delete m_audctlIndex[envelope];
+
+	m_audctlIndex[envelope] = NULL;
+}
+
+void CModule::InitialiseInstrumentEnvelope(TInstrumentEnvelope* pEnvelope)
+{
+	if (!pEnvelope)
+		return;
+
+	// Clear all values
+	memset(pEnvelope, 0x00, sizeof(TInstrumentEnvelope));
+}
+
+
+void CModule::CreateTriggerEnvelope(int trigger)
+{
+	if (!IsValidInstrument(trigger))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_triggerIndex[trigger])
+		m_triggerIndex[trigger] = new TInstrumentTrigger;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentTrigger(m_triggerIndex[trigger]);
+}
+
+void CModule::DeleteTriggerEnvelope(int trigger)
+{
+	if (!IsValidInstrument(trigger))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_triggerIndex[trigger])
+		delete m_triggerIndex[trigger];
+
+	m_triggerIndex[trigger] = NULL;
+}
+
+void CModule::InitialiseInstrumentTrigger(TInstrumentTrigger* pTrigger)
+{
+	if (!pTrigger)
+		return;
+
+	// Clear all values
+	memset(pTrigger, 0x00, sizeof(TInstrumentTrigger));
+}
+
+
+void CModule::CreateEffectEnvelope(int effect)
+{
+	if (!IsValidInstrument(effect))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_effectIndex[effect])
+		m_effectIndex[effect] = new TInstrumentEffect;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentEffect(m_effectIndex[effect]);
+}
+
+void CModule::DeleteEffectEnvelope(int effect)
+{
+	if (!IsValidInstrument(effect))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_effectIndex[effect])
+		delete m_effectIndex[effect];
+
+	m_effectIndex[effect] = NULL;
+}
+
+void CModule::InitialiseInstrumentEffect(TInstrumentEffect* pEffect)
+{
+	if (!pEffect)
+		return;
+
+	// Clear all values
+	memset(pEffect, 0x00, sizeof(TInstrumentEffect));
+}
+
+
+void CModule::CreateNoteTable(int table)
+{
+	if (!IsValidInstrument(table))
+		return;
+
+	// If there is no Table here, create it now and update the Table Index accordingly
+	if (!m_noteIndex[table])
+		m_noteIndex[table] = new TInstrumentTable;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentTable(m_noteIndex[table]);
+}
+
+void CModule::DeleteNoteTable(int table)
+{
+	if (!IsValidInstrument(table))
+		return;
+
+	// If there is a Table here, don't waste any time and delete it without further ado
+	if (m_noteIndex[table])
+		delete m_noteIndex[table];
+
+	m_noteIndex[table] = NULL;
+}
+
+void CModule::CreateFreqTable(int table)
+{
+	if (!IsValidInstrument(table))
+		return;
+
+	// If there is no Table here, create it now and update the Table Index accordingly
+	if (!m_freqIndex[table])
+		m_freqIndex[table] = new TInstrumentTable;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentTable(m_freqIndex[table]);
+}
+
+void CModule::DeleteFreqTable(int table)
+{
+	if (!IsValidInstrument(table))
+		return;
+
+	// If there is a Table here, don't waste any time and delete it without further ado
+	if (m_freqIndex[table])
+		delete m_freqIndex[table];
+
+	m_freqIndex[table] = NULL;
+}
+
+void CModule::InitialiseInstrumentTable(TInstrumentTable* pTable)
+{
+	if (!pTable)
+		return;
+
+	// Clear all values
+	memset(pTable, 0x00, sizeof(TInstrumentTable));
+}
+
 
 bool CModule::ImportLegacyRMT(std::ifstream& in)
 {
 	CString importLog;
 	importLog.Format("");
 
-	WORD songlineStep[SONGLINE_MAX];
-	memset(songlineStep, INVALID, SONGLINE_MAX);
+	WORD songlineStep[SONGLINE_COUNT];
+	memset(songlineStep, INVALID, SONGLINE_COUNT);
 
-	BYTE subtuneOffset[SONGLINE_MAX];
-	memset(subtuneOffset, 0, SONGLINE_MAX);
+	BYTE subtuneOffset[SONGLINE_COUNT];
+	memset(subtuneOffset, 0, SONGLINE_COUNT);
 
 	// This will become the final count of decoded Subtunes from the Legacy RMT Module
 	BYTE subtuneCount = 0;
@@ -256,7 +451,7 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 		for (int i = 0; i < importSubtune->channelCount; i++)
 		{
 			// The Songline Index won't be overwritten in the process, since we will need it in its current form!
-			for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+			for (int j = 0; j < PATTERN_COUNT; j++)
 				CopyPattern(&importSubtune->channel[CH1].pattern[j], &importSubtune->channel[i].pattern[j]);
 
 			// Set the Active Effect Command Columns to the same number for each channels
@@ -273,10 +468,10 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 			CopySubtune(importSubtune, GetSubtune(i));
 
 			// This will be used once again for detecting loop points in Subtunes
-			memset(songlineStep, INVALID, SONGLINE_MAX);
+			memset(songlineStep, INVALID, SONGLINE_COUNT);
 
 			// Re-construct every Songlines used by the Subtune, until the loop point is found
-			for (int j = 0; j < SONGLINE_MAX; j++)
+			for (int j = 0; j < SONGLINE_COUNT; j++)
 			{
 				// If the Songline Step offset is Valid, a loop was completed, and the Songlength will be set here
 				if (IsValidSongline(songlineStep[offset]))
@@ -323,11 +518,11 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 				for (int k = CH2; k < GetChannelCount(i); k++)
 				{
 					// All Pattern Rows will be edited, regardless of their contents
-					for (int l = 0; l < TRACK_ROW_MAX; l++)
+					for (int l = 0; l < ROW_COUNT; l++)
 					{
 						// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
-						for (int m = CMD2; m < PATTERN_ACTIVE_EFFECT_MAX; m++)
-							SetPatternRowCommand(i, k, GetPatternInSongline(i, k, j), l, m, PATTERN_EFFECT_EMPTY, EFFECT_PARAMETER_MIN);
+						for (int m = CMD2; m < ACTIVE_EFFECT_COUNT; m++)
+							SetPatternRowCommand(i, k, GetPatternInSongline(i, k, j), l, m, EFFECT_EMPTY, EFFECT_PARAMETER_MIN);
 					}
 				}
 			}
@@ -376,8 +571,8 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& lo
 	BYTE mem[65536];
 	memset(mem, 0, 65536);
 
-	BYTE instrumentLoaded[PATTERN_INSTRUMENT_COUNT];
-	memset(instrumentLoaded, 0, PATTERN_INSTRUMENT_COUNT);
+	BYTE instrumentLoaded[INSTRUMENT_COUNT];
+	memset(instrumentLoaded, 0, INSTRUMENT_COUNT);
 
 	// Load the first RMT Module Block, in order to get all of the Pattern, Songline and Instrument Data
 	if (!LoadBinaryBlock(in, mem, fromAddr, toAddr))
@@ -419,7 +614,7 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& lo
 	// Invalid Channel Count
 	if (pSubtune->channelCount != 4 && pSubtune->channelCount != 8)
 	{
-		pSubtune->channelCount = MODULE_STEREO;
+		pSubtune->channelCount = MODULE_CHANNEL_COUNT;
 		log.AppendFormat("Warning: Invalid number of Channels, 4 or 8 were expected\n");
 		log.AppendFormat("Default value of %02X will be used instead.\n\n", pSubtune->channelCount);
 	}
@@ -427,7 +622,7 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& lo
 	// Invalid Song Speed
 	if (pSubtune->songSpeed < 1)
 	{
-		pSubtune->songSpeed = MODULE_SONG_SPEED;
+		pSubtune->songSpeed = MODULE_DEFAULT_SONG_SPEED;
 		log.AppendFormat("Warning: Song Speed could not be 0.\n");
 		log.AppendFormat("Default value of %02X will be used instead.\n\n", pSubtune->songSpeed);
 	}
@@ -435,7 +630,7 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& lo
 	// Invalid Instrument Speed
 	if (pSubtune->instrumentSpeed < 1 || pSubtune->instrumentSpeed > 8)
 	{
-		pSubtune->instrumentSpeed = MODULE_VBI_SPEED;
+		pSubtune->instrumentSpeed = MODULE_DEFAULT_VBI_SPEED;
 		log.AppendFormat("Warning: Instrument Speed could only be set between 1 and 8 inclusive.\n");
 		log.AppendFormat("Default value of %02X will be used instead.\n\n", pSubtune->instrumentSpeed);
 	}
@@ -494,7 +689,7 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& lo
 	WORD addrInstrumentNames = fromAddr + ch + 1;
 
 	// Process all Instruments
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+	for (int i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Skip the Instrument if it was not loaded
 		if (!instrumentLoaded[i])
@@ -734,7 +929,7 @@ bool CModule::ImportLegacySonglines(TSubtune* pSubtune, BYTE* sourceMemory, WORD
 		}
 
 		// Break out of the loop if the maximum number of songlines was processed
-		if (line >= SONGLINE_MAX)
+		if (line >= SONGLINE_COUNT)
 			break;
 	}
 
@@ -760,7 +955,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 	WORD instrumentCount = (ptrEnd - ptrInstruments) / 2;
 
 	// Abort the import procedure if the number of Instruments detected is invalid
-	if (!IsValidInstrument(instrumentCount))
+	if (instrumentCount > INSTRUMENT_COUNT)
 		return false;
 
 	// Decode all Instruments, TODO: Add exceptions for V0 Instruments
@@ -777,47 +972,96 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		CreateInstrument(i);
 		TInstrumentV2* pInstrument = GetInstrument(i);
 
+		// Create all Envelopes and Tables, unique for each Instruments
+		CreateVolumeEnvelope(i);
+		CreateTimbreEnvelope(i);
+		CreateAudctlEnvelope(i);
+		CreateTriggerEnvelope(i);
+		CreateEffectEnvelope(i);
+		CreateNoteTable(i);
+		CreateFreqTable(i);
+
+		// Assign everything in the Instrument Index once the data was initialised
+		pInstrument->index.volume = i;
+		pInstrument->index.timbre = i;
+		pInstrument->index.audctl = i;
+		pInstrument->index.trigger = i;
+		pInstrument->index.effect = i;
+		pInstrument->index.note = i;
+		pInstrument->index.freq = i;
+
 		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
 		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
 		BYTE envelopePtr = memInstrument[0];							// Pointer to Instrument Envelope
 		BYTE tablePtr = 12;												// Pointer to Instrument Table
-		BYTE tableType = memInstrument[4] >> 7;							// Table Type, 0 = Note, 1 = Freq
-		BYTE initialAudctl = memInstrument[5];							// AUDCTL, used to initialise the equivalent Envelope
 
 		// Set the equivalent data to the RMTE instrument, with respect to boundaries
-		pInstrument->tableMacro.length = envelopePtr - tablePtr + 1;
-		pInstrument->tableMacro.loop = memInstrument[1] - tablePtr;	// + 1;
-		pInstrument->envelopeMacro.length = ((memInstrument[2] - envelopePtr + 1) / 3) + 1;
-		pInstrument->envelopeMacro.loop = ((memInstrument[3] - envelopePtr + 1) / 3);	// + 1;
-		pInstrument->tableMacro.mode = (memInstrument[4] >> 6) & 0x01;	// Table Mode, 0 = Set, 1 = Additive
-		pInstrument->tableMacro.speed = memInstrument[4] & 0x3F;		// Table Speed, used to offset the equivalent Tables
+		BYTE tableLength = envelopePtr - tablePtr + 1;
+		BYTE tableLoop = memInstrument[1] - tablePtr;
+
+		BYTE envelopeLength = ((memInstrument[2] - envelopePtr + 1) / 3) + 1;
+		BYTE envelopeLoop = ((memInstrument[3] - envelopePtr + 1) / 3);
+		BYTE envelopeSpeed = 0x01;
+
+		BYTE tableMode = (memInstrument[4] >> 6) & 0x01;				// Table Mode, 0 = Set, 1 = Additive
+		BYTE tableSpeed = memInstrument[4] & 0x3F + 1;					// Table Speed, used to offset the equivalent Tables
+
+		BYTE tableType = memInstrument[4] >> 7;							// Table Type, 0 = Note, 1 = Freq
+		BYTE initialAudctl = memInstrument[5];							// AUDCTL, used to initialise the equivalent Envelope
+		bool initialSkctl = false;										// SKCTL, used for the Two-Tone Filter Trigger Envelope
+
 		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
 		pInstrument->volumeSustain = memInstrument[7] >> 4;				// Volume Minimum
 		pInstrument->delay = memInstrument[8];							// Vibrato/Freq Shift Delay
 		pInstrument->vibrato = memInstrument[9] & 0x03;					// Vibrato
 		pInstrument->freqShift = memInstrument[10];						// Freq Shift
 
-		if (pInstrument->tableMacro.length > 32)	//INSTRUMENT_TABLE_MAX)
-			pInstrument->tableMacro.length = 0x00;
+		// Fill the equivalent RMTE tables based on the tableType parameter
+		if (tableLength > 32)
+			tableLength = 0x00;
 
-		if (pInstrument->tableMacro.loop > pInstrument->tableMacro.length)
-			pInstrument->tableMacro.loop = 0x00;
+		if (tableLoop > tableLength)
+			tableLoop = 0x00;
 
-		if (pInstrument->envelopeMacro.length > 48)	//INSTRUMENT_ENVELOPE_MAX)
-			pInstrument->envelopeMacro.length = 0x00;
+		if (envelopeLength > 48)
+			envelopeLength = 0x00;
 
-		if (pInstrument->envelopeMacro.loop > pInstrument->envelopeMacro.length)
-			pInstrument->envelopeMacro.loop = 0x00;
+		if (envelopeLoop > envelopeLength)
+			envelopeLoop = 0x00;
 
-		// Fill the equivalent RMTE tables based on the tableMode parameter
-		for (int j = 0; j < pInstrument->tableMacro.length; j++)
-		{
-			pInstrument->tableMacro.table[j].note = !tableType ? memInstrument[tablePtr + j] : 0x00;
-			pInstrument->tableMacro.table[j].freq = tableType ? memInstrument[tablePtr + j] : 0x00;
-		}
+		// Table Type is either Freq or Note, so pick whichever is suitable for the next part
+		TInstrumentTable* pTable = tableType ? m_freqIndex[i] : m_noteIndex[i];
+
+		// Assign the necessary flags and parameters to it
+		pTable->flag.isLooped = true;
+		pTable->flag.isAbsolute = false;
+		pTable->flag.isAdditive = tableMode;
+		pTable->flag.isReleased = false;
+
+		pTable->parameter.length = tableLength;
+		pTable->parameter.loop = tableLoop;
+		pTable->parameter.release = 0x00;
+		pTable->parameter.speed = tableSpeed;
+		
+		// Fill the appropriate Table with these values
+		for (int j = 0; j < tableLength; j++)
+			pTable->table[j] = memInstrument[tablePtr + j];
+
+		// Enable all envelopes, since everything may be used at once!
+		TParameter parameter{ envelopeLength, envelopeLoop, 0x00, envelopeSpeed };
+		TFlag flag{ true, false, false, false };
+
+		// Get the pointer to all the Envelopes that will be filled with the imported data
+		TInstrumentEnvelope* pVolume = m_volumeIndex[i], * pTimbre = m_timbreIndex[i], * pAudctl = m_audctlIndex[i];
+		TInstrumentTrigger* pTrigger = m_triggerIndex[i];
+		TInstrumentEffect* pEffect = m_effectIndex[i];
+
+		// Assign the necessary flags and parameters to all of them
+		pVolume->parameter = pTimbre->parameter = pAudctl->parameter = pTrigger->parameter = pEffect->parameter = parameter;
+		pVolume->flag = pTimbre->flag = pAudctl->flag = pTrigger->flag = pEffect->flag = flag;
 
 		// Fill the equivalent RMTE envelopes, which might include some compromises due to the format differences
-		for (int j = 0; j < pInstrument->envelopeMacro.length; j++)
+		for (int j = 0; j < envelopeLength; j++)
 		{
 			// Get the 3 bytes used by the original RMT Envelope format
 			BYTE envelopeVolume = memInstrument[envelopePtr + 1 + (j * 3)];
@@ -827,55 +1071,91 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			// Envelope Effect Command, from 0 to 7
 			BYTE envelopeEffectCommand = (envelopeCommand >> 4) & 0x07;
 
+			// Volume Only Mode flag, used for the Volume Envelope when it is set
+			bool isVolumeOnly = false;
+
 			// The Envelope Effect Command is used for compatibility tweaks, which may or may not provide perfect results
 			switch (envelopeEffectCommand)
 			{
-			case 0x07:	// Overwrite the initialAudctl parameter, for a pseudo AUDCTL envelope when it is used multiple times (Patch16 only)
+			case 0x07:
+				// Overwrite the initialAudctl parameter, for a pseudo AUDCTL envelope when it is used multiple times (Patch16 only)
 				if (envelopeParameter < 0xFD)
-				{
 					initialAudctl = envelopeParameter;
-					envelopeParameter = envelopeEffectCommand = 0x00;
-				}
+
+				else if (envelopeParameter == 0xFD)
+					initialSkctl = false;
+
+				else if (envelopeParameter == 0xFE)
+					initialSkctl = true;
+
+				else if (envelopeParameter == 0xFF)
+					isVolumeOnly = true;
+
+				envelopeParameter = envelopeEffectCommand = 0x00;
 				break;
 			}
 
 			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
-			pInstrument->envelopeMacro.envelope[j].effect.command = envelopeEffectCommand;
-			pInstrument->envelopeMacro.envelope[j].effect.parameter = envelopeParameter;
+			pEffect->effect[j].command = envelopeEffectCommand;
+			pEffect->effect[j].parameter = envelopeParameter;
 
 			// Envelope Distortion, from 0 to E, in steps of 2
 			BYTE distortion = envelopeCommand & 0x0E;
 
-			// The original "Auto16Bit" trigger ;)
-			if (distortion == 0x06)
-				pInstrument->envelopeMacro.envelope[j].trigger.auto16Bit = true;
-
+			// To be converted to the equivalent Timbre parameter
 			switch (distortion)
 			{
-			case 0x00: distortion = TIMBRE_PINK_NOISE; break;
-			case 0x02: distortion = TIMBRE_BELL; break;
-			case 0x04: distortion = TIMBRE_SMOOTH_4; break;
-			case 0x08: distortion = TIMBRE_WHITE_NOISE; break;
+			case 0x00:
+				pTimbre->envelope[j] = TIMBRE_PINK_NOISE;
+				break;
+
+			case 0x02:
+				pTimbre->envelope[j] = TIMBRE_BELL;
+				break;
+
+			case 0x04:
+				pTimbre->envelope[j] = TIMBRE_SMOOTH_4;
+				break;
+
+			case 0x08:
+				pTimbre->envelope[j] = TIMBRE_WHITE_NOISE;
+				break;
+
 			case 0x06:
-			case 0x0A: distortion = TIMBRE_PURE; break;
-			case 0x0C: distortion = TIMBRE_BUZZY_C; break;
-			case 0x0E: distortion = TIMBRE_GRITTY_C; break;
+				// The original "Auto16Bit" trigger ;)
+				pTrigger->trigger[j].auto16Bit = true;
+
+			case 0x0A:
+				pTimbre->envelope[j] = TIMBRE_PURE;
+				break;
+
+			case 0x0C:
+				pTimbre->envelope[j] = TIMBRE_BUZZY_C;
+				break;
+
+			case 0x0E:
+				pTimbre->envelope[j] = TIMBRE_GRITTY_C;
+				break;
 			}
-			
-			// Distortion Envelope, converted the equivalent Timbre parameter
-			pInstrument->envelopeMacro.envelope[j].timbre = distortion;
 
 			// Envelope Volume, only Left POKEY volume is supported by the RMTE format
-			pInstrument->envelopeMacro.envelope[j].volume = envelopeVolume & 0x0F;
+			pVolume->envelope[j] = envelopeVolume & 0x0F;
+
+			// Set the Volume Only Mode as well if needed
+			if (isVolumeOnly)
+				pVolume->envelope[j] |= 0x10;
 
 			// Envelope AUDCTL
-			pInstrument->envelopeMacro.envelope[j].audctl = initialAudctl;
+			pAudctl->envelope[j] = initialAudctl;
 
 			// AutoFilter Trigger
-			pInstrument->envelopeMacro.envelope[j].trigger.autoFilter = envelopeCommand >> 7;
+			pTrigger->trigger[j].autoFilter = envelopeCommand >> 7;
+
+			// AutoTwoTone Trigger
+			pTrigger->trigger[j].autoTwoTone = initialSkctl;
 
 			// Portamento is not supported by the RMTE format, a Pattern Effect Command could be set where the Portamento is expected as a compromise
-			//pInstrument->envelopeMacro.envelope[j].portamento = envelopeCommand & 0x01;
+			//pInstrument->portamento = envelopeCommand & 0x01;
 		}
 
 		// Instrument was loaded
@@ -1107,7 +1387,6 @@ const BYTE CModule::GetEffectCommandCount(BYTE subtune, BYTE channel)
 	return NULL;
 }
 
-
 void CModule::SetSubtuneName(BYTE subtune, const char* name)
 {
 	TSubtune* pSubtune = GetSubtune(subtune);
@@ -1169,8 +1448,8 @@ const BYTE CModule::GetSubtuneCount()
 {
 	BYTE count = 0;
 
-	for (int i = 0; i < SUBTUNE_MAX; i++)
-		count += m_subtune[i] != NULL;
+	for (int i = 0; i < SUBTUNE_COUNT; i++)
+		count += m_subtuneIndex[i] != NULL;
 
 	return count;
 }
@@ -1282,25 +1561,25 @@ bool CModule::IsEmptyPattern(TPattern* pPattern)
 		return false;
 
 	// All Rows in the Pattern Index will be processed
-	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	for (int i = 0; i < ROW_COUNT; i++)
 	{
 		// If there is a Note, it's not empty
-		if (pPattern->row[i].note != PATTERN_NOTE_EMPTY)
+		if (pPattern->row[i].note != NOTE_EMPTY)
 			return false;
 
 		// If there is an Instrument, it's not empty
-		if (pPattern->row[i].instrument != PATTERN_INSTRUMENT_EMPTY)
+		if (pPattern->row[i].instrument != INSTRUMENT_EMPTY)
 			return false;
 
 		// If there is a Volume, it's not empty
-		if (pPattern->row[i].volume != PATTERN_VOLUME_EMPTY)
+		if (pPattern->row[i].volume != VOLUME_EMPTY)
 			return false;
 
 		// If there is an Effect Command, it's not empty
-		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
 		{
 			// Only the Identifier is checked, since the Parameter cannot be used alone
-			if (pPattern->row[i].effect[j].command != PATTERN_EFFECT_EMPTY)
+			if (pPattern->row[i].effect[j].command != EFFECT_EMPTY)
 				return false;
 		}
 	}
@@ -1323,22 +1602,22 @@ bool CModule::IsEmptyRow(TRow* pRow)
 		return false;
 
 	// If there is a Note, it's not empty
-	if (pRow->note != PATTERN_NOTE_EMPTY)
+	if (pRow->note != NOTE_EMPTY)
 		return false;
 
 	// If there is an Instrument, it's not empty
-	if (pRow->instrument != PATTERN_INSTRUMENT_EMPTY)
+	if (pRow->instrument != INSTRUMENT_EMPTY)
 		return false;
 
 	// If there is a Volume, it's not empty
-	if (pRow->volume != PATTERN_VOLUME_EMPTY)
+	if (pRow->volume != VOLUME_EMPTY)
 		return false;
 
 	// If there is an Effect Command, it's not empty
-	for (int i = 0; i < PATTERN_ACTIVE_EFFECT_MAX; i++)
+	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
 	{
 		// Only the Identifier is checked, since the Parameter cannot be used alone
-		if (pRow->effect[i].command != PATTERN_EFFECT_EMPTY)
+		if (pRow->effect[i].command != EFFECT_EMPTY)
 			return false;
 	}
 
@@ -1354,7 +1633,7 @@ bool CModule::IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern)
 		return false;
 
 	// All Rows in the Pattern Index will be processed
-	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	for (int i = 0; i < ROW_COUNT; i++)
 	{
 		// If there is a different Note, it's not identical
 		if (pFromPattern->row[i].note != pToPattern->row[i].note)
@@ -1369,7 +1648,7 @@ bool CModule::IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern)
 			return false;
 
 		// If there is a different Effect Command, it's not identical
-		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
 		{
 			if (pFromPattern->row[i].effect[j].command != pToPattern->row[i].effect[j].command)
 				return false;
@@ -1387,7 +1666,7 @@ bool CModule::IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern)
 bool CModule::DuplicatePatternInSongline(int subtune, int channel, int songline, int pattern)
 {
 	// Find the first empty and unused Pattern that is available
-	for (int i = 0; i < TRACK_PATTERN_MAX; i++)
+	for (int i = 0; i < PATTERN_COUNT; i++)
 	{
 		// Ignore the Pattern that is being duplicated
 		if (i == pattern)
@@ -1437,15 +1716,15 @@ bool CModule::ClearPattern(TPattern* pPattern)
 		return false;
 
 	// Set all indexed Rows in the Pattern to empty values
-	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	for (int i = 0; i < ROW_COUNT; i++)
 	{
-		pPattern->row[i].note = PATTERN_NOTE_EMPTY;
-		pPattern->row[i].instrument = PATTERN_INSTRUMENT_EMPTY;
-		pPattern->row[i].volume = PATTERN_VOLUME_EMPTY;
+		pPattern->row[i].note = NOTE_EMPTY;
+		pPattern->row[i].instrument = INSTRUMENT_EMPTY;
+		pPattern->row[i].volume = VOLUME_EMPTY;
 
-		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
 		{
-			pPattern->row[i].effect[j].command = PATTERN_EFFECT_EMPTY;
+			pPattern->row[i].effect[j].command = EFFECT_EMPTY;
 			pPattern->row[i].effect[j].parameter = EFFECT_PARAMETER_MIN;
 		}
 	}
@@ -1559,7 +1838,7 @@ void CModule::RenumberIndexedPatterns(TSubtune* pSubtune)
 		CopyChannel(channelIndex, backupIndex);
 
 		// Copy all Indexed Patterns to single Songline entries, effectively duplicating all Patterns used in multiple Songlines
-		for (int j = 0; j < SONGLINE_MAX; j++)
+		for (int j = 0; j < SONGLINE_COUNT; j++)
 		{
 			BYTE pattern = channelIndex->songline[j];
 			CopyPattern(&channelIndex->pattern[pattern], &backupIndex->pattern[j]);
@@ -1592,7 +1871,7 @@ void CModule::ClearUnusedPatterns(TSubtune* pSubtune)
 	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
 		// Search for all unused indexed Patterns
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+		for (int j = 0; j < PATTERN_COUNT; j++)
 		{
 			// If the Pattern is not used anywhere, it will be deleted
 			if (IsUnusedPattern(&pSubtune->channel[i], j, pSubtune->songLength))
@@ -1628,7 +1907,7 @@ void CModule::ConcatenateIndexedPatterns(TSubtune* pSubtune)
 		CopyChannel(channelIndex, backupIndex);
 
 		// Concatenate the Indexed Patterns to remove gaps between them
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+		for (int j = 0; j < PATTERN_COUNT; j++)
 		{
 			// If a Pattern is used at least once, see if it could also be concatenated further back
 			if (!IsUnusedPattern(backupIndex, j, pSubtune->songLength))

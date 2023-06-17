@@ -248,7 +248,7 @@ int CTuning::DeltaPokeyFreq(double pitch, int freq, int coarseDivisor, double fi
 	return pitchDown - pitchUp > 0 ? freqUp : freqDown;
 }
 
-double CTuning::GeneratePokeyPitch(TPokeyRegisters& pokey, int channel)
+double CTuning::GeneratePokeyPitch(TPokeyRegisters* pokey, int channel)
 {
 	// Variables for pitch calculation, divisors must never be 0!
 	double fineDivisor = 1;
@@ -256,15 +256,15 @@ double CTuning::GeneratePokeyPitch(TPokeyRegisters& pokey, int channel)
 	int cycle = 1;
 
 	// AUDCTL flags
-	bool is15KhzMode = pokey.audctl & 0x01;
-	bool isHighPassCh24 = pokey.audctl & 0x02;
-	bool isHighPassCh13 = pokey.audctl & 0x04;
-	bool isJoinedCh34 = pokey.audctl & 0x08;
-	bool isJoinedCh12 = pokey.audctl & 0x10;
-	bool is179MhzCh3 = pokey.audctl & 0x20;
-	bool is179MhzCh1 = pokey.audctl & 0x40;
-	bool isPoly9Noise = pokey.audctl & 0x80;
-	bool isTwoTone = pokey.skctl == 0x8B;
+	bool is15KhzMode = pokey->audctl & 0x01;
+	bool isHighPassCh24 = pokey->audctl & 0x02;
+	bool isHighPassCh13 = pokey->audctl & 0x04;
+	bool isJoinedCh34 = pokey->audctl & 0x08;
+	bool isJoinedCh12 = pokey->audctl & 0x10;
+	bool is179MhzCh3 = pokey->audctl & 0x20;
+	bool is179MhzCh1 = pokey->audctl & 0x40;
+	bool isPoly9Noise = pokey->audctl & 0x80;
+	bool isTwoTone = pokey->skctl == 0x8B;
 
 	// Combined modes
 	bool is179MhzMode = false;
@@ -308,7 +308,7 @@ double CTuning::GeneratePokeyPitch(TPokeyRegisters& pokey, int channel)
 		coarseDivisor = is15KhzMode ? 114 : 28;
 
 	// If 16-bit Mode is used, the Freq from 2 Channels will be combined into a 16-bit value, in Little Endian order (LSB then MSB)
-	WORD freq = isJoined16 ? pokey.audf16[channel % 4 > 1] : pokey.audf[channel % 4];
+	WORD freq = isJoined16 ? pokey->audf16[channel % 4 > 1] : pokey->audf[channel % 4];
 
 	// Many combinations depend entirely on the Modulo of POKEY frequencies to generate different tones
 	// If a value is known to provide unstable results, it may be a better idea to avoid it
@@ -320,7 +320,7 @@ double CTuning::GeneratePokeyPitch(TPokeyRegisters& pokey, int channel)
 	bool MOD73 = (freq + cycle) % 73 == 0;
 
 	//BYTE distortion = audc & 0xF0;
-	BYTE distortion = pokey.audc[channel % 4] & 0xF0;
+	BYTE distortion = pokey->audc[channel % 4] & 0xF0;
 
 	switch (distortion)
 	{

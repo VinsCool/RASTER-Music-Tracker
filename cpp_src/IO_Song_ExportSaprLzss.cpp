@@ -764,8 +764,8 @@ void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 	while (m_playMode != MPLAY_STOP)
 	{
 		// 1 VBI of module playback
-		PlayPattern(pSubtune);
-		PlayContinue(pSubtune);
+		//PlayPattern(pSubtune);
+		//PlayContinue(pSubtune);
 
 		// Increment the timer shown during playback (not actually needed here?)
 		//UpdatePlayTime();
