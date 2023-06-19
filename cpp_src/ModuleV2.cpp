@@ -1004,7 +1004,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		BYTE envelopeSpeed = 0x01;
 
 		BYTE tableMode = (memInstrument[4] >> 6) & 0x01;				// Table Mode, 0 = Set, 1 = Additive
-		BYTE tableSpeed = memInstrument[4] & 0x3F + 1;					// Table Speed, used to offset the equivalent Tables
+		BYTE tableSpeed = (memInstrument[4] & 0x3F) + 1;				// Table Speed, used to offset the equivalent Tables
 
 		BYTE tableType = memInstrument[4] >> 7;							// Table Type, 0 = Note, 1 = Freq
 		BYTE initialAudctl = memInstrument[5];							// AUDCTL, used to initialise the equivalent Envelope

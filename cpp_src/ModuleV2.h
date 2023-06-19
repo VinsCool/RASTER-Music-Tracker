@@ -58,6 +58,10 @@
 #define CH2						1											// POKEY Channel identifier for Pattern Column 2
 #define CH3						2											// POKEY Channel identifier for Pattern Column 3
 #define CH4						3											// POKEY Channel identifier for Pattern Column 4
+#define _CH1(x)					((x % POKEY_CHANNEL_COUNT) == CH1)			// POKEY Channel identifier for Pattern Column 1
+#define _CH2(x)					((x % POKEY_CHANNEL_COUNT) == CH2)			// POKEY Channel identifier for Pattern Column 2
+#define _CH3(x)					((x % POKEY_CHANNEL_COUNT) == CH3)			// POKEY Channel identifier for Pattern Column 3
+#define _CH4(x)					((x % POKEY_CHANNEL_COUNT) == CH4)			// POKEY Channel identifier for Pattern Column 4
 #define NOTE_COUNT				120											// 0-119 inclusive, Note index used in Pattern, for a total of 10 octaves
 #define NOTE_EMPTY				NOTE_COUNT									// There is no Note in the Pattern Row
 #define NOTE_OFF				NOTE_COUNT + 1								// The Note Command OFF will stop the last played note in the Track Channel

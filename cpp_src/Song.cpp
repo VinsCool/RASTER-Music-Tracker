@@ -1520,8 +1520,9 @@ void CSong::SonglineUp()
 
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 	{
-		m_playSongline = m_activeSongline;
-		m_playRow = m_activeRow = 0;
+		m_nextSongline = m_playSongline = m_activeSongline;
+		m_nextRow = m_playRow = m_activeRow = 0;
+		return;
 	}
 
 	// Prevent the Active Pattern Row to go out of bounds
@@ -1534,8 +1535,9 @@ void CSong::SonglineDown()
 
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 	{
-		m_playSongline = m_activeSongline;
-		m_playRow = m_activeRow = 0;
+		m_nextSongline = m_playSongline = m_activeSongline;
+		m_nextRow = m_playRow = m_activeRow = 0;
+		return;
 	}
 
 	// Prevent the Active Pattern Row to go out of bounds
@@ -1544,35 +1546,28 @@ void CSong::SonglineDown()
 
 void CSong::SeekNextSubtune()
 {
-	++m_activeSubtune %= GetSubtuneCount();
+	if (++m_activeSubtune >= GetSubtuneCount())
+		m_activeSubtune = 0;
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_activeChannel = m_activeCursor = m_activeColumn = 0;
 
 	if (m_playMode != MPLAY_STOP)
-	{
-		Stop();
 		Play(MPLAY_START, m_isFollowPlay);
-	}
 }
 
 void CSong::SeekPreviousSubtune()
 {
-	//if (--m_activeSubtune < 0)
-	//	m_activeSubtune += GetSubtuneCount();
-
-	--m_activeSubtune %= GetSubtuneCount();
+	if (--m_activeSubtune >= GetSubtuneCount())
+		m_activeSubtune = GetSubtuneCount() - 1;
 
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
 	m_activeChannel = m_activeCursor = m_activeColumn = 0;
 
 	if (m_playMode != MPLAY_STOP)
-	{
-		Stop();
 		Play(MPLAY_START, m_isFollowPlay);
-	}
 }
 
 
@@ -4022,24 +4017,17 @@ void CSong::DrawRegistersState()
 
 		is16BitMode = is179MhzMode = false;
 
-		switch (i % 4)
-		{
-		case CH1:
+		if (_CH1(i))
 			is179MhzMode = is179MhzCh1;
-			break;
 
-		case CH2:
+		if (_CH2(i))
 			is16BitMode = isJoinedCh12;
-			break;
 
-		case CH3:
+		if (_CH3(i))
 			is179MhzMode = is179MhzCh3;
-			break;
 
-		case CH4:
+		if (_CH4(i))
 			is16BitMode = isJoinedCh34;
-			break;
-		}
 
 		s.Format("%02X  %02X", audf, audc);
 		TextMiniXY(s, x + (8 * 8), y, TEXT_MINI_COLOR_WHITE);
@@ -4210,7 +4198,7 @@ void CSong::DrawPatternEditor()
 				colour = TEXT_COLOR_DARK_GRAY;
 
 			// If the procedure is set to run from Channel 1, the Row Index will also be drawn on screen
-			if (i == CH1)
+			if (_CH1(i))
 			{
 				s.Format("%02X", row);
 
@@ -5014,35 +5002,47 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 	if (m_playMode == MPLAY_STOP)
 		return;
 
-	TPokeyRegisters* pPokey = &m_pokeyBuffer->frame[0x00].pokey[0x00];
-	pPokey->audctl = 0x00;
-	pPokey->skctl = 0x03;
+	// TODO: Update the Channel variables with these values later
+	struct TPlayback
+	{
+		BYTE volume[CHANNEL_COUNT];
+		BYTE timbre[CHANNEL_COUNT];
+		BYTE audctl[CHANNEL_COUNT];
+		TAutomatic trigger[CHANNEL_COUNT];
+		TEffect effect[CHANNEL_COUNT];
+		char note[CHANNEL_COUNT];
+		char freq[CHANNEL_COUNT];
+	};
 
-	// Process all channels
+	TPlayback playback;
+
+	// Initialise as Invalid by default, so it could be omitted if there is no valid Instrument data to be referenced
+	memset(&playback, 0x00, sizeof(playback));
+
+	// Get the variables from all Channels, including the ones used by active Instruments
 	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
 		TChannelVariables* pVariables = &m_songVariables->channel[i];
 		TInstrumentV2* pInstrument = pVariables->pInstrument;
 
-		BYTE instrumentVolume = INVALID;
-		BYTE instrumentTimbre = INVALID;
-		BYTE instrumentAudctl = INVALID;
+		// Set the initial values to the Channel variables as a fallack in case there is no valid Instrument data to be used
+		playback.volume[i] = pVariables->channelVolume;
+		playback.timbre[i] = pVariables->channelTimbre;
+		playback.audctl[i] = pVariables->channelAudctl;
+		playback.note[i] = playback.freq[i] = 0x00;
 
 		if (pInstrument)
 		{
 			TEnvelopeVariables* pEnvelope = &pVariables->instrumentEnvelope;
-			TInstrumentEnvelope* pVolumeEnvelope = GetVolumeEnvelope(pInstrument->index.volume);
-			TInstrumentEnvelope* pTimbreEnvelope = GetTimbreEnvelope(pInstrument->index.timbre);
-			TInstrumentEnvelope* pAudctlEnvelope = GetAudctlEnvelope(pInstrument->index.audctl);
 
-			if (pVolumeEnvelope)
+			if (TInstrumentEnvelope* pVolumeEnvelope = GetVolumeEnvelope(pInstrument->index.volume))
 			{
 				BYTE* pIndex = pVolumeEnvelope->envelope;
 				TFlag* pFlag = &pVolumeEnvelope->flag;
 				TParameter* pParameter = &pVolumeEnvelope->parameter;
 				TActive* pActive = &pEnvelope->volume;
 
-				instrumentVolume = pIndex[pActive->offset];
+				playback.volume[i] = (BYTE)round((double)(pVariables->channelVolume * pIndex[pActive->offset]) / 0x0F);
 
 				if (--pActive->timer == 0)
 				{
@@ -5050,8 +5050,11 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 
 					if (++pActive->offset > pParameter->length - 1)
 					{
-						if (pVariables->isInstrumentEnvelopeLooped = pFlag->isLooped)
+						if (pFlag->isLooped)
+						{
 							pActive->offset = pParameter->loop;
+							pVariables->isInstrumentEnvelopeLooped = pFlag->isLooped;
+						}
 						else
 							pActive->offset = pParameter->length - 1;
 					}
@@ -5068,14 +5071,14 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 
 			}
 
-			if (pTimbreEnvelope)
+			if (TInstrumentEnvelope* pTimbreEnvelope = GetTimbreEnvelope(pInstrument->index.timbre))
 			{
 				BYTE* pIndex = pTimbreEnvelope->envelope;
 				TFlag* pFlag = &pTimbreEnvelope->flag;
 				TParameter* pParameter = &pTimbreEnvelope->parameter;
 				TActive* pActive = &pEnvelope->timbre;
 
-				instrumentTimbre = pIndex[pActive->offset];
+				playback.timbre[i] = pIndex[pActive->offset];
 
 				if (--pActive->timer == 0)
 				{
@@ -5091,14 +5094,106 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 				}
 			}
 
-			if (pAudctlEnvelope)
+			if (TInstrumentEnvelope* pAudctlEnvelope = GetAudctlEnvelope(pInstrument->index.audctl))
 			{
 				BYTE* pIndex = pAudctlEnvelope->envelope;
 				TFlag* pFlag = &pAudctlEnvelope->flag;
 				TParameter* pParameter = &pAudctlEnvelope->parameter;
 				TActive* pActive = &pEnvelope->audctl;
 
-				instrumentAudctl = pIndex[pActive->offset];
+				playback.audctl[i] = pIndex[pActive->offset];
+
+				if (--pActive->timer == 0)
+				{
+					pActive->timer = pParameter->speed;
+
+					if (++pActive->offset > pParameter->length - 1)
+					{
+						if (pFlag->isLooped)
+							pActive->offset = pParameter->loop;
+						else
+							pActive->offset = pParameter->length - 1;
+					}
+				}
+			}
+
+			if (TInstrumentTrigger* pTriggerEnvelope = GetTriggerEnvelope(pInstrument->index.trigger))
+			{
+				TAutomatic* pIndex = pTriggerEnvelope->trigger;
+				TFlag* pFlag = &pTriggerEnvelope->flag;
+				TParameter* pParameter = &pTriggerEnvelope->parameter;
+				TActive* pActive = &pEnvelope->trigger;
+
+				playback.trigger[i] = pIndex[pActive->offset];
+
+				if (--pActive->timer == 0)
+				{
+					pActive->timer = pParameter->speed;
+
+					if (++pActive->offset > pParameter->length - 1)
+					{
+						if (pFlag->isLooped)
+							pActive->offset = pParameter->loop;
+						else
+							pActive->offset = pParameter->length - 1;
+					}
+				}
+			}
+
+			if (TInstrumentEffect* pEffectEnvelope = GetEffectEnvelope(pInstrument->index.effect))
+			{
+				TEffect* pIndex = pEffectEnvelope->effect;
+				TFlag* pFlag = &pEffectEnvelope->flag;
+				TParameter* pParameter = &pEffectEnvelope->parameter;
+				TActive* pActive = &pEnvelope->effect;
+
+				playback.effect[i] = pIndex[pActive->offset];
+
+				if (--pActive->timer == 0)
+				{
+					pActive->timer = pParameter->speed;
+
+					if (++pActive->offset > pParameter->length - 1)
+					{
+						if (pFlag->isLooped)
+							pActive->offset = pParameter->loop;
+						else
+							pActive->offset = pParameter->length - 1;
+					}
+				}
+			}
+
+			if (TInstrumentTable* pNoteTable = GetNoteTable(pInstrument->index.note))
+			{
+				BYTE* pIndex = pNoteTable->table;
+				TFlag* pFlag = &pNoteTable->flag;
+				TParameter* pParameter = &pNoteTable->parameter;
+				TActive* pActive = &pEnvelope->note;
+
+				playback.note[i] = pIndex[pActive->offset];
+
+				if (--pActive->timer == 0)
+				{
+					pActive->timer = pParameter->speed;
+
+					if (++pActive->offset > pParameter->length - 1)
+					{
+						if (pFlag->isLooped)
+							pActive->offset = pParameter->loop;
+						else
+							pActive->offset = pParameter->length - 1;
+					}
+				}
+			}
+
+			if (TInstrumentTable* pFreqTable = GetFreqTable(pInstrument->index.freq))
+			{
+				BYTE* pIndex = pFreqTable->table;
+				TFlag* pFlag = &pFreqTable->flag;
+				TParameter* pParameter = &pFreqTable->parameter;
+				TActive* pActive = &pEnvelope->freq;
+
+				playback.freq[i] = pIndex[pActive->offset];
 
 				if (--pActive->timer == 0)
 				{
@@ -5116,124 +5211,154 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 
 		}
 
-		BYTE note = pVariables->channelNote;
-		BYTE timbre = instrumentTimbre != (BYTE)INVALID ? instrumentTimbre : pVariables->channelTimbre;
-		BYTE volume = instrumentVolume != (BYTE)INVALID ? (int)round((double)(pVariables->channelVolume * instrumentVolume) / 0x0F) : pVariables->channelVolume;
-		BYTE audctl = instrumentAudctl != (BYTE)INVALID ? instrumentAudctl : pVariables->channelAudctl;
-
-		double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
-		WORD freq = g_Tuning.GeneratePokeyFreq(pitch, i, timbre, audctl);
-
-		pPokey->audf[i] = freq & 0xFF;
-		pPokey->audc[i] = timbre & 0xF0 | volume;
-		pPokey->audctl |= audctl;
-
-		g_atarimem[RMTPLAYR_V_AUDCTL] = pPokey->audctl;
-		g_atarimem[RMTPLAYR_V_SKCTL] = pPokey->skctl;
-
-		g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = pPokey->audf[i];
-		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] = pPokey->audc[i];
-
 	}
 
-/*
-	TPokeyRegisters pokey{};
-
-	pokey.audctl = 0x00;
-	pokey.skctl = 0x03;
-
-	// Process all channels
-	for (int i = 0; i < pSubtune->channelCount; i++)
+	// Process everything at once using the variables that were loaded ahead of time
+	for (int loop = 0; loop < pSubtune->channelCount; loop += 4)
 	{
-		// Get the pointer to the Channel Variables
-		TChannelVariables* pVariables = m_channelVariables[i];
+		TPokeyRegisters* pPokey = &m_pokeyBuffer->frame[0x00].pokey[loop / 4];
+		memset(pPokey, 0x00, sizeof(TPokeyRegisters));
 
-		// Get the pointer to the Active Instrument in Channel
-		TInstrumentV2* pInstrument = GetInstrument(pVariables->channelInstrument);
+		// SKCTL initialised state is necessary for actually generating POKEY sound
+		pPokey->skctl = 0x03;
 
-		if (pInstrument)
+		// In order to properly access individual POKEY Channels
+		for (int i = 0; i < POKEY_CHANNEL_COUNT; i++)
 		{
-			// Instrument Envelope
-			if (--pVariables->instrumentEnvelopeSpeed == 0)
+			//TChannelVariables* pVariables = &m_songVariables->channel[loop + i];
+			TAutomatic* pTrigger = &playback.trigger[loop + i];
+
+			pPokey->audc[i] = playback.timbre[loop + i] & 0xF0 | playback.volume[loop + i];
+			pPokey->audctl |= playback.audctl[loop + i];
+
+			// Process the Instrument Triggers for functionalities that are automatically handled based on specific criteria
+			if (pPokey->audc[i] & 0x0F)
 			{
-				TEnvelope* pEnvelope = &pInstrument->envelopeMacro.envelope[pVariables->instrumentEnvelopeOffset];
-
-				pVariables->instrumentVolume = pEnvelope->volume;
-				pVariables->instrumentDistortion = pEnvelope->timbre;
-				pVariables->instrumentAUDCTL = pEnvelope->audctl;
-
-				if (++pVariables->instrumentEnvelopeOffset >= pInstrument->envelopeMacro.length)
+				// High Pass Filter, triggered in Channel 1 and 2, from which the Freq is derived and written into the Channel modulating it
+				if (pTrigger->autoFilter && (_CH1(i) || _CH2(i)))
 				{
-					pVariables->instrumentEnvelopeOffset = pInstrument->envelopeMacro.loop;
-					pVariables->isInstrumentEnvelopeLoop = true;	// Trigger Volume Slide on Envelope Loop
+					pPokey->audctl |= _CH1(i) ? 0x04 : 0x02;
 				}
 
-				pVariables->instrumentEnvelopeSpeed = pInstrument->envelopeMacro.speed;
-			}
-
-			// Instrument Table
-			if (--pVariables->instrumentTableSpeed == 0)
-			{
-				TTable* pTable = &pInstrument->tableMacro.table[pVariables->instrumentTableOffset];
-
-				pVariables->instrumentNote = pTable->note;
-
-				if (++pVariables->instrumentTableOffset >= pInstrument->tableMacro.length)
+				// 16-Bit Mode, triggered in Channel 2 and 4, allowing 16-bit pitch accuracy, the Channel above will also be muted automatically
+				if (pTrigger->auto16Bit && (_CH2(i) || _CH4(i)))
 				{
-					pVariables->instrumentTableOffset = pInstrument->tableMacro.loop;
+					pPokey->audctl |= _CH2(i) ? 0x50 : 0x28;
+					pPokey->audc[i - 1] = 0x00;
 				}
 
-				pVariables->instrumentTableSpeed = pInstrument->tableMacro.speed;
-			}
+				// Two-Tone Filter, triggered in Channel 1, modulated by the Freq of Channel 2, similar to the High Pass Filter
+				if (pTrigger->autoTwoTone && _CH1(i))
+				{
+					pPokey->skctl = 0x8B;
+				}
 
-			// Instrument Volume Slide
-			if (pVariables->isInstrumentEnvelopeLoop && pVariables->channelVolume > pInstrument->volumeSustain)
-			{
-				WORD volumeFade = (pVariables->channelVolume << 8) | pVariables->volumeSlide;
-				volumeFade -= pInstrument->volumeFade;
-				pVariables->channelVolume = volumeFade >> 8;
-				pVariables->volumeSlide = volumeFade & 0xFF;
 			}
 
 		}
 
-		// Merge AUDCTL bits from this Channel
-		pokey.audctl |= pVariables->channelAUDCTL;
+		// Going in the reverse order actually helps for setting data "after" when it is expected "before"
+		for (int i = POKEY_CHANNEL_COUNT - 1; i >= 0; --i)
+		{
+			TChannelVariables* pVariables = &m_songVariables->channel[loop + i];
+			TAutomatic* pTrigger = &playback.trigger[loop + i];
+			TEffect* pEffect = &playback.effect[loop + i];
+
+			//int note = pVariables->channelNote + playback.note[loop + i];
+			int note = pVariables->channelNote + playback.note[loop + i] + (pEffect->command == 0x00 ? (char)pEffect->parameter : 0x00);
+			//int freq = playback.freq[loop + i];
+
+			if (note < 0x00)
+				note = 0x00;
+
+			// This is overkill, but this isn't really a problem for now...
+			if (note > 0xFF)
+				note = 0xFF;
+
+			double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
+			int freq = g_Tuning.GeneratePokeyFreq(pitch, i, playback.timbre[loop + i], pPokey->audctl) + playback.freq[loop + i];
+
+			// Instrument Effect Commands, unfinished implementation
+			switch (pEffect->command)
+			{
+			case 0x00:
+				// Note offset, for XY semitones
+				//note += (char)pEffect->parameter;
+				break;
+
+			case 0x01:
+				// Absolute Freq, it will always take priority
+				freq = pEffect->parameter;
+				break;
+
+			case 0x02:
+				// Detune, relative to the current Freq value
+				freq += (char)pEffect->parameter;
+				break;
+			}
+
+			//if (note < 0x00)
+			//	note = 0x00;
+
+			// This is overkill, but this isn't really a problem for now...
+			//if (note > 0xFF)
+			//	note = 0xFF;
+
+			//double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
+			//freq += g_Tuning.GeneratePokeyFreq(pitch, i, playback.timbre[loop + i], pPokey->audctl);
+
+			if (freq < 0x00)
+				freq = 0x00;
+
+			// If the 16-bit Mode is enabled, the Freq will be processed as such, else, it will always be truncated
+			if ((_CH2(i) && (pPokey->audctl & 0x50) == 0x50) || (_CH4(i) && (pPokey->audctl & 0x28) == 0x28))
+			{
+				if (freq > 0xFFFF)
+					freq = 0xFFFF;
+
+				pPokey->audf16[!_CH2(i)] = freq;
+			}
+			else
+			{
+				if (freq > 0xFF)
+					freq = 0xFF;
+
+				pPokey->audf[i] = freq & 0xFF;
+
+				// Since we are now in the "past", the data needed "ahead of time" could be loaded when it is ready
+				if (pPokey->audc[i] & 0x0F)
+				{
+					if (pTrigger->autoFilter && (_CH1(i) || _CH2(i)))
+					{
+						if (pEffect->command == 0x06)
+							freq += pEffect->parameter;
+
+						if (freq < 0x00)
+							freq = 0x00;
+
+						if (freq > 0xFF)
+							freq = 0xFF;
+
+						pPokey->audf[i + 2] = freq & 0xFF;
+					}
+				}
+			}
+		}
+
+		// FIXME: Get rid of the current setup using the Plugins and the outdated DirectSound API, because constantly working around it is seriously pissing me off
+		int offset = (loop / 4) * POKEY_CHANNEL_COUNT;
+
+		for (int j = 0; j < POKEY_CHANNEL_COUNT; j++)
+		{
+			g_atarimem[RMTPLAYR_TRACKN_AUDF + offset + j] = pPokey->audf[j];
+			g_atarimem[RMTPLAYR_TRACKN_AUDC + offset + j] = pPokey->audc[j];
+		}
+
+		g_atarimem[RMTPLAYR_V_AUDCTL] = pPokey->audctl;
+		g_atarimem[RMTPLAYR_V_SKCTL] = pPokey->skctl;
 	}
 
-	for (int i = 0; i < pSubtune->channelCount; i++)
-	{
-		// Get the pointer to the Channel Variables
-		TChannelVariables* pVariables = m_channelVariables[i];
-
-		int note = pVariables->channelNote + pVariables->instrumentNote;
-		int timbre = pVariables->channelDistortion;
-		int distortion = timbre & 0xF0;
-		int volume = (int)round((double)(pVariables->channelVolume * pVariables->instrumentVolume) / 0x0F);
-		int audctl = pokey.audctl;
-		double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
-		WORD freq = g_Tuning.GeneratePokeyFreq(pitch, i, timbre, audctl);
-
-		pokey.audc[i] = distortion | volume;
-		pokey.audf[i] = freq & 0xFF;
-
-		//pokey.audf16[i] = freq;
-		//pokey.audf[i] = freq >> 8;
-		//pokey.audf[i] = freq & 0xFF;
-	}
-
-	// Update the AUDCTL and SKCTL using the combined values from all Channels
-	g_atarimem[RMTPLAYR_V_AUDCTL] = pokey.audctl;
-	g_atarimem[RMTPLAYR_V_SKCTL] = pokey.skctl;
-
-	// Update the AUDC and AUDF registers with the new data the same way
-	for (int i = 0; i < pSubtune->channelCount; i++)
-	{
-		g_atarimem[RMTPLAYR_TRACKN_AUDF + i] = pokey.audf[i];
-		g_atarimem[RMTPLAYR_TRACKN_AUDC + i] = pokey.audc[i];
-	}
-*/
-
+	// Do anything else that may be needed here...
 }
 
 void CSong::PlayRow(TSubtune* pSubtune)
@@ -5246,7 +5371,7 @@ void CSong::PlayRow(TSubtune* pSubtune)
 	{
 		// If a Goto Songline (Bxx) command was used, set the new Songline position if it is valid
 		if (m_nextSongline != INVALID)
-			m_playSongline = m_nextSongline;
+			m_playSongline = m_playMode != MPLAY_PATTERN ? m_nextSongline : m_playSongline;
 
 		// If a End Pattern (Dxx) command was used, set the new Row position if it is valid
 		if (m_nextRow != INVALID)
@@ -5258,7 +5383,10 @@ void CSong::PlayRow(TSubtune* pSubtune)
 
 	// Else, continue playback by incrementing the Row and Songline positions like usual
 	else if ((++m_playRow %= pSubtune->patternLength) == 0)
-		++m_playSongline %= pSubtune->songLength;
+	{
+		if (m_playMode != MPLAY_PATTERN)
+			++m_playSongline %= pSubtune->songLength;
+	}
 
 	// Check the song boundaries, to prevent invalid movements
 	PlaybackRespectBoundaries(pSubtune);
