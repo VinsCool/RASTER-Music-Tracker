@@ -3181,6 +3181,7 @@ void CRmtView::PatternEditorKey(UINT vk)
 		case VK_BACKSPACE: notekey = NOTE_EMPTY; break;
 		case VK_OEM_MINUS: notekey = NOTE_OFF; break;
 		case VK_OEM_PLUS: notekey = NOTE_RELEASE; break;
+		case VK_OEM_6: notekey = NOTE_RETRIGGER; break;
 		}
 		if (g_Song.SetNoteInPattern(notekey))
 			g_Song.PatternDown(g_linesafter);

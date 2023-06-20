@@ -1008,6 +1008,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 		BYTE tableType = memInstrument[4] >> 7;							// Table Type, 0 = Note, 1 = Freq
 		BYTE initialAudctl = memInstrument[5];							// AUDCTL, used to initialise the equivalent Envelope
+		BYTE initialTimbre = 0x0A;										// RMT 1.34 Distortion 6 uses the Distortion A by default
 		bool initialSkctl = false;										// SKCTL, used for the Two-Tone Filter Trigger Envelope
 
 		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
@@ -1071,6 +1072,9 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			// Envelope Effect Command, from 0 to 7
 			BYTE envelopeEffectCommand = (envelopeCommand >> 4) & 0x07;
 
+			// Envelope Distortion, from 0 to E, in steps of 2
+			BYTE distortion = envelopeCommand & 0x0E;
+
 			// Volume Only Mode flag, used for the Volume Envelope when it is set
 			bool isVolumeOnly = false;
 
@@ -1093,14 +1097,24 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 				envelopeParameter = envelopeEffectCommand = 0x00;
 				break;
+
+			case 0x06:
+				// Various hacks were used with this command in the RMT 1.34 driver, such as the Distortion 6... Distortion used in 16-bit mode
+				if (distortion == 0x06)
+				{
+					initialTimbre = envelopeParameter & 0x0E;
+					envelopeParameter = envelopeEffectCommand = 0x00;
+				}
+				break;
 			}
 
-			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
-			pEffect->effect[j].command = envelopeEffectCommand;
-			pEffect->effect[j].parameter = envelopeParameter;
-
-			// Envelope Distortion, from 0 to E, in steps of 2
-			BYTE distortion = envelopeCommand & 0x0E;
+			// See above? Yeah, that, it does the thing, amazing isn't it?
+			if (distortion == 0x06)
+			{
+				// The original "Auto16Bit" trigger ;)
+				pTrigger->trigger[j].auto16Bit = true;
+				distortion = initialTimbre;
+			}
 
 			// To be converted to the equivalent Timbre parameter
 			switch (distortion)
@@ -1123,7 +1137,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 			case 0x06:
 				// The original "Auto16Bit" trigger ;)
-				pTrigger->trigger[j].auto16Bit = true;
+				//pTrigger->trigger[j].auto16Bit = true;
 
 			case 0x0A:
 				pTimbre->envelope[j] = TIMBRE_PURE;
@@ -1154,8 +1168,12 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			// AutoTwoTone Trigger
 			pTrigger->trigger[j].autoTwoTone = initialSkctl;
 
-			// Portamento is not supported by the RMTE format, a Pattern Effect Command could be set where the Portamento is expected as a compromise
+			// Portamento is not (yet) supported by the RMTE format, a Pattern Effect Command could be set where the Portamento is expected as a compromise
 			//pInstrument->portamento = envelopeCommand & 0x01;
+
+			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
+			pEffect->effect[j].command = envelopeEffectCommand;
+			pEffect->effect[j].parameter = envelopeParameter;
 		}
 
 		// Instrument was loaded

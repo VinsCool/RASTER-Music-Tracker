@@ -5010,8 +5010,8 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 		BYTE audctl[CHANNEL_COUNT];
 		TAutomatic trigger[CHANNEL_COUNT];
 		TEffect effect[CHANNEL_COUNT];
-		char note[CHANNEL_COUNT];
-		char freq[CHANNEL_COUNT];
+		BYTE note[CHANNEL_COUNT];
+		BYTE freq[CHANNEL_COUNT];
 	};
 
 	TPlayback playback;
@@ -5023,7 +5023,10 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
 		TChannelVariables* pVariables = &m_songVariables->channel[i];
-		TInstrumentV2* pInstrument = pVariables->pInstrument;
+
+		// If the Note isn't Active, there is nothing to be played
+		if (!pVariables->isNoteActive)
+			continue;
 
 		// Set the initial values to the Channel variables as a fallack in case there is no valid Instrument data to be used
 		playback.volume[i] = pVariables->channelVolume;
@@ -5031,7 +5034,7 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 		playback.audctl[i] = pVariables->channelAudctl;
 		playback.note[i] = playback.freq[i] = 0x00;
 
-		if (pInstrument)
+		if (TInstrumentV2* pInstrument = pVariables->pInstrument)
 		{
 			TEnvelopeVariables* pEnvelope = &pVariables->instrumentEnvelope;
 
@@ -5264,85 +5267,82 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 			TAutomatic* pTrigger = &playback.trigger[loop + i];
 			TEffect* pEffect = &playback.effect[loop + i];
 
-			//int note = pVariables->channelNote + playback.note[loop + i];
-			int note = pVariables->channelNote + playback.note[loop + i] + (pEffect->command == 0x00 ? (char)pEffect->parameter : 0x00);
-			//int freq = playback.freq[loop + i];
+			bool is16BitMode = (_CH2(i) && (pPokey->audctl & 0x50) == 0x50) || (_CH4(i) && (pPokey->audctl & 0x28) == 0x28);
+			bool autoFilter = (pPokey->audc[i] & 0x0F) && (pTrigger->autoFilter && (_CH1(i) || _CH2(i)));
 
-			if (note < 0x00)
-				note = 0x00;
+			int note = pVariables->channelNote;
+			int offsetNote = (char)playback.note[loop + i];
 
-			// This is overkill, but this isn't really a problem for now...
-			if (note > 0xFF)
-				note = 0xFF;
-
-			double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
-			int freq = g_Tuning.GeneratePokeyFreq(pitch, i, playback.timbre[loop + i], pPokey->audctl) + playback.freq[loop + i];
+			int freq = 0x00;
+			int offsetFreq = (char)playback.freq[loop + i];
 
 			// Instrument Effect Commands, unfinished implementation
 			switch (pEffect->command)
 			{
 			case 0x00:
 				// Note offset, for XY semitones
-				//note += (char)pEffect->parameter;
+				offsetNote += (char)pEffect->parameter;
 				break;
 
 			case 0x01:
 				// Absolute Freq, it will always take priority
 				freq = pEffect->parameter;
+				note = INVALID;
 				break;
 
 			case 0x02:
 				// Detune, relative to the current Freq value
-				freq += (char)pEffect->parameter;
+				offsetFreq += (char)pEffect->parameter;
 				break;
 			}
 
-			//if (note < 0x00)
-			//	note = 0x00;
+			// If the Note is Invalid, the Freq to be used is most likely Absolute, and would be used directly instead
+			if (note != INVALID)
+			{
+				note += offsetNote;
 
-			// This is overkill, but this isn't really a problem for now...
-			//if (note > 0xFF)
-			//	note = 0xFF;
+				if (note < 0x00)
+					note = 0x00;
 
-			//double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
-			//freq += g_Tuning.GeneratePokeyFreq(pitch, i, playback.timbre[loop + i], pPokey->audctl);
+				// This is overkill, but this isn't really a problem for now...
+				if (note > 0xFF)
+					note = 0xFF;
 
+				double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
+				freq = g_Tuning.GeneratePokeyFreq(pitch, i, playback.timbre[loop + i], pPokey->audctl);
+				freq += offsetFreq;
+			}
+
+			// The Freq should never be allowed to go below 0!
 			if (freq < 0x00)
 				freq = 0x00;
 
-			// If the 16-bit Mode is enabled, the Freq will be processed as such, else, it will always be truncated
-			if ((_CH2(i) && (pPokey->audctl & 0x50) == 0x50) || (_CH4(i) && (pPokey->audctl & 0x28) == 0x28))
-			{
-				if (freq > 0xFFFF)
-					freq = 0xFFFF;
-
-				pPokey->audf16[!_CH2(i)] = freq;
-			}
+			// Update the AUDF registers once the Freq is ready to be used
+			if (is16BitMode)
+				pPokey->audf16[!_CH2(i)] = freq > 0xFFFF ? 0xFFFF : freq;
 			else
+				pPokey->audf[i] = freq > 0xFF ? 0xFF: freq;
+
+			// Autofilter is processed after everything, and used to derive the Freq used in the modulation channel
+			if (autoFilter)
 			{
-				if (freq > 0xFF)
-					freq = 0xFF;
+				freq = is16BitMode ? pPokey->audf16[0] : pPokey->audf[i];
+				offsetFreq = pEffect->command == 0x06 ? (char)pEffect->parameter : 0x00;
+				freq += offsetFreq;
 
-				pPokey->audf[i] = freq & 0xFF;
+				// The Freq should never be allowed to go below 0!
+				if (freq < 0x00)
+					freq = 0x00;
 
-				// Since we are now in the "past", the data needed "ahead of time" could be loaded when it is ready
-				if (pPokey->audc[i] & 0x0F)
-				{
-					if (pTrigger->autoFilter && (_CH1(i) || _CH2(i)))
-					{
-						if (pEffect->command == 0x06)
-							freq += pEffect->parameter;
-
-						if (freq < 0x00)
-							freq = 0x00;
-
-						if (freq > 0xFF)
-							freq = 0xFF;
-
-						pPokey->audf[i + 2] = freq & 0xFF;
-					}
-				}
+				if (is16BitMode)
+					pPokey->audf16[1] = freq > 0xFFFF ? 0xFFFF : freq;
+				else
+					pPokey->audf[i + 2] = freq > 0xFF ? 0xFF : freq;
 			}
+
+			// This is to ensure the joined registers isn't overwritten
+			if (is16BitMode)
+				i--;
 		}
 
 		// FIXME: Get rid of the current setup using the Plugins and the outdated DirectSound API, because constantly working around it is seriously pissing me off
@@ -5401,7 +5401,6 @@ void CSong::PlayRow(TSubtune* pSubtune)
 		TRow* pRow = &pSubtune->channel[i].pattern[pattern].row[m_playRow];
 
 		// Get the pointer to the Channel Variables used for most of the playback routines
-		//TChannelVariables* pVariables = m_channelVariables[i];
 		TChannelVariables* pVariables = &m_songVariables->channel[i];
 
 		// Note
@@ -5457,100 +5456,99 @@ void CSong::ProcessNote(BYTE note, BYTE channel, TChannelVariables* pVariables)
 
 void CSong::ProcessInstrument(BYTE instrument, BYTE channel, TChannelVariables* pVariables)
 {
-	// If there is no Active Note, there is nothing to do here
-	if (!pVariables->isNoteActive)
-		return;
+	TInstrumentV2* pInstrument = NULL;
 
 	switch (instrument)
 	{
 	case INSTRUMENT_EMPTY:
+		// Get the last Instrument Pointer that was used if the Note is Active
+		if (pVariables->isNoteActive)
+			pInstrument = pVariables->pInstrument;
 		break;
 
 	default:
+		// Get the Instrument Pointer and save it in the Channel Variables for future references during playback
 		if (instrument < INSTRUMENT_COUNT)
-		{
-			// Get the Instrument Pointer and save it in the Channel Variables for future references during playback
-			TInstrumentV2* pInstrument = pVariables->pInstrument = GetInstrument(instrument);
+			pInstrument = pVariables->pInstrument = GetInstrument(instrument);
+	}
 
-			// If the Instrument pointer is Null, there is nothing else to do here
-			if (!pInstrument)
-				return;
+	// If the Instrument pointer is Null, there is nothing else to do here
+	if (!pInstrument)
+		return;
 
-			// Get all Instrument Envelope and Tables pointers in order to process their specific parameters accordingly
-			TEnvelopeVariables* pEnvelope = &pVariables->instrumentEnvelope;
-			TInstrumentEnvelope* pVolumeEnvelope = GetVolumeEnvelope(pInstrument->index.volume);
-			TInstrumentEnvelope* pTimbreEnvelope = GetTimbreEnvelope(pInstrument->index.timbre);
-			TInstrumentEnvelope* pAudctlEnvelope = GetAudctlEnvelope(pInstrument->index.audctl);
-			TInstrumentTrigger* pTriggerEnvelope = GetTriggerEnvelope(pInstrument->index.trigger);
-			TInstrumentEffect* pEffectEnvelope = GetEffectEnvelope(pInstrument->index.effect);
-			TInstrumentTable* pNoteTable = GetNoteTable(pInstrument->index.note);
-			TInstrumentTable* pFreqTable = GetFreqTable(pInstrument->index.freq);
+	// Get all Instrument Envelope and Tables pointers in order to process their specific parameters accordingly
+	TEnvelopeVariables* pEnvelope = &pVariables->instrumentEnvelope;
+	TInstrumentEnvelope* pVolumeEnvelope = GetVolumeEnvelope(pInstrument->index.volume);
+	TInstrumentEnvelope* pTimbreEnvelope = GetTimbreEnvelope(pInstrument->index.timbre);
+	TInstrumentEnvelope* pAudctlEnvelope = GetAudctlEnvelope(pInstrument->index.audctl);
+	TInstrumentTrigger* pTriggerEnvelope = GetTriggerEnvelope(pInstrument->index.trigger);
+	TInstrumentEffect* pEffectEnvelope = GetEffectEnvelope(pInstrument->index.effect);
+	TInstrumentTable* pNoteTable = GetNoteTable(pInstrument->index.note);
+	TInstrumentTable* pFreqTable = GetFreqTable(pInstrument->index.freq);
 
-			// If the Note was (re)triggered, the Instrument Envelope will play from the beginning
-			if (pVariables->isNoteTrigger)
-			{
-				// Reset all Instrument Envelope variables
-				memset(pEnvelope, 0x00, sizeof(TEnvelopeVariables));
+	// If the Note was (re)triggered, the Instrument Envelope will play from the beginning
+	if (pVariables->isNoteTrigger)
+	{
+		// Reset all Instrument Envelope variables
+		memset(pEnvelope, 0x00, sizeof(TEnvelopeVariables));
 
-				// Initialise all active Envelope Speed Timer accordingly
-				if (pVolumeEnvelope)
-					pEnvelope->volume.timer = pVolumeEnvelope->parameter.speed;
+		// Initialise all active Envelope Speed Timer accordingly
+		if (pVolumeEnvelope)
+			pEnvelope->volume.timer = pVolumeEnvelope->parameter.speed;
 
-				if (pTimbreEnvelope)
-					pEnvelope->timbre.timer = pTimbreEnvelope->parameter.speed;
+		if (pTimbreEnvelope)
+			pEnvelope->timbre.timer = pTimbreEnvelope->parameter.speed;
 
-				if (pAudctlEnvelope)
-					pEnvelope->audctl.timer = pAudctlEnvelope->parameter.speed;
+		if (pAudctlEnvelope)
+			pEnvelope->audctl.timer = pAudctlEnvelope->parameter.speed;
 
-				if (pTriggerEnvelope)
-					pEnvelope->trigger.timer = pTriggerEnvelope->parameter.speed;
+		if (pTriggerEnvelope)
+			pEnvelope->trigger.timer = pTriggerEnvelope->parameter.speed;
 
-				if (pEffectEnvelope)
-					pEnvelope->effect.timer = pEffectEnvelope->parameter.speed;
+		if (pEffectEnvelope)
+			pEnvelope->effect.timer = pEffectEnvelope->parameter.speed;
 
-				if (pNoteTable)
-					pEnvelope->note.timer = pNoteTable->parameter.speed;
+		if (pNoteTable)
+			pEnvelope->note.timer = pNoteTable->parameter.speed;
 
-				if (pFreqTable)
-					pEnvelope->freq.timer = pFreqTable->parameter.speed;
+		if (pFreqTable)
+			pEnvelope->freq.timer = pFreqTable->parameter.speed;
 
-				// Reset the Instrument Volume fadeout
-				pVariables->instrumentVolumeSlide = 0x00;
-				pVariables->isInstrumentEnvelopeLooped = false;
+		// Reset the Instrument Volume fadeout
+		pVariables->instrumentVolumeSlide = 0x00;
+		pVariables->isInstrumentEnvelopeLooped = false;
 
-				// The flag is no longer needed after this point
-				pVariables->isNoteTrigger = false;
-			}
+		// The flag is no longer needed after this point
+		pVariables->isNoteTrigger = false;
+	}
 
-			// If the Note was released, the Instrument Envelope will play from the Release point instead
-			if (pVariables->isNoteRelease)
-			{
-				// Update all active Envelope index offset accordingly
-				if (pVolumeEnvelope && pVolumeEnvelope->flag.isReleased)
-					pEnvelope->volume.offset = pVolumeEnvelope->parameter.release;
+	// If the Note was released, the Instrument Envelope will play from the Release point instead
+	if (pVariables->isNoteRelease)
+	{
+		// Update all active Envelope index offset accordingly
+		if (pVolumeEnvelope && pVolumeEnvelope->flag.isReleased)
+			pEnvelope->volume.offset = pVolumeEnvelope->parameter.release;
 
-				if (pTimbreEnvelope && pTimbreEnvelope->flag.isReleased)
-					pEnvelope->timbre.offset = pTimbreEnvelope->parameter.release;
+		if (pTimbreEnvelope && pTimbreEnvelope->flag.isReleased)
+			pEnvelope->timbre.offset = pTimbreEnvelope->parameter.release;
 
-				if (pAudctlEnvelope && pAudctlEnvelope->flag.isReleased)
-					pEnvelope->audctl.offset = pAudctlEnvelope->parameter.release;
+		if (pAudctlEnvelope && pAudctlEnvelope->flag.isReleased)
+			pEnvelope->audctl.offset = pAudctlEnvelope->parameter.release;
 
-				if (pTriggerEnvelope && pTriggerEnvelope->flag.isReleased)
-					pEnvelope->trigger.offset = pTriggerEnvelope->parameter.release;
+		if (pTriggerEnvelope && pTriggerEnvelope->flag.isReleased)
+			pEnvelope->trigger.offset = pTriggerEnvelope->parameter.release;
 
-				if (pEffectEnvelope && pEffectEnvelope->flag.isReleased)
-					pEnvelope->effect.offset = pEffectEnvelope->parameter.release;
+		if (pEffectEnvelope && pEffectEnvelope->flag.isReleased)
+			pEnvelope->effect.offset = pEffectEnvelope->parameter.release;
 
-				if (pNoteTable && pNoteTable->flag.isReleased)
-					pEnvelope->note.offset = pNoteTable->parameter.release;
+		if (pNoteTable && pNoteTable->flag.isReleased)
+			pEnvelope->note.offset = pNoteTable->parameter.release;
 
-				if (pFreqTable && pFreqTable->flag.isReleased)
-					pEnvelope->freq.offset = pFreqTable->parameter.release;
+		if (pFreqTable && pFreqTable->flag.isReleased)
+			pEnvelope->freq.offset = pFreqTable->parameter.release;
 
-				// The flag is no longer needed after this point
-				pVariables->isNoteRelease = false;
-			}
-		}
+		// The flag is no longer needed after this point
+		pVariables->isNoteRelease = false;
 	}
 }
 
@@ -5753,7 +5751,7 @@ bool CSong::SetInstrumentInPattern(BYTE instrument)
 			{
 				nybble = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument & 0xF0;
 
-				if (instrument < INSTRUMENT_COUNT)
+				if (nybble < INSTRUMENT_COUNT)
 					instrument = nybble | (instrument & 0x0F);
 				else
 					instrument &= 0x0F;
