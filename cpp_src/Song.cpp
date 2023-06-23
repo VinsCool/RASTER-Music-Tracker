@@ -5289,6 +5289,7 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 
 			// These Flags are no longer needed after this point
 			pChannelVariables->isNoteTrigger = pChannelVariables->isNoteRelease = false;
+			pChannelVariables->isNoteReset = false;
 		}
 	}
 }
@@ -5410,6 +5411,7 @@ void CSong::ProcessNote(BYTE note, TChannelVariables* pVariables)
 			pVariables->note = note;
 			pVariables->isNoteActive = true;
 			pVariables->isNoteTrigger = true;
+			pVariables->isNoteReset = true;
 			pVariables->frameCount = 0x00;
 		}
 	}
@@ -5420,6 +5422,8 @@ void CSong::ProcessInstrument(BYTE instrument, TChannelVariables* pVariables)
 	switch (instrument)
 	{
 	case INSTRUMENT_EMPTY:
+		if (pVariables->isNoteActive && pVariables->isNoteReset)
+			pVariables->isNoteTrigger = false;
 		break;
 
 	default:

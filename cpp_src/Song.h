@@ -124,6 +124,7 @@ struct TChannelVariables
 	bool isNoteTrigger;				// Note Trigger, for new Note initialisation, the Command ~~~ will retrigger the last Note played
 	bool isNoteRelease;				// Note Release, the Command === will release the last Note played
 	bool isNoteActive;				// Note Playing, the Command OFF will stop the last Note played, and reset the Channel variables
+	bool isNoteReset;				// Note Reset, implying it is played for the first time when this flag is set
 	bool isVolumeOnlyEnabled;		// AUDC, bit 4, forcing Volume Only output in the Channel when enabled
 	BYTE note;						// Maximum set by NOTE_COUNT, currently set to 120
 	BYTE instrument;				// Maximum set by INSTRUMENT_COUNT, currently set to 64
