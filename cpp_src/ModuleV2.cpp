@@ -1168,8 +1168,8 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			// AutoTwoTone Trigger
 			pTrigger->trigger[j].autoTwoTone = initialSkctl;
 
-			// Portamento is not (yet) supported by the RMTE format, a Pattern Effect Command could be set where the Portamento is expected as a compromise
-			//pInstrument->portamento = envelopeCommand & 0x01;
+			// Portamento a Pattern Effect Command could be set where the Portamento is expected as a compromise
+			pTrigger->trigger[j].autoPortamento = envelopeCommand & 0x01;
 
 			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
 			pEffect->effect[j].command = envelopeEffectCommand;

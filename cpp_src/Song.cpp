@@ -5064,6 +5064,38 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 					pChannelVariables->volume = volumeFade >> 8;
 					pInstrumentVariables->volumeSlide = volumeFade & 0xFF;
 				}
+
+				// FreqShift and Vibrato effect, for Legacy RMT Instrument format compatibility mostly
+				// This is actually the same behaviour from the original 6502 RMT routines... but that's not too important for now
+				if (pInstrumentVariables->delayTimer)
+				{
+					if (pInstrumentVariables->delayTimer == 0x01)
+					{
+						// FreqShift effect, which is additive to itself, there is no boundary check in place for now
+						if (pInstrument->freqShift)
+						{
+							int instrumentfinetune = (char)pInstrumentVariables->finetuneOffset;
+							instrumentfinetune += (char)pInstrument->freqShift;
+
+							if (instrumentfinetune < 0x00)
+								instrumentfinetune = 0x00;
+
+							if (instrumentfinetune > 0xFF)
+								instrumentfinetune = 0xFF;
+
+							pInstrumentVariables->finetuneOffset = instrumentfinetune;
+						}
+
+						// Vibrato effect, originally using the FreqShift variable, which may cause problems in some cases
+						if (pInstrument->vibrato)
+						{
+							// Do some shit here...
+						}
+					}
+					else
+						pInstrumentVariables->delayTimer--;
+				}
+
 			}
 
 		}
@@ -5089,6 +5121,7 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 
 			int freq = 0x00;
 			int offsetFreq = (char)pInstrumentVariables->freq;
+			int instrumentfinetune = (char)pInstrumentVariables->finetuneOffset;
 
 			// Instrument Effect Commands, unfinished implementation
 			switch (pEffect->command)
@@ -5108,7 +5141,36 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 				// Detune, relative to the current Freq value
 				offsetFreq += (char)pEffect->parameter;
 				break;
+
+			case 0x03:
+				// Note offset, additive
+				note += (char)pEffect->parameter;
+
+				if (note < 0x00)
+					note = 0x00;
+
+				if (note > NOTE_COUNT)
+					note = NOTE_COUNT;
+
+				pChannelVariables->note = note;
+				break;
+
+			case 0x04:
+				// Finetune offset, additive
+				instrumentfinetune += (char)pEffect->parameter;
+
+				if (instrumentfinetune < 0x00)
+					instrumentfinetune = 0x00;
+
+				if (instrumentfinetune > 0xFF)
+					instrumentfinetune = 0xFF;
+
+				pInstrumentVariables->finetuneOffset = instrumentfinetune;
+				break;
 			}
+
+			// Originally known as ShiftFreq, basically a direct additive offset to Freq
+			offsetFreq += instrumentfinetune;
 
 			// If the Note is Invalid, the Freq to be used is most likely Absolute, and would be used directly instead
 			if (note != INVALID)
@@ -5189,6 +5251,13 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 		if (pInstrument)
 		{
 			TEnvelopeVariables* pEnvelope = &pInstrumentVariables->envelope;
+
+			if (pChannelVariables->isNoteReset)
+			{
+				pInstrumentVariables->delayTimer = pInstrument->delay;
+				//pInstrumentVariables->finetuneOffset = pInstrument->freqShift;
+				// Add more stuff that would fit
+			}
 
 			if (TInstrumentEnvelope* pVolumeEnvelope = GetVolumeEnvelope(pInstrument->index.volume))
 			{

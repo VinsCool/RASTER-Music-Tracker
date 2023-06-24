@@ -164,7 +164,7 @@ struct TAutomatic
 	bool auto15Khz;							// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
 	bool autoPoly9;							// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
 	bool autoTwoTone;						// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-	bool autoToggle;						// Automatic Toggle, for each ones of the possible combination, effectively overriding the AUDCTL Envelope(?)
+	bool autoPortamento;					// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
 };
 
 // Instrument Macro Parameters
