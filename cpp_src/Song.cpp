@@ -5087,10 +5087,12 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 						}
 
 						// Vibrato effect, originally using the FreqShift variable, which may cause problems in some cases
-						if (pInstrument->vibrato)
-						{
-							// Do some shit here...
-						}
+						//if (pInstrument->vibrato)
+						//{
+						//	pInstrumentVariables->vibratoSpeed = pInstrument->vibrato & 0x0F;
+						//	pInstrumentVariables->vibratoDepth = pInstrument->vibrato >> 4;
+						//	pInstrumentVariables->vibratoPhase = 0x00;
+						//}
 					}
 					else
 						pInstrumentVariables->delayTimer--;
@@ -5184,7 +5186,58 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 				if (note > 0xFF)
 					note = 0xFF;
 
+				// Generate the reference Pitch, using the current Note and Tuning parameters
 				double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
+
+				// If the Instrument Vibrato is active, it will be processed in priority, before the Freq is calculated 
+				if (pInstrumentVariables->vibratoSpeed && pInstrumentVariables->delayTimer == 0x01)
+				{
+					// Create the modulation variable with the initial offset from the reference pitch
+					double modulation = pitch / sqrt(pInstrumentVariables->vibratoDepth);
+
+					// If the number is invalid, the next division will be skipped, and a compromised value will be calculated instead
+					if (isinf(modulation))
+						modulation = pitch * (0.5 / 15.0);
+
+					// Otherwise, the Vibrato Depth division will be executed and the resulting value will be combined to the modulation
+					else
+						modulation *= ((double)pInstrumentVariables->vibratoDepth / 15.0);
+
+					// In either cases, the sin operation will be processed, and combined to the modulation
+					modulation *= sin(((double)pInstrumentVariables->vibratoPhase / 127.0) * 2.0 * 3.14159265359);
+
+					// Update the reference Pitch with the new value, which should now be finetuned to match the current Vibrato Phase
+					pitch += modulation;
+
+					// Update the Vibrato Phase with the Speed parameter for the next frame once it is done
+					pInstrumentVariables->vibratoPhase += pInstrumentVariables->vibratoSpeed;
+				}
+
+				// Else, If the Channel Vibrato is active, it will be processed before the Freq is calculated instead
+				else if (pChannelVariables->vibratoSpeed)
+				{
+					// Create the modulation variable with the initial offset from the reference pitch
+					double modulation = pitch / sqrt(pChannelVariables->vibratoDepth);
+
+					// If the number is invalid, the next division will be skipped, and a compromised value will be calculated instead
+					if (isinf(modulation))
+						modulation = pitch * (0.5 / 15.0);
+
+					// Otherwise, the Vibrato Depth division will be executed and the resulting value will be combined to the modulation
+					else
+						modulation *= ((double)pChannelVariables->vibratoDepth / 15.0);
+
+					// In either cases, the sin operation will be processed, and combined to the modulation
+					modulation *= sin(((double)pChannelVariables->vibratoPhase / 127.0) * 2.0 * 3.14159265359);
+
+					// Update the reference Pitch with the new value, which should now be finetuned to match the current Vibrato Phase
+					pitch += modulation;
+
+					// Update the Vibrato Phase with the Speed parameter for the next frame once it is done
+					pChannelVariables->vibratoPhase += pChannelVariables->vibratoSpeed;
+				}
+
+				// Generate the actual POKEY Freq using all the necessary parameters
 				freq = g_Tuning.GeneratePokeyFreq(pitch, i, timbre, pPokey->audctl);
 				freq += offsetFreq;
 			}
@@ -5219,6 +5272,9 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 			// This is to ensure the joined registers isn't overwritten
 			if (is16BitMode)
 				i--;
+
+			// Update the Channel Timer for the next frame once everything was processed using it
+			pChannelVariables->frameCount++;
 		}
 
 		// FIXME: Get rid of the current setup using the Plugins and the outdated DirectSound API, because constantly working around it is seriously pissing me off
@@ -5254,8 +5310,18 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 
 			if (pChannelVariables->isNoteReset)
 			{
+				pChannelVariables->frameCount = 0x00;
 				pInstrumentVariables->delayTimer = pInstrument->delay;
 				//pInstrumentVariables->finetuneOffset = pInstrument->freqShift;
+				
+				// Vibrato effect, originally using the FreqShift variable, which may cause problems in some cases
+				if (pInstrument->vibrato)
+				{
+					pInstrumentVariables->vibratoSpeed = pInstrument->vibrato & 0x0F;
+					pInstrumentVariables->vibratoDepth = pInstrument->vibrato >> 4;
+					pInstrumentVariables->vibratoPhase = 0x00;
+				}
+
 				// Add more stuff that would fit
 			}
 
@@ -5518,6 +5584,12 @@ void CSong::ProcessEffect(TEffect* effect, TChannelVariables* pVariables)
 {
 	switch (effect->command)
 	{
+	case EFFECT_VIBRATO:
+		pVariables->vibratoSpeed = effect->parameter & 0x0F;
+		pVariables->vibratoDepth = effect->parameter >> 4;
+		pVariables->vibratoPhase = 0x00;
+		break;
+
 	case EFFECT_COMMAND_BXX:
 		if (m_nextRow == INVALID)
 			m_nextRow = 0;

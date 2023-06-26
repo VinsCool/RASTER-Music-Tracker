@@ -1011,11 +1011,23 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		BYTE initialTimbre = 0x0A;										// RMT 1.34 Distortion 6 uses the Distortion A by default
 		bool initialSkctl = false;										// SKCTL, used for the Two-Tone Filter Trigger Envelope
 
+		BYTE vibrato = memInstrument[9] & 0x03;							// Vibrato
+
 		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
 		pInstrument->volumeSustain = memInstrument[7] >> 4;				// Volume Minimum
 		pInstrument->delay = memInstrument[8];							// Vibrato/Freq Shift Delay
-		pInstrument->vibrato = memInstrument[9] & 0x03;					// Vibrato
 		pInstrument->freqShift = memInstrument[10];						// Freq Shift
+
+		// Import the Vibrato with adjustments to make sound similar to the original implementation
+		switch (vibrato)
+		{
+		case 0x01: vibrato = 0x0F; break;
+		case 0x02: vibrato = 0x0D; break;
+		case 0x03: vibrato = 0x0B; break;
+		}
+
+		// Overwrite the Vibrato parameter with the updated value if it needed to be changed
+		pInstrument->vibrato = vibrato;
 
 		// Fill the equivalent RMTE tables based on the tableType parameter
 		if (tableLength > 32)
