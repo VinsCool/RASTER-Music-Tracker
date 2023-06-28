@@ -91,6 +91,14 @@ struct TActive
 	BYTE timer;						// Instrument Envelope Timer
 };
 
+// Periodic Effect Variables, such as Vibrato and Tremolo
+struct TPeriodic
+{
+	BYTE depth;
+	BYTE speed;
+	BYTE phase;
+};
+
 struct TEnvelopeVariables
 {
 	TActive volume;
@@ -119,9 +127,10 @@ struct TInstrumentVariables
 	BYTE finetuneOffset;			// Finetune offset, set using the ?xx Command, signed values are expected, thus $01 will add 1, and $FF will subtract 1, etc
 	WORD portamentoTarget;			// Portamento Target, set using the 3xx Command, Target Note/Freq to be pitch bent towards
 	BYTE portamentoSpeed;			// Portamento Speed, set using the 3xx Command, higher values produce faster effects, at the cost of sounding more granular
-	BYTE vibratoDepth;				// Vibrato Depth, set using the 4xx Command, Amplitude for Pitch variation
-	BYTE vibratoSpeed;				// Vibrato Speed, set using the 4xx Command, Velocity for Pitch variation
-	BYTE vibratoPhase;				// Vibrato Phase, Offset for Pitch variation
+	TPeriodic vibrato;
+	//BYTE vibratoDepth;				// Vibrato Depth, set using the 4xx Command, Amplitude for Pitch variation
+	//BYTE vibratoSpeed;				// Vibrato Speed, set using the 4xx Command, Velocity for Pitch variation
+	//BYTE vibratoPhase;				// Vibrato Phase, Offset for Pitch variation
 };
 
 // Channel variables used by the RMTE Module playback routines
@@ -144,12 +153,14 @@ struct TChannelVariables
 	BYTE arpeggioScheme;			// Arpeggio Scheme, set using the 0xy Command, cycling between channelNote, x, y, then repeat
 	WORD portamentoTarget;			// Portamento Target, set using the 3xx Command, Target Note/Freq to be pitch bent towards
 	BYTE portamentoSpeed;			// Portamento Speed, set using the 3xx Command, higher values produce faster effects, at the cost of sounding more granular
-	BYTE vibratoDepth;				// Vibrato Depth, set using the 4xx Command, Amplitude for Pitch variation
-	BYTE vibratoSpeed;				// Vibrato Speed, set using the 4xx Command, Velocity for Pitch variation
-	BYTE vibratoPhase;				// Vibrato Phase, Offset for Pitch variation
-	BYTE tremoloDepth;				// Tremolo Depth, set using the 7xx Command, Amplitude for Volume variation
-	BYTE tremoloSpeed;				// Tremolo Speed, set using the 7xx Command, Velocity for Volume variation
-	BYTE tremoloPhase;				// Tremolo Phase, Offset for Volume variation
+	TPeriodic vibrato;
+	TPeriodic tremolo;
+	//BYTE vibratoDepth;				// Vibrato Depth, set using the 4xx Command, Amplitude for Pitch variation
+	//BYTE vibratoSpeed;				// Vibrato Speed, set using the 4xx Command, Velocity for Pitch variation
+	//BYTE vibratoPhase;				// Vibrato Phase, Offset for Pitch variation
+	//BYTE tremoloDepth;				// Tremolo Depth, set using the 7xx Command, Amplitude for Volume variation
+	//BYTE tremoloSpeed;				// Tremolo Speed, set using the 7xx Command, Velocity for Volume variation
+	//BYTE tremoloPhase;				// Tremolo Phase, Offset for Volume variation
 	BYTE finetuneOffset;			// Finetune offset, set using the ?xx Command, signed values are expected, thus $01 will add 1, and $FF will subtract 1, etc
 };
 
@@ -619,6 +630,7 @@ public:
 	
 	void PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChannelVariables, TInstrumentVariables* pInstrumentVariables);
 	bool AdvanceEnvelope(TActive* pActive, TParameter* pParameter, TFlag* pFlag, bool trigger, bool release, bool& hasLooped);
+	double GetVibrato(TPeriodic* vibrato, double pitch);
 
 	void PlayRow(TSubtune* pSubtune);
 
