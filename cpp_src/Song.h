@@ -99,6 +99,16 @@ struct TPeriodic
 	BYTE phase;
 };
 
+// Portamento Effect Variables
+struct TPortamento
+{
+	//bool isActive;
+	BYTE depth;
+	BYTE speed;
+	double lastPitch;
+	double targetPitch;
+};
+
 struct TEnvelopeVariables
 {
 	TActive volume;
@@ -125,8 +135,9 @@ struct TInstrumentVariables
 	BYTE volumeSlide;				// Volume Slide parameter, set using the Axx Command, the Instrument Volume Slide Parameter will take priority if enabled
 	BYTE delayTimer;				// Delay Timer used by the ShiftFreq and Vibrato Commands in the Legacy RMT Instrument format, for compatibility's sake
 	BYTE finetuneOffset;			// Finetune offset, set using the ?xx Command, signed values are expected, thus $01 will add 1, and $FF will subtract 1, etc
-	WORD portamentoTarget;			// Portamento Target, set using the 3xx Command, Target Note/Freq to be pitch bent towards
-	BYTE portamentoSpeed;			// Portamento Speed, set using the 3xx Command, higher values produce faster effects, at the cost of sounding more granular
+	//WORD portamentoTarget;			// Portamento Target, set using the 3xx Command, Target Note/Freq to be pitch bent towards
+	//BYTE portamentoSpeed;			// Portamento Speed, set using the 3xx Command, higher values produce faster effects, at the cost of sounding more granular
+	TPortamento portamento;
 	TPeriodic vibrato;
 	//BYTE vibratoDepth;				// Vibrato Depth, set using the 4xx Command, Amplitude for Pitch variation
 	//BYTE vibratoSpeed;				// Vibrato Speed, set using the 4xx Command, Velocity for Pitch variation
@@ -151,8 +162,9 @@ struct TChannelVariables
 	BYTE delayOffset;				// Number of frames used to delay a Row during playback
 	TRow* delayedRow;				// Pointer to the delayed Row Index
 	BYTE arpeggioScheme;			// Arpeggio Scheme, set using the 0xy Command, cycling between channelNote, x, y, then repeat
-	WORD portamentoTarget;			// Portamento Target, set using the 3xx Command, Target Note/Freq to be pitch bent towards
-	BYTE portamentoSpeed;			// Portamento Speed, set using the 3xx Command, higher values produce faster effects, at the cost of sounding more granular
+	//WORD portamentoTarget;			// Portamento Target, set using the 3xx Command, Target Note/Freq to be pitch bent towards
+	//BYTE portamentoSpeed;			// Portamento Speed, set using the 3xx Command, higher values produce faster effects, at the cost of sounding more granular
+	TPortamento portamento;
 	TPeriodic vibrato;
 	TPeriodic tremolo;
 	//BYTE vibratoDepth;				// Vibrato Depth, set using the 4xx Command, Amplitude for Pitch variation
@@ -630,7 +642,8 @@ public:
 	
 	void PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChannelVariables, TInstrumentVariables* pInstrumentVariables);
 	bool AdvanceEnvelope(TActive* pActive, TParameter* pParameter, TFlag* pFlag, bool trigger, bool release, bool& hasLooped);
-	double GetVibrato(TPeriodic* vibrato, double pitch);
+	double GetVibrato(TPeriodic* pVibrato, double pitch);
+	double GetPortamento(TPortamento* pPortamento, double pitch);
 
 	void PlayRow(TSubtune* pSubtune);
 

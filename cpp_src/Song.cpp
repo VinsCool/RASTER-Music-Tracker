@@ -5176,6 +5176,48 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 				// Generate the reference Pitch, using the current Note and Tuning parameters
 				double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
 
+				//if (pChannelVariables->portamento.speed)
+				if (pChannelVariables->portamento.speed && pChannelVariables->portamento.lastPitch)
+				{
+					//if (pChannelVariables->portamento.lastPitch == 0.0)
+					//{
+					//	pChannelVariables->portamento.lastPitch = pitch;
+					//	pChannelVariables->portamento.targetPitch = pitch;
+					//}
+
+					if (pitch != pChannelVariables->portamento.targetPitch)
+					{
+						//pChannelVariables->portamento.lastPitch = pChannelVariables->portamento.targetPitch;
+						pChannelVariables->portamento.targetPitch = pitch;
+					}
+
+					if (pChannelVariables->portamento.lastPitch != pChannelVariables->portamento.targetPitch)
+					{
+						pitch = pChannelVariables->portamento.lastPitch;
+						//pitch += GetPortamento(&pChannelVariables->portamento, pChannelVariables->portamento.targetPitch);
+						pitch += GetPortamento(&pChannelVariables->portamento, pitch);
+
+						if (pChannelVariables->portamento.targetPitch > pChannelVariables->portamento.lastPitch)
+						{
+							if (pitch > pChannelVariables->portamento.targetPitch)
+								pitch = pChannelVariables->portamento.targetPitch;
+						}
+						else
+						{
+							if (pitch < pChannelVariables->portamento.targetPitch)
+								pitch = pChannelVariables->portamento.targetPitch;
+						}
+
+						pChannelVariables->portamento.lastPitch = pitch;
+					}
+
+				}
+				else
+				{
+					pChannelVariables->portamento.lastPitch = pitch;
+					pChannelVariables->portamento.targetPitch = pitch;
+				}
+
 				// If the Instrument Vibrato is active, it will be processed in priority, before the Freq is calculated 
 				if (pInstrumentVariables->vibrato.speed)
 				{
@@ -5406,21 +5448,38 @@ bool CSong::AdvanceEnvelope(TActive* pActive, TParameter* pParameter, TFlag* pFl
 	return false;
 }
 
-double CSong::GetVibrato(TPeriodic* vibrato, double pitch)
+double CSong::GetVibrato(TPeriodic* pVibrato, double pitch)
 {
-	if (!vibrato)
+	if (!pVibrato)
 		return 0;
 	
 	// Create the modulation variables from the vibrato parameters
-	double depth = vibrato->depth ? vibrato->depth : 0.5;
-	double phase = vibrato->phase;
+	double depth = pVibrato->depth ? pVibrato->depth : 0.5;
+	double phase = pVibrato->phase;
 	double amplitude = log2(1.0 + (depth / 64.0));
 	double velocity = phase / 64.0;
 
 	// Update the Vibrato Phase with the Speed parameter for the next frame
-	vibrato->phase += vibrato->speed;
+	pVibrato->phase += pVibrato->speed;
 
 	// Return the finetuned offset from the reference Pitch on the current Vibrato Phase
+	return ((pitch / sqrt(depth)) * amplitude) * sin(velocity * 2.0 * 3.14159265359);
+}
+
+double CSong::GetPortamento(TPortamento* pPortamento, double pitch)
+{
+	if (!pPortamento)
+		return 0;
+
+	// Create the modulation variables from the portamento parameters
+	double depth = pPortamento->depth ? pPortamento->depth : 0.5;
+	double speed = pPortamento->speed;
+	double phase = pPortamento->targetPitch > pPortamento->lastPitch ? 1.0 : -0.5;
+	
+	double amplitude = log2(1.0 + (depth / 16.0));
+	double velocity = phase * (speed / 64.0);
+
+	// Return the finetuned offset from the reference Pitch
 	return ((pitch / sqrt(depth)) * amplitude) * sin(velocity * 2.0 * 3.14159265359);
 }
 
@@ -5549,6 +5608,11 @@ void CSong::ProcessEffect(TEffect* effect, TChannelVariables* pVariables)
 {
 	switch (effect->command)
 	{
+	case EFFECT_PORTAMENTO:
+		pVariables->portamento.speed = effect->parameter & 0x0F;
+		pVariables->portamento.depth = effect->parameter >> 4;
+		break;
+
 	case EFFECT_VIBRATO:
 		if (pVariables->isNoteActive && pVariables->isNoteReset)
 			pVariables->vibrato.phase = 0x00;

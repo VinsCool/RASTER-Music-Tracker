@@ -95,6 +95,7 @@
 #define EFFECT_PARAMETER_MIN		0x00	// The $XY Parameter of 0 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_DEFAULT	0x80	// The $XY Parameter of 128 may be used to disable certain Effect Commands
 #define EFFECT_VIBRATO				0x04	// Effect Command 4xy -> Set Vibrato Depth $x and Vibrato Speed $y
+#define EFFECT_PORTAMENTO			0x03	// Effect Command 3xy -> Set Portamento Depth $x and Portamento Speed $y
 #define EFFECT_COMMAND_BXX			0x0B	// Effect Command Bxx -> Goto Songline $xx
 #define EFFECT_COMMAND_DXX			0x0D	// Effect Command Dxx -> End Pattern, no parameter needed(?)
 #define EFFECT_COMMAND_FXX			0x0F	// Effect Command Fxx -> Set Song Speed $xx
