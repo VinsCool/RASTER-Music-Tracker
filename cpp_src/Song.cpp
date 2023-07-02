@@ -5436,7 +5436,7 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 				}
 			}
 
-			if (pEnvelope->freq.isActive = pEnvelopePtr = GetNoteTable(pInstrument->index.note))
+			if (pEnvelope->freq.isActive = pEnvelopePtr = GetFreqTable(pInstrument->index.freq))
 			{
 				BYTE* pIndex = ((TInstrumentTable*)pEnvelopePtr)->table;
 				TFlag* pFlag = &((TInstrumentTable*)pEnvelopePtr)->flag;
