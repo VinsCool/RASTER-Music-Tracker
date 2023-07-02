@@ -5333,6 +5333,7 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 				pInstrumentVariables->delayTimer = pInstrument->delay;
 				pInstrumentVariables->isEnvelopeLooped = false;
 				pInstrumentVariables->volumeSlide = 0x00;
+				pInstrumentVariables->finetuneOffset = 0x00;
 				pVibrato->speed = pInstrument->vibrato & 0x0F;
 				pVibrato->depth = pInstrument->vibrato >> 4;
 				pVibrato->phase = 0x00;
