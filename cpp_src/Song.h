@@ -87,6 +87,7 @@ struct TPokeyBuffer
 // Active Instrument Envelope Variables
 struct TActive
 {
+	bool isActive;					// Instrument Envelope is Active
 	BYTE offset;					// Instrument Envelope Offset
 	BYTE timer;						// Instrument Envelope Timer
 };
@@ -94,6 +95,7 @@ struct TActive
 // Periodic Effect Variables, such as Vibrato and Tremolo
 struct TPeriodic
 {
+	bool isActive;
 	BYTE depth;
 	BYTE speed;
 	BYTE phase;
@@ -102,7 +104,7 @@ struct TPeriodic
 // Portamento Effect Variables
 struct TPortamento
 {
-	//bool isActive;
+	bool isActive;
 	BYTE depth;
 	BYTE speed;
 	double lastPitch;
@@ -135,13 +137,8 @@ struct TInstrumentVariables
 	BYTE volumeSlide;				// Volume Slide parameter, set using the Axx Command, the Instrument Volume Slide Parameter will take priority if enabled
 	BYTE delayTimer;				// Delay Timer used by the ShiftFreq and Vibrato Commands in the Legacy RMT Instrument format, for compatibility's sake
 	BYTE finetuneOffset;			// Finetune offset, set using the ?xx Command, signed values are expected, thus $01 will add 1, and $FF will subtract 1, etc
-	//WORD portamentoTarget;			// Portamento Target, set using the 3xx Command, Target Note/Freq to be pitch bent towards
-	//BYTE portamentoSpeed;			// Portamento Speed, set using the 3xx Command, higher values produce faster effects, at the cost of sounding more granular
-	TPortamento portamento;
-	TPeriodic vibrato;
-	//BYTE vibratoDepth;				// Vibrato Depth, set using the 4xx Command, Amplitude for Pitch variation
-	//BYTE vibratoSpeed;				// Vibrato Speed, set using the 4xx Command, Velocity for Pitch variation
-	//BYTE vibratoPhase;				// Vibrato Phase, Offset for Pitch variation
+	TPortamento portamento;			// Instrument Portamento, taking priority over Channel Portamento
+	TPeriodic vibrato;				// Instrument Vibrato, taking priority over Channel Vibrato
 };
 
 // Channel variables used by the RMTE Module playback routines
@@ -162,17 +159,9 @@ struct TChannelVariables
 	BYTE delayOffset;				// Number of frames used to delay a Row during playback
 	TRow* delayedRow;				// Pointer to the delayed Row Index
 	BYTE arpeggioScheme;			// Arpeggio Scheme, set using the 0xy Command, cycling between channelNote, x, y, then repeat
-	//WORD portamentoTarget;			// Portamento Target, set using the 3xx Command, Target Note/Freq to be pitch bent towards
-	//BYTE portamentoSpeed;			// Portamento Speed, set using the 3xx Command, higher values produce faster effects, at the cost of sounding more granular
-	TPortamento portamento;
-	TPeriodic vibrato;
-	TPeriodic tremolo;
-	//BYTE vibratoDepth;				// Vibrato Depth, set using the 4xx Command, Amplitude for Pitch variation
-	//BYTE vibratoSpeed;				// Vibrato Speed, set using the 4xx Command, Velocity for Pitch variation
-	//BYTE vibratoPhase;				// Vibrato Phase, Offset for Pitch variation
-	//BYTE tremoloDepth;				// Tremolo Depth, set using the 7xx Command, Amplitude for Volume variation
-	//BYTE tremoloSpeed;				// Tremolo Speed, set using the 7xx Command, Velocity for Volume variation
-	//BYTE tremoloPhase;				// Tremolo Phase, Offset for Volume variation
+	TPortamento portamento;			// Channel Portamento, set using Effect Commands such as 3xy
+	TPeriodic vibrato;				// Channel Vibrato, set using Effect Commands such as 4xy
+	TPeriodic tremolo;				// Channel Tremolo, set using Effect Commands such as 7xy
 	BYTE finetuneOffset;			// Finetune offset, set using the ?xx Command, signed values are expected, thus $01 will add 1, and $FF will subtract 1, etc
 };
 

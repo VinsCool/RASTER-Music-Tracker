@@ -5019,22 +5019,25 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 			TInstrumentVariables* pInstrumentVariables = &m_songVariables->instrument[loop + i];
 			TInstrumentV2* pInstrument = GetInstrument(pChannelVariables->instrument);
 
+			// TODO: Move all of the code in this loop to Play Instrument instead...
 			PlayInstrument(pInstrument, pChannelVariables, pInstrumentVariables);
 
 			if (!pChannelVariables->isNoteActive)
 				continue;
 
-			TAutomatic* pTrigger = &pInstrumentVariables->trigger;
-			BYTE volume = (BYTE)round((double)(pChannelVariables->volume * pInstrumentVariables->volume) / 0x0F);
-			BYTE timbre = pInstrumentVariables->timbre;
+			TAutomatic* pTrigger = pInstrumentVariables->envelope.trigger.isActive ? &pInstrumentVariables->trigger : NULL;
+
+			BYTE volume = pInstrumentVariables->envelope.volume.isActive ? (BYTE)round((double)(pChannelVariables->volume * pInstrumentVariables->volume) / 0x0F) : pChannelVariables->volume;
+			BYTE timbre = pInstrumentVariables->envelope.timbre.isActive ? pInstrumentVariables->timbre : pChannelVariables->timbre;
+			BYTE audctl = pInstrumentVariables->envelope.audctl.isActive ? pInstrumentVariables->audctl : pChannelVariables->audctl;
 
 			pPokey->audc[i] = (timbre & 0xF0) | volume;
-			pPokey->audctl |= pInstrumentVariables->audctl;
+			pPokey->audctl |= audctl;
 
 			if (pInstrument)
 			{
 				// Process the Instrument Triggers for functionalities that are automatically handled based on specific criteria
-				if (pPokey->audc[i] & 0x0F)
+				if (pTrigger && pPokey->audc[i] & 0x0F)
 				{
 					// High Pass Filter, triggered in Channel 1 and 2, from which the Freq is derived and written into the Channel modulating it
 					if (pTrigger->autoFilter && (_CH1(i) || _CH2(i)))
@@ -5057,7 +5060,7 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 				}
 
 				// Apply the Instrument Volume Fade if the Volume Envelope had looped at least once
-				if (pInstrumentVariables->isEnvelopeLooped && pChannelVariables->volume > pInstrument->volumeSustain)
+				if (pInstrumentVariables->envelope.volume.isActive && pInstrumentVariables->isEnvelopeLooped && pChannelVariables->volume > pInstrument->volumeSustain)
 				{
 					WORD volumeFade = (pChannelVariables->volume << 8) | pInstrumentVariables->volumeSlide;
 					volumeFade -= pInstrument->volumeFade;
@@ -5104,6 +5107,7 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 
 			bool is16BitMode = (_CH2(i) && (pPokey->audctl & 0x50) == 0x50) || (_CH4(i) && (pPokey->audctl & 0x28) == 0x28);
 			bool autoFilter = (pPokey->audc[i] & 0x0F) && (pTrigger->autoFilter && (_CH1(i) || _CH2(i)));
+			bool autoPortamento = pInstrumentVariables->portamento.isActive && pTrigger->autoPortamento;
 
 			int note = pChannelVariables->note;
 			int offsetNote = (char)pInstrumentVariables->note;
@@ -5111,6 +5115,8 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 			int freq = 0x00;
 			int offsetFreq = (char)pInstrumentVariables->freq;
 			int instrumentfinetune = (char)pInstrumentVariables->finetuneOffset;
+
+			double pitch = 0.0, vibrato = 0.0;
 
 			// Instrument Effect Commands, unfinished implementation
 			switch (pEffect->command)
@@ -5156,6 +5162,15 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 
 				pInstrumentVariables->finetuneOffset = instrumentfinetune;
 				break;
+
+			case 0x05:
+				// Instrument Portamento
+				if (autoPortamento)
+				{
+					pInstrumentVariables->portamento.speed = pEffect->parameter & 0x0F;
+					pInstrumentVariables->portamento.depth = pEffect->parameter >> 4;
+				}
+				break;
 			}
 
 			// Originally known as ShiftFreq, basically a direct additive offset to Freq
@@ -5174,63 +5189,76 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 					note = 0xFF;
 
 				// Generate the reference Pitch, using the current Note and Tuning parameters
-				double pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
+				pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
 
-				//if (pChannelVariables->portamento.speed)
-				if (pChannelVariables->portamento.speed && pChannelVariables->portamento.lastPitch)
+				// If the Instrument Vibrato is active, it will be processed in priority, before the Freq is calculated 
+				if (pInstrumentVariables->vibrato.isActive)
+					vibrato = pInstrumentVariables->delayTimer == 0x00 ? GetVibrato(&pInstrumentVariables->vibrato, pitch) : 0.0;
+
+				// Else, If the Channel Vibrato is active, it will be processed before the Freq is calculated instead
+				else if (pChannelVariables->vibrato.isActive)
+					vibrato = GetVibrato(&pChannelVariables->vibrato, pitch);
+
+				if (!autoPortamento && pEffect->command == 0x05)
+					pInstrumentVariables->portamento.lastPitch = pitch;
+
+				if (pInstrumentVariables->portamento.isActive)
 				{
-					//if (pChannelVariables->portamento.lastPitch == 0.0)
-					//{
-					//	pChannelVariables->portamento.lastPitch = pitch;
-					//	pChannelVariables->portamento.targetPitch = pitch;
-					//}
-
-					if (pitch != pChannelVariables->portamento.targetPitch)
+					if (autoPortamento)
 					{
-						//pChannelVariables->portamento.lastPitch = pChannelVariables->portamento.targetPitch;
-						pChannelVariables->portamento.targetPitch = pitch;
-					}
+						TPortamento* pPortamento = &pInstrumentVariables->portamento;
 
-					if (pChannelVariables->portamento.lastPitch != pChannelVariables->portamento.targetPitch)
-					{
-						pitch = pChannelVariables->portamento.lastPitch;
-						//pitch += GetPortamento(&pChannelVariables->portamento, pChannelVariables->portamento.targetPitch);
-						pitch += GetPortamento(&pChannelVariables->portamento, pitch);
+						if (pEffect->command == 0x05)
+							pPortamento->targetPitch = pitch;
 
-						if (pChannelVariables->portamento.targetPitch > pChannelVariables->portamento.lastPitch)
+						if (pPortamento->lastPitch == 0.0)
+							pPortamento->lastPitch = pitch;
+
+						pitch = pPortamento->lastPitch;
+						pitch += GetPortamento(pPortamento, pitch);
+
+						if (pPortamento->targetPitch > pPortamento->lastPitch)
 						{
-							if (pitch > pChannelVariables->portamento.targetPitch)
-								pitch = pChannelVariables->portamento.targetPitch;
+							if (pitch > pPortamento->targetPitch)
+								pitch = pPortamento->targetPitch;
 						}
 						else
 						{
-							if (pitch < pChannelVariables->portamento.targetPitch)
-								pitch = pChannelVariables->portamento.targetPitch;
+							if (pitch < pPortamento->targetPitch)
+								pitch = pPortamento->targetPitch;
 						}
 
-						pChannelVariables->portamento.lastPitch = pitch;
+						pPortamento->lastPitch = pitch;
+					}
+				}
+				else if (pChannelVariables->portamento.isActive)
+				{
+					TPortamento* pPortamento = &pChannelVariables->portamento;
+
+					pPortamento->targetPitch = pitch;
+
+					if (pPortamento->lastPitch == 0.0)
+						pPortamento->lastPitch = pitch;
+
+					pitch = pPortamento->lastPitch;
+					pitch += GetPortamento(pPortamento, pitch);
+
+					if (pPortamento->targetPitch > pPortamento->lastPitch)
+					{
+						if (pitch > pPortamento->targetPitch)
+							pitch = pPortamento->targetPitch;
+					}
+					else
+					{
+						if (pitch < pPortamento->targetPitch)
+							pitch = pPortamento->targetPitch;
 					}
 
+					pPortamento->lastPitch = pitch;
 				}
-				else
-				{
-					pChannelVariables->portamento.lastPitch = pitch;
-					pChannelVariables->portamento.targetPitch = pitch;
-				}
-
-				// If the Instrument Vibrato is active, it will be processed in priority, before the Freq is calculated 
-				if (pInstrumentVariables->vibrato.speed)
-				{
-					if (pInstrumentVariables->delayTimer == 0x00)
-						pitch += GetVibrato(&pInstrumentVariables->vibrato, pitch);
-				}
-					
-				// Else, If the Channel Vibrato is active, it will be processed before the Freq is calculated instead
-				else if (pChannelVariables->vibrato.speed)
-					pitch += GetVibrato(&pChannelVariables->vibrato, pitch);
 
 				// Generate the actual POKEY Freq using all the necessary parameters
-				freq = g_Tuning.GeneratePokeyFreq(pitch, i, timbre, pPokey->audctl);
+				freq = g_Tuning.GeneratePokeyFreq(pitch + vibrato, i, timbre, pPokey->audctl);
 				freq += offsetFreq;
 			}
 
@@ -5289,36 +5317,36 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 	if (pChannelVariables->isNoteActive)
 	{
 		if (pChannelVariables->isNoteTrigger)
-			memset(pInstrumentVariables, 0x00, sizeof(TInstrumentVariables));
-
-		// Fallback method, the Channel variables may be used directly if necessary
-		pInstrumentVariables->volume = 0x0F;	// pChannelVariables->volume;
-		pInstrumentVariables->timbre = pChannelVariables->timbre;
-		pInstrumentVariables->audctl = pChannelVariables->audctl;
+		{
+			pChannelVariables->frameCount = 0x00;
+		}
 
 		if (pInstrument)
 		{
 			TEnvelopeVariables* pEnvelope = &pInstrumentVariables->envelope;
+			TPeriodic* pVibrato = &pInstrumentVariables->vibrato;
+			TPortamento* pPortamento = &pInstrumentVariables->portamento;
+			void* pEnvelopePtr;
 
-			if (pChannelVariables->isNoteReset)
+			if (pChannelVariables->isNoteTrigger)
 			{
-				pChannelVariables->frameCount = 0x00;
 				pInstrumentVariables->delayTimer = pInstrument->delay;
-
-				// Vibrato effect, originally using the FreqShift variable, which may cause problems in some cases
-				if (pInstrument->vibrato)
-				{
-					pInstrumentVariables->vibrato.speed = pInstrument->vibrato & 0x0F;
-					pInstrumentVariables->vibrato.depth = pInstrument->vibrato >> 4;
-					pInstrumentVariables->vibrato.phase = 0x00;
-				}
+				pInstrumentVariables->isEnvelopeLooped = false;
+				pInstrumentVariables->volumeSlide = 0x00;
+				pVibrato->speed = pInstrument->vibrato & 0x0F;
+				pVibrato->depth = pInstrument->vibrato >> 4;
+				pVibrato->phase = 0x00;
+				pVibrato->isActive = pVibrato->speed;
+				pPortamento->depth = pPortamento->speed = 0x00;
+				pPortamento->isActive = false;
 			}
 
-			if (TInstrumentEnvelope* pVolumeEnvelope = GetVolumeEnvelope(pInstrument->index.volume))
+			if (pEnvelope->volume.isActive = pEnvelopePtr = GetVolumeEnvelope(pInstrument->index.volume))
 			{
-				BYTE* pIndex = pVolumeEnvelope->envelope;
-				TFlag* pFlag = &pVolumeEnvelope->flag;
-				TParameter* pParameter = &pVolumeEnvelope->parameter;
+				BYTE* pIndex = ((TInstrumentEnvelope*)pEnvelopePtr)->envelope;
+				TFlag* pFlag = &((TInstrumentEnvelope*)pEnvelopePtr)->flag;
+				TParameter* pParameter = &((TInstrumentEnvelope*)pEnvelopePtr)->parameter;
+
 				TActive* pActive = &pEnvelope->volume;
 				bool hasLooped = false;
 
@@ -5329,11 +5357,12 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 				}
 			}
 
-			if (TInstrumentEnvelope* pTimbreEnvelope = GetTimbreEnvelope(pInstrument->index.timbre))
+			if (pEnvelope->timbre.isActive = pEnvelopePtr = GetTimbreEnvelope(pInstrument->index.timbre))
 			{
-				BYTE* pIndex = pTimbreEnvelope->envelope;
-				TFlag* pFlag = &pTimbreEnvelope->flag;
-				TParameter* pParameter = &pTimbreEnvelope->parameter;
+				BYTE* pIndex = ((TInstrumentEnvelope*)pEnvelopePtr)->envelope;
+				TFlag* pFlag = &((TInstrumentEnvelope*)pEnvelopePtr)->flag;
+				TParameter* pParameter = &((TInstrumentEnvelope*)pEnvelopePtr)->parameter;
+
 				TActive* pActive = &pEnvelope->timbre;
 				bool hasLooped = false;
 
@@ -5341,11 +5370,12 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 					pInstrumentVariables->timbre = pIndex[pActive->offset];
 			}
 
-			if (TInstrumentEnvelope* pAudctlEnvelope = GetAudctlEnvelope(pInstrument->index.audctl))
+			if (pEnvelope->audctl.isActive = pEnvelopePtr = GetAudctlEnvelope(pInstrument->index.audctl))
 			{
-				BYTE* pIndex = pAudctlEnvelope->envelope;
-				TFlag* pFlag = &pAudctlEnvelope->flag;
-				TParameter* pParameter = &pAudctlEnvelope->parameter;
+				BYTE* pIndex = ((TInstrumentEnvelope*)pEnvelopePtr)->envelope;
+				TFlag* pFlag = &((TInstrumentEnvelope*)pEnvelopePtr)->flag;
+				TParameter* pParameter = &((TInstrumentEnvelope*)pEnvelopePtr)->parameter;
+
 				TActive* pActive = &pEnvelope->audctl;
 				bool hasLooped = false;
 
@@ -5353,23 +5383,34 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 					pInstrumentVariables->audctl = pIndex[pActive->offset];
 			}
 
-			if (TInstrumentTrigger* pTriggerEnvelope = GetTriggerEnvelope(pInstrument->index.trigger))
+			if (pEnvelope->trigger.isActive = pEnvelopePtr = GetTriggerEnvelope(pInstrument->index.trigger))
 			{
-				TAutomatic* pIndex = pTriggerEnvelope->trigger;
-				TFlag* pFlag = &pTriggerEnvelope->flag;
-				TParameter* pParameter = &pTriggerEnvelope->parameter;
+				TAutomatic* pIndex = ((TInstrumentTrigger*)pEnvelopePtr)->trigger;
+				TFlag* pFlag = &((TInstrumentTrigger*)pEnvelopePtr)->flag;
+				TParameter* pParameter = &((TInstrumentTrigger*)pEnvelopePtr)->parameter;
+
 				TActive* pActive = &pEnvelope->trigger;
 				bool hasLooped = false;
 
 				if (AdvanceEnvelope(pActive, pParameter, pFlag, pChannelVariables->isNoteTrigger, pChannelVariables->isNoteRelease, hasLooped))
 					pInstrumentVariables->trigger = pIndex[pActive->offset];
+
+				// A very disgusting hack for Portamento
+				if (pChannelVariables->isNoteTrigger)
+				{
+					for (int i = 0; i < pParameter->length; i++)
+					{
+						pPortamento->isActive |= pIndex[i].autoPortamento;
+					}
+				}
 			}
 
-			if (TInstrumentEffect* pEffectEnvelope = GetEffectEnvelope(pInstrument->index.effect))
+			if (pEnvelope->effect.isActive = pEnvelopePtr = GetEffectEnvelope(pInstrument->index.effect))
 			{
-				TEffect* pIndex = pEffectEnvelope->effect;
-				TFlag* pFlag = &pEffectEnvelope->flag;
-				TParameter* pParameter = &pEffectEnvelope->parameter;
+				TEffect* pIndex = ((TInstrumentEffect*)pEnvelopePtr)->effect;
+				TFlag* pFlag = &((TInstrumentEffect*)pEnvelopePtr)->flag;
+				TParameter* pParameter = &((TInstrumentEffect*)pEnvelopePtr)->parameter;
+
 				TActive* pActive = &pEnvelope->effect;
 				bool hasLooped = false;
 
@@ -5377,11 +5418,12 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 					pInstrumentVariables->effect = pIndex[pActive->offset];
 			}
 
-			if (TInstrumentTable* pNoteTable = GetNoteTable(pInstrument->index.note))
+			if (pEnvelope->note.isActive = pEnvelopePtr = GetNoteTable(pInstrument->index.note))
 			{
-				BYTE* pIndex = pNoteTable->table;
-				TFlag* pFlag = &pNoteTable->flag;
-				TParameter* pParameter = &pNoteTable->parameter;
+				BYTE* pIndex = ((TInstrumentTable*)pEnvelopePtr)->table;
+				TFlag* pFlag = &((TInstrumentTable*)pEnvelopePtr)->flag;
+				TParameter* pParameter = &((TInstrumentTable*)pEnvelopePtr)->parameter;
+
 				TActive* pActive = &pEnvelope->note;
 				bool hasLooped = false;
 
@@ -5394,11 +5436,12 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 				}
 			}
 
-			if (TInstrumentTable* pFreqTable = GetFreqTable(pInstrument->index.freq))
+			if (pEnvelope->freq.isActive = pEnvelopePtr = GetNoteTable(pInstrument->index.note))
 			{
-				BYTE* pIndex = pFreqTable->table;
-				TFlag* pFlag = &pFreqTable->flag;
-				TParameter* pParameter = &pFreqTable->parameter;
+				BYTE* pIndex = ((TInstrumentTable*)pEnvelopePtr)->table;
+				TFlag* pFlag = &((TInstrumentTable*)pEnvelopePtr)->flag;
+				TParameter* pParameter = &((TInstrumentTable*)pEnvelopePtr)->parameter;
+
 				TActive* pActive = &pEnvelope->freq;
 				bool hasLooped = false;
 
@@ -5411,10 +5454,11 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 				}
 			}
 
-			// These Flags are no longer needed after this point
-			pChannelVariables->isNoteTrigger = pChannelVariables->isNoteRelease = false;
-			pChannelVariables->isNoteReset = false;
 		}
+
+		// These Flags are no longer needed after this point
+		pChannelVariables->isNoteTrigger = pChannelVariables->isNoteRelease = false;
+		pChannelVariables->isNoteReset = false;
 	}
 }
 
@@ -5611,6 +5655,7 @@ void CSong::ProcessEffect(TEffect* effect, TChannelVariables* pVariables)
 	case EFFECT_PORTAMENTO:
 		pVariables->portamento.speed = effect->parameter & 0x0F;
 		pVariables->portamento.depth = effect->parameter >> 4;
+		pVariables->portamento.isActive = pVariables->portamento.speed;
 		break;
 
 	case EFFECT_VIBRATO:
@@ -5618,6 +5663,7 @@ void CSong::ProcessEffect(TEffect* effect, TChannelVariables* pVariables)
 			pVariables->vibrato.phase = 0x00;
 		pVariables->vibrato.speed = effect->parameter & 0x0F;
 		pVariables->vibrato.depth = effect->parameter >> 4;
+		pVariables->vibrato.isActive = pVariables->vibrato.speed;
 		break;
 
 	case EFFECT_COMMAND_BXX:
