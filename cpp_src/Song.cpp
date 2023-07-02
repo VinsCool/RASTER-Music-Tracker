@@ -5191,17 +5191,11 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 				// Generate the reference Pitch, using the current Note and Tuning parameters
 				pitch = g_Tuning.GetTruePitch(note, g_baseNote + 12 * (g_baseOctave - 4), g_baseTuning);
 
-				// If the Instrument Vibrato is active, it will be processed in priority, before the Freq is calculated 
-				if (pInstrumentVariables->vibrato.isActive)
-					vibrato = pInstrumentVariables->delayTimer == 0x00 ? GetVibrato(&pInstrumentVariables->vibrato, pitch) : 0.0;
-
-				// Else, If the Channel Vibrato is active, it will be processed before the Freq is calculated instead
-				else if (pChannelVariables->vibrato.isActive)
-					vibrato = GetVibrato(&pChannelVariables->vibrato, pitch);
-
+				// Legacy RMT Instrument Portamento hack: initialise the Last Pitch when the CMD5 is used alone
 				if (!autoPortamento && pEffect->command == 0x05)
 					pInstrumentVariables->portamento.lastPitch = pitch;
 
+				// If the Instrument Portamento is active, proceed with it in priority
 				if (pInstrumentVariables->portamento.isActive)
 				{
 					if (autoPortamento)
@@ -5231,6 +5225,8 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 						pPortamento->lastPitch = pitch;
 					}
 				}
+
+				// Else, proceed with the Channel Portamento like normal
 				else if (pChannelVariables->portamento.isActive)
 				{
 					TPortamento* pPortamento = &pChannelVariables->portamento;
@@ -5256,6 +5252,14 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 
 					pPortamento->lastPitch = pitch;
 				}
+
+				// If the Instrument Vibrato is active, it will be processed in priority, before the Freq is calculated 
+				if (pInstrumentVariables->vibrato.isActive)
+					vibrato = pInstrumentVariables->delayTimer == 0x00 ? GetVibrato(&pInstrumentVariables->vibrato, pitch) : 0.0;
+
+				// Else, If the Channel Vibrato is active, it will be processed before the Freq is calculated instead
+				else if (pChannelVariables->vibrato.isActive)
+					vibrato = GetVibrato(&pChannelVariables->vibrato, pitch);
 
 				// Generate the actual POKEY Freq using all the necessary parameters
 				freq = g_Tuning.GeneratePokeyFreq(pitch + vibrato, i, timbre, pPokey->audctl);
