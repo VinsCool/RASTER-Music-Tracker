@@ -7,8 +7,16 @@
 
 CModule::CModule()
 {
-	memset(m_index, NULL, sizeof m_index);
-	memset(m_instrument, NULL, sizeof m_instrument);
+	memset(m_subtuneIndex, NULL, sizeof m_subtuneIndex);
+	memset(m_instrumentIndex, NULL, sizeof m_instrumentIndex);
+	memset(m_volumeIndex, NULL, sizeof m_volumeIndex);
+	memset(m_timbreIndex, NULL, sizeof m_timbreIndex);
+	memset(m_audctlIndex, NULL, sizeof m_audctlIndex);
+	memset(m_triggerIndex, NULL, sizeof m_triggerIndex);
+	memset(m_effectIndex, NULL, sizeof m_effectIndex);
+	memset(m_noteIndex, NULL, sizeof m_noteIndex);
+	memset(m_freqIndex, NULL, sizeof m_freqIndex);
+	InitialiseModule();
 }
 
 CModule::~CModule()
@@ -22,7 +30,6 @@ void CModule::InitialiseModule()
 	SetSongName("Noname Song");
 	SetSongAuthor("Unknown");
 	SetSongCopyright("2023");
-	SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
 
 	// Create 1 empty Subtune, which will be used by default
 	CreateSubtune(MODULE_DEFAULT_SUBTUNE);
@@ -37,146 +44,347 @@ void CModule::ClearModule()
 	SetSongName("");
 	SetSongAuthor("");
 	SetSongCopyright("");
-	SetActiveSubtune(INVALID);
 
 	// Delete all Module data and set the associated pointers to NULL
-	for (int i = 0; i < SUBTUNE_MAX; i++)
+	for (int i = 0; i < SUBTUNE_COUNT; i++)
 		DeleteSubtune(i);
 
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
-		DeleteInstrument(i);
-/*
+	// Delete all Instrument data, including Envelopes and Tables
+	for (int i = 0; i < INSTRUMENT_COUNT; i++)
 	{
-		if (m_instrument[i])
-			delete m_instrument[i];
-
-		m_instrument[i] = NULL;
+		DeleteInstrument(i);
+		DeleteVolumeEnvelope(i);
+		DeleteTimbreEnvelope(i);
+		DeleteAudctlEnvelope(i);
+		DeleteTriggerEnvelope(i);
+		DeleteEffectEnvelope(i);
+		DeleteNoteTable(i);
+		DeleteFreqTable(i);
 	}
-*/
 }
 
 void CModule::CreateSubtune(int subtune)
 {
-	if (!IsValidSubtune((subtune)))
+	if (!IsValidSubtune(subtune))
 		return;
 
 	// If there is no Subtune here, create it now and update the Subtune Index accordingly
-	if (!m_index[subtune])
-		m_index[subtune] = new TSubtune;
+	if (!m_subtuneIndex[subtune])
+		m_subtuneIndex[subtune] = new TSubtune;
 
 	// A new Subtune must be initialised when it is created
-	InitialiseSubtune(m_index[subtune]);
+	InitialiseSubtune(m_subtuneIndex[subtune]);
 }
 
 void CModule::DeleteSubtune(int subtune)
 {
-	if (!IsValidSubtune((subtune)))
+	if (!IsValidSubtune(subtune))
 		return;
 
 	// If there is a Subtune here, don't waste any time and delete it without further ado
-	if (m_index[subtune])
-		delete m_index[subtune];
+	if (m_subtuneIndex[subtune])
+		delete m_subtuneIndex[subtune];
 
-	m_index[subtune] = NULL;
+	m_subtuneIndex[subtune] = NULL;
 }
 
-void CModule::InitialiseSubtune(TSubtune* p)
+void CModule::InitialiseSubtune(TSubtune* pSubtune)
 {
-	if (!p)
+	if (!pSubtune)
 		return;
 
-	strncpy_s(p->name, "Noname Subtune", SUBTUNE_NAME_MAX);
-	p->songLength = MODULE_SONG_LENGTH;
-	p->patternLength = MODULE_TRACK_LENGTH;
-	p->channelCount = MODULE_STEREO;	//= TRACK_CHANNEL_MAX;
-	p->songSpeed = MODULE_SONG_SPEED;
-	p->instrumentSpeed = MODULE_VBI_SPEED;
+	// Set the default Subtune name TODO(?): Append the Index Number to it
+	strncpy_s(pSubtune->name, "Noname Subtune", SUBTUNE_NAME_MAX);
+
+	// Set the default parameters to all the Subtune variables
+	pSubtune->songLength = MODULE_DEFAULT_SONG_LENGTH;
+	pSubtune->patternLength = MODULE_DEFAULT_PATTERN_LENGTH;
+	pSubtune->channelCount = MODULE_CHANNEL_COUNT;
+	pSubtune->songSpeed = MODULE_DEFAULT_SONG_SPEED;
+	pSubtune->instrumentSpeed = MODULE_DEFAULT_VBI_SPEED;
 
 	// Clear all data, and set default values
-	for (int i = 0; i < TRACK_CHANNEL_MAX; i++)
+	for (int i = 0; i < CHANNEL_COUNT; i++)
 	{
 		// Set all indexed Patterns to 0
-		for (int j = 0; j < SONGLINE_MAX; j++)
-			p->channel[i].songline[j] = 0x00;
+		for (int j = 0; j < SONGLINE_COUNT; j++)
+			pSubtune->channel[i].songline[j] = 0x00;
 
 		// Set all indexed Rows in Patterns to empty values
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-			ClearPattern(&p->channel[i].pattern[j]);
+		for (int j = 0; j < PATTERN_COUNT; j++)
+			ClearPattern(&pSubtune->channel[i].pattern[j]);
 
 		// By default, only 1 Effect Command is enabled in all Track Channels
-		p->effectCommandCount[i] = 0x01;
+		pSubtune->channel[i].effectCount = 0x01;
 	}
 }
 
 void CModule::CreateInstrument(int instrument)
 {
-	if (!IsValidInstrument((instrument)))
+	if (!IsValidInstrument(instrument))
 		return;
 
 	// If there is no Instrument here, create it now and update the Instrument Index accordingly
-	if (!m_instrument[instrument])
-		m_instrument[instrument] = new TInstrumentV2;
+	if (!m_instrumentIndex[instrument])
+		m_instrumentIndex[instrument] = new TInstrumentV2;
 
 	// A new Instrument must be initialised when it is created
-	InitialiseInstrument(m_instrument[instrument]);
+	InitialiseInstrument(m_instrumentIndex[instrument]);
 }
 
 void CModule::DeleteInstrument(int instrument)
 {
-	if (!IsValidInstrument((instrument)))
+	if (!IsValidInstrument(instrument))
 		return;
 
 	// If there is an Instrument here, don't waste any time and delete it without further ado
-	if (m_instrument[instrument])
-		delete m_instrument[instrument];
+	if (m_instrumentIndex[instrument])
+		delete m_instrumentIndex[instrument];
 
-	m_instrument[instrument] = NULL;
+	m_instrumentIndex[instrument] = NULL;
 }
 
-void CModule::InitialiseInstrument(TInstrumentV2* p)
+void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 {
-	if (!p)
+	if (!pInstrument)
 		return;
 
-	strncpy_s(p->name, "New Instrument", INSTRUMENT_NAME_MAX);
-	p->envelopeLength = 1;
-	p->envelopeLoop = 0;
-	p->envelopeRelease = 0;
-	p->envelopeSpeed = 0;
-	p->tableLength = 0;
-	p->tableLoop = 0;
-	p->tableRelease = 0;
-	p->tableMode = 0;
-	p->tableSpeed = 0;
+	// Clear all values
+	memset(pInstrument, 0x00, sizeof(TInstrumentV2));
 
-	// Set Envelopes to Empty
-	for (int j = 0; j < ENVELOPE_INDEX_MAX; j++)
-	{
-		p->volumeEnvelope[j] = 0;
-		p->distortionEnvelope[j] = 0;
-		p->audctlEnvelope[j] = 0;
-		p->commandEnvelope[j] = 0;
-		p->parameterEnvelope[j] = 0;
-	}
+	// Set Macros to default, the data itself won't be edited
+	memset(&pInstrument->index, 0x80, sizeof(TMacro));
 
-	// Set Tables to Empty
-	for (int j = 0; j < INSTRUMENT_TABLE_INDEX_MAX; j++)
-	{
-		p->noteTable[j] = 0;
-		p->freqTable[j] = 0;
-	}
+	// Set the default Instrument name TODO(?): Append the Index Number to it
+	strncpy_s(pInstrument->name, "New Instrument", INSTRUMENT_NAME_MAX);
 }
+
+
+void CModule::CreateVolumeEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_volumeIndex[envelope])
+		m_volumeIndex[envelope] = new TInstrumentEnvelope;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentEnvelope(m_volumeIndex[envelope]);
+}
+
+void CModule::DeleteVolumeEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_volumeIndex[envelope])
+		delete m_volumeIndex[envelope];
+
+	m_volumeIndex[envelope] = NULL;
+}
+
+void CModule::CreateTimbreEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_timbreIndex[envelope])
+		m_timbreIndex[envelope] = new TInstrumentEnvelope;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentEnvelope(m_timbreIndex[envelope]);
+}
+
+void CModule::DeleteTimbreEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_timbreIndex[envelope])
+		delete m_timbreIndex[envelope];
+
+	m_timbreIndex[envelope] = NULL;
+}
+
+void CModule::CreateAudctlEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_audctlIndex[envelope])
+		m_audctlIndex[envelope] = new TInstrumentEnvelope;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentEnvelope(m_audctlIndex[envelope]);
+}
+
+void CModule::DeleteAudctlEnvelope(int envelope)
+{
+	if (!IsValidInstrument(envelope))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_audctlIndex[envelope])
+		delete m_audctlIndex[envelope];
+
+	m_audctlIndex[envelope] = NULL;
+}
+
+void CModule::InitialiseInstrumentEnvelope(TInstrumentEnvelope* pEnvelope)
+{
+	if (!pEnvelope)
+		return;
+
+	// Clear all values
+	memset(pEnvelope, 0x00, sizeof(TInstrumentEnvelope));
+}
+
+
+void CModule::CreateTriggerEnvelope(int trigger)
+{
+	if (!IsValidInstrument(trigger))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_triggerIndex[trigger])
+		m_triggerIndex[trigger] = new TInstrumentTrigger;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentTrigger(m_triggerIndex[trigger]);
+}
+
+void CModule::DeleteTriggerEnvelope(int trigger)
+{
+	if (!IsValidInstrument(trigger))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_triggerIndex[trigger])
+		delete m_triggerIndex[trigger];
+
+	m_triggerIndex[trigger] = NULL;
+}
+
+void CModule::InitialiseInstrumentTrigger(TInstrumentTrigger* pTrigger)
+{
+	if (!pTrigger)
+		return;
+
+	// Clear all values
+	memset(pTrigger, 0x00, sizeof(TInstrumentTrigger));
+}
+
+
+void CModule::CreateEffectEnvelope(int effect)
+{
+	if (!IsValidInstrument(effect))
+		return;
+
+	// If there is no Envelope here, create it now and update the Envelope Index accordingly
+	if (!m_effectIndex[effect])
+		m_effectIndex[effect] = new TInstrumentEffect;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentEffect(m_effectIndex[effect]);
+}
+
+void CModule::DeleteEffectEnvelope(int effect)
+{
+	if (!IsValidInstrument(effect))
+		return;
+
+	// If there is an Envelope here, don't waste any time and delete it without further ado
+	if (m_effectIndex[effect])
+		delete m_effectIndex[effect];
+
+	m_effectIndex[effect] = NULL;
+}
+
+void CModule::InitialiseInstrumentEffect(TInstrumentEffect* pEffect)
+{
+	if (!pEffect)
+		return;
+
+	// Clear all values
+	memset(pEffect, 0x00, sizeof(TInstrumentEffect));
+}
+
+
+void CModule::CreateNoteTable(int table)
+{
+	if (!IsValidInstrument(table))
+		return;
+
+	// If there is no Table here, create it now and update the Table Index accordingly
+	if (!m_noteIndex[table])
+		m_noteIndex[table] = new TInstrumentTable;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentTable(m_noteIndex[table]);
+}
+
+void CModule::DeleteNoteTable(int table)
+{
+	if (!IsValidInstrument(table))
+		return;
+
+	// If there is a Table here, don't waste any time and delete it without further ado
+	if (m_noteIndex[table])
+		delete m_noteIndex[table];
+
+	m_noteIndex[table] = NULL;
+}
+
+void CModule::CreateFreqTable(int table)
+{
+	if (!IsValidInstrument(table))
+		return;
+
+	// If there is no Table here, create it now and update the Table Index accordingly
+	if (!m_freqIndex[table])
+		m_freqIndex[table] = new TInstrumentTable;
+
+	// A new Envelope must be initialised when it is created
+	InitialiseInstrumentTable(m_freqIndex[table]);
+}
+
+void CModule::DeleteFreqTable(int table)
+{
+	if (!IsValidInstrument(table))
+		return;
+
+	// If there is a Table here, don't waste any time and delete it without further ado
+	if (m_freqIndex[table])
+		delete m_freqIndex[table];
+
+	m_freqIndex[table] = NULL;
+}
+
+void CModule::InitialiseInstrumentTable(TInstrumentTable* pTable)
+{
+	if (!pTable)
+		return;
+
+	// Clear all values
+	memset(pTable, 0x00, sizeof(TInstrumentTable));
+}
+
 
 bool CModule::ImportLegacyRMT(std::ifstream& in)
 {
 	CString importLog;
 	importLog.Format("");
 
-	WORD songlineStep[SONGLINE_MAX];
-	memset(songlineStep, INVALID, SONGLINE_MAX);
+	WORD songlineStep[SONGLINE_COUNT];
+	memset(songlineStep, INVALID, SONGLINE_COUNT);
 
-	BYTE subtuneOffset[SONGLINE_MAX];
-	memset(subtuneOffset, 0, SONGLINE_MAX);
+	BYTE subtuneOffset[SONGLINE_COUNT];
+	memset(subtuneOffset, 0, SONGLINE_COUNT);
 
 	// This will become the final count of decoded Subtunes from the Legacy RMT Module
 	BYTE subtuneCount = 0;
@@ -198,7 +406,6 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 		importLog.AppendFormat("\"\n");
 		importLog.AppendFormat("Song Length: %02X, Pattern Length: %02X, Channels: %01X\n", importSubtune->songLength, importSubtune->patternLength, importSubtune->channelCount);
 		importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n\n", importSubtune->songSpeed, importSubtune->instrumentSpeed);
-
 		importLog.AppendFormat("Stage 2 - Constructing RMTE Module from imported data:\n\n");
 
 		// Process all indexed Songlines until all the Subtunes are identified
@@ -237,10 +444,6 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 			}
 		}
 
-		// Clear the current Subtune Index, then create a new one matching the number of Subtunes to be imported
-		for (int i = 0; i < subtuneCount; i++)
-			CreateSubtune(i);
-		
 		importLog.AppendFormat("Confidently detected %i unique Subtune(s).\n\n", subtuneCount);
 		importLog.AppendFormat("Stage 3 - Optimising Subtunes with compatibility tweaks:\n\n");
 
@@ -248,32 +451,32 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 		for (int i = 0; i < importSubtune->channelCount; i++)
 		{
 			// The Songline Index won't be overwritten in the process, since we will need it in its current form!
-			for (int j = 0; j < TRACK_PATTERN_MAX; j++)
-				CopyPattern(&importSubtune->channel[0].pattern[j], &importSubtune->channel[i].pattern[j]);
+			for (int j = 0; j < PATTERN_COUNT; j++)
+				CopyPattern(&importSubtune->channel[CH1].pattern[j], &importSubtune->channel[i].pattern[j]);
 
 			// Set the Active Effect Command Columns to the same number for each channels
-			importSubtune->effectCommandCount[i] = 2;
+			importSubtune->channel[i].effectCount = 2;
 		}
 
 		// Re-construct all of individual Subtunes that were detected
-		for (int i = 0; i < GetSubtuneCount(); i++)
+		for (int i = 0; i < subtuneCount; i++)
 		{
 			BYTE offset = subtuneOffset[i];
 
 			// Copy the data previously imported from the Temporary Subtune into the Active Subtune
-			SetActiveSubtune(i);
-			CopySubtune(importSubtune, GetSubtuneIndex(i));
+			CreateSubtune(i);
+			CopySubtune(importSubtune, GetSubtune(i));
 
 			// This will be used once again for detecting loop points in Subtunes
-			memset(songlineStep, INVALID, SONGLINE_MAX);
+			memset(songlineStep, INVALID, SONGLINE_COUNT);
 
 			// Re-construct every Songlines used by the Subtune, until the loop point is found
-			for (int j = 0; j < SONGLINE_MAX; j++)
+			for (int j = 0; j < SONGLINE_COUNT; j++)
 			{
 				// If the Songline Step offset is Valid, a loop was completed, and the Songlength will be set here
 				if (IsValidSongline(songlineStep[offset]))
 				{
-					SetSongLength(j - 1);
+					SetSongLength(i, j - 1);
 					break;
 				}
 
@@ -290,57 +493,54 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 				}
 
 				// Fetch the Patterns from the backup Songline Index first
-				for (int k = 0; k < GetChannelCount(); k++)
-					SetPatternInSongline(k, j, importSubtune->channel[k].songline[offset]);
+				for (int k = 0; k < GetChannelCount(i); k++)
+					SetPatternInSongline(i, k, j, importSubtune->channel[k].songline[offset]);
 
 				// Otherwise, the Songline offset will increment by 1 for the next Songline
 				offset++;
 			}
 
 			// Re-arrange all Patterns to make them unique entries for every Songline, so editing them will not overwrite anything intended to be used differently
-			RenumberIndexedPatterns();
+			RenumberIndexedPatterns(i);
 
 			// In order to merge all of the Bxx and Dxx Commands, find all Dxx Commands that were used, and move them to Channel 1, unless a Bxx Command was already used there
-			for (int j = 0; j < GetSongLength(); j++)
+			for (int j = 0; j < GetSongLength(i); j++)
 			{
 				// If the Shortest Pattern Length is below actual Pattern Length, a Dxx Command was already used somewhere, and must be replaced
-				if (GetShortestPatternLength(j) < GetPatternLength())
-					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, EFFECT_COMMAND_DXX, EFFECT_PARAMETER_MIN);
+				if (GetShortestPatternLength(i, j) < GetPatternLength(i))
+					SetPatternRowCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EFFECT_COMMAND_DXX, EFFECT_PARAMETER_MIN);
 
 				// Set the final Goto Songline Command Bxx to the Songline found at the loop point
-				if (j == GetSongLength() - 1)
-					SetPatternRowCommand(CH1, GetPatternInSongline(CH1, j), GetShortestPatternLength(j) - 1, CMD2, EFFECT_COMMAND_BXX, songlineStep[offset] - 1);	// PATTERN_EFFECT_BXX | (songlineStep[offset] - 1));
+				if (j == GetSongLength(i) - 1)
+					SetPatternRowCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EFFECT_COMMAND_BXX, songlineStep[offset] - 1);
 
 				// Skip CH1, since it was already processed above
-				for (int k = CH2; k < GetChannelCount(); k++)
+				for (int k = CH2; k < GetChannelCount(i); k++)
 				{
 					// All Pattern Rows will be edited, regardless of their contents
-					for (int l = 0; l < TRACK_ROW_MAX; l++)
+					for (int l = 0; l < ROW_COUNT; l++)
 					{
 						// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
-						for (int m = CMD2; m < PATTERN_ACTIVE_EFFECT_MAX; m++)
-							SetPatternRowCommand(k, GetPatternInSongline(k, j), l, m, PATTERN_EFFECT_EMPTY, EFFECT_PARAMETER_MIN);
+						for (int m = CMD2; m < ACTIVE_EFFECT_COUNT; m++)
+							SetPatternRowCommand(i, k, GetPatternInSongline(i, k, j), l, m, EFFECT_EMPTY, EFFECT_PARAMETER_MIN);
 					}
 				}
 			}
 
 			// Set the final count of Active Effect Command Columns for each channels once they're all processed
-			for (int j = 0; j < GetChannelCount(); j++)
-				SetEffectCommandCount(j, j == CH1 ? 2 : 1);
+			for (int j = 0; j < GetChannelCount(i); j++)
+				SetEffectCommandCount(i, j, j == CH1 ? 2 : 1);
 
 			// Finally, apply the Size Optimisations, the Subtune should have been reconstructed successfully!
-			AllSizeOptimisations();
-			importLog.AppendFormat("Reconstructed: Subtune %02X\n", GetActiveSubtune());
-			importLog.AppendFormat("Song Length: %02X, Pattern Length: %02X, Channels: %01X\n", GetSongLength(), GetPatternLength(), GetChannelCount());
-			importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n", GetSongSpeed(), GetInstrumentSpeed());
+			AllSizeOptimisations(i);
+			importLog.AppendFormat("Reconstructed: Subtune %02X\n", i);
+			importLog.AppendFormat("Song Length: %02X, Pattern Length: %02X, Channels: %01X\n", GetSongLength(i), GetPatternLength(i), GetChannelCount(i));
+			importLog.AppendFormat("Song Speed: %02X, Instrument Speed: %02X\n", GetSongSpeed(i), GetInstrumentSpeed(i));
 			importLog.AppendFormat("Loop Point found in Songline %02X\n\n", songlineStep[offset] - 1);
 		}
 
-		// Set the Active Subtune to the Default parameter, once the Legacy RMT Import procedure was completed
-		SetActiveSubtune(MODULE_DEFAULT_SUBTUNE);
-
 		// Workaround: Due to the way RMT was originally designed, the "Global" number of channels must be set here as well
-		g_tracks4_8 = GetChannelCount();
+		g_tracks4_8 = GetChannelCount(MODULE_DEFAULT_SUBTUNE);
 
 		// Final number of Subtunes that were imported
 		importLog.AppendFormat("Processed: %i Subtune(s) with All Size Optimisations.\n\n", GetSubtuneCount());
@@ -358,10 +558,10 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 // Decode Legacy RMT Module Data, Return True if successful
 // If an invalid parameter was found, settle for a compromise using the default values
 // The import procedure will be aborted if there is no suitable recovery, however!
-bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log)
+bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& log)
 {
 	// Make sure the Subtune is not a Null pointer
-	if (!subtune)
+	if (!pSubtune)
 		return false;
 
 	CString s;
@@ -371,8 +571,8 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 	BYTE mem[65536];
 	memset(mem, 0, 65536);
 
-	BYTE instrumentLoaded[PATTERN_INSTRUMENT_COUNT];
-	memset(instrumentLoaded, 0, PATTERN_INSTRUMENT_COUNT);
+	BYTE instrumentLoaded[INSTRUMENT_COUNT];
+	memset(instrumentLoaded, 0, INSTRUMENT_COUNT);
 
 	// Load the first RMT Module Block, in order to get all of the Pattern, Songline and Instrument Data
 	if (!LoadBinaryBlock(in, mem, fromAddr, toAddr))
@@ -386,16 +586,16 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 	char* identifier = (char*)mem + fromAddr;
 
 	// 4th byte: # of channels (4 or 8)
-	subtune->channelCount = mem[fromAddr + 3] & 0x0F;
+	pSubtune->channelCount = mem[fromAddr + 3] & 0x0F;
 
 	// 5th byte: track length
-	subtune->patternLength = mem[fromAddr + 4];
+	pSubtune->patternLength = mem[fromAddr + 4];
 
 	// 6th byte: song speed
-	subtune->songSpeed = mem[fromAddr + 5];
+	pSubtune->songSpeed = mem[fromAddr + 5];
 
 	// 7th byte: Instrument speed
-	subtune->instrumentSpeed = mem[fromAddr + 6];
+	pSubtune->instrumentSpeed = mem[fromAddr + 6];
 
 	// 8th byte: RMT format version (only needed for V0 Instruments, could be discarded otherwise)
 	BYTE version = mem[fromAddr + 7];
@@ -412,27 +612,27 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 	}
 
 	// Invalid Channel Count
-	if (subtune->channelCount != 4 && subtune->channelCount != 8)
+	if (pSubtune->channelCount != 4 && pSubtune->channelCount != 8)
 	{
-		subtune->channelCount = MODULE_STEREO;
+		pSubtune->channelCount = MODULE_CHANNEL_COUNT;
 		log.AppendFormat("Warning: Invalid number of Channels, 4 or 8 were expected\n");
-		log.AppendFormat("Default value of %02X will be used instead.\n\n", subtune->channelCount);
+		log.AppendFormat("Default value of %02X will be used instead.\n\n", pSubtune->channelCount);
 	}
 
 	// Invalid Song Speed
-	if (subtune->songSpeed < 1)
+	if (pSubtune->songSpeed < 1)
 	{
-		subtune->songSpeed = MODULE_SONG_SPEED;
+		pSubtune->songSpeed = MODULE_DEFAULT_SONG_SPEED;
 		log.AppendFormat("Warning: Song Speed could not be 0.\n");
-		log.AppendFormat("Default value of %02X will be used instead.\n\n", subtune->songSpeed);
+		log.AppendFormat("Default value of %02X will be used instead.\n\n", pSubtune->songSpeed);
 	}
 
 	// Invalid Instrument Speed
-	if (subtune->instrumentSpeed < 1 || subtune->instrumentSpeed > 8)
+	if (pSubtune->instrumentSpeed < 1 || pSubtune->instrumentSpeed > 8)
 	{
-		subtune->instrumentSpeed = MODULE_VBI_SPEED;
+		pSubtune->instrumentSpeed = MODULE_DEFAULT_VBI_SPEED;
 		log.AppendFormat("Warning: Instrument Speed could only be set between 1 and 8 inclusive.\n");
-		log.AppendFormat("Default value of %02X will be used instead.\n\n", subtune->instrumentSpeed);
+		log.AppendFormat("Default value of %02X will be used instead.\n\n", pSubtune->instrumentSpeed);
 	}
 
 	// Invalid Legacy RMT Format Version
@@ -444,21 +644,21 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 	}
 
 	// Import all the Legacy RMT Patterns
-	if (!ImportLegacyPatterns(subtune, mem, fromAddr))
+	if (!ImportLegacyPatterns(pSubtune, mem, fromAddr))
 	{
 		log.AppendFormat("Error: Corrupted or Invalid Pattern Data!\n\n");
 		return false;
 	}
 
 	// Import all the Legacy RMT Songlines
-	if (!ImportLegacySonglines(subtune, mem, fromAddr, toAddr))
+	if (!ImportLegacySonglines(pSubtune, mem, fromAddr, toAddr))
 	{
 		log.AppendFormat("Error: Corrupted or Invalid Songline Data!\n\n");
 		return false;
 	}
 
 	// Import all the Legacy RMT Instruments
-	if (!ImportLegacyInstruments(subtune, mem, fromAddr, version, instrumentLoaded))
+	if (!ImportLegacyInstruments(pSubtune, mem, fromAddr, version, instrumentLoaded))
 	{
 		log.AppendFormat("Error: Corrupted or Invalid Instrument Data!\n\n");
 		return false;
@@ -480,7 +680,7 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 	s.Format("");
 
 	// Copy the Song Name
-	for (ch = 0; ch < MODULE_TITLE_NAME_MAX && ptrName[ch]; ch++)
+	for (ch = 0; ch < MODULE_SONG_NAME_MAX && ptrName[ch]; ch++)
 		s.AppendFormat("%c", ptrName[ch]);
 
 	SetSongName(s);
@@ -489,7 +689,7 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 	WORD addrInstrumentNames = fromAddr + ch + 1;
 
 	// Process all Instruments
-	for (int i = 0; i < PATTERN_INSTRUMENT_COUNT; i++)
+	for (int i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Skip the Instrument if it was not loaded
 		if (!instrumentLoaded[i])
@@ -515,10 +715,10 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* subtune, CString& log
 }
 
 // Import Legacy RMT Pattern Data, Return True if successful
-bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress)
+bool CModule::ImportLegacyPatterns(TSubtune* pSubtune, BYTE* sourceMemory, WORD sourceAddress)
 {
 	// Make sure both the Subtune and Source Memory are not Null pointers
-	if (!subtune || !sourceMemory)
+	if (!pSubtune || !sourceMemory)
 		return false;
 
 	// Get the pointers used for decoding the Legacy RMT Pattern data
@@ -568,7 +768,7 @@ bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD s
 		BYTE* memPattern = sourceMemory + ptrOnePattern;
 
 		// Get the pointer to Pattern data used by the Subtune
-		TPattern* t = &subtune->channel[0].pattern[pattern];
+		TPattern* t = &pSubtune->channel[0].pattern[pattern];
 
 		WORD src = 0;
 		WORD gotoIndex = INVALID;
@@ -629,8 +829,8 @@ bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD s
 				if (!count)
 				{
 					// Speed, set Fxx command
-					t->row[line].command[CMD1].identifier = EFFECT_COMMAND_FXX;
-					t->row[line].command[CMD1].parameter = memPattern[src + 1];
+					t->row[line].effect[CMD1].command = EFFECT_COMMAND_FXX;
+					t->row[line].effect[CMD1].parameter = memPattern[src + 1];
 					src += 2;	// 2 bytes were processed
 				}
 				if (count == 0x80)
@@ -641,8 +841,8 @@ bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD s
 				if (count == 0xC0)
 				{
 					// End of Pattern, set a Dxx command here, no extra data to process
-					t->row[line - 1].command[CMD2].identifier = EFFECT_COMMAND_DXX;
-					t->row[line - 1].command[CMD2].parameter = EFFECT_PARAMETER_MIN;
+					t->row[line - 1].effect[CMD2].command = EFFECT_COMMAND_DXX;
+					t->row[line - 1].effect[CMD2].parameter = EFFECT_PARAMETER_MIN;
 					src = patternLength;
 				}
 				break;
@@ -659,15 +859,15 @@ bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD s
 		// The Pattern must to be "expanded" in order to be compatible, an equivalent for Smart Loop does not yet exist for the RMTE format
 		if (IsValidRow(smartLoop))
 		{
-			for (int j = 0; line + j < subtune->patternLength; j++)
+			for (int j = 0; line + j < pSubtune->patternLength; j++)
 			{
 				int k = line + j;
 				int l = smartLoop + j;
 				t->row[k].note = t->row[l].note;
 				t->row[k].instrument = t->row[l].instrument;
 				t->row[k].volume = t->row[l].volume;
-				t->row[k].command[CMD1].identifier = t->row[l].command[CMD1].identifier;
-				t->row[k].command[CMD1].parameter = t->row[l].command[CMD1].parameter;
+				t->row[k].effect[CMD1].command = t->row[l].effect[CMD1].command;
+				t->row[k].effect[CMD1].parameter = t->row[l].effect[CMD1].parameter;
 			}
 		}
 	}
@@ -677,10 +877,10 @@ bool CModule::ImportLegacyPatterns(TSubtune* subtune, BYTE* sourceMemory, WORD s
 }
 
 // Import Legacy RMT Songline Data, Return True if successful
-bool CModule::ImportLegacySonglines(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, WORD endAddress)
+bool CModule::ImportLegacySonglines(TSubtune* pSubtune, BYTE* sourceMemory, WORD sourceAddress, WORD endAddress)
 {
 	// Make sure both the Subtune and Source Memory are not Null pointers
-	if (!subtune || !sourceMemory)
+	if (!pSubtune || !sourceMemory)
 		return false;
 
 	// Variables for processing songline data
@@ -707,44 +907,44 @@ bool CModule::ImportLegacySonglines(TSubtune* subtune, BYTE* sourceMemory, WORD 
 		switch (data)
 		{
 		case 0xFE:	// Goto Songline commands are only valid from the first channel, but we know it's never used anywhere else
-			subtune->channel[channel].songline[line] = data;
-			subtune->channel[channel + 1].songline[line] = memSong[src + 1];	// Set the songline index number in Channel 2
-			subtune->channel[channel + 2].songline[line] = INVALID;	// The Goto songline address isn't needed
-			subtune->channel[channel + 3].songline[line] = INVALID;	// Set the remaining channels to INVALID
-			channel = subtune->channelCount;	// Set the channel index to the channel count to trigger the condition below
-			src += subtune->channelCount;	// The number of bytes processed is equal to the number of channels
+			pSubtune->channel[channel].songline[line] = data;
+			pSubtune->channel[channel + 1].songline[line] = memSong[src + 1];	// Set the songline index number in Channel 2
+			pSubtune->channel[channel + 2].songline[line] = INVALID;	// The Goto songline address isn't needed
+			pSubtune->channel[channel + 3].songline[line] = INVALID;	// Set the remaining channels to INVALID
+			channel = pSubtune->channelCount;	// Set the channel index to the channel count to trigger the condition below
+			src += pSubtune->channelCount;	// The number of bytes processed is equal to the number of channels
 			break;
 
 		default:	// An empty pattern at 0xFF is also valid for the RMTE format
-			subtune->channel[channel].songline[line] = data;
+			pSubtune->channel[channel].songline[line] = data;
 			channel++;	// 1 pattern per channel, for each indexed songline
 			src++;	// 1 byte was processed
 		}
 
 		// 1 songline was processed when the channel count is equal to the number of channels
-		if (channel >= subtune->channelCount)
+		if (channel >= pSubtune->channelCount)
 		{
 			channel = 0;	// Reset the channel index
 			line++;	// Increment the songline count by 1
 		}
 
 		// Break out of the loop if the maximum number of songlines was processed
-		if (line >= SONGLINE_MAX)
+		if (line >= SONGLINE_COUNT)
 			break;
 	}
 
 	// Set the Songlength to the number of decoded Songlines
-	subtune->songLength = (BYTE)line;
+	pSubtune->songLength = (BYTE)line;
 
 	// Legacy RMT Songlines should have been imported successfully
 	return true;
 }
 
 // Import Legacy RMT Instrument Data, Return True if successful
-bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WORD sourceAddress, BYTE version, BYTE* isLoaded)
+bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WORD sourceAddress, BYTE version, BYTE* isLoaded)
 {
 	// Make sure both the Subtune and Source Memory are not Null pointers
-	if (!subtune || !sourceMemory)
+	if (!pSubtune || !sourceMemory)
 		return false;
 
 	// Get the pointers used for decoding the Legacy RMT Instrument data
@@ -755,7 +955,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 	WORD instrumentCount = (ptrEnd - ptrInstruments) / 2;
 
 	// Abort the import procedure if the number of Instruments detected is invalid
-	if (!IsValidInstrument(instrumentCount))
+	if (instrumentCount > INSTRUMENT_COUNT)
 		return false;
 
 	// Decode all Instruments, TODO: Add exceptions for V0 Instruments
@@ -770,101 +970,224 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 
 		// Initialise the equivalent RMTE Instrument, then get the pointer to it for the next step
 		CreateInstrument(i);
-		TInstrumentV2* ai = GetInstrument(i);
+		TInstrumentV2* pInstrument = GetInstrument(i);
+
+		// Create all Envelopes and Tables, unique for each Instruments
+		CreateVolumeEnvelope(i);
+		CreateTimbreEnvelope(i);
+		CreateAudctlEnvelope(i);
+		CreateTriggerEnvelope(i);
+		CreateEffectEnvelope(i);
+		CreateNoteTable(i);
+		CreateFreqTable(i);
+
+		// Assign everything in the Instrument Index once the data was initialised
+		pInstrument->index.volume = i;
+		pInstrument->index.timbre = i;
+		pInstrument->index.audctl = i;
+		pInstrument->index.trigger = i;
+		pInstrument->index.effect = i;
+		pInstrument->index.note = i;
+		pInstrument->index.freq = i;
 
 		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
 		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
-		BYTE envelopePtr = memInstrument[0];
-
-		BYTE tableLength = memInstrument[0] - 12;
-		BYTE tableGoto = memInstrument[1] - 12;
-
-		BYTE envelopeLength = (memInstrument[2] - (memInstrument[0] + 1)) / 3;
-		BYTE envelopeGoto = (memInstrument[3] - (memInstrument[0] + 1)) / 3;
-
-		BYTE tableType = memInstrument[4] >> 7;				// Table Type, 0 = Note, 1 = Freq
-		BYTE tableMode = (memInstrument[4] >> 6) & 0x01;	// Table Mode, 0 = Set, 1 = Additive
-		BYTE tableSpeed = memInstrument[4] & 0x3F;			// Table Speed, used to offset the equivalent Tables
-
-		BYTE initialAudctl = memInstrument[5];				// AUDCTL, used to initialise the equivalent Envelope
-
-		//BYTE volumeSlide = memInstrument[6];				// Volume Slide, not supported by the RMTE format
-		//BYTE volumeMinimum = memInstrument[7] >> 4;		// Volume Minimum, not supported by the RMTE format
-		//BYTE vibratoDelay = memInstrument[8];				// Vibrato/Freq Shift Delay, not supported by the RMTE format
-		//BYTE vibrato = memInstrument[9] & 0x03;			// Vibrato, not supported by the RMTE format
-		//BYTE freqShift = memInstrument[10];				// Freq Shift, not supported by the RMTE format
+		BYTE envelopePtr = memInstrument[0];							// Pointer to Instrument Envelope
+		BYTE tablePtr = 12;												// Pointer to Instrument Table
 
 		// Set the equivalent data to the RMTE instrument, with respect to boundaries
-		ai->tableLength = tableLength <= INSTRUMENT_TABLE_INDEX_MAX ? tableLength : 0;
-		ai->tableLoop = tableGoto <= tableLength ? tableGoto : 0;
-		ai->tableSpeed = tableSpeed;
-		ai->tableMode = tableMode;
-		ai->envelopeLength = envelopeLength <= ENVELOPE_MAX_COLUMNS ? envelopeLength : 0;
-		ai->envelopeLoop = envelopeGoto <= envelopeLength ? envelopeGoto : 0;
+		BYTE tableLength = envelopePtr - tablePtr + 1;
+		BYTE tableLoop = memInstrument[1] - tablePtr;
 
-		// Fill the equivalent RMTE tables based on the tableMode parameter
-		for (int j = 0; j <= ai->tableLength; j++)
+		BYTE envelopeLength = ((memInstrument[2] - envelopePtr + 1) / 3) + 1;
+		BYTE envelopeLoop = ((memInstrument[3] - envelopePtr + 1) / 3);
+		BYTE envelopeSpeed = 0x01;
+
+		BYTE tableMode = (memInstrument[4] >> 6) & 0x01;				// Table Mode, 0 = Set, 1 = Additive
+		BYTE tableSpeed = (memInstrument[4] & 0x3F) + 1;				// Table Speed, used to offset the equivalent Tables
+
+		BYTE tableType = memInstrument[4] >> 7;							// Table Type, 0 = Note, 1 = Freq
+		BYTE initialAudctl = memInstrument[5];							// AUDCTL, used to initialise the equivalent Envelope
+		BYTE initialTimbre = 0x0A;										// RMT 1.34 Distortion 6 uses the Distortion A by default
+		bool initialSkctl = false;										// SKCTL, used for the Two-Tone Filter Trigger Envelope
+
+		BYTE delay = memInstrument[8];									// Vibrato/Freq Shift Delay
+		BYTE vibrato = memInstrument[9] & 0x03;							// Vibrato
+		BYTE freqShift = memInstrument[10];								// Freq Shift
+
+		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
+		pInstrument->volumeSustain = memInstrument[7] >> 4;				// Volume Minimum
+
+		// Import the Vibrato with adjustments to make sound similar to the original implementation
+		switch (vibrato)
 		{
-			ai->noteTable[j] = !tableType ? memInstrument[12 + j] : 0;
-			ai->freqTable[j] = tableType ? memInstrument[12 + j] : 0;
+		case 0x01: vibrato = 0x0F; break;
+		case 0x02: vibrato = 0x0B; break;
+		case 0x03: vibrato = 0x07; break;
 		}
 
+		// Overwrite the Delay, Vibrato and Freqshift parameters with updated values if changes were needed
+		pInstrument->delay = delay? delay - 1 : 0x00;
+		pInstrument->vibrato = delay ? vibrato : 0x00;
+		pInstrument->freqShift = delay ? freqShift : 0x00;
+
+		// Fill the equivalent RMTE tables based on the tableType parameter
+		if (tableLength > 32)
+			tableLength = 0x00;
+
+		if (tableLoop > tableLength)
+			tableLoop = 0x00;
+
+		if (envelopeLength > 48)
+			envelopeLength = 0x00;
+
+		if (envelopeLoop > envelopeLength)
+			envelopeLoop = 0x00;
+
+		// Table Type is either Freq or Note, so pick whichever is suitable for the next part
+		TInstrumentTable* pTable = tableType ? m_freqIndex[i] : m_noteIndex[i];
+
+		// Assign the necessary flags and parameters to it
+		pTable->flag.isLooped = true;
+		pTable->flag.isAbsolute = false;
+		pTable->flag.isAdditive = tableMode;
+		pTable->flag.isReleased = false;
+
+		pTable->parameter.length = tableLength;
+		pTable->parameter.loop = tableLoop;
+		pTable->parameter.release = 0x00;
+		pTable->parameter.speed = tableSpeed;
+		
+		// Fill the appropriate Table with these values
+		for (int j = 0; j < tableLength; j++)
+			pTable->table[j] = memInstrument[tablePtr + j];
+
+		// Enable all envelopes, since everything may be used at once!
+		TParameter parameter{ envelopeLength, envelopeLoop, 0x00, envelopeSpeed };
+		TFlag flag{ true, false, false, false };
+
+		// Get the pointer to all the Envelopes that will be filled with the imported data
+		TInstrumentEnvelope* pVolume = m_volumeIndex[i], * pTimbre = m_timbreIndex[i], * pAudctl = m_audctlIndex[i];
+		TInstrumentTrigger* pTrigger = m_triggerIndex[i];
+		TInstrumentEffect* pEffect = m_effectIndex[i];
+
+		// Assign the necessary flags and parameters to all of them
+		pVolume->parameter = pTimbre->parameter = pAudctl->parameter = pTrigger->parameter = pEffect->parameter = parameter;
+		pVolume->flag = pTimbre->flag = pAudctl->flag = pTrigger->flag = pEffect->flag = flag;
+
 		// Fill the equivalent RMTE envelopes, which might include some compromises due to the format differences
-		for (int j = 0; j <= ai->envelopeLength; j++)
+		for (int j = 0; j < envelopeLength; j++)
 		{
 			// Get the 3 bytes used by the original RMT Envelope format
-			BYTE envelopeVolume = memInstrument[(memInstrument[0] + 1) + (j * 3)];
-			BYTE envelopeCommand = memInstrument[(memInstrument[0] + 1) + (j * 3) + 1];
-			BYTE envelopeParameter = memInstrument[(memInstrument[0] + 1) + (j * 3) + 2];
+			BYTE envelopeVolume = memInstrument[envelopePtr + 1 + (j * 3)];
+			BYTE envelopeCommand = memInstrument[envelopePtr + 1 + (j * 3) + 1];
+			BYTE envelopeParameter = memInstrument[envelopePtr + 1 + (j * 3) + 2];
 
 			// Envelope Effect Command, from 0 to 7
 			BYTE envelopeEffectCommand = (envelopeCommand >> 4) & 0x07;
 
+			// Envelope Distortion, from 0 to E, in steps of 2
+			BYTE distortion = envelopeCommand & 0x0E;
+
+			// Volume Only Mode flag, used for the Volume Envelope when it is set
+			bool isVolumeOnly = false;
+
 			// The Envelope Effect Command is used for compatibility tweaks, which may or may not provide perfect results
 			switch (envelopeEffectCommand)
 			{
-			case 0x07:	// Overwrite the initialAudctl parameter, for a pseudo AUDCTL envelope when it is used multiple times (Patch16 only)
+			case 0x07:
+				// Overwrite the initialAudctl parameter, for a pseudo AUDCTL envelope when it is used multiple times (Patch16 only)
 				if (envelopeParameter < 0xFD)
-				{
 					initialAudctl = envelopeParameter;
-					envelopeParameter = envelopeEffectCommand = 0;
+
+				else if (envelopeParameter == 0xFD)
+					initialSkctl = false;
+
+				else if (envelopeParameter == 0xFE)
+					initialSkctl = true;
+
+				else if (envelopeParameter == 0xFF)
+					isVolumeOnly = true;
+
+				envelopeParameter = envelopeEffectCommand = 0x00;
+				break;
+
+			case 0x06:
+				// Various hacks were used with this command in the RMT 1.34 driver, such as the Distortion 6... Distortion used in 16-bit mode
+				if (distortion == 0x06)
+				{
+					initialTimbre = envelopeParameter & 0x0E;
+					envelopeParameter = envelopeEffectCommand = 0x00;
 				}
 				break;
 			}
 
-			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
-			ai->commandEnvelope[j] = envelopeEffectCommand;
-			ai->parameterEnvelope[j] = envelopeParameter;
+			// See above? Yeah, that, it does the thing, amazing isn't it?
+			if (distortion == 0x06)
+			{
+				// The original "Auto16Bit" trigger ;)
+				pTrigger->trigger[j].auto16Bit = true;
+				distortion = initialTimbre;
+			}
 
-			// Envelope Distortion, from 0 to E, in steps of 2
-			BYTE distortion = envelopeCommand & 0x0E;
-
+			// To be converted to the equivalent Timbre parameter
 			switch (distortion)
 			{
-			case 0x00: distortion = TIMBRE_PINK_NOISE; break;
-			case 0x02: distortion = TIMBRE_BELL; break;
-			case 0x04: distortion = TIMBRE_SMOOTH_4; break;
-			case 0x08: distortion = TIMBRE_WHITE_NOISE; break;
+			case 0x00:
+				pTimbre->envelope[j] = TIMBRE_PINK_NOISE;
+				break;
+
+			case 0x02:
+				pTimbre->envelope[j] = TIMBRE_BELL;
+				break;
+
+			case 0x04:
+				pTimbre->envelope[j] = TIMBRE_SMOOTH_4;
+				break;
+
+			case 0x08:
+				pTimbre->envelope[j] = TIMBRE_WHITE_NOISE;
+				break;
+
 			case 0x06:
-			case 0x0A: distortion = TIMBRE_PURE; break;
-			case 0x0C: distortion = TIMBRE_BUZZY_C; break;
-			case 0x0E: distortion = TIMBRE_GRITTY_C; break;
+				// The original "Auto16Bit" trigger ;)
+				//pTrigger->trigger[j].auto16Bit = true;
+
+			case 0x0A:
+				pTimbre->envelope[j] = TIMBRE_PURE;
+				break;
+
+			case 0x0C:
+				pTimbre->envelope[j] = TIMBRE_BUZZY_C;
+				break;
+
+			case 0x0E:
+				pTimbre->envelope[j] = TIMBRE_GRITTY_C;
+				break;
 			}
-			
-			// Distortion Envelope, converted the equivalent Timbre parameter
-			ai->distortionEnvelope[j] = distortion;
 
 			// Envelope Volume, only Left POKEY volume is supported by the RMTE format
-			ai->volumeEnvelope[j] = envelopeVolume & 0x0F;
+			pVolume->envelope[j] = envelopeVolume & 0x0F;
+
+			// Set the Volume Only Mode as well if needed
+			if (isVolumeOnly)
+				pVolume->envelope[j] |= 0x10;
 
 			// Envelope AUDCTL
-			ai->audctlEnvelope[j] = initialAudctl;
+			pAudctl->envelope[j] = initialAudctl;
 
-			// Autofilter, not supported (yet?) by the RMTE format
-			//ai->autofilterEnvelope[j] = envelopeCommand >> 7;
+			// AutoFilter Trigger
+			pTrigger->trigger[j].autoFilter = envelopeCommand >> 7;
 
-			// Portamento, not supported (and unlikely to be) by the RMTE format
-			//ai->portamentoEnvelope[j] = envelopeCommand & 0x01;
+			// AutoTwoTone Trigger
+			pTrigger->trigger[j].autoTwoTone = initialSkctl;
+
+			// Portamento a Pattern Effect Command could be set where the Portamento is expected as a compromise
+			pTrigger->trigger[j].autoPortamento = envelopeCommand & 0x01;
+
+			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
+			pEffect->effect[j].command = envelopeEffectCommand;
+			pEffect->effect[j].parameter = envelopeParameter;
 		}
 
 		// Instrument was loaded
@@ -881,45 +1204,340 @@ bool CModule::ImportLegacyInstruments(TSubtune* subtune, BYTE* sourceMemory, WOR
 // These are broken down into generic functions, to make recycling for other uses fairly easy
 //
 
+TChannel* CModule::GetChannel(BYTE subtune, BYTE channel)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune && IsValidChannel(channel))
+		return &pSubtune->channel[channel];
+
+	return NULL;
+}
+
+TPattern* CModule::GetPattern(BYTE subtune, BYTE channel, BYTE pattern)
+{
+	TChannel* pChannel = GetChannel(subtune, channel);
+
+	if (pChannel)
+		return &pChannel->pattern[pattern];
+
+	return NULL;
+}
+
+TPattern* CModule::GetIndexedPattern(BYTE subtune, BYTE channel, BYTE songline)
+{
+	TChannel* pChannel = GetChannel(subtune, channel);
+
+	if (pChannel)
+		return GetPattern(subtune, channel, pChannel->songline[songline]);
+
+	return NULL;
+}
+
+TRow* CModule::GetRow(BYTE subtune, BYTE channel, BYTE pattern, BYTE row)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune && IsValidChannel(channel))
+		return &pSubtune->channel[channel].pattern[pattern].row[row];
+
+	return NULL;
+}
+
+const BYTE CModule::GetPatternInSongline(BYTE subtune, BYTE channel, BYTE songline)
+{
+	TChannel* pChannel = GetChannel(subtune, channel);
+
+	if (pChannel)
+		return pChannel->songline[songline];
+
+	return INVALID;
+}
+
+const BYTE CModule::GetPatternRowNote(BYTE subtune, BYTE channel, BYTE pattern, BYTE row)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow)
+		return pRow->note;
+
+	return INVALID;
+}
+
+const BYTE CModule::GetPatternRowInstrument(BYTE subtune, BYTE channel, BYTE pattern, BYTE row)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow)
+		return pRow->instrument;
+
+	return INVALID;
+}
+
+const BYTE CModule::GetPatternRowVolume(BYTE subtune, BYTE channel, BYTE pattern, BYTE row)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow)
+		return pRow->volume;
+
+	return INVALID;
+}
+
+const BYTE CModule::GetPatternRowEffectCommand(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE column)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow && IsValidCommandColumn(column))
+		return pRow->effect[column].command;
+
+	return INVALID;
+}
+
+const BYTE CModule::GetPatternRowEffectParameter(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE column)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow && IsValidCommandColumn(column))
+		return pRow->effect[column].parameter;
+
+	return INVALID;	// Or maybe 0?
+}
+
+
+void CModule::SetPatternInSongline(BYTE subtune, BYTE channel, BYTE songline, BYTE pattern)
+{
+	TChannel* pChannel = GetChannel(subtune, channel);
+
+	if (pChannel)
+		pChannel->songline[songline] = pattern;
+}
+
+void CModule::SetPatternRowNote(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE note)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow)
+		pRow->note = note;
+}
+
+void CModule::SetPatternRowInstrument(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE instrument)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow)
+		pRow->note = instrument;
+}
+
+void CModule::SetPatternRowVolume(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE volume)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow)
+		pRow->volume = volume;
+}
+
+void CModule::SetPatternRowCommand(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE column, BYTE effectCommand, BYTE effectParameter)
+{
+	TRow* pRow = GetRow(subtune, channel, pattern, row);
+
+	if (pRow && IsValidCommandColumn(column))
+	{
+		pRow->effect[column].command = effectCommand;
+		pRow->effect[column].parameter = effectParameter;
+	}
+}
+
+
+const char* CModule::GetSubtuneName(BYTE subtune)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		return pSubtune->name;
+
+	return NULL;
+}
+
+const BYTE CModule::GetSongLength(BYTE subtune)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		return pSubtune->songLength;
+
+	return NULL;
+}
+
+const BYTE CModule::GetPatternLength(BYTE subtune)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		return pSubtune->patternLength;
+
+	return NULL;
+}
+
+const BYTE CModule::GetChannelCount(BYTE subtune)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		return pSubtune->channelCount;
+
+	return NULL;
+}
+
+const BYTE CModule::GetSongSpeed(BYTE subtune)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		return pSubtune->songSpeed;
+
+	return NULL;
+}
+
+const BYTE CModule::GetInstrumentSpeed(BYTE subtune)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		return pSubtune->instrumentSpeed;
+
+	return NULL;
+}
+
+const BYTE CModule::GetEffectCommandCount(BYTE subtune, BYTE channel)
+{
+	TChannel* pChannel = GetChannel(subtune, channel);
+
+	if (pChannel)
+		return pChannel->effectCount;
+
+	return NULL;
+}
+
+void CModule::SetSubtuneName(BYTE subtune, const char* name)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		strncpy_s(pSubtune->name, name, SUBTUNE_NAME_MAX);
+}
+
+void CModule::SetSongLength(BYTE subtune, BYTE length)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		pSubtune->songLength = length;
+}
+
+void CModule::SetPatternLength(BYTE subtune, BYTE length)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		pSubtune->patternLength = length;
+}
+
+void CModule::SetChannelCount(BYTE subtune, BYTE count)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune && IsValidChannel(count))
+		pSubtune->channelCount = count;
+}
+
+void CModule::SetSongSpeed(BYTE subtune, BYTE speed)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		pSubtune->songSpeed = speed;
+}
+
+void CModule::SetInstrumentSpeed(BYTE subtune, BYTE speed)
+{
+	TSubtune* pSubtune = GetSubtune(subtune);
+
+	if (pSubtune)
+		pSubtune->instrumentSpeed = speed;
+}
+
+void CModule::SetEffectCommandCount(BYTE subtune, BYTE channel, BYTE column)
+{
+	TChannel* pChannel = GetChannel(subtune, channel);
+
+	if (pChannel)
+		pChannel->effectCount = column;
+}
+
+
 const BYTE CModule::GetSubtuneCount()
 {
 	BYTE count = 0;
 
-	for (int i = 0; i < SUBTUNE_MAX; i++)
-		count += m_index[i] != NULL;
+	for (int i = 0; i < SUBTUNE_COUNT; i++)
+		count += m_subtuneIndex[i] != NULL;
 
 	return count;
 }
 
-// Identify the shortest pattern length relative to the other ones used in the same Songline
-BYTE CModule::GetShortestPatternLength(int songline)
+
+const char* CModule::GetInstrumentName(int instrument)
 {
-	return GetShortestPatternLength(GetSubtuneIndex(), songline);
+	TInstrumentV2* pInstrument = GetInstrument(instrument);
+
+	if (pInstrument)
+		return pInstrument->name;
+
+	return NULL;
 }
 
-BYTE CModule::GetShortestPatternLength(TSubtune* subtune, int songline)
+void CModule::SetInstrumentName(int instrument, const char* name)
+{
+	TInstrumentV2* pInstrument = GetInstrument(instrument);
+
+	if (pInstrument)
+		strncpy_s(pInstrument->name, name, INSTRUMENT_NAME_MAX);
+}
+
+
+// Identify the shortest pattern length relative to the other ones used in the same Songline
+// TODO: Move to CSong
+BYTE CModule::GetShortestPatternLength(int subtune, int songline)
+{
+	return GetShortestPatternLength(GetSubtune(subtune), songline);
+}
+
+// Identify the shortest pattern length relative to the other ones used in the same Songline
+// TODO: Move to CSong
+BYTE CModule::GetShortestPatternLength(TSubtune* pSubtune, int songline)
 {
 	// Make sure the Subtune is not a Null pointer
-	if (!subtune)
+	if (!pSubtune)
 		return 0;
 
 	// Get the current Pattern Length first
-	BYTE patternLength = subtune->patternLength;
+	BYTE patternLength = pSubtune->patternLength;
 
 	// All channels will be processed in order to identify the shortest Pattern
-	for (int i = 0; i < subtune->channelCount; i++)
+	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
 		// Get the Pattern Index used in the Songline first
-		BYTE pattern = subtune->channel[i].songline[songline];
+		BYTE pattern = pSubtune->channel[i].songline[songline];
 
 		// Check for each Row that could be used within the shortest Pattern
 		for (int j = 0; j < patternLength; j++)
 		{
 			// Check for all Effect Commands used in each Row
-			for (int k = 0; k < subtune->effectCommandCount[i]; k++)
+			for (int k = 0; k < pSubtune->channel[i].effectCount; k++)
 			{
 				// Get the Effect Command Identifier, the Parameter is not needed here
-				BYTE command = subtune->channel[i].pattern[pattern].row[j].command[k].identifier;
+				BYTE command = pSubtune->channel[i].pattern[pattern].row[j].effect[k].command;
 
 				// Set the Pattern Length to the current Row Index if a match is found
 				if (command == 0x0B || command == 0x0D)
@@ -937,23 +1555,23 @@ BYTE CModule::GetShortestPatternLength(TSubtune* subtune, int songline)
 }
 
 // Return True if a Pattern is used at least once within a Songline Index
-bool CModule::IsUnusedPattern(int channel, int pattern)
+bool CModule::IsUnusedPattern(int subtune, int channel, int pattern)
 {
-	return IsUnusedPattern(GetChannelIndex(channel), pattern);
+	return IsUnusedPattern(GetChannel(subtune, channel), pattern, GetSongLength(subtune));
 }
 
 // Return True if a Pattern is used at least once within a Songline Index
-bool CModule::IsUnusedPattern(TIndex* index, int pattern)
+bool CModule::IsUnusedPattern(TChannel* pChannel, int pattern, int songlength)
 {
 	// Make sure the Index is not a Null pointer
-	if (!index)
+	if (!pChannel)
 		return false;
 
 	// All Songlines in the Channel Index will be processed
-	for (int i = 0; i < GetSongLength(); i++)
+	for (int i = 0; i < songlength; i++)
 	{
 		// As soon as a match is found, we know for sure the Pattern is used at least once
-		if (index->songline[i] == pattern)
+		if (pChannel->songline[i] == pattern)
 			return false;
 	}
 
@@ -962,38 +1580,38 @@ bool CModule::IsUnusedPattern(TIndex* index, int pattern)
 }
 
 // Return True if a Pattern is Empty
-bool CModule::IsEmptyPattern(int channel, int pattern)
+bool CModule::IsEmptyPattern(int subtune, int channel, int pattern)
 {
-	return IsEmptyPattern(GetPattern(channel, pattern));
+	return IsEmptyPattern(GetPattern(subtune, channel, pattern));
 }
 
 // Return True if a Pattern is Empty
-bool CModule::IsEmptyPattern(TPattern* pattern)
+bool CModule::IsEmptyPattern(TPattern* pPattern)
 {
 	// Make sure the Pattern is not a Null pointer
-	if (!pattern)
+	if (!pPattern)
 		return false;
 
 	// All Rows in the Pattern Index will be processed
-	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	for (int i = 0; i < ROW_COUNT; i++)
 	{
 		// If there is a Note, it's not empty
-		if (pattern->row[i].note != PATTERN_NOTE_EMPTY)
+		if (pPattern->row[i].note != NOTE_EMPTY)
 			return false;
 
 		// If there is an Instrument, it's not empty
-		if (pattern->row[i].instrument != PATTERN_INSTRUMENT_EMPTY)
+		if (pPattern->row[i].instrument != INSTRUMENT_EMPTY)
 			return false;
 
 		// If there is a Volume, it's not empty
-		if (pattern->row[i].volume != PATTERN_VOLUME_EMPTY)
+		if (pPattern->row[i].volume != VOLUME_EMPTY)
 			return false;
 
 		// If there is an Effect Command, it's not empty
-		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
 		{
 			// Only the Identifier is checked, since the Parameter cannot be used alone
-			if (pattern->row[i].command[j].identifier != PATTERN_EFFECT_EMPTY)
+			if (pPattern->row[i].effect[j].command != EFFECT_EMPTY)
 				return false;
 		}
 	}
@@ -1002,35 +1620,72 @@ bool CModule::IsEmptyPattern(TPattern* pattern)
 	return true;
 }
 
+// Return True if a Row is Empty
+bool CModule::IsEmptyRow(int subtune, int channel, int pattern, int row)
+{
+	return IsEmptyRow(GetRow(subtune, channel, pattern, row));
+}
+
+// Return True if a Row is Empty
+bool CModule::IsEmptyRow(TRow* pRow)
+{
+	// Make sure the Row is not a Null pointer
+	if (!pRow)
+		return false;
+
+	// If there is a Note, it's not empty
+	if (pRow->note != NOTE_EMPTY)
+		return false;
+
+	// If there is an Instrument, it's not empty
+	if (pRow->instrument != INSTRUMENT_EMPTY)
+		return false;
+
+	// If there is a Volume, it's not empty
+	if (pRow->volume != VOLUME_EMPTY)
+		return false;
+
+	// If there is an Effect Command, it's not empty
+	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
+	{
+		// Only the Identifier is checked, since the Parameter cannot be used alone
+		if (pRow->effect[i].command != EFFECT_EMPTY)
+			return false;
+	}
+
+	// Otherwise, the Row is most likely empty
+	return true;
+}
+
 // Compare 2 Patterns for identical data, Return True if successful
-bool CModule::IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationPattern)
+bool CModule::IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern)
 {
 	// Make sure both the Patterns from source and destination are not Null pointers
-	if (!sourcePattern || !destinationPattern)
+	if (!pFromPattern || !pToPattern)
 		return false;
 
 	// All Rows in the Pattern Index will be processed
-	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	for (int i = 0; i < ROW_COUNT; i++)
 	{
 		// If there is a different Note, it's not identical
-		if (sourcePattern->row[i].note != destinationPattern->row[i].note)
+		if (pFromPattern->row[i].note != pToPattern->row[i].note)
 			return false;
 
 		// If there is a different Instrument, it's not identical
-		if (sourcePattern->row[i].instrument != destinationPattern->row[i].instrument)
+		if (pFromPattern->row[i].instrument != pToPattern->row[i].instrument)
 			return false;
 
 		// If there is a different Volume, it's not identical
-		if (sourcePattern->row[i].volume != destinationPattern->row[i].volume)
+		if (pFromPattern->row[i].volume != pToPattern->row[i].volume)
 			return false;
 
 		// If there is a different Effect Command, it's not identical
-		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
 		{
-			if (sourcePattern->row[i].command[j].identifier != destinationPattern->row[i].command[j].identifier)
+			if (pFromPattern->row[i].effect[j].command != pToPattern->row[i].effect[j].command)
 				return false;
 
-			if (sourcePattern->row[i].command[j].parameter != destinationPattern->row[i].command[j].parameter)
+			if (pFromPattern->row[i].effect[j].parameter != pToPattern->row[i].effect[j].parameter)
 				return false;
 		}
 	}
@@ -1040,30 +1695,24 @@ bool CModule::IsIdenticalPattern(TPattern* sourcePattern, TPattern* destinationP
 }
 
 // Duplicate a Pattern used in a Songline, Return True if successful
-bool CModule::DuplicatePatternInSongline(int channel, int songline, int pattern)
+bool CModule::DuplicatePatternInSongline(int subtune, int channel, int songline, int pattern)
 {
 	// Find the first empty and unused Pattern that is available
-	for (int i = 0; i < TRACK_PATTERN_MAX; i++)
+	for (int i = 0; i < PATTERN_COUNT; i++)
 	{
 		// Ignore the Pattern that is being duplicated
 		if (i == pattern)
 			continue;
 
 		// If the Pattern is empty and unused, it will be used for the duplication
-		if (IsUnusedPattern(channel, i) && IsEmptyPattern(channel, i))
+		if (IsUnusedPattern(subtune, channel, i) && IsEmptyPattern(subtune, channel, i))
 		{
-			TPattern* source = GetPattern(channel, pattern);
-			TPattern* destination = GetPattern(channel, i);
-
-			// If the Pattern duplication failed, nothing will be changed
-			if (!CopyPattern(source, destination))
-				break;
-
-			// Replace the Pattern used in the Songline Index with the new one
-			SetPatternInSongline(channel, songline, i);
-
-			// Pattern duplication was completed successfully
-			return true;
+			// Replace the Pattern used in the Songline Index with the new one as well
+			if (CopyPattern(GetPattern(subtune, channel, pattern), GetPattern(subtune, channel, i)))
+			{
+				SetPatternInSongline(subtune, channel, songline, i);
+				return true;
+			}
 		}
 	}
 
@@ -1072,43 +1721,43 @@ bool CModule::DuplicatePatternInSongline(int channel, int songline, int pattern)
 }
 
 // Copy data from source Pattern to destination Pattern, Return True if successful
-bool CModule::CopyPattern(TPattern* sourcePattern, TPattern* destinationPattern)
+bool CModule::CopyPattern(TPattern* pFromPattern, TPattern* pToPattern)
 {
 	// Make sure both the Patterns from source and destination are not Null pointers
-	if (!sourcePattern || !destinationPattern)
+	if (!pFromPattern || !pToPattern)
 		return false;
 	
 	// Otherwise, copying Pattern data is pretty straightforward
-	*destinationPattern = *sourcePattern;
+	*pToPattern = *pFromPattern;
 
 	// Pattern data should have been copied successfully
 	return true;
 }
 
 // Clear data from Pattern, Return True if successful
-bool CModule::ClearPattern(int channel, int pattern)
+bool CModule::ClearPattern(int subtune, int channel, int pattern)
 {
-	return ClearPattern(GetPattern(channel, pattern));
+	return ClearPattern(GetPattern(subtune, channel, pattern));
 }
 
 // Clear data from Pattern, Return True if successful
-bool CModule::ClearPattern(TPattern* destinationPattern)
+bool CModule::ClearPattern(TPattern* pPattern)
 {
 	// Make sure the Pattern is not a Null pointer
-	if (!destinationPattern)
+	if (!pPattern)
 		return false;
 
 	// Set all indexed Rows in the Pattern to empty values
-	for (int i = 0; i < TRACK_ROW_MAX; i++)
+	for (int i = 0; i < ROW_COUNT; i++)
 	{
-		destinationPattern->row[i].note = PATTERN_NOTE_EMPTY;
-		destinationPattern->row[i].instrument = PATTERN_INSTRUMENT_EMPTY;
-		destinationPattern->row[i].volume = PATTERN_VOLUME_EMPTY;
+		pPattern->row[i].note = NOTE_EMPTY;
+		pPattern->row[i].instrument = INSTRUMENT_EMPTY;
+		pPattern->row[i].volume = VOLUME_EMPTY;
 
-		for (int j = 0; j < PATTERN_ACTIVE_EFFECT_MAX; j++)
+		for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
 		{
-			destinationPattern->row[i].command[j].identifier = PATTERN_EFFECT_EMPTY;
-			destinationPattern->row[i].command[j].parameter = EFFECT_PARAMETER_MIN;
+			pPattern->row[i].effect[j].command = EFFECT_EMPTY;
+			pPattern->row[i].effect[j].parameter = EFFECT_PARAMETER_MIN;
 		}
 	}
 
@@ -1117,156 +1766,183 @@ bool CModule::ClearPattern(TPattern* destinationPattern)
 }
 
 // Copy data from source Index to destination Index, Return True if successful
-bool CModule::CopyIndex(TIndex* sourceIndex, TIndex* destinationIndex)
+bool CModule::CopyChannel(TChannel* pFromChannel, TChannel* pToChannel)
 {
 	// Make sure both the Indexes from source and destination are not Null pointers
-	if (!sourceIndex || !destinationIndex)
+	if (!pFromChannel || !pToChannel)
 		return false;
 
 	// Otherwise, copying Index data is pretty straightforward
-	*destinationIndex = *sourceIndex;
+	*pToChannel = *pFromChannel;
 
 	// Index data should have been copied successfully
 	return true;
 }
 
 // Copy data from source Subtune to destination Subtune, Return True if successful
-bool CModule::CopySubtune(TSubtune* sourceSubtune, TSubtune* destinationSubtune)
+bool CModule::CopySubtune(TSubtune* pFromSubtune, TSubtune* pToSubtune)
 {
 	// Make sure both the Subtunes from source and destination are not Null pointers
-	if (!sourceSubtune || !destinationSubtune)
+	if (!pFromSubtune || !pToSubtune)
 		return false;
 
 	// Otherwise, copying Index data is pretty straightforward
-	*destinationSubtune = *sourceSubtune;
+	*pToSubtune = *pFromSubtune;
 
 	// Subtune data should have been copied successfully
 	return true;
 }
 
-// Duplicate a Pattern Index from source Channel Index to destination Channel Index, Return True if successful
-bool CModule::DuplicatePatternIndex(int sourceIndex, int destinationIndex)
+// Duplicate a Channel Index in a Subtune, Return True if successful
+bool CModule::DuplicateChannelIndex(int subtune, int sourceIndex, int destinationIndex)
 {
-	// Process all Patterns within the Index, regardless of them being unused or empty
-	for (int i = 0; i < TRACK_PATTERN_MAX; i++)
-	{
-		TPattern* source = GetPattern(sourceIndex, i);
-		TPattern* destination = GetPattern(destinationIndex, i);
+	// If the duplication failed, nothing will be changed
+	if (!CopyChannel(GetChannel(subtune, sourceIndex), GetChannel(subtune, destinationIndex)))
+		return false;
 
-		// If the Pattern duplication failed, abort the procedure immediately
-		if (!CopyPattern(source, destination))
-			return false;
-	}
-
-	// Pattern Index should have been copied successfully
+	// Duplication should have been done successfully
 	return true;
 }
 
 // Find and merge duplicated Patterns, and adjust the Songline Index accordingly
-int CModule::MergeDuplicatedPatterns()
+// TODO: Move to CSong
+void CModule::MergeDuplicatedPatterns(int subtune)
 {
-	int mergedPatterns = 0;
+	MergeDuplicatedPatterns(GetSubtune(subtune));
+}
 
-	for (int i = 0; i < GetChannelCount(); i++)
+// Find and merge duplicated Patterns, and adjust the Songline Index accordingly
+// TODO: Move to CSong
+void CModule::MergeDuplicatedPatterns(TSubtune* pSubtune)
+{
+	if (!pSubtune)
+		return;
+
+	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
-		for (int j = 0; j < GetSongLength(); j++)
+		for (int j = 0; j < pSubtune->songLength; j++)
 		{
 			// Get the Pattern from which comparisons will be made
-			BYTE reference = GetPatternInSongline(i, j);
+			BYTE reference = pSubtune->channel[i].songline[j];
 
 			// Compare to every Patterns found in the Channel Index, unused Patterns will be ignored
-			for (int k = 0; k < GetSongLength(); k++)
+			for (int k = 0; k < pSubtune->songLength; k++)
 			{
 				// Get the Pattern that will be compared to the reference Pattern
-				BYTE compared = GetPatternInSongline(i, k);
+				BYTE compared = pSubtune->channel[i].songline[k];
 
 				// Comparing a Pattern to itself is pointless
 				if (compared == reference)
 					continue;
 
-				// Get the pointers to Pattern data
-				TPattern* source = GetPattern(i, reference);
-				TPattern* destination = GetPattern(i, compared);
-
 				// Compare the Patterns, and update the Songline Index if they are identical
-				if (IsIdenticalPattern(source, destination))
-				{
-					SetPatternInSongline(i, k, reference);
-					mergedPatterns++;
-				}
+				if (IsIdenticalPattern(&pSubtune->channel[i].pattern[reference], &pSubtune->channel[i].pattern[compared]))
+					pSubtune->channel[i].songline[k] = reference;
 			}
 		}
 	}
-
-	// Return the number of merged patterns, if any change was made
-	return mergedPatterns;
 }
 
 // Renumber all Patterns from first to last Songlines, without optimisations
-void CModule::RenumberIndexedPatterns()
+// TODO: Move to CSong
+void CModule::RenumberIndexedPatterns(int subtune)
 {
-	// Process all Channels within the Module Index
-	for (int i = 0; i < GetChannelCount(); i++)
-	{
-		// Create a Temporary Index that will be used as a buffer
-		TIndex* backupIndex = new TIndex;
+	RenumberIndexedPatterns(GetSubtune(subtune));
+}
 
+// Renumber all Patterns from first to last Songlines, without optimisations
+// TODO: Move to CSong
+void CModule::RenumberIndexedPatterns(TSubtune* pSubtune)
+{
+	if (!pSubtune)
+		return;
+
+	// Create a Temporary Index that will be used as a buffer
+	TChannel* backupIndex = new TChannel;
+
+	// Process all Channels within the Module Index
+	for (int i = 0; i < pSubtune->channelCount; i++)
+	{
 		// Get the current Channel Index
-		TIndex* channelIndex = GetChannelIndex(i);
+		TChannel* channelIndex = &pSubtune->channel[i];
+
+		// Copy the original data to the Temporary Index first
+		CopyChannel(channelIndex, backupIndex);
 
 		// Copy all Indexed Patterns to single Songline entries, effectively duplicating all Patterns used in multiple Songlines
-		for (int j = 0; j < SONGLINE_MAX; j++)
+		for (int j = 0; j < SONGLINE_COUNT; j++)
 		{
+			BYTE pattern = channelIndex->songline[j];
+			CopyPattern(&channelIndex->pattern[pattern], &backupIndex->pattern[j]);
 			backupIndex->songline[j] = j;
-			CopyPattern(GetIndexedPattern(i, j), &backupIndex->pattern[j]);
 		}
 
 		// Copy the re-organised data back to the original Channel Index
-		CopyIndex(backupIndex, channelIndex);
-
-		// Delete the Temporary Index once it's no longer needed
-		delete backupIndex;
+		CopyChannel(backupIndex, channelIndex);
 	}
+
+	// Delete the Temporary Index once it's no longer needed
+	delete backupIndex;
 }
 
 // Clear all unused Indexed Patterns
-void CModule::ClearUnusedPatterns()
+// TODO: Move to CSong
+void CModule::ClearUnusedPatterns(int subtune)
 {
+	ClearUnusedPatterns(GetSubtune(subtune));
+}
+
+// Clear all unused Indexed Patterns
+// TODO: Move to CSong
+void CModule::ClearUnusedPatterns(TSubtune* pSubtune)
+{
+	if (!pSubtune)
+		return;
+
 	// Process all Channels within the Module Index
-	for (int i = 0; i < GetChannelCount(); i++)
+	for (int i = 0; i < pSubtune->channelCount; i++)
 	{
 		// Search for all unused indexed Patterns
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+		for (int j = 0; j < PATTERN_COUNT; j++)
 		{
 			// If the Pattern is not used anywhere, it will be deleted
-			if (IsUnusedPattern(i, j))
-			{
-				ClearPattern(GetPattern(i, j));
-			}
+			if (IsUnusedPattern(&pSubtune->channel[i], j, pSubtune->songLength))
+				ClearPattern(&pSubtune->channel[i].pattern[j]);
 		}
 	}
 }
 
 // Renumber all Patterns from first to last Songlines, and optimise them by concatenation
-void CModule::ConcatenateIndexedPatterns()
+// TODO: Move to CSong
+void CModule::ConcatenateIndexedPatterns(int subtune)
 {
-	// Process all Channels within the Module Index
-	for (int i = 0; i < GetChannelCount(); i++)
-	{
-		// Create a Temporary Index that will be used as a buffer
-		TIndex* backupIndex = new TIndex;
+	ConcatenateIndexedPatterns(GetSubtune(subtune));
+}
 
+// Renumber all Patterns from first to last Songlines, and optimise them by concatenation
+// TODO: Move to CSong
+void CModule::ConcatenateIndexedPatterns(TSubtune* pSubtune)
+{
+	if (!pSubtune)
+		return;
+
+	// Create a Temporary Index that will be used as a buffer
+	TChannel* backupIndex = new TChannel;
+
+	// Process all Channels within the Module Index
+	for (int i = 0; i < pSubtune->channelCount; i++)
+	{
 		// Get the current Channel Index
-		TIndex* channelIndex = GetChannelIndex(i);
+		TChannel* channelIndex = &pSubtune->channel[i];
 
 		// Copy the original data to the Temporary Index first
-		CopyIndex(channelIndex, backupIndex);
+		CopyChannel(channelIndex, backupIndex);
 
 		// Concatenate the Indexed Patterns to remove gaps between them
-		for (int j = 0; j < TRACK_PATTERN_MAX; j++)
+		for (int j = 0; j < PATTERN_COUNT; j++)
 		{
 			// If a Pattern is used at least once, see if it could also be concatenated further back
-			if (!IsUnusedPattern(backupIndex, j))
+			if (!IsUnusedPattern(backupIndex, j, pSubtune->songLength))
 			{
 				// Find the first empty and unused Pattern that is available
 				for (int k = 0; k < j; k++)
@@ -1275,7 +1951,7 @@ void CModule::ConcatenateIndexedPatterns()
 					TPattern* destination = &backupIndex->pattern[k];
 
 					// If the Pattern is empty and unused, it will be replaced
-					if (IsUnusedPattern(backupIndex, k) && IsEmptyPattern(destination))
+					if (IsUnusedPattern(backupIndex, k, pSubtune->songLength) && IsEmptyPattern(destination))
 					{
 						// Copy the Pattern from J to K
 						CopyPattern(source, destination);
@@ -1284,7 +1960,7 @@ void CModule::ConcatenateIndexedPatterns()
 						ClearPattern(source);
 
 						// Replace the Pattern used in the Songline Index with the new one
-						for (int l = 0; l < GetSongLength(); l++)
+						for (int l = 0; l < pSubtune->songLength; l++)
 						{
 							if (backupIndex->songline[l] == j)
 								backupIndex->songline[l] = k;
@@ -1295,27 +1971,38 @@ void CModule::ConcatenateIndexedPatterns()
 		}
 
 		// Copy the re-organised data back to the original Channel Index
-		CopyIndex(backupIndex, channelIndex);
-
-		// Delete the Temporary Index once it's no longer needed
-		delete backupIndex;
+		CopyChannel(backupIndex, channelIndex);
 	}
+
+	// Delete the Temporary Index once it's no longer needed
+	delete backupIndex;
 }
 
 // Optimise the RMTE Module, by re-organising everything within the Indexed Structures, in order to remove most of the unused/duplicated data efficiently
-void CModule::AllSizeOptimisations()
+// TODO: Move to CSong
+void CModule::AllSizeOptimisations(int subtune)
 {
+	AllSizeOptimisations(GetSubtune(subtune));
+}
+
+// Optimise the RMTE Module, by re-organising everything within the Indexed Structures, in order to remove most of the unused/duplicated data efficiently
+// TODO: Move to CSong
+void CModule::AllSizeOptimisations(TSubtune* pSubtune)
+{
+	if (!pSubtune)
+		return;
+
 	// First, renumber all Patterns
-	RenumberIndexedPatterns();
+	RenumberIndexedPatterns(pSubtune);
 
 	// Next, merge all duplicated Patterns
-	MergeDuplicatedPatterns();
+	MergeDuplicatedPatterns(pSubtune);
 
 	// Then, Clear all unused Patterns
-	ClearUnusedPatterns();
+	ClearUnusedPatterns(pSubtune);
 
 	// Finally, concatenate all Patterns
-	ConcatenateIndexedPatterns();
+	ConcatenateIndexedPatterns(pSubtune);
 
 	// And then...? Most likely a lot more... That's for another day...
 }

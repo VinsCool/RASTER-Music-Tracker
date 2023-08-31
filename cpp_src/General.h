@@ -75,13 +75,16 @@
 #define PADDEC(width, val) std::setfill('0') << std::setw(width) << std::dec << (unsigned)val
 
 // RMTE Screen coordinates
-#define PATTERNBLOCK_X	2 * 8
-#define PATTERNBLOCK_Y	13 * 16
-#define SONGBLOCK_X		90 * 8
-#define SONGBLOCK_Y		1 * 16
-//#define INFOBLOCK_X		SONGBLOCK_X + 5 * 8 + p->channelCount * 3 * 8
-#define INFOBLOCK_X		2 * 8
-#define INFOBLOCK_Y		1 * 16
+#define PATTERNBLOCK_X		2 * 8
+#define PATTERNBLOCK_Y		13 * 16
+#define INSTRUMENTBLOCK_X	PATTERNBLOCK_X
+#define INSTRUMENTBLOCK_Y	PATTERNBLOCK_Y
+#define SONGBLOCK_X			90 * 8
+#define SONGBLOCK_Y			1 * 16
+#define INFOBLOCK_X			2 * 8
+#define INFOBLOCK_Y			1 * 16
+#define REGISTERSBLOCK_X	PATTERNBLOCK_X
+#define REGISTERSBLOCK_Y	PATTERNBLOCK_Y
 
 // Legacy Screen coordinates
 #define TRACKS_X 2*8
@@ -184,6 +187,8 @@
 #define IOTYPE_LZSS_XEX		13
 
 #define IOTYPE_WAV			20
+
+#define IOTYPE_RMTE			100
 
 #define IOTYPE_TMC			101		//import TMC
 
@@ -302,6 +307,13 @@
 // ----------------------------------------------------------------------------
 // File open/save dialog format selections
 // .rmt / .txt / .rmw
+#define FILE_LOADSAVE_FILTERS "RMTE Module file (*.rmte)|*.rmte||"
+#define FILE_LOADSAVE_FILTER_IDX_RMTE	1
+#define FILE_LOADSAVE_FILTER_IDX_MIN FILE_LOADSAVE_FILTER_IDX_RMTE
+#define FILE_LOADSAVE_FILTER_IDX_MAX FILE_LOADSAVE_FILTER_IDX_RMTE
+#define FILE_LOADSAVE_EXTENSIONS_ARRAY { ".rmte" }
+
+/*
 #define FILE_LOADSAVE_FILTERS "RMT song file (*.rmt)|*.rmt|TXT song file (*.txt)|*.txt|RMW song work file (*.rmw)|*.rmw||"
 #define FILE_LOADSAVE_FILTER_IDX_RMT 1
 #define FILE_LOADSAVE_FILTER_IDX_TXT 2
@@ -309,6 +321,7 @@
 #define FILE_LOADSAVE_FILTER_IDX_MIN FILE_LOADSAVE_FILTER_IDX_RMT
 #define FILE_LOADSAVE_FILTER_IDX_MAX FILE_LOADSAVE_FILTER_IDX_RMW
 #define FILE_LOADSAVE_EXTENSIONS_ARRAY { ".rmt",".txt",".rmw" }
+*/
 
 // ----------------------------------------------------------------------------
 // File import dialog format selections

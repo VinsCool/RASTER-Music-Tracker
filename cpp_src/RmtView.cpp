@@ -343,21 +343,21 @@ void CRmtView::DrawAll()
 	m_mem_dc.FillSolidRect(0, 0, m_width, m_height, RGB_BACKGROUND);
 
 	// Get the current Module Subtune pointer
-	TSubtune* p = g_Module.GetSubtuneIndex();
+	//TSubtune* p = g_Song.GetSubtune();
 
-	// Draw the primary screen block first
+	// Draw the secondary screen block first
+	g_Song.DrawSonglines();//(p);
+	g_Song.DrawSubtuneInfos();//(p);
+	g_Song.DrawRegistersState();//(p);
+
+	// Draw the primary screen block afterwards
 	if (g_active_ti == PART_TRACKS)
-		g_Song.DrawPatternEditor(p);
+		g_Song.DrawPatternEditor();//(p);
 	else
-		g_Song.DrawInstrumentEditor(p);
-
-	// Draw the secondary screen block afterwards
-	g_Song.DrawSonglines(p);
-	g_Song.DrawSubtuneInfos(p);
-	g_Song.DrawRegistersState(p);
+		g_Song.DrawInstrumentEditor();//(p);
 
 	// Draw the debug stuff if needed
-	g_Song.DrawDebugInfos(p);
+	g_Song.DrawDebugInfos();//(p);
 }
 
 BOOL CRmtView::OnEraseBkgnd(CDC* pDC) 
@@ -2979,20 +2979,29 @@ void CRmtView::OnKeyMoveLeft()
 	switch (g_activepart)
 	{
 	case PART_INFO:
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentLeft();
 		break;
 
 	case PART_TRACKS:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentLeft();
+		else if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
 			g_Song.ChannelLeft();
 		else
 			g_Song.PatternLeft();
 		break;
 
 	case PART_INSTRUMENTS:
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentLeft();
 		break;
 
 	case PART_SONG:
-		g_Song.ChannelLeft();
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentLeft();
+		else
+			g_Song.ChannelLeft();
 		break;
 	}
 }
@@ -3002,20 +3011,29 @@ void CRmtView::OnKeyMoveRight()
 	switch (g_activepart)
 	{
 	case PART_INFO:
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentRight();
 		break;
 
 	case PART_TRACKS:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentRight();
+		else if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
 			g_Song.ChannelRight();
 		else
 			g_Song.PatternRight();
 		break;
 
 	case PART_INSTRUMENTS:
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentRight();
 		break;
 
 	case PART_SONG:
-		g_Song.ChannelRight();
+		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.InstrumentRight();
+		else
+			g_Song.ChannelRight();
 		break;
 	}
 }
@@ -3130,15 +3148,40 @@ void CRmtView::PatternEditorKey(UINT vk)
 		}
 	}
 
+	// CTRL and SHIFT are pressed, ALT is NOT pressed
+	if (!IsPressingAlt() && IsPressingCtrl() && IsPressingShift())
+	{
+		switch (vk)
+		{
+		case VK_F1: g_Song.TransposePattern(-1); return;
+		case VK_F2: g_Song.TransposePattern(1); return;
+		case VK_F3: g_Song.TransposePattern(-12); return;
+		case VK_F4: g_Song.TransposePattern(12); return;
+		}
+	}
+
+	// ALT, CTRL and SHIFT are pressed simultaneously
+	if (IsPressingAlt() && IsPressingCtrl() && IsPressingShift())
+	{
+		switch (vk)
+		{
+		case VK_F1: g_Song.TransposeSongline(-1); return;
+		case VK_F2: g_Song.TransposeSongline(1); return;
+		case VK_F3: g_Song.TransposeSongline(-12); return;
+		case VK_F4: g_Song.TransposeSongline(12); return;
+		}
+	}
+
 	// Everything else
 	switch (g_Song.GetActiveCursor())
 	{
 	case 0: // Note Column
 		switch (vk)
 		{
-		case VK_BACKSPACE: notekey = PATTERN_NOTE_EMPTY; break;
-		case VK_OEM_MINUS: notekey = PATTERN_NOTE_OFF; break;
-		case VK_OEM_PLUS: notekey = PATTERN_NOTE_RELEASE; break;
+		case VK_BACKSPACE: notekey = NOTE_EMPTY; break;
+		case VK_OEM_MINUS: notekey = NOTE_OFF; break;
+		case VK_OEM_PLUS: notekey = NOTE_RELEASE; break;
+		case VK_OEM_6: notekey = NOTE_RETRIGGER; break;
 		}
 		if (g_Song.SetNoteInPattern(notekey))
 			g_Song.PatternDown(g_linesafter);
@@ -3147,7 +3190,7 @@ void CRmtView::PatternEditorKey(UINT vk)
 	case 1: // Instrument Column
 		switch (vk)
 		{
-		case VK_BACKSPACE: numbkey = PATTERN_INSTRUMENT_EMPTY; break;
+		case VK_BACKSPACE: numbkey = INSTRUMENT_EMPTY; break;
 		}
 		if (g_Song.SetInstrumentInPattern(numbkey))
 			g_Song.PatternDown(g_linesafter);
@@ -3156,7 +3199,7 @@ void CRmtView::PatternEditorKey(UINT vk)
 	case 2: // Volume Column
 		switch (vk)
 		{
-		case VK_BACKSPACE: numbkey = PATTERN_VOLUME_EMPTY; break;
+		case VK_BACKSPACE: numbkey = VOLUME_EMPTY; break;
 		}
 		if (g_Song.SetVolumeInPattern(numbkey))
 			g_Song.PatternDown(g_linesafter);
@@ -3168,7 +3211,7 @@ void CRmtView::PatternEditorKey(UINT vk)
 	case 6:
 		switch (vk)
 		{
-		case VK_BACKSPACE: numbkey = PATTERN_EFFECT_EMPTY; break;
+		case VK_BACKSPACE: numbkey = EFFECT_EMPTY; break;
 		}
 		if (g_Song.SetCommandInPattern(numbkey))
 			g_Song.PatternDown(g_linesafter);
