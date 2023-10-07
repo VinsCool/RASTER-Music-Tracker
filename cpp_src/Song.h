@@ -399,9 +399,9 @@ public:
 	bool SaveRMTE(std::ofstream& ou);
 	bool LoadRMTE(std::ifstream& in);
 
-	bool MakeModuleHeader(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, int& addressOfDataBlock);
+	//bool MakeModuleHeader(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, int& addressOfDataBlock);
 
-	bool DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, BYTE& moduleVersion);
+	//bool DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, BYTE& moduleVersion);
 
 	bool LoadRMT(std::ifstream& in);
 	bool LoadTxt(std::ifstream& in);
@@ -554,13 +554,36 @@ public:
 	TInstrumentV2* GetInstrument() { return GetInstrument(m_activeInstrument); };
 	TInstrumentV2* GetInstrument(int instrument) { return g_Module.GetInstrument(instrument); };
 
+	void CreateInstrument() { CreateInstrument(m_activeInstrument); };
+	void CreateInstrument(int instrument) { g_Module.CreateInstrument(instrument); };
+
 	TInstrumentEnvelope* GetVolumeEnvelope(BYTE envelope) { return g_Module.GetVolumeEnvelope(envelope); };
+
+	void CreateVolumeEnvelope(int envelope) { g_Module.CreateVolumeEnvelope(envelope); };
+
 	TInstrumentEnvelope* GetTimbreEnvelope(BYTE envelope) { return g_Module.GetTimbreEnvelope(envelope); };
+
+	void CreateTimbreEnvelope(int envelope) { g_Module.CreateTimbreEnvelope(envelope); };
+
 	TInstrumentEnvelope* GetAudctlEnvelope(BYTE envelope) { return g_Module.GetAudctlEnvelope(envelope); };
+
+	void CreateAudctlEnvelope(int envelope) { g_Module.CreateAudctlEnvelope(envelope); };
+
 	TInstrumentTrigger* GetTriggerEnvelope(BYTE trigger) { return g_Module.GetTriggerEnvelope(trigger); };
+
+	void CreateTriggerEnvelope(int envelope) { g_Module.CreateTriggerEnvelope(envelope); };
+
 	TInstrumentEffect* GetEffectEnvelope(BYTE effect) { return g_Module.GetEffectEnvelope(effect); };
+
+	void CreateEffectEnvelope(int envelope) { g_Module.CreateEffectEnvelope(envelope); };
+
 	TInstrumentTable* GetNoteTable(BYTE table) { return g_Module.GetNoteTable(table); };
+
+	void CreateNoteTable(int table) { g_Module.CreateNoteTable(table); };
+
 	TInstrumentTable* GetFreqTable(BYTE table) { return g_Module.GetFreqTable(table); };
+
+	void CreateFreqTable(int table) { g_Module.CreateFreqTable(table); };
 
 	const BYTE GetSubtuneCount() { return g_Module.GetSubtuneCount(); };
 

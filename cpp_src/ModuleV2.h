@@ -18,7 +18,7 @@
 #define MODULE_IDENTIFIER				"RMTE"								// Raster Music Tracker Extended, "DUMB" is another potential identifier
 #define MODULE_REGION					g_ntsc								// 0 for PAL, 1 for NTSC, anything else is also assumed to be NTSC
 #define MODULE_CHANNEL_COUNT			g_tracks4_8							// 4 for Mono, 8 for Stereo, add more for whatever setup that could be used
-#define MODULE_A4_TUNING				g_baseTuning						// Default A-4 Tuning
+#define MODULE_BASE_TUNING				g_baseTuning						// Default A-4 Tuning
 #define MODULE_BASE_NOTE				g_baseNote							// Default Base Note (A-)
 #define MODULE_BASE_OCTAVE				g_baseOctave						// Default Base Octave (0)
 #define MODULE_TEMPERAMENT				g_baseTemperament					// Default Tuning Temperament
@@ -238,6 +238,48 @@ struct TInstrumentV2
 	BYTE delay;								// Vibrato and Freq Shift delay, set to 0x01 for no delay, 0x00 to disable
 	TMacro index;							// Instrument Macro Envelope(s) Index and Parameters
 };
+
+
+// ----------------------------------------------------------------------------
+// RMTE Module Header
+//
+
+// High Header, used to identify the Module Version and Parameters
+typedef struct HiHeader_t
+{
+	char identifier[4];						// RMTE
+	BYTE version;							// 0 = Prototype, 1+ = Release
+	BYTE region;							// 0 = PAL, 1 = NTSC
+	BYTE highlightPrimary;
+	BYTE highlightSecondary;
+	double baseTuning;						// A-4 Tuning in Hz, eg: 440, 432, etc
+	BYTE baseNote;							// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
+	BYTE baseOctave;						// Base Octave used for Transposition, eg: 4 for no transposition
+} THiHeader;
+
+// Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists
+typedef struct LoHeader_t
+{
+	UINT subtuneIndex[SUBTUNE_COUNT];			// Offset to Subtune
+	UINT instrumentIndex[INSTRUMENT_COUNT];		// Offset to Instrument
+	UINT volumeEnvelope[INSTRUMENT_COUNT];		// Offset to Volume Envelope
+	UINT timbreEnvelope[INSTRUMENT_COUNT];		// Offset to Timbre Envelope
+	UINT audctlEnvelope[INSTRUMENT_COUNT];		// Offset to AUDCTL Envelope
+	UINT triggerEnvelope[INSTRUMENT_COUNT];		// Offset to Trigger Envelope
+	UINT effectEnvelope[INSTRUMENT_COUNT];		// Offset to Effect Envelope
+	UINT noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
+	UINT freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope
+} TLoHeader;
+
+// RMTE Module Header
+typedef struct ModuleHeader_t
+{
+	THiHeader hiHeader;
+	TLoHeader loHeader;
+	char name[64];
+	char author[64];
+	char copyright[64];
+} TModuleHeader;
 
 
 // ----------------------------------------------------------------------------
