@@ -7,21 +7,30 @@
 
 CModule::CModule()
 {
-	memset(m_subtuneIndex, NULL, sizeof m_subtuneIndex);
-	memset(m_instrumentIndex, NULL, sizeof m_instrumentIndex);
-	memset(m_volumeIndex, NULL, sizeof m_volumeIndex);
-	memset(m_timbreIndex, NULL, sizeof m_timbreIndex);
-	memset(m_audctlIndex, NULL, sizeof m_audctlIndex);
-	memset(m_triggerIndex, NULL, sizeof m_triggerIndex);
-	memset(m_effectIndex, NULL, sizeof m_effectIndex);
-	memset(m_noteIndex, NULL, sizeof m_noteIndex);
-	memset(m_freqIndex, NULL, sizeof m_freqIndex);
-	InitialiseModule();
+	m_subtuneIndex = new TSubtune * [SUBTUNE_COUNT]();
+	m_instrumentIndex = new TInstrumentV2 * [INSTRUMENT_COUNT]();
+	m_volumeIndex = new TInstrumentEnvelope * [INSTRUMENT_COUNT]();
+	m_timbreIndex = new TInstrumentEnvelope * [INSTRUMENT_COUNT]();
+	m_audctlIndex = new TInstrumentEnvelope * [INSTRUMENT_COUNT]();
+	m_triggerIndex = new TInstrumentTrigger * [INSTRUMENT_COUNT]();
+	m_effectIndex = new TInstrumentEffect * [INSTRUMENT_COUNT]();
+	m_noteIndex = new TInstrumentTable * [INSTRUMENT_COUNT]();
+	m_freqIndex = new TInstrumentTable * [INSTRUMENT_COUNT]();
+	//InitialiseModule();	// Not necessary?
 }
 
 CModule::~CModule()
 {
 	ClearModule();
+	delete m_subtuneIndex;
+	delete m_instrumentIndex;
+	delete m_volumeIndex;
+	delete m_timbreIndex;
+	delete m_audctlIndex;
+	delete m_triggerIndex;
+	delete m_effectIndex;
+	delete m_noteIndex;
+	delete m_freqIndex;
 }
 
 void CModule::InitialiseModule()

@@ -240,6 +240,114 @@ struct TInstrumentV2
 };
 
 
+// An attempt to organise all the Instrument data into 1 place...
+struct TMacroV2
+{
+	BYTE index : 6;
+	bool isEnabled : 1;
+	bool isReversed : 1;
+};
+
+struct TInstrumentV3
+{
+	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
+	BYTE volumeFade;						// Volume Fade, take priority over Pattern Effect Axx
+	BYTE volumeSustain;						// Volume Sustain, Take priority over Pattern Effect Axx
+	BYTE vibrato;							// Vibrato trigger, take priority over Pattern Effect 4xx
+	BYTE freqShift;							// Freq Shift trigger, take priority over Pattern Effect 1xx and 2xx
+	//BYTE delay;							// Vibrato and Freq Shift delay, set to 0x01 for no delay, 0x00 to disable
+	//TMacro index;							// Instrument Macro Envelope(s) Index and Parameters
+	TMacroV2 volume;
+	TMacroV2 timbre;
+	TMacroV2 audctl;
+	TMacroV2 trigger;
+	TMacroV2 effect;
+	TMacroV2 note;
+	TMacroV2 freq;
+};
+
+struct TVolume
+{
+	BYTE volumeLevel : 4;
+	BYTE waveTable : 4;
+	BYTE stereoPanning : 7;
+	bool isVolumeOnly : 1;
+};
+
+struct TTimbre
+{
+	// TODO
+};
+
+struct TAudctl
+{
+	bool is15KhzMode : 1;	// In what order again? does it go from Bit 0 to 7 or 7 to 0 in this setup?
+	bool isHighPassCh24 : 1;
+	bool isHighPassCh13 : 1;
+	bool isJoinedCh34 : 1;
+	bool isJoinedCh12 : 1;
+	bool is179MhzCh3 : 1;
+	bool is179MhzCh1 : 1;
+	bool isPoly9Noise : 1;
+};
+
+struct TTrigger
+{
+	bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
+	bool auto16Bit : 1;						// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
+	bool autoReverse16 : 1;					// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
+	bool auto179Mhz : 1;					// 1.79Mhz mode, triggered from Channel 1 and/or 3
+	bool auto15Khz : 1;						// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
+	bool autoPoly9 : 1;						// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
+	bool autoTwoTone : 1;					// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
+	bool autoPortamento : 1;				// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
+	bool autoVibrato : 1;
+};
+
+struct TTable
+{
+	union
+	{
+		BYTE freq;
+		WORD freq16;
+		struct
+		{
+			BYTE note : 7;
+			bool isNegative : 1;
+			bool isAbsolute : 1;
+			bool isScheme : 1;
+		};
+	};
+};
+
+struct TEnvelope
+{
+	BYTE length;							// Length, in frames
+	BYTE loop;								// Loop point, in frames
+	BYTE release;							// Release point, in frames
+	BYTE speed : 4;							// Speed, in frames
+	bool isLooped : 1;						// Is it Looping?
+	bool isReleased : 1;					// Is it Releasing?
+	bool isAbsolute : 1;					// Is it Absolute?
+	bool isAdditive : 1;					// Is it Additive?
+	union
+	{
+		TVolume volume[ENVELOPE_STEP_COUNT];
+		TTimbre timbre[ENVELOPE_STEP_COUNT];
+		TAudctl audctl[ENVELOPE_STEP_COUNT];
+		TTrigger trigger[ENVELOPE_STEP_COUNT];
+		TEffect effect[ENVELOPE_STEP_COUNT];
+		TTable note[ENVELOPE_STEP_COUNT];
+		TTable freq[ENVELOPE_STEP_COUNT];
+	};
+};
+
+struct TInstrumentIndex
+{
+	TInstrumentV2** instrument;
+	TEnvelope** envelope;
+};
+
 // ----------------------------------------------------------------------------
 // RMTE Module Header
 //
@@ -445,13 +553,16 @@ private:
 	char m_songName[MODULE_SONG_NAME_MAX + 1];
 	char m_songAuthor[MODULE_AUTHOR_NAME_MAX + 1];
 	char m_songCopyright[MODULE_COPYRIGHT_INFO_MAX + 1];
-	TSubtune* m_subtuneIndex[SUBTUNE_COUNT];
-	TInstrumentV2* m_instrumentIndex[INSTRUMENT_COUNT];
-	TInstrumentEnvelope* m_volumeIndex[INSTRUMENT_COUNT];
-	TInstrumentEnvelope* m_timbreIndex[INSTRUMENT_COUNT];
-	TInstrumentEnvelope* m_audctlIndex[INSTRUMENT_COUNT];
-	TInstrumentTrigger* m_triggerIndex[INSTRUMENT_COUNT];
-	TInstrumentEffect* m_effectIndex[INSTRUMENT_COUNT];
-	TInstrumentTable* m_noteIndex[INSTRUMENT_COUNT];
-	TInstrumentTable* m_freqIndex[INSTRUMENT_COUNT];
+	//char* m_songName;	// Incompatible with strncpy_s?
+	//char* m_songAuthor;
+	//char* m_songCopyright;
+	TSubtune** m_subtuneIndex;
+	TInstrumentV2** m_instrumentIndex;	// Combine all of the Instrument related stuff into 1 shared struct instead?
+	TInstrumentEnvelope** m_volumeIndex;
+	TInstrumentEnvelope** m_timbreIndex;
+	TInstrumentEnvelope** m_audctlIndex;
+	TInstrumentTrigger** m_triggerIndex;
+	TInstrumentEffect** m_effectIndex;
+	TInstrumentTable** m_noteIndex;
+	TInstrumentTable** m_freqIndex;
 };
