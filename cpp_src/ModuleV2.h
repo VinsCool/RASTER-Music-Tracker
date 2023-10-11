@@ -46,35 +46,42 @@
 // Song and Track Pattern definition
 //
 
-#define SUBTUNE_NAME_MAX		64											// 0-63 inclusive, Maximum length of Subtune name
-#define SUBTUNE_COUNT			64											// 0-63 inclusive, Maximum number of Subtunes in a Module file
-#define SONGLINE_COUNT			256											// 0-255 inclusive, Songline index used in Song
-#define PATTERN_COUNT			256											// 0-255 inclusive, Pattern index used in Song
-#define ROW_COUNT				256											// 0-255 inclusive, Row index used in Pattern
-#define POKEY_CHANNEL_COUNT		4											// 0-3 inclusive, each POKEY soundchip could use up to 4 Channels at once
-#define POKEY_CHIP_COUNT		4											// 0-3 inclusive, Quad POKEY configuration (theoretical)
-#define CHANNEL_COUNT			POKEY_CHIP_COUNT * POKEY_CHANNEL_COUNT		// Total number of Channels, Pattern column index used for Note, Instrument, Volume, and Effect Commands
-#define CH1						0											// POKEY Channel identifier for Pattern Column 1
-#define CH2						1											// POKEY Channel identifier for Pattern Column 2
-#define CH3						2											// POKEY Channel identifier for Pattern Column 3
-#define CH4						3											// POKEY Channel identifier for Pattern Column 4
-#define _CH1(x)					((x % POKEY_CHANNEL_COUNT) == CH1)			// POKEY Channel identifier for Pattern Column 1
-#define _CH2(x)					((x % POKEY_CHANNEL_COUNT) == CH2)			// POKEY Channel identifier for Pattern Column 2
-#define _CH3(x)					((x % POKEY_CHANNEL_COUNT) == CH3)			// POKEY Channel identifier for Pattern Column 3
-#define _CH4(x)					((x % POKEY_CHANNEL_COUNT) == CH4)			// POKEY Channel identifier for Pattern Column 4
-#define NOTE_COUNT				120											// 0-119 inclusive, Note index used in Pattern, for a total of 10 octaves
-#define NOTE_EMPTY				NOTE_COUNT									// There is no Note in the Pattern Row
-#define NOTE_OFF				NOTE_COUNT + 1								// The Note Command OFF will stop the last played note in the Track Channel
-#define NOTE_RELEASE			NOTE_COUNT + 2								// The Note Command === will release the last played note in the Track Channel
-#define NOTE_RETRIGGER			NOTE_COUNT + 3								// The Note Command ~~~ will retrigger the last played note in the Track Channel
-#define INSTRUMENT_COUNT		64											// 0-63 inclusive, Instrument index used in Pattern
-#define INSTRUMENT_EMPTY		INSTRUMENT_COUNT							// There is no Instrument in the Pattern Row
-#define VOLUME_COUNT			16											// 0-15 inclusive, Volume index used in Pattern
-#define VOLUME_EMPTY			VOLUME_COUNT								// There is no Volume in the Pattern Row
-#define PATTERN_EFFECT_COUNT	16											// 0-15 inclusive, Effect index used in Pattern
-#define EFFECT_EMPTY			PATTERN_EFFECT_COUNT						// There is no Effect Command in the Pattern Row
-#define ACTIVE_EFFECT_COUNT		4											// 0-3 inclusive, Number of Active Effect columns in Track Channel
-#define INVALID					-1											// Failsafe value for invalid data
+#define SUBTUNE_NAME_MAX			64											// 0-63 inclusive, Maximum length of Subtune name
+#define SUBTUNE_COUNT				64											// 0-63 inclusive, Maximum number of Subtunes in a Module file
+#define SONGLINE_COUNT				256											// 0-255 inclusive, Songline index used in Song
+#define PATTERN_COUNT				256											// 0-255 inclusive, Pattern index used in Song
+#define ROW_COUNT					256											// 0-255 inclusive, Row index used in Pattern
+#define SONG_SPEED_MAX				256											// 0-255 inclusive, Song Speed used during playback
+#define INSTRUMENT_SPEED_MAX		16											// 0-15 inclusive, Instrument Speed used during playback
+#define POKEY_CHANNEL_COUNT			4											// 0-3 inclusive, each POKEY soundchip could use up to 4 Channels at once
+#define POKEY_CHIP_COUNT			4											// 0-3 inclusive, Quad POKEY configuration (theoretical)
+#define CHANNEL_COUNT				POKEY_CHIP_COUNT * POKEY_CHANNEL_COUNT		// Total number of Channels, Pattern column index used for Note, Instrument, Volume, and Effect Commands
+#define CH1							0											// POKEY Channel identifier for Pattern Column 1
+#define CH2							1											// POKEY Channel identifier for Pattern Column 2
+#define CH3							2											// POKEY Channel identifier for Pattern Column 3
+#define CH4							3											// POKEY Channel identifier for Pattern Column 4
+#define _CH1(x)						((x % POKEY_CHANNEL_COUNT) == CH1)			// POKEY Channel identifier for Pattern Column 1
+#define _CH2(x)						((x % POKEY_CHANNEL_COUNT) == CH2)			// POKEY Channel identifier for Pattern Column 2
+#define _CH3(x)						((x % POKEY_CHANNEL_COUNT) == CH3)			// POKEY Channel identifier for Pattern Column 3
+#define _CH4(x)						((x % POKEY_CHANNEL_COUNT) == CH4)			// POKEY Channel identifier for Pattern Column 4
+#define NOTE_COUNT					120											// 0-119 inclusive, Note index used in Pattern, for a total of 10 octaves
+#define NOTE_EMPTY					NOTE_COUNT									// There is no Note in the Pattern Row
+#define NOTE_OFF					NOTE_COUNT + 1								// The Note Command OFF will stop the last played note in the Track Channel
+#define NOTE_RELEASE				NOTE_COUNT + 2								// The Note Command === will release the last played note in the Track Channel
+#define NOTE_RETRIGGER				NOTE_COUNT + 3								// The Note Command ~~~ will retrigger the last played note in the Track Channel
+#define NOTE_INDEX_MAX				NOTE_COUNT + 4								// All the valid Note Commands that could be used in the Pattern Editor
+#define INSTRUMENT_COUNT			64											// 0-63 inclusive, Instrument index used in Pattern
+#define INSTRUMENT_EMPTY			INSTRUMENT_COUNT							// There is no Instrument in the Pattern Row
+#define INSTRUMENT_INDEX_MAX		INSTRUMENT_COUNT + 1						// All the valid Instrument Commands that could be used in the Pattern Editor
+#define VOLUME_COUNT				16											// 0-15 inclusive, Volume index used in Pattern
+#define VOLUME_EMPTY				VOLUME_COUNT								// There is no Volume in the Pattern Row
+#define VOLUME_INDEX_MAX			VOLUME_COUNT + 1							// All the valid Volume Commands that could be used in the Pattern Editor
+#define PATTERN_EFFECT_COUNT		16											// 0-15 inclusive, Effect index used in Pattern
+#define EFFECT_EMPTY				PATTERN_EFFECT_COUNT						// There is no Effect Command in the Pattern Row
+#define PATTERN_EFFECT_INDEX_MAX	PATTERN_EFFECT_COUNT + 1					// All the valid Effect Commands that could be used in the Pattern Editor
+#define ACTIVE_EFFECT_COUNT			4											// 0-3 inclusive, Number of Active Effect columns in Track Channel
+#define INVALID						-1											// Failsafe value for invalid data
+#define EMPTY						0											// Failsafe value for invalid data
 
 
 // ----------------------------------------------------------------------------
@@ -94,11 +101,12 @@
 #define EFFECT_PARAMETER_MAX		0xFF	// 0-255 inclusive, Effect $XY Parameter used in Pattern
 #define EFFECT_PARAMETER_MIN		0x00	// The $XY Parameter of 0 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_DEFAULT	0x80	// The $XY Parameter of 128 may be used to disable certain Effect Commands
+#define EFFECT_PARAMETER_COUNT		0x100	// Maximum range for the Effect Parameter in the Pattern Editor
 #define EFFECT_VIBRATO				0x04	// Effect Command 4xy -> Set Vibrato Depth $x and Vibrato Speed $y
 #define EFFECT_PORTAMENTO			0x03	// Effect Command 3xy -> Set Portamento Depth $x and Portamento Speed $y
-#define EFFECT_COMMAND_BXX			0x0B	// Effect Command Bxx -> Goto Songline $xx
-#define EFFECT_COMMAND_DXX			0x0D	// Effect Command Dxx -> End Pattern, no parameter needed(?)
-#define EFFECT_COMMAND_FXX			0x0F	// Effect Command Fxx -> Set Song Speed $xx
+#define EFFECT_GOTO_SONGLINE		0x0B	// Effect Command Bxx -> Goto Songline $xx
+#define EFFECT_END_PATTERN			0x0D	// Effect Command Dxx -> End Pattern, Goto Row $xx
+#define EFFECT_SET_SONG_SPEED		0x0F	// Effect Command Fxx -> Set Song Speed $xx
 #define CMD1						0		// Effect Command identifier for Effect Column 1
 #define CMD2						1		// Effect Command identifier for Effect Column 2
 #define CMD3						2		// Effect Command identifier for Effect Column 3
@@ -128,15 +136,18 @@ struct TRow
 // Pattern Data, indexed by the TRow Struct
 struct TPattern
 {
-	TRow row[ROW_COUNT];					// Row data is contained withn its associated Pattern index
+	TRow* row[ROW_COUNT];					// Row data is contained withn its associated Pattern index
 };
 
 // Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
 struct TChannel
 {
-	BYTE effectCount;						// Number of Effect Commands enabled per Track Channel
+	bool isMuted : 1;
+	bool isEffectEnabled : 1;
+	BYTE effectCount : 2;					// Number of Effect Commands enabled per Track Channel
+	BYTE channelVolume : 4;
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
-	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
+	TPattern* pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
 };
 
 // Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
@@ -145,17 +156,22 @@ struct TSubtune
 	char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
 	BYTE songLength;						// Song Length, in Songlines
 	BYTE patternLength;						// Pattern Length, in Rows
-	BYTE channelCount;						// Number of Channels used in Subtune
 	BYTE songSpeed;							// Song Speed, in Frames per Row
-	BYTE instrumentSpeed;					// Instrument Speed, in Frames per VBI
-	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
+	BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
+	BYTE channelCount : 4;					// Number of Channels used in Subtune
+	TChannel* channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
 
+struct TSubtuneIndex
+{
+	TSubtune* subtune[SUBTUNE_COUNT];
+};
 
 // ----------------------------------------------------------------------------
 // RMTE Module Structs for Instrument, Envelope, Table, etc
 //
 
+/*
 // Instrument AUDCTL/SKCTL Automatic Trigger bits, useful considering each POKEY channel featuring unique properties
 struct TAutomatic
 {
@@ -186,7 +202,9 @@ struct TFlag
 	bool isAbsolute;						// Is it Absolute?
 	bool isAdditive;						// Is it Additive?
 };
+*/
 
+/*
 // Instrument Envelope Index, 0-63 inclusive, Bit 7 is toggle for enabled/disabled, Bit 6 is unused for now
 struct TMacro
 {
@@ -198,7 +216,9 @@ struct TMacro
 	BYTE note;
 	BYTE freq;
 };
+*/
 
+/*
 struct TInstrumentEnvelope
 {
 	TParameter parameter;
@@ -226,7 +246,9 @@ struct TInstrumentTable
 	TFlag flag;
 	BYTE table[TABLE_STEP_COUNT];
 };
+*/
 
+/*
 // Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
 struct TInstrumentV2
 {
@@ -238,32 +260,36 @@ struct TInstrumentV2
 	BYTE delay;								// Vibrato and Freq Shift delay, set to 0x01 for no delay, 0x00 to disable
 	TMacro index;							// Instrument Macro Envelope(s) Index and Parameters
 };
-
+*/
 
 // An attempt to organise all the Instrument data into 1 place...
-struct TMacroV2
+struct TMacro
 {
 	BYTE index : 6;
 	bool isEnabled : 1;
 	bool isReversed : 1;
 };
 
-struct TInstrumentV3
+struct TEnvelopeMacro
+{
+	TMacro volume;
+	TMacro timbre;
+	TMacro audctl;
+	TMacro trigger;
+	TMacro effect;
+	TMacro note;
+	TMacro freq;
+};
+
+struct TInstrumentV2
 {
 	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
 	BYTE volumeFade;						// Volume Fade, take priority over Pattern Effect Axx
 	BYTE volumeSustain;						// Volume Sustain, Take priority over Pattern Effect Axx
 	BYTE vibrato;							// Vibrato trigger, take priority over Pattern Effect 4xx
 	BYTE freqShift;							// Freq Shift trigger, take priority over Pattern Effect 1xx and 2xx
-	//BYTE delay;							// Vibrato and Freq Shift delay, set to 0x01 for no delay, 0x00 to disable
-	//TMacro index;							// Instrument Macro Envelope(s) Index and Parameters
-	TMacroV2 volume;
-	TMacroV2 timbre;
-	TMacroV2 audctl;
-	TMacroV2 trigger;
-	TMacroV2 effect;
-	TMacroV2 note;
-	TMacroV2 freq;
+	BYTE delay;								// Vibrato and Freq Shift delay, set to 0x01 for no delay, 0x00 to disable
+	TEnvelopeMacro envelope;				// Instrument Macro Envelope(s) Index and Parameters
 };
 
 struct TVolume
@@ -344,8 +370,14 @@ struct TEnvelope
 
 struct TInstrumentIndex
 {
-	TInstrumentV2** instrument;
-	TEnvelope** envelope;
+	TInstrumentV2* instrument[INSTRUMENT_COUNT];
+	TEnvelope* volume[INSTRUMENT_COUNT];
+	TEnvelope* timbre[INSTRUMENT_COUNT];
+	TEnvelope* audctl[INSTRUMENT_COUNT];
+	TEnvelope* trigger[INSTRUMENT_COUNT];
+	TEnvelope* effect[INSTRUMENT_COUNT];
+	TEnvelope* note[INSTRUMENT_COUNT];
+	TEnvelope* freq[INSTRUMENT_COUNT];
 };
 
 // ----------------------------------------------------------------------------
@@ -405,35 +437,30 @@ public:
 	void InitialiseModule();
 	void ClearModule();
 
-	void CreateSubtune(int subtune);
-	void DeleteSubtune(int subtune);
+	void CreateSubtune(UINT subtune);
+	TSubtune* CreateSubtune();
+
+	void DeleteSubtune(UINT subtune);
+	void DeleteSubtune(TSubtune* pSubtune);
+
+	void InitialiseSubtune(UINT subtune);
 	void InitialiseSubtune(TSubtune* pSubtune);
 
-	void CreateInstrument(int instrument);
-	void DeleteInstrument(int instrument);
+	TChannel* CreateChannel();
+	void DeleteChannel(TChannel* pChannel);
+	void InitialiseChannel(TChannel* pChannel);
+
+	TPattern* CreatePattern();
+	void DeletePattern(TPattern* pPattern);
+	void InitialisePattern(TPattern* pPattern);
+
+	TRow* CreateRow();
+	void DeleteRow(TRow* pRow);
+	void InitialiseRow(TRow* pRow);
+
+	void CreateInstrument(UINT instrument);
+	void DeleteInstrument(UINT instrument);
 	void InitialiseInstrument(TInstrumentV2* pInstrument);
-
-	void CreateVolumeEnvelope(int envelope);
-	void DeleteVolumeEnvelope(int envelope);
-	void CreateTimbreEnvelope(int envelope);
-	void DeleteTimbreEnvelope(int envelope);
-	void CreateAudctlEnvelope(int envelope);
-	void DeleteAudctlEnvelope(int envelope);
-	void InitialiseInstrumentEnvelope(TInstrumentEnvelope* pEnvelope);
-
-	void CreateTriggerEnvelope(int trigger);
-	void DeleteTriggerEnvelope(int trigger);
-	void InitialiseInstrumentTrigger(TInstrumentTrigger* pTrigger);
-
-	void CreateEffectEnvelope(int effect);
-	void DeleteEffectEnvelope(int effect);
-	void InitialiseInstrumentEffect(TInstrumentEffect* pEffect);
-
-	void CreateNoteTable(int table);
-	void DeleteNoteTable(int table);
-	void CreateFreqTable(int table);
-	void DeleteFreqTable(int table);
-	void InitialiseInstrumentTable(TInstrumentTable* pTable);
 
 	//-- Legacy RMT Module Import Functions --//
 
@@ -445,124 +472,225 @@ public:
 
 	//-- Booleans for Module Index and Data integrity --//
 
-	bool IsValidSubtune(int subtune) { return subtune >= 0 && subtune < SUBTUNE_COUNT; };
-	bool IsValidChannel(int channel) { return channel >= 0 && channel < CHANNEL_COUNT; };
-	bool IsValidSongline(int songline) { return songline >= 0 && songline < SONGLINE_COUNT; };
-	bool IsValidPattern(int pattern) { return pattern >= 0 && pattern < PATTERN_COUNT; };
-	bool IsValidRow(int row) { return row >= 0 && row < ROW_COUNT; };
-	bool IsValidNote(int note) { return note >= 0 && note < NOTE_COUNT; };
-	bool IsValidInstrument(int instrument) { return instrument >= 0 && instrument < INSTRUMENT_COUNT; };
-	bool IsValidVolume(int volume) { return volume >= 0 && volume < VOLUME_COUNT; };
-	bool IsValidCommand(int command) { return command >= 0 && command < PATTERN_EFFECT_COUNT; };
-	bool IsValidCommandColumn(int column) { return column >= 0 && column < ACTIVE_EFFECT_COUNT; };
+	const bool IsValidSubtune(UINT subtune) { return subtune < SUBTUNE_COUNT; };
+	const bool IsValidChannel(UINT channel) { return channel < CHANNEL_COUNT; };
+	const bool IsValidSongline(UINT songline) { return songline < SONGLINE_COUNT; };
+	const bool IsValidPattern(UINT pattern) { return pattern < PATTERN_COUNT; };
+	const bool IsValidRow(UINT row) { return row < ROW_COUNT; };
+	const bool IsValidNote(UINT note) { return note < NOTE_COUNT; };
+	const bool IsValidNoteIndex(UINT note) { return note < NOTE_INDEX_MAX; };
+	const bool IsValidInstrument(UINT instrument) { return instrument < INSTRUMENT_COUNT; };
+	const bool IsValidInstrumentIndex(UINT instrument) { return instrument < INSTRUMENT_INDEX_MAX; };
+	const bool IsValidVolume(UINT volume) { return volume < VOLUME_COUNT; };
+	const bool IsValidVolumeIndex(UINT volume) { return volume < VOLUME_INDEX_MAX; };
+	const bool IsValidEffectCommand(UINT command) { return command < PATTERN_EFFECT_COUNT; };
+	const bool IsValidEffectCommandIndex(UINT command) { return command < PATTERN_EFFECT_INDEX_MAX; };
+	const bool IsValidEffectParameter(UINT parameter) { return parameter < EFFECT_PARAMETER_COUNT; };
+	const bool IsValidCommandColumn(UINT column) { return column < ACTIVE_EFFECT_COUNT; };
 
 	//-- Pointers to Module Data --//
 
-	TSubtune* GetSubtune(BYTE subtune) { return IsValidSubtune(subtune) ? m_subtuneIndex[subtune] : NULL; };
-	TChannel* GetChannel(BYTE subtune, BYTE channel);
-	TPattern* GetPattern(BYTE subtune, BYTE channel, BYTE pattern);
-	TPattern* GetIndexedPattern(BYTE subtune, BYTE channel, BYTE songline);
-	TRow* GetRow(BYTE subtune, BYTE channel, BYTE pattern, BYTE row);
+	TSubtune* GetSubtune(UINT subtune);
+
+	TChannel* GetChannel(UINT subtune, UINT channel);
+	TChannel* GetChannel(TSubtune* pSubtune, UINT channel);
+
+	TPattern* GetPattern(UINT subtune, UINT channel, UINT pattern);
+	TPattern* GetPattern(TSubtune* pSubtune, UINT channel, UINT pattern);
+	TPattern* GetPattern(TChannel* pChannel, UINT pattern);
+
+	TPattern* GetIndexedPattern(UINT subtune, UINT channel, UINT songline);
+	TPattern* GetIndexedPattern(TSubtune* pSubtune, UINT channel, UINT songline);
+	TPattern* GetIndexedPattern(TChannel* pChannel, UINT songline);
+
+	TRow* GetRow(UINT subtune, UINT channel, UINT pattern, UINT row);
+	TRow* GetRow(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row);
+	TRow* GetRow(TChannel* pChannel, UINT pattern, UINT row);
+	TRow* GetRow(TPattern* pPattern, UINT row);
 	
 	//-- Getters and Setters for Pattern and Songline Data --//
 
-	const BYTE GetPatternInSongline(BYTE subtune, BYTE channel, BYTE songline);
-	const BYTE GetPatternRowNote(BYTE subtune, BYTE channel, BYTE pattern, BYTE row);
-	const BYTE GetPatternRowInstrument(BYTE subtune, BYTE channel, BYTE pattern, BYTE row);
-	const BYTE GetPatternRowVolume(BYTE subtune, BYTE channel, BYTE pattern, BYTE row);
-	const BYTE GetPatternRowEffectCommand(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE column);
-	const BYTE GetPatternRowEffectParameter(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE column);
+	const UINT GetPatternInSongline(UINT subtune, UINT channel, UINT songline);
+	const UINT GetPatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline);
+	const UINT GetPatternInSongline(TChannel* pChannel, UINT songline);
 
-	void SetPatternInSongline(BYTE subtune, BYTE channel, BYTE songline, BYTE pattern);
-	void SetPatternRowNote(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE note);
-	void SetPatternRowInstrument(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE instrument);
-	void SetPatternRowVolume(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE volume);
-	void SetPatternRowCommand(BYTE subtune, BYTE channel, BYTE pattern, BYTE row, BYTE column, BYTE effectCommand, BYTE effectParameter);
+	const UINT GetPatternRowNote(UINT subtune, UINT channel, UINT pattern, UINT row);
+	const UINT GetPatternRowNote(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row);
+	const UINT GetPatternRowNote(TChannel* pChannel, UINT pattern, UINT row);
+	const UINT GetPatternRowNote(TPattern* pPattern, UINT row);
+	const UINT GetPatternRowNote(TRow* pRow);
+
+	const UINT GetPatternRowInstrument(UINT subtune, UINT channel, UINT pattern, UINT row);
+	const UINT GetPatternRowInstrument(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row);
+	const UINT GetPatternRowInstrument(TChannel* pChannel, UINT pattern, UINT row);
+	const UINT GetPatternRowInstrument(TPattern* pPattern, UINT row);
+	const UINT GetPatternRowInstrument(TRow* pRow);
+
+	const UINT GetPatternRowVolume(UINT subtune, UINT channel, UINT pattern, UINT row);
+	const UINT GetPatternRowVolume(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row);
+	const UINT GetPatternRowVolume(TChannel* pChannel, UINT pattern, UINT row);
+	const UINT GetPatternRowVolume(TPattern* pPattern, UINT row);
+	const UINT GetPatternRowVolume(TRow* pRow);
+
+	const UINT GetPatternRowEffectCommand(UINT subtune, UINT channel, UINT pattern, UINT row, UINT column);
+	const UINT GetPatternRowEffectCommand(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row, UINT column);
+	const UINT GetPatternRowEffectCommand(TChannel* pChannel, UINT pattern, UINT row, UINT column);
+	const UINT GetPatternRowEffectCommand(TPattern* pPattern, UINT row, UINT column);
+	const UINT GetPatternRowEffectCommand(TRow* pRow, UINT column);
+
+	const UINT GetPatternRowEffectParameter(UINT subtune, UINT channel, UINT pattern, UINT row, UINT column);
+	const UINT GetPatternRowEffectParameter(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row, UINT column);
+	const UINT GetPatternRowEffectParameter(TChannel* pChannel, UINT pattern, UINT row, UINT column);
+	const UINT GetPatternRowEffectParameter(TPattern* pPattern, UINT row, UINT column);
+	const UINT GetPatternRowEffectParameter(TRow* pRow, UINT column);
+
+	bool SetPatternInSongline(UINT subtune, UINT channel, UINT songline, UINT pattern);
+	bool SetPatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline, UINT pattern);
+	bool SetPatternInSongline(TChannel* pChannel, UINT songline, UINT pattern);
+
+	bool SetPatternRowNote(UINT subtune, UINT channel, UINT pattern, UINT row, UINT note);
+	bool SetPatternRowNote(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row, UINT note);
+	bool SetPatternRowNote(TChannel* pChannel, UINT pattern, UINT row, UINT note);
+	bool SetPatternRowNote(TPattern* pPattern, UINT row, UINT note);
+	bool SetPatternRowNote(TRow* pRow, UINT note);
+
+	bool SetPatternRowInstrument(UINT subtune, UINT channel, UINT pattern, UINT row, UINT instrument);
+	bool SetPatternRowInstrument(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row, UINT instrument);
+	bool SetPatternRowInstrument(TChannel* pChannel, UINT pattern, UINT row, UINT instrument);
+	bool SetPatternRowInstrument(TPattern* pPattern, UINT row, UINT instrument);
+	bool SetPatternRowInstrument(TRow* pRow, UINT instrument);
+
+	bool SetPatternRowVolume(UINT subtune, UINT channel, UINT pattern, UINT row, UINT volume);
+	bool SetPatternRowVolume(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row, UINT volume);
+	bool SetPatternRowVolume(TChannel* pChannel, UINT pattern, UINT row, UINT volume);
+	bool SetPatternRowVolume(TPattern* pPattern, UINT row, UINT volume);
+	bool SetPatternRowVolume(TRow* pRow, UINT volume);
+
+	bool SetPatternRowEffectCommand(UINT subtune, UINT channel, UINT pattern, UINT row, UINT column, UINT command);
+	bool SetPatternRowEffectCommand(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row, UINT column, UINT command);
+	bool SetPatternRowEffectCommand(TChannel* pChannel, UINT pattern, UINT row, UINT column, UINT command);
+	bool SetPatternRowEffectCommand(TPattern* pPattern, UINT row, UINT column, UINT command);
+	bool SetPatternRowEffectCommand(TRow* pRow, UINT column, UINT command);
+
+	bool SetPatternRowEffectParameter(UINT subtune, UINT channel, UINT pattern, UINT row, UINT column, UINT parameter);
+	bool SetPatternRowEffectParameter(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row, UINT column, UINT parameter);
+	bool SetPatternRowEffectParameter(TChannel* pChannel, UINT pattern, UINT row, UINT column, UINT parameter);
+	bool SetPatternRowEffectParameter(TPattern* pPattern, UINT row, UINT column, UINT parameter);
+	bool SetPatternRowEffectParameter(TRow* pRow, UINT column, UINT parameter);
 
 	//-- Getters and Setters for Module Parameters --//
 
-	const char* GetSongName() { return m_songName; };
-	const char* GetSongAuthor() { return m_songAuthor; };
-	const char* GetSongCopyright() { return m_songCopyright; };
+	const char* GetModuleName() { return m_moduleName; };
+	const char* GetModuleAuthor() { return m_moduleAuthor; };
+	const char* GetModuleCopyright() { return m_moduleCopyright; };
 
-	const char* GetSubtuneName(BYTE subtune);
-	const BYTE GetSongLength(BYTE subtune);
-	const BYTE GetPatternLength(BYTE subtune);
-	const BYTE GetChannelCount(BYTE subtune);
-	const BYTE GetSongSpeed(BYTE subtune);
-	const BYTE GetInstrumentSpeed(BYTE subtune);
-	const BYTE GetEffectCommandCount(BYTE subtune, BYTE channel);
+	const char* GetSubtuneName(UINT subtune);
+	const char* GetSubtuneName(TSubtune* pSubtune);
 
-	void SetSongName(const char* name) { strncpy_s(m_songName, name, MODULE_SONG_NAME_MAX); };
-	void SetSongAuthor(const char* author) { strncpy_s(m_songAuthor, author, MODULE_AUTHOR_NAME_MAX); };
-	void SetSongCopyright(const char* copyright) { strncpy_s(m_songCopyright, copyright, MODULE_COPYRIGHT_INFO_MAX); };
+	const UINT GetSongLength(UINT subtune);
+	const UINT GetSongLength(TSubtune* pSubtune);
 
-	void SetSubtuneName(BYTE subtune, const char* name);
-	void SetSongLength(BYTE subtune, BYTE length);
-	void SetPatternLength(BYTE subtune, BYTE length);
-	void SetChannelCount(BYTE subtune, BYTE count);
-	void SetSongSpeed(BYTE subtune, BYTE speed);
-	void SetInstrumentSpeed(BYTE subtune, BYTE speed);
-	void SetEffectCommandCount(BYTE subtune, BYTE channel, BYTE column);
+	const UINT GetPatternLength(UINT subtune);
+	const UINT GetPatternLength(TSubtune* pSubtune);
+
+	const UINT GetChannelCount(UINT subtune);
+	const UINT GetChannelCount(TSubtune* pSubtune);
+
+	const UINT GetSongSpeed(UINT subtune);
+	const UINT GetSongSpeed(TSubtune* pSubtune);
+
+	const UINT GetInstrumentSpeed(UINT subtune);
+	const UINT GetInstrumentSpeed(TSubtune* pSubtune);
+
+	const UINT GetEffectCommandCount(UINT subtune, UINT channel);
+	const UINT GetEffectCommandCount(TSubtune* pSubtune, UINT channel);
+	const UINT GetEffectCommandCount(TChannel* pChannel);
+
+	bool SetModuleName(const char* name) { strncpy_s(m_moduleName, name, MODULE_SONG_NAME_MAX); return true; };
+	bool SetModuleAuthor(const char* author) { strncpy_s(m_moduleAuthor, author, MODULE_AUTHOR_NAME_MAX); return true; };
+	bool SetModuleCopyright(const char* copyright) { strncpy_s(m_moduleCopyright, copyright, MODULE_COPYRIGHT_INFO_MAX); return true; };
+	
+	bool SetSubtuneName(UINT subtune, const char* name);
+	bool SetSubtuneName(TSubtune* pSubtune, const char* name);
+
+	bool SetSongLength(UINT subtune, UINT length);
+	bool SetSongLength(TSubtune* pSubtune, UINT length);
+
+	bool SetPatternLength(UINT subtune, UINT length);
+	bool SetPatternLength(TSubtune* pSubtune, UINT length);
+
+	bool SetChannelCount(UINT subtune, UINT count);
+	bool SetChannelCount(TSubtune* pSubtune, UINT count);
+
+	bool SetSongSpeed(UINT subtune, UINT speed);
+	bool SetSongSpeed(TSubtune* pSubtune, UINT speed);
+
+	bool SetInstrumentSpeed(UINT subtune, UINT speed);
+	bool SetInstrumentSpeed(TSubtune* pSubtune, UINT speed);
+
+	bool SetEffectCommandCount(UINT subtune, UINT channel, UINT column);
+	bool SetEffectCommandCount(TSubtune* pSubtune, UINT channel, UINT column);
+	bool SetEffectCommandCount(TChannel* pChannel, UINT column);
+
 
 	//-- RMTE Editor Functions --//
 
-	const BYTE GetSubtuneCount();
-	BYTE GetShortestPatternLength(int subtune, int songline);
-	BYTE GetShortestPatternLength(TSubtune* pSubtune, int songline);
-	bool DuplicatePatternInSongline(int subtune, int channel, int songline, int pattern);
-	bool IsUnusedPattern(int subtune, int channel, int pattern);
-	bool IsUnusedPattern(TChannel* pChannel, int pattern, int songlength);
-	bool IsEmptyPattern(int subtune, int channel, int pattern);
+	const UINT GetSubtuneCount();
+
+	const UINT GetShortestPatternLength(UINT subtune, UINT songline);
+	const UINT GetShortestPatternLength(TSubtune* pSubtune, UINT songline);
+
+	bool DuplicatePatternInSongline(UINT subtune, UINT channel, UINT songline, UINT pattern);
+
+	bool IsUnusedPattern(UINT subtune, UINT channel, UINT pattern);
+	bool IsUnusedPattern(TChannel* pChannel, UINT pattern, UINT songlength);
+
+	bool IsEmptyPattern(UINT subtune, UINT channel, UINT pattern);
 	bool IsEmptyPattern(TPattern* pPattern);
-	bool IsEmptyRow(int subtune, int channel, int pattern, int row);
+
+	bool IsEmptyRow(UINT subtune, UINT channel, UINT pattern, UINT row);
 	bool IsEmptyRow(TRow* pRow);
+
 	bool IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern);
+
 	bool CopyPattern(TPattern* pFromPattern, TPattern* pToPattern);
-	bool ClearPattern(int subtune, int channel, int pattern);
+
+	bool ClearPattern(UINT subtune, UINT channel, UINT pattern);
 	bool ClearPattern(TPattern* pPattern);
+
 	bool CopyChannel(TChannel* pFromChannel, TChannel* pToChannel);
+
 	bool CopySubtune(TSubtune* pFromSubtune, TSubtune* pToSubtune);
-	bool DuplicateChannelIndex(int subtune, int sourceIndex, int destinationIndex);
-	void MergeDuplicatedPatterns(int subtune);
+
+	bool DuplicateChannelIndex(UINT subtune, UINT sourceIndex, UINT destinationIndex);
+
+	void MergeDuplicatedPatterns(UINT subtune);
 	void MergeDuplicatedPatterns(TSubtune* pSubtune);
-	void RenumberIndexedPatterns(int subtune);
+
+	void RenumberIndexedPatterns(UINT subtune);
 	void RenumberIndexedPatterns(TSubtune* pSubtune);
-	void ClearUnusedPatterns(int subtune);
+
+	void ClearUnusedPatterns(UINT subtune);
 	void ClearUnusedPatterns(TSubtune* pSubtune);
-	void ConcatenateIndexedPatterns(int subtune);
+
+	void ConcatenateIndexedPatterns(UINT subtune);
 	void ConcatenateIndexedPatterns(TSubtune* pSubtune);
-	void AllSizeOptimisations(int subtune);
+
+	void AllSizeOptimisations(UINT subtune);
 	void AllSizeOptimisations(TSubtune* pSubtune);
 
 	//-- Getters and Setters for Instrument Data --//
 
-	TInstrumentV2* GetInstrument(int instrument) { return IsValidInstrument(instrument) ? m_instrumentIndex[instrument] : NULL; };
-	const char* GetInstrumentName(int instrument);
-	void SetInstrumentName(int instrument, const char* name);
-
-	TInstrumentEnvelope* GetVolumeEnvelope(BYTE envelope) { return IsValidInstrument(envelope) ? m_volumeIndex[envelope] : NULL; };
-	TInstrumentEnvelope* GetTimbreEnvelope(BYTE envelope) { return IsValidInstrument(envelope) ? m_timbreIndex[envelope] : NULL; };
-	TInstrumentEnvelope* GetAudctlEnvelope(BYTE envelope) { return IsValidInstrument(envelope) ? m_audctlIndex[envelope] : NULL; };
-	TInstrumentTrigger* GetTriggerEnvelope(BYTE trigger) { return IsValidInstrument(trigger) ? m_triggerIndex[trigger] : NULL; };
-	TInstrumentEffect* GetEffectEnvelope(BYTE effect) { return IsValidInstrument(effect) ? m_effectIndex[effect] : NULL; };
-	TInstrumentTable* GetNoteTable(BYTE table) { return IsValidInstrument(table) ? m_noteIndex[table] : NULL; };
-	TInstrumentTable* GetFreqTable(BYTE table) { return IsValidInstrument(table) ? m_freqIndex[table] : NULL; };
+	TInstrumentV2* GetInstrument(UINT instrument);
+	const char* GetInstrumentName(UINT instrument);
+	const char* GetInstrumentName(TInstrumentV2* pInstrument);
+	void SetInstrumentName(UINT instrument, const char* name);
+	void SetInstrumentName(TInstrumentV2* instrument, const char* name);
 
 private:
-	char m_songName[MODULE_SONG_NAME_MAX + 1];
-	char m_songAuthor[MODULE_AUTHOR_NAME_MAX + 1];
-	char m_songCopyright[MODULE_COPYRIGHT_INFO_MAX + 1];
-	//char* m_songName;	// Incompatible with strncpy_s?
-	//char* m_songAuthor;
-	//char* m_songCopyright;
-	TSubtune** m_subtuneIndex;
-	TInstrumentV2** m_instrumentIndex;	// Combine all of the Instrument related stuff into 1 shared struct instead?
-	TInstrumentEnvelope** m_volumeIndex;
-	TInstrumentEnvelope** m_timbreIndex;
-	TInstrumentEnvelope** m_audctlIndex;
-	TInstrumentTrigger** m_triggerIndex;
-	TInstrumentEffect** m_effectIndex;
-	TInstrumentTable** m_noteIndex;
-	TInstrumentTable** m_freqIndex;
+	char m_moduleName[MODULE_SONG_NAME_MAX + 1];
+	char m_moduleAuthor[MODULE_AUTHOR_NAME_MAX + 1];
+	char m_moduleCopyright[MODULE_COPYRIGHT_INFO_MAX + 1];
+	TSubtuneIndex* m_subtuneIndex;
+	TInstrumentIndex* m_instrumentIndex;
 };

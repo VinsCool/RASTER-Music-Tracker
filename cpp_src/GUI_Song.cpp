@@ -99,6 +99,24 @@ void CSong::SetRMTTitle()
 	SetWindowText(g_hwnd, s);
 }
 
+bool CSong::WarnUnsavedChanges()
+{
+	if (g_changes)
+	{
+		if (IDYES == MessageBox(g_hwnd, "Save current changes?", "Current song has been changed", MB_YESNOCANCEL | MB_ICONQUESTION))
+		{
+			FileSave();
+			SetRMTTitle();
+		}
+
+		if (g_changes)
+			return true;
+	}
+
+	return false;
+}
+
+/*
 int CSong::WarnUnsavedChanges()
 {
 	//returns 1 upon cancelation
@@ -113,6 +131,7 @@ int CSong::WarnUnsavedChanges()
 	}
 	return 0;
 }
+*/
 
 /*
 /// <summary>

@@ -58,6 +58,7 @@ typedef struct
 
 } tExportDescription;
 
+
 // POKEY registers typically make use of 8-bit values, but there are cases where 2 Channels may also be joined together in 16-bit mode
 // It is effectively possible to use the same data for either 2 contiguous AUDF Bytes, or a single 16-bit Word, depending on the AUDCTL state
 struct TPokeyRegisters
@@ -84,6 +85,7 @@ struct TPokeyBuffer
 	TPokeyFrame frame[256];
 };
 
+/*
 // Active Instrument Envelope Variables
 struct TActive
 {
@@ -170,6 +172,7 @@ struct TSongVariables
 	TChannelVariables channel[CHANNEL_COUNT];
 	TInstrumentVariables instrument[CHANNEL_COUNT];
 };
+*/
 
 extern CModule g_Module;
 
@@ -189,15 +192,18 @@ public:
 	//void DeleteChannelVariables(int channel);
 	//void InitialiseChannelVariables();
 
+/*
 	void ResetChannelVariables(TChannelVariables* pVariables);
 
 	void ClearSongVariables();
 	void CreateSongVariables();
 	void DeleteSongVariables();
+*/
 
 	void ClearPokeyBuffer();
 	void CreatePokeyBuffer();
 	void DeletePokeyBuffer();
+
 
 	//void MidiEvent(DWORD dwParam);
 
@@ -304,7 +310,7 @@ public:
 	void SeekNextSubtune();
 	void SeekPreviousSubtune();
 
-	BOOL SongTrackSet(int t);
+	//BOOL SongTrackSet(int t);
 	//BOOL SongTrackSetByNum(int num);
 	//BOOL SongTrackDec();
 	//BOOL SongTrackInc();
@@ -373,7 +379,7 @@ public:
 	void FileOpen(const char* filename = NULL, BOOL warnOfUnsavedChanges = TRUE);
 	void FileReload();
 	BOOL FileCanBeReloaded() { return (m_fileName != "") /*&& (!m_fileunsaved)*/ /*&& g_changes*/; };
-	int WarnUnsavedChanges();
+	bool WarnUnsavedChanges();
 
 	void FileSave();
 	void FileSaveAs();
@@ -557,6 +563,7 @@ public:
 	void CreateInstrument() { CreateInstrument(m_activeInstrument); };
 	void CreateInstrument(int instrument) { g_Module.CreateInstrument(instrument); };
 
+/*
 	TInstrumentEnvelope* GetVolumeEnvelope(BYTE envelope) { return g_Module.GetVolumeEnvelope(envelope); };
 
 	void CreateVolumeEnvelope(int envelope) { g_Module.CreateVolumeEnvelope(envelope); };
@@ -584,71 +591,74 @@ public:
 	TInstrumentTable* GetFreqTable(BYTE table) { return g_Module.GetFreqTable(table); };
 
 	void CreateFreqTable(int table) { g_Module.CreateFreqTable(table); };
+*/
 
-	const BYTE GetSubtuneCount() { return g_Module.GetSubtuneCount(); };
+	const UINT GetSubtuneCount() { return g_Module.GetSubtuneCount(); };
 
-	const char* GetSongName() { return g_Module.GetSongName(); };
-	const char* GetSongAuthor() { return g_Module.GetSongAuthor(); };
-	const char* GetSongCopyright() { return g_Module.GetSongCopyright(); };
+	const char* GetSongName() { return g_Module.GetModuleName(); };
+	const char* GetSongAuthor() { return g_Module.GetModuleAuthor(); };
+	const char* GetSongCopyright() { return g_Module.GetModuleCopyright(); };
 
-	void SetSongName(const char* name) { g_Module.SetSongName(name); };
-	void SetSongAuthor(const char* name) { g_Module.SetSongAuthor(name); };
-	void SetSongCopyright(const char* name) { g_Module.SetSongCopyright(name); };
+	void SetSongName(const char* name) { g_Module.SetModuleName(name); };
+	void SetSongAuthor(const char* name) { g_Module.SetModuleAuthor(name); };
+	void SetSongCopyright(const char* name) { g_Module.SetModuleCopyright(name); };
 
 	const char* GetSubtuneName() { return GetSubtuneName(m_activeSubtune); };
-	const char* GetSubtuneName(int subtune) { return g_Module.GetSubtuneName(subtune); };
+	const char* GetSubtuneName(UINT subtune) { return g_Module.GetSubtuneName(subtune); };
 
-	const BYTE GetEffectCommandCount() { return GetEffectCommandCount(m_activeSubtune, m_activeChannel); };
-	const BYTE GetEffectCommandCount(int subtune, int channel) { return g_Module.GetEffectCommandCount(subtune, channel); };
+	const UINT GetEffectCommandCount() { return GetEffectCommandCount(m_activeSubtune, m_activeChannel); };
+	const UINT GetEffectCommandCount(UINT subtune, UINT channel) { return g_Module.GetEffectCommandCount(subtune, channel); };
 
-	const BYTE GetChannelCount() { return GetChannelCount(m_activeSubtune); };
-	const BYTE GetChannelCount(int subtune) { return g_Module.GetChannelCount(subtune); };
+	const UINT GetChannelCount() { return GetChannelCount(m_activeSubtune); };
+	const UINT GetChannelCount(UINT subtune) { return g_Module.GetChannelCount(subtune); };
 
-	const BYTE GetSongLength() { return GetSongLength(m_activeSubtune); };
-	const BYTE GetSongLength(int subtune) { return g_Module.GetSongLength(subtune); };
+	const UINT GetSongLength() { return GetSongLength(m_activeSubtune); };
+	const UINT GetSongLength(UINT subtune) { return g_Module.GetSongLength(subtune); };
 
-	const BYTE GetPatternLength() { return GetPatternLength(m_activeSubtune); };
-	const BYTE GetPatternLength(int pattern) { return g_Module.GetPatternLength(pattern); };
+	const UINT GetPatternLength() { return GetPatternLength(m_activeSubtune); };
+	const UINT GetPatternLength(UINT pattern) { return g_Module.GetPatternLength(pattern); };
 
-	const BYTE GetSongSpeed() { return GetSongSpeed(m_activeSubtune); };
-	const BYTE GetSongSpeed(int subtune) { return g_Module.GetSongSpeed(subtune); };
+	const UINT GetSongSpeed() { return GetSongSpeed(m_activeSubtune); };
+	const UINT GetSongSpeed(UINT subtune) { return g_Module.GetSongSpeed(subtune); };
 
-	const BYTE GetInstrumentSpeed() { return GetInstrumentSpeed(m_activeSubtune); };
-	const BYTE GetInstrumentSpeed(int subtune) { return g_Module.GetInstrumentSpeed(subtune); };
+	const UINT GetInstrumentSpeed() { return GetInstrumentSpeed(m_activeSubtune); };
+	const UINT GetInstrumentSpeed(UINT subtune) { return g_Module.GetInstrumentSpeed(subtune); };
 
-	const BYTE GetPatternInSongline() { return GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline); };
-	const BYTE GetPatternInSongline(int subtune, int channel, int songline) { return g_Module.GetPatternInSongline(subtune, channel, songline); };
+	const UINT GetPatternInSongline() { return GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline); };
+	const UINT GetPatternInSongline(UINT subtune, UINT channel, UINT songline) { return g_Module.GetPatternInSongline(subtune, channel, songline); };
 
-	const BYTE GetShortestPatternLength() { return GetShortestPatternLength(m_activeSubtune, m_activeSongline); };
-	const BYTE GetShortestPatternLength(int subtune, int songline) { return g_Module.GetShortestPatternLength(subtune, songline); };
-	const BYTE GetShortestPatternLength(TSubtune* pSubtune, int songline) { return g_Module.GetShortestPatternLength(pSubtune, songline); };
+	const UINT GetShortestPatternLength() { return GetShortestPatternLength(m_activeSubtune, m_activeSongline); };
+	const UINT GetShortestPatternLength(UINT subtune, UINT songline) { return g_Module.GetShortestPatternLength(subtune, songline); };
+	const UINT GetShortestPatternLength(TSubtune* pSubtune, UINT songline) { return g_Module.GetShortestPatternLength(pSubtune, songline); };
 
-	const BYTE GetPatternRowNote() { return GetPatternRowNote(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
-	const BYTE GetPatternRowNote(int subtune, int channel, int pattern, int row) { return g_Module.GetPatternRowNote(subtune, channel, pattern, row); };
+	const UINT GetPatternRowNote() { return GetPatternRowNote(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
+	const UINT GetPatternRowNote(UINT subtune, UINT channel, UINT pattern, UINT row) { return g_Module.GetPatternRowNote(subtune, channel, pattern, row); };
 
-	const BYTE GetPatternRowInstrument() { return GetPatternRowInstrument(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
-	const BYTE GetPatternRowInstrument(int subtune, int channel, int pattern, int row) { return g_Module.GetPatternRowInstrument(subtune, channel, pattern, row); };
+	const UINT GetPatternRowInstrument() { return GetPatternRowInstrument(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
+	const UINT GetPatternRowInstrument(UINT subtune, UINT channel, UINT pattern, UINT row) { return g_Module.GetPatternRowInstrument(subtune, channel, pattern, row); };
 
-	const BYTE GetPatternRowVolume() { return GetPatternRowVolume(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
-	const BYTE GetPatternRowVolume(int subtune, int channel, int pattern, int row) { return g_Module.GetPatternRowVolume(subtune, channel, pattern, row); };
+	const UINT GetPatternRowVolume() { return GetPatternRowVolume(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow); };
+	const UINT GetPatternRowVolume(UINT subtune, UINT channel, UINT pattern, UINT row) { return g_Module.GetPatternRowVolume(subtune, channel, pattern, row); };
 
-	const BYTE GetPatternRowEffectCommand() { return GetPatternRowEffectCommand(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow, m_activeColumn); };
-	const BYTE GetPatternRowEffectCommand(int subtune, int channel, int pattern, int row, int column) { return g_Module.GetPatternRowEffectCommand(subtune, channel, pattern, row, column); };
+	const UINT GetPatternRowEffectCommand() { return GetPatternRowEffectCommand(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow, m_activeColumn); };
+	const UINT GetPatternRowEffectCommand(UINT subtune, UINT channel, UINT pattern, UINT row, UINT column) { return g_Module.GetPatternRowEffectCommand(subtune, channel, pattern, row, column); };
 
-	const BYTE GetPatternRowEffectParameter() { return GetPatternRowEffectParameter(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow, m_activeColumn); };
-	const BYTE GetPatternRowEffectParameter(int subtune, int channel, int pattern, int row, int column) { return g_Module.GetPatternRowEffectParameter(subtune, channel, pattern, row, column); };
+	const UINT GetPatternRowEffectParameter() { return GetPatternRowEffectParameter(m_activeSubtune, m_activeChannel, GetPatternInSongline(), m_activeRow, m_activeColumn); };
+	const UINT GetPatternRowEffectParameter(UINT subtune, UINT channel, UINT pattern, UINT row, UINT column) { return g_Module.GetPatternRowEffectParameter(subtune, channel, pattern, row, column); };
 
-	bool IsValidSubtune(int subtune) { return g_Module.IsValidSubtune(subtune); };
-	bool IsValidChannel(int channel) { return g_Module.IsValidSubtune(channel); };
-	bool IsValidSongline(int songline) { return g_Module.IsValidSubtune(songline); };
-	bool IsValidPattern(int pattern) { return g_Module.IsValidSubtune(pattern); };
-	bool IsValidRow(int row) { return g_Module.IsValidSubtune(row); };
-	bool IsValidNote(int note) { return g_Module.IsValidSubtune(note); };
-	bool IsValidInstrument(int instrument) { return g_Module.IsValidSubtune(instrument); };
-	bool IsValidVolume(int volume) { return g_Module.IsValidSubtune(volume); };
-	bool IsValidCommand(int command) { return g_Module.IsValidSubtune(command); };
-	bool IsValidCommandColumn(int column) { return g_Module.IsValidSubtune(column); };
+	bool IsValidSubtune(UINT subtune) { return g_Module.IsValidSubtune(subtune); };
+	bool IsValidChannel(UINT channel) { return g_Module.IsValidChannel(channel); };
+	bool IsValidSongline(UINT songline) { return g_Module.IsValidSongline(songline); };
+	bool IsValidPattern(UINT pattern) { return g_Module.IsValidPattern(pattern); };
+	bool IsValidRow(UINT row) { return g_Module.IsValidRow(row); };
+	bool IsValidNote(UINT note) { return g_Module.IsValidNote(note); };
+	bool IsValidInstrument(UINT instrument) { return g_Module.IsValidInstrument(instrument); };
+	bool IsValidVolume(UINT volume) { return g_Module.IsValidVolume(volume); };
+	bool IsValidEffectCommand(UINT command) { return g_Module.IsValidEffectCommand(command); };
+	bool IsValidEffectParameter(UINT parameter) { return g_Module.IsValidEffectParameter(parameter); };
+	bool IsValidCommandColumn(UINT column) { return g_Module.IsValidCommandColumn(column); };
 
+/*
 	void PlayFrame(TSubtune* pSubtune);
 	void PlayContinue(TSubtune* pSubtune);
 	
@@ -674,6 +684,7 @@ public:
 	bool SetInstrumentInPattern(BYTE instrument);
 	bool SetVolumeInPattern(BYTE volume);
 	bool SetCommandInPattern(BYTE command);
+*/
 
 private:
 	// Legacy variables
@@ -773,6 +784,6 @@ private:
 	int m_TracksOrderChange_songlineto;	  // TODO: Delete	//the last values used remain
 
 	// RMTE variables
-	TSongVariables* m_songVariables;
+	//TSongVariables* m_songVariables;
 	TPokeyBuffer* m_pokeyBuffer;
 };

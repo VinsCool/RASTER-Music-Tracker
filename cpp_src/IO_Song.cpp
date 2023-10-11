@@ -619,6 +619,37 @@ void CSong::FileSaveAs()
 /// </summary>
 void CSong::FileNew()
 {
+	// If the last changes were not saved, nothing will be created
+	if (WarnUnsavedChanges())
+		return;
+
+	CFileNewDlg dlg;
+	if (dlg.DoModal() != IDOK)
+		return;
+
+	// Apply the settings and reset the song data
+	//g_Tracks.SetMaxTrackLength(dlg.m_maxTrackLength);
+
+	g_tracks4_8 = (dlg.m_comboMonoOrStereo == 0) ? 4 : 8;
+	ClearSong(g_tracks4_8);
+
+	g_Module.InitialiseModule();
+	
+	//m_activeSubtune = MODULE_DEFAULT_SUBTUNE;
+	//TSubtune* pSubtune = g_Module.GetSubtune(m_activeSubtune);
+	//pSubtune->patternLength = dlg.m_maxTrackLength;
+	//pSubtune->channelCount = g_tracks4_8;
+	//pSubtune->songLength = 1;
+
+	SetRMTTitle();
+
+	// All channels ON (unmute all)
+	SetChannelOnOff(-1, 1);		// -1 = all, 1 = on
+
+	// Delete undo history
+	g_Undo.Clear();
+
+/*
 	// Stop the music first
 	//Stop();
 
@@ -647,6 +678,7 @@ void CSong::FileNew()
 
 	// Delete undo history
 	g_Undo.Clear();
+*/
 }
 
 /// <summary>
@@ -1916,6 +1948,7 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 // Create a RMTE Module file
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
+/*
 	TModuleHeader moduleHeader{};
 
 	// Write the partial Module Header first
@@ -2031,7 +2064,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	// Write the fully constructed Module Header to file once it is ready
 	ou.seekp(std::ios_base::beg);
 	ou.write((char*)&moduleHeader, sizeof(TModuleHeader));
-
+*/
 	// RMTE Module file should have been successfully created
 	return true;
 }
@@ -2039,6 +2072,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 // Load a RMTE Module file
 bool CSong::LoadRMTE(std::ifstream& in)
 {
+/*
 	TModuleHeader moduleHeader{};
 
 	// Read the Module Header first
@@ -2174,7 +2208,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 
 	// Set the number of active POKEY channels from the current Subtune
 	MODULE_CHANNEL_COUNT = GetChannelCount();
-
+*/
 	// Module file should have been successfully loaded
 	return true;
 }

@@ -53,16 +53,16 @@ void CALLBACK G_TimerRoutine(UINT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR)
 CSong::CSong()
 {
 	m_timerRoutine = NULL;
-	m_songVariables = NULL;
+	//m_songVariables = NULL;
 	m_pokeyBuffer = NULL;
-	CreateSongVariables();
+	//CreateSongVariables();
 	CreatePokeyBuffer();
 }
 
 CSong::~CSong()
 {
 	KillTimer();
-	DeleteSongVariables();
+	//DeleteSongVariables();
 	DeletePokeyBuffer();
 }
 
@@ -173,15 +173,16 @@ void CSong::ClearSong(int numOfTracks)
 
 	// Initialise the RMTE Module as well, since it will progressively replace the Legacy format, and will use most of the same functions
 	g_Module.ClearModule();
-	g_Module.InitialiseModule();
+	//g_Module.InitialiseModule();
 
 	// Clear Song variables
-	ClearSongVariables();
+	//ClearSongVariables();
 
 	// Clear POKEY registers buffer
 	ClearPokeyBuffer();
 }
 
+/*
 void CSong::ResetChannelVariables(TChannelVariables* pVariables)
 {
 	if (!pVariables)
@@ -217,6 +218,7 @@ void CSong::CreateSongVariables()
 
 	ClearSongVariables();
 }
+*/
 
 void CSong::ClearPokeyBuffer()
 {
@@ -239,6 +241,7 @@ void CSong::CreatePokeyBuffer()
 
 	ClearPokeyBuffer();
 }
+
 
 //---
 
@@ -1145,15 +1148,21 @@ void CSong::PatternUp(int rows)
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 		return;
 
-	if ((m_activeRow -= rows) < 0)
+	if (GetShortestPatternLength() == 0)
+		return;
+
+	UINT offset = m_activeRow - rows;
+
+	if (offset >= GetShortestPatternLength())
 	{
 		// Moving between Songlines from Pattern boundaries is enabled
 		if (g_keyboard_updowncontinue)
 			SonglineUp();
-		
-		// Adjustment for the Row Index between Songlines, done after updating the Songline
-		m_activeRow += GetShortestPatternLength();
+
+		offset += GetShortestPatternLength();
 	}
+
+	m_activeRow = offset;
 }
 
 void CSong::PatternDown(int rows)
@@ -1162,19 +1171,29 @@ void CSong::PatternDown(int rows)
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 		return;
 
-	if ((m_activeRow += rows) >= GetShortestPatternLength())
+	if (GetShortestPatternLength() == 0)
+		return;
+
+	UINT offset = m_activeRow + rows;
+
+	if (offset >= GetShortestPatternLength())
 	{
 		// Adjustment for the Row Index between Songlines, done before updating the Songline
-		m_activeRow %= GetShortestPatternLength();
+		offset -= GetShortestPatternLength();
 
 		// Moving between Songlines from Pattern boundaries is enabled
 		if (g_keyboard_updowncontinue)
 			SonglineDown();
 	}
+
+	m_activeRow = offset;
 }
 
 void CSong::ChannelLeft()
 {
+	if (GetChannelCount() == 0)
+		return;
+	
 	if (--m_activeChannel < 0)
 		m_activeChannel += GetChannelCount();
 
@@ -1206,7 +1225,12 @@ void CSong::ChannelLeft()
 
 void CSong::ChannelRight()
 {
-	++m_activeChannel %= GetChannelCount();
+	if (GetChannelCount() == 0)
+		return;
+
+	//++m_activeChannel %= GetChannelCount();
+	if (++m_activeChannel >= GetChannelCount())
+		m_activeChannel -= GetChannelCount();
 
 	if (m_activeCursor < 0)
 		m_activeCursor = 0;
@@ -1516,6 +1540,9 @@ BOOL CSong::SongSubsongNext()
 
 void CSong::SonglineUp()
 {
+	if (GetSongLength() == 0)
+		return;
+
 	if (--m_activeSongline < 0)
 		m_activeSongline += GetSongLength();
 
@@ -1527,12 +1554,17 @@ void CSong::SonglineUp()
 	}
 
 	// Prevent the Active Pattern Row to go out of bounds
-	m_activeRow %= GetShortestPatternLength();
+	//m_activeRow %= GetShortestPatternLength();
 }
 
 void CSong::SonglineDown()
 {
-	++m_activeSongline %= GetSongLength();
+	if (GetSongLength() == 0)
+		return;
+
+	//++m_activeSongline %= GetSongLength();
+	if (++m_activeSongline >= GetSongLength())
+		m_activeSongline = 0;
 
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 	{
@@ -1542,11 +1574,14 @@ void CSong::SonglineDown()
 	}
 
 	// Prevent the Active Pattern Row to go out of bounds
-	m_activeRow %= GetShortestPatternLength();
+	//m_activeRow %= GetShortestPatternLength();
 }
 
 void CSong::SeekNextSubtune()
 {
+	if (GetSubtuneCount() == 0)
+		return;
+
 	if (++m_activeSubtune >= GetSubtuneCount())
 		m_activeSubtune = 0;
 
@@ -1560,6 +1595,9 @@ void CSong::SeekNextSubtune()
 
 void CSong::SeekPreviousSubtune()
 {
+	if (GetSubtuneCount() == 0)
+		return;
+
 	if (--m_activeSubtune >= GetSubtuneCount())
 		m_activeSubtune = GetSubtuneCount() - 1;
 
@@ -1571,7 +1609,7 @@ void CSong::SeekPreviousSubtune()
 		Play(MPLAY_START, m_isFollowPlay);
 }
 
-
+/*
 BOOL CSong::SongTrackSet(int t)
 {
 	if (t >= -1 && t < TRACKSNUM)
@@ -1581,6 +1619,7 @@ BOOL CSong::SongTrackSet(int t)
 	}
 	return 1;
 }
+*/
 
 /*
 BOOL CSong::SongTrackSetByNum(int num)
@@ -3540,6 +3579,7 @@ BOOL CSong::PlayVBI()
 /// </summary>
 void CSong::TimerRoutine()
 {
+/*
 	// Get the pointer to the Active Subtune
 	TSubtune* pSubtune = GetSubtune();
 
@@ -3554,6 +3594,7 @@ void CSong::TimerRoutine()
 
 	// If the Song is currently playing, increment the timer
 	UpdatePlayTime();
+*/
 }
 
 /// <summary>
@@ -3620,6 +3661,9 @@ void CSong::CalculateDisplayFPS()
 
 void CSong::DrawSonglines()
 {
+	if (!GetSubtune())
+		return;
+
 	CString s;
 	RECT songblock{};
 	const int linescount = 11, linesoffset = -5;
@@ -4726,8 +4770,6 @@ void CSong::DrawInstrumentEditor()
 	}
 */
 
-
-
 /*
 	// Envelope(s)
 	for (int i = 0; i < pInstrument->envelopeMacro.length; i++)
@@ -4914,16 +4956,20 @@ void CSong::DrawDebugInfos()
 
 void CSong::Stop()
 {
+/*
 	m_playMode = MPLAY_STOP;
 	ResetPlayTime();
 	ClearSongVariables();
 	ClearPokeyBuffer();
 	Atari_InitRMTRoutine();
 	Sleep(20);	// To ensure the Timer Routine is executed at least once here
+*/
+	m_playMode = MPLAY_STOP;
 }
 
 void CSong::Play(int mode, BOOL follow, int special)
 {
+/*
 	switch (mode)
 	{
 	case MPLAY_START:
@@ -4965,8 +5011,10 @@ void CSong::Play(int mode, BOOL follow, int special)
 	}
 	
 	//g_PokeyStream.CallFromPlay(m_playMode, m_playRow, m_playSongline);
+*/
 }
 
+/*
 // Play Module without the 6502 RMT routines limitation, designed specifically for the new RMTE Module format
 // Ultimatey, this will become the default payback method, unless specified otherwise (eg: Legacy RMT compatibility)
 void CSong::PlayFrame(TSubtune* pSubtune)
@@ -4991,8 +5039,11 @@ void CSong::PlayFrame(TSubtune* pSubtune)
 		m_activeRow = m_playRow;
 		m_activeSongline = m_playSongline;
 	}
-}
 
+}
+*/
+
+/*
 // Procedure taking care of playing Instruments, executing Effect Commands, and setting up the POKEY registers during playback
 void CSong::PlayContinue(TSubtune* pSubtune)
 {
@@ -5313,9 +5364,10 @@ void CSong::PlayContinue(TSubtune* pSubtune)
 		g_atarimem[RMTPLAYR_V_AUDCTL] = pPokey->audctl;
 		g_atarimem[RMTPLAYR_V_SKCTL] = pPokey->skctl;
 	}
-
 }
+*/
 
+/*
 void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChannelVariables, TInstrumentVariables* pInstrumentVariables)
 {
 	if (pChannelVariables->isNoteActive)
@@ -5466,7 +5518,9 @@ void CSong::PlayInstrument(TInstrumentV2* pInstrument, TChannelVariables* pChann
 		pChannelVariables->isNoteReset = false;
 	}
 }
+*/
 
+/*
 bool CSong::AdvanceEnvelope(TActive* pActive, TParameter* pParameter, TFlag* pFlag, bool trigger, bool release, bool& hasLooped)
 {
 	// In order to prevent false Release, the matching Flag must be set as well
@@ -5496,7 +5550,9 @@ bool CSong::AdvanceEnvelope(TActive* pActive, TParameter* pParameter, TFlag* pFl
 
 	return false;
 }
+*/
 
+/*
 double CSong::GetVibrato(TPeriodic* pVibrato, double pitch)
 {
 	if (!pVibrato)
@@ -5513,8 +5569,12 @@ double CSong::GetVibrato(TPeriodic* pVibrato, double pitch)
 
 	// Return the finetuned offset from the reference Pitch on the current Vibrato Phase
 	return ((pitch / sqrt(depth)) * amplitude) * sin(velocity * 2.0 * 3.14159265359);
-}
 
+	return 0;
+}
+*/
+
+/*
 double CSong::GetPortamento(TPortamento* pPortamento, double pitch)
 {
 	if (!pPortamento)
@@ -5530,8 +5590,12 @@ double CSong::GetPortamento(TPortamento* pPortamento, double pitch)
 
 	// Return the finetuned offset from the reference Pitch
 	return ((pitch / sqrt(depth)) * amplitude) * sin(velocity * 2.0 * 3.14159265359);
-}
 
+	return 0;
+}
+*/
+
+/*
 void CSong::PlayRow(TSubtune* pSubtune)
 {
 	if (!pSubtune)
@@ -5591,7 +5655,9 @@ void CSong::PlayRow(TSubtune* pSubtune)
 	// Set the Speed Timer to the current Play Speed parameter, the last Fxx Command used will take priority
 	m_speedTimer = m_playSpeed;
 }
+*/
 
+/*
 void CSong::ProcessNote(BYTE note, TChannelVariables* pVariables)
 {
 	switch (note)
@@ -5624,7 +5690,9 @@ void CSong::ProcessNote(BYTE note, TChannelVariables* pVariables)
 		}
 	}
 }
+*/
 
+/*
 void CSong::ProcessInstrument(BYTE instrument, TChannelVariables* pVariables)
 {
 	switch (instrument)
@@ -5639,7 +5707,9 @@ void CSong::ProcessInstrument(BYTE instrument, TChannelVariables* pVariables)
 			pVariables->instrument = instrument;
 	}
 }
+*/
 
+/*
 void CSong::ProcessVolume(BYTE volume, TChannelVariables* pVariables)
 {
 	switch (volume)
@@ -5652,7 +5722,9 @@ void CSong::ProcessVolume(BYTE volume, TChannelVariables* pVariables)
 			pVariables->volume = volume;
 	}
 }
+*/
 
+/*
 void CSong::ProcessEffect(TEffect* effect, TChannelVariables* pVariables)
 {
 	switch (effect->command)
@@ -5688,7 +5760,9 @@ void CSong::ProcessEffect(TEffect* effect, TChannelVariables* pVariables)
 		break;
 	}
 }
+*/
 
+/*
 void CSong::PlaybackRespectBoundaries(TSubtune* pSubtune)
 {
 	if (!pSubtune)
@@ -5702,11 +5776,11 @@ void CSong::PlaybackRespectBoundaries(TSubtune* pSubtune)
 	if (m_playRow >= GetShortestPatternLength(pSubtune, m_playSongline))
 		m_playRow = 0;
 }
-
+*/
 
 //-- Editor Functions (TODO: Move elsewhere later) --//
 
-
+/*
 bool CSong::TransposeNoteInPattern(BYTE semitone)
 {
 	TSubtune* pSubtune = GetSubtune();
@@ -5728,7 +5802,9 @@ bool CSong::TransposeNoteInPattern(BYTE semitone)
 
 	return false;
 }
+*/
 
+/*
 bool CSong::TransposePattern(BYTE semitone)
 {
 	TSubtune* pSubtune = GetSubtune();
@@ -5753,7 +5829,9 @@ bool CSong::TransposePattern(BYTE semitone)
 
 	return true;
 }
+*/
 
+/*
 bool CSong::TransposeSongline(BYTE semitone)
 {
 	TSubtune* pSubtune = GetSubtune();
@@ -5781,7 +5859,9 @@ bool CSong::TransposeSongline(BYTE semitone)
 
 	return true;
 }
+*/
 
+/*
 bool CSong::SetNoteInPattern(BYTE semitone)
 {
 	TSubtune* pSubtune = GetSubtune();
@@ -5816,7 +5896,9 @@ bool CSong::SetNoteInPattern(BYTE semitone)
 
 	return false;
 }
+*/
 
+/*
 bool CSong::SetInstrumentInPattern(BYTE instrument)
 {
 	TSubtune* pSubtune = GetSubtune();
@@ -5867,7 +5949,9 @@ bool CSong::SetInstrumentInPattern(BYTE instrument)
 
 	return false;
 }
+*/
 
+/*
 bool CSong::SetVolumeInPattern(BYTE volume)
 {
 	TSubtune* pSubtune = GetSubtune();
@@ -5893,7 +5977,9 @@ bool CSong::SetVolumeInPattern(BYTE volume)
 
 	return false;
 }
+*/
 
+/*
 bool CSong::SetCommandInPattern(BYTE command)
 {
 	TSubtune* pSubtune = GetSubtune();
@@ -5945,3 +6031,4 @@ bool CSong::SetCommandInPattern(BYTE command)
 
 	return false;
 }
+*/

@@ -152,6 +152,9 @@ BOOL IsHoveredXY(int x, int y, int xLength, int yLength)
 
 void TextXY(const char* txt, int x, int y, int color)
 {
+	if (!txt)
+		return;
+
 	char charToDraw;
 	color = color << 4;
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)
@@ -163,6 +166,9 @@ void TextXY(const char* txt, int x, int y, int color)
 
 void TextXYFull(const char* txt, int& x, int& y)
 {
+	if (!txt)
+		return;
+
 	int color = TEXT_COLOR_WHITE << 4, ori_x = x, ori_y = y;
 
 	for (int i = 0; char charToDraw = (txt[i]); i++)
@@ -189,6 +195,9 @@ void TextXYFull(const char* txt, int& x, int& y)
 
 void TextXYSelN(const char* txt, int n, int x, int y, int color)
 {
+	if (!txt)
+		return;
+
 	color <<= 4;
 
 	int col = (g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED) << 4;
@@ -205,6 +214,9 @@ void TextXYSelN(const char* txt, int n, int x, int y, int color)
 // TODO: make a lookup table for the cursor highlight position
 void TextXYCol(const char* txt, int x, int y, int cursor, int column, int color)
 {
+	if (!txt)
+		return;
+
 	color <<= 4;
 
 	int contiguous = 0;
@@ -234,6 +246,9 @@ void TextXYCol(const char* txt, int x, int y, int cursor, int column, int color)
 // Draw 8x16 chars vertically (one below the other)
 void TextDownXY(const char* txt, int x, int y, int color)
 {
+	if (!txt)
+		return;
+
 	char charToDraw;
 	color = color << 4;	// 16 pixels height
 	for (int i = 0; charToDraw = (txt[i]); i++, y += 16)
@@ -251,6 +266,9 @@ void NumberMiniXY(const BYTE num, int x, int y, int color)
 
 void TextMiniXY(const char* txt, int x, int y, int color)
 {
+	if (!txt)
+		return;
+
 	char charToDraw;
 	color = 112 + (color << 3);
 	for (int i = 0; charToDraw = (txt[i]); i++, x += 8)

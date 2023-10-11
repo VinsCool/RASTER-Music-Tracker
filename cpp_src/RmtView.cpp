@@ -925,6 +925,7 @@ void CRmtView::OnInitialUpdate()
 
 	//Pal or NTSC
 	g_Song.ChangeTimer(16);
+	g_Song.ClearSong(g_tracks4_8);
 
 	//If the tracker was started with an argument, it attempts to load the file, and will return an error if the extention isn't .rmt. 
 	//When no argument is passed, the initialisation continues like normal.
@@ -3133,6 +3134,7 @@ void CRmtView::OnProcessKeyboardInput(UINT vk)
 
 void CRmtView::PatternEditorKey(UINT vk)
 {
+/*
 	BYTE notekey = NoteKey(vk);
 	BYTE numbkey = NumbKey(vk);
 
@@ -3217,4 +3219,5 @@ void CRmtView::PatternEditorKey(UINT vk)
 			g_Song.PatternDown(g_linesafter);
 		return;
 	}
+*/
 }
