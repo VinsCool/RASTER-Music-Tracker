@@ -2636,186 +2636,163 @@ void CModule::MergeDuplicatedPatterns(UINT subtune)
 // Find and merge duplicated Patterns, and adjust the Songline Index accordingly
 void CModule::MergeDuplicatedPatterns(TSubtune* pSubtune)
 {
-/*
-	if (!pSubtune)
-		return;
+	UINT channelCount = GetChannelCount(pSubtune);
 
-	for (int i = 0; i < pSubtune->channelCount; i++)
+	for (UINT i = 0; i < channelCount; i++)
 	{
-		for (int j = 0; j < pSubtune->songLength; j++)
+		for (UINT j = 0; j < SONGLINE_COUNT; j++)
 		{
 			// Get the Pattern from which comparisons will be made
-			BYTE reference = pSubtune->channel[i].songline[j];
+			UINT reference = GetPatternInSongline(pSubtune, i, j);
 
 			// Compare to every Patterns found in the Channel Index, unused Patterns will be ignored
-			for (int k = 0; k < pSubtune->songLength; k++)
+			for (UINT k = 0; k < SONGLINE_COUNT; k++)
 			{
 				// Get the Pattern that will be compared to the reference Pattern
-				BYTE compared = pSubtune->channel[i].songline[k];
+				UINT compared = GetPatternInSongline(pSubtune, i, k);
 
 				// Comparing a Pattern to itself is pointless
 				if (compared == reference)
 					continue;
 
-				// Compare the Patterns, and update the Songline Index if they are identical
-				if (IsIdenticalPattern(&pSubtune->channel[i].pattern[reference], &pSubtune->channel[i].pattern[compared]))
-					pSubtune->channel[i].songline[k] = reference;
+				// Compare the Patterns, if a match is found, update the Songline Index and delete the duplicate Pattern
+				if (IsIdenticalPattern(GetPattern(pSubtune, i, reference), GetPattern(pSubtune, i, compared)))
+				{
+					SetPatternInSongline(pSubtune, i, k, reference);
+					DeletePattern(GetPattern(pSubtune, i, compared));
+				}
 			}
 		}
 	}
-*/
 }
 
 // Renumber all Patterns from first to last Songlines, without optimisations
-// TODO: Move to CSong
 void CModule::RenumberIndexedPatterns(UINT subtune)
 {
 	RenumberIndexedPatterns(GetSubtune(subtune));
 }
 
 // Renumber all Patterns from first to last Songlines, without optimisations
-// TODO: Move to CSong
 void CModule::RenumberIndexedPatterns(TSubtune* pSubtune)
 {
-/*
-	if (!pSubtune)
-		return;
+	UINT channelCount = GetChannelCount(pSubtune);
 
-	// Create a Temporary Index that will be used as a buffer
-	TChannel* backupIndex = new TChannel;
-
-	// Process all Channels within the Module Index
-	for (int i = 0; i < pSubtune->channelCount; i++)
+	// Process all Channels within the Subtune Index
+	for (UINT i = 0; i < channelCount; i++)
 	{
-		// Get the current Channel Index
-		TChannel* channelIndex = &pSubtune->channel[i];
+		// Create a Temporary Channel that will be used as a buffer
+		TChannel* backupChannel = CreateChannel();
 
-		// Copy the original data to the Temporary Index first
-		CopyChannel(channelIndex, backupIndex);
+		// Copy the original data to the Temporary Channel first
+		CopyChannel(GetChannel(pSubtune, i), backupChannel);
 
 		// Copy all Indexed Patterns to single Songline entries, effectively duplicating all Patterns used in multiple Songlines
-		for (int j = 0; j < SONGLINE_COUNT; j++)
+		for (UINT j = 0; j < SONGLINE_COUNT; j++)
 		{
-			BYTE pattern = channelIndex->songline[j];
-			CopyPattern(&channelIndex->pattern[pattern], &backupIndex->pattern[j]);
-			backupIndex->songline[j] = j;
+			UINT pattern = GetPatternInSongline(GetChannel(pSubtune, i), j);
+			CopyPattern(GetPattern(pSubtune, i, pattern), GetPattern(backupChannel, j));
+			SetPatternInSongline(backupChannel, j, j);
 		}
 
-		// Copy the re-organised data back to the original Channel Index
-		CopyChannel(backupIndex, channelIndex);
-	}
+		// Copy the re-organised data back to the original Channel
+		CopyChannel(backupChannel, GetChannel(pSubtune, i));
 
-	// Delete the Temporary Index once it's no longer needed
-	delete backupIndex;
-*/
+		// Delete the Temporary Channel once it's no longer needed
+		DeleteChannel(backupChannel);
+	}
 }
 
 // Clear all unused Indexed Patterns
-// TODO: Move to CSong
 void CModule::ClearUnusedPatterns(UINT subtune)
 {
 	ClearUnusedPatterns(GetSubtune(subtune));
 }
 
 // Clear all unused Indexed Patterns
-// TODO: Move to CSong
 void CModule::ClearUnusedPatterns(TSubtune* pSubtune)
 {
-/*
-	if (!pSubtune)
-		return;
+	UINT channelCount = GetChannelCount(pSubtune);
 
 	// Process all Channels within the Module Index
-	for (int i = 0; i < pSubtune->channelCount; i++)
+	for (int i = 0; i < channelCount; i++)
 	{
 		// Search for all unused indexed Patterns
 		for (int j = 0; j < PATTERN_COUNT; j++)
 		{
-			// If the Pattern is not used anywhere, it will be deleted
-			if (IsUnusedPattern(&pSubtune->channel[i], j, pSubtune->songLength))
-				ClearPattern(&pSubtune->channel[i].pattern[j]);
+			// If the Pattern is not used anywhere, it will be deleted and removed from the Songline Index
+			if (IsUnusedPattern(GetChannel(pSubtune, i), j))
+			{
+				DeletePattern(GetPattern(pSubtune, i, j));
+				SetPatternInSongline(pSubtune, i, j, j);
+			}
 		}
 	}
-*/
 }
 
 // Renumber all Patterns from first to last Songlines, and optimise them by concatenation
-// TODO: Move to CSong
 void CModule::ConcatenateIndexedPatterns(UINT subtune)
 {
 	ConcatenateIndexedPatterns(GetSubtune(subtune));
 }
 
 // Renumber all Patterns from first to last Songlines, and optimise them by concatenation
-// TODO: Move to CSong
 void CModule::ConcatenateIndexedPatterns(TSubtune* pSubtune)
 {
-/*
-	if (!pSubtune)
-		return;
+	UINT channelCount = GetChannelCount(pSubtune);
 
-	// Create a Temporary Index that will be used as a buffer
-	TChannel* backupIndex = new TChannel;
-
-	// Process all Channels within the Module Index
-	for (int i = 0; i < pSubtune->channelCount; i++)
+	// Process all Channels within the Subtune Index
+	for (int i = 0; i < channelCount; i++)
 	{
-		// Get the current Channel Index
-		TChannel* channelIndex = &pSubtune->channel[i];
+		// Create a Temporary Channel that will be used as a buffer
+		TChannel* backupChannel = CreateChannel();
 
-		// Copy the original data to the Temporary Index first
-		CopyChannel(channelIndex, backupIndex);
-
+		// Copy the original data to the Temporary Channel first
+		CopyChannel(GetChannel(pSubtune, i), backupChannel);
+		
 		// Concatenate the Indexed Patterns to remove gaps between them
-		for (int j = 0; j < PATTERN_COUNT; j++)
+		for (UINT j = 0; j < PATTERN_COUNT; j++)
 		{
 			// If a Pattern is used at least once, see if it could also be concatenated further back
-			if (!IsUnusedPattern(backupIndex, j, pSubtune->songLength))
+			if (!IsUnusedPattern(backupChannel, j))
 			{
 				// Find the first empty and unused Pattern that is available
-				for (int k = 0; k < j; k++)
+				for (UINT k = 0; k < j; k++)
 				{
-					TPattern* source = &backupIndex->pattern[j];
-					TPattern* destination = &backupIndex->pattern[k];
-
 					// If the Pattern is empty and unused, it will be replaced
-					if (IsUnusedPattern(backupIndex, k, pSubtune->songLength) && IsEmptyPattern(destination))
+					if (IsUnusedPattern(backupChannel, k) && IsEmptyPattern(GetPattern(backupChannel, k)))
 					{
 						// Copy the Pattern from J to K
-						CopyPattern(source, destination);
+						CopyPattern(GetPattern(backupChannel, j), GetPattern(backupChannel, k));
 
 						// Clear the Pattern from J, since it won't be needed anymore
-						ClearPattern(source);
+						DeletePattern(GetPattern(backupChannel, j));
 
 						// Replace the Pattern used in the Songline Index with the new one
-						for (int l = 0; l < pSubtune->songLength; l++)
+						for (UINT l = 0; l < SONGLINE_COUNT; l++)
 						{
-							if (backupIndex->songline[l] == j)
-								backupIndex->songline[l] = k;
+							if (GetPatternInSongline(backupChannel, l) == j)
+								SetPatternInSongline(backupChannel, l, k);
 						}
 					}
 				}
 			}
 		}
 
-		// Copy the re-organised data back to the original Channel Index
-		CopyChannel(backupIndex, channelIndex);
-	}
+		// Copy the re-organised data back to the original Channel
+		CopyChannel(backupChannel, GetChannel(pSubtune, i));
 
-	// Delete the Temporary Index once it's no longer needed
-	delete backupIndex;
-*/
+		// Delete the Temporary Channel once it's no longer needed
+		DeleteChannel(backupChannel);
+	}
 }
 
 // Optimise the RMTE Module, by re-organising everything within the Indexed Structures, in order to remove most of the unused/duplicated data efficiently
-// TODO: Move to CSong
 void CModule::AllSizeOptimisations(UINT subtune)
 {
 	AllSizeOptimisations(GetSubtune(subtune));
 }
 
 // Optimise the RMTE Module, by re-organising everything within the Indexed Structures, in order to remove most of the unused/duplicated data efficiently
-// TODO: Move to CSong
 void CModule::AllSizeOptimisations(TSubtune* pSubtune)
 {
 	if (!pSubtune)
