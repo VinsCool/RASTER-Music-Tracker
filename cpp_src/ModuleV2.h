@@ -437,6 +437,13 @@ public:
 	void InitialiseModule();
 	void ClearModule();
 
+	void DeleteAllSubtunes();
+	void DeleteAllChannels(TSubtune* pSubtune);
+	void DeleteAllPatterns(TChannel* pChannel);
+	void DeleteAllRows(TPattern* pPattern);
+
+	void DeleteAllInstruments();
+
 	void CreateSubtune(UINT subtune);
 	TSubtune* CreateSubtune();
 
@@ -447,19 +454,30 @@ public:
 	void InitialiseSubtune(TSubtune* pSubtune);
 
 	TChannel* CreateChannel();
+
+	void DeleteChannel(TSubtune* pSubtune, UINT channel);
 	void DeleteChannel(TChannel* pChannel);
 	void InitialiseChannel(TChannel* pChannel);
 
 	TPattern* CreatePattern();
+
+	void DeletePattern(TChannel* pChannel, UINT pattern);
 	void DeletePattern(TPattern* pPattern);
 	void InitialisePattern(TPattern* pPattern);
 
 	TRow* CreateRow();
+
+	void DeleteRow(TPattern* pPattern, UINT row);
 	void DeleteRow(TRow* pRow);
 	void InitialiseRow(TRow* pRow);
 
 	void CreateInstrument(UINT instrument);
+	TInstrumentV2* CreateInstrument();
+
 	void DeleteInstrument(UINT instrument);
+	void DeleteInstrument(TInstrumentV2* pInstrument);
+
+	void InitialiseInstrument(UINT instrument);
 	void InitialiseInstrument(TInstrumentV2* pInstrument);
 
 	//-- Legacy RMT Module Import Functions --//
@@ -673,16 +691,16 @@ public:
 	bool ClearPattern(TChannel* pChannel, UINT pattern);
 	bool ClearPattern(TPattern* pPattern);
 
-	// FIXME: Copy does not take care of allocated memory! Leaks everywhere!
 	bool CopyRow(TRow* pFromRow, TRow* pToRow);
 
 	bool CopyPattern(TPattern* pFromPattern, TPattern* pToPattern);
 
+	bool CopyChannel(UINT subtune, UINT fromChannel, UINT toChannel);
+	bool CopyChannel(TSubtune* pSubtune, UINT fromChannel, UINT toChannel);
 	bool CopyChannel(TChannel* pFromChannel, TChannel* pToChannel);
 
+	bool CopySubtune(UINT fromSubtune, UINT toSubtune);
 	bool CopySubtune(TSubtune* pFromSubtune, TSubtune* pToSubtune);
-
-	bool DuplicateChannelIndex(UINT subtune, UINT sourceIndex, UINT destinationIndex);
 
 	void MergeDuplicatedPatterns(UINT subtune);
 	void MergeDuplicatedPatterns(TSubtune* pSubtune);

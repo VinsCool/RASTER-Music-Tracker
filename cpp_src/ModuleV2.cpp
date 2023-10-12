@@ -9,7 +9,6 @@ CModule::CModule()
 {
 	m_subtuneIndex = new TSubtuneIndex();
 	m_instrumentIndex = new TInstrumentIndex();
-	//InitialiseModule();	// Not necessary?
 }
 
 CModule::~CModule()
@@ -31,7 +30,6 @@ void CModule::InitialiseModule()
 
 	// Same thing for the Instrument
 	CreateInstrument(MODULE_DEFAULT_INSTRUMENT);
-
 }
 
 void CModule::ClearModule()
@@ -42,13 +40,50 @@ void CModule::ClearModule()
 	SetModuleCopyright("");
 
 	// Delete all Module data and set the associated pointers to NULL
-	for (int i = 0; i < SUBTUNE_COUNT; i++)
-		DeleteSubtune(i);
+	DeleteAllSubtunes();
 
 	// Delete all Instrument data, including Envelopes and Tables
+	DeleteAllInstruments();
+}
+
+
+//--
+
+void CModule::DeleteAllSubtunes()
+{
+	for (int i = 0; i < SUBTUNE_COUNT; i++)
+		DeleteSubtune(i);
+}
+
+void CModule::DeleteAllChannels(TSubtune* pSubtune)
+{
+	for (int i = 0; i < CHANNEL_COUNT; i++)
+		DeleteChannel(pSubtune, i);
+}
+
+void CModule::DeleteAllPatterns(TChannel* pChannel)
+{
+	for (int i = 0; i < PATTERN_COUNT; i++)
+		DeletePattern(pChannel, i);
+}
+
+void CModule::DeleteAllRows(TPattern* pPattern)
+{
+	for (int i = 0; i < ROW_COUNT; i++)
+		DeleteRow(pPattern, i);
+}
+
+
+//--
+
+void CModule::DeleteAllInstruments()
+{
 	for (int i = 0; i < INSTRUMENT_COUNT; i++)
 		DeleteInstrument(i);
 }
+
+
+//--
 
 void CModule::CreateSubtune(UINT subtune)
 {
@@ -63,9 +98,7 @@ void CModule::CreateSubtune(UINT subtune)
 TSubtune* CModule::CreateSubtune()
 {
 	TSubtune* pSubtune = new TSubtune();
-
 	InitialiseSubtune(pSubtune);
-
 	return pSubtune;
 }
 
@@ -84,9 +117,7 @@ void CModule::DeleteSubtune(TSubtune* pSubtune)
 	if (!pSubtune)
 		return;
 
-	for (int i = 0; i < CHANNEL_COUNT; i++)
-		DeleteChannel(pSubtune->channel[i]);
-
+	DeleteAllChannels(pSubtune);
 	delete pSubtune;
 }
 
@@ -110,30 +141,28 @@ void CModule::InitialiseSubtune(TSubtune* pSubtune)
 	pSubtune->songSpeed = MODULE_DEFAULT_SONG_SPEED;
 	pSubtune->instrumentSpeed = MODULE_DEFAULT_VBI_SPEED;
 
+	// Delete all Channels with leftover data
+	DeleteAllChannels(pSubtune);
+
 	// Create initial module data based on the defined parameters above
 	for (int i = 0; i < pSubtune->channelCount; i++)
-	{
 		pSubtune->channel[i] = CreateChannel();
-
-		for (int j = 0; j < pSubtune->songLength; j++)
-		{
-			pSubtune->channel[i]->pattern[j] = CreatePattern();
-
-			//for (int k = 0; k < pSubtune->patternLength; k++)
-			//{
-			//	pSubtune->channel[i]->pattern[j]->row[k] = CreateRow();
-			//}
-		}
-	}
 }
 
 TChannel* CModule::CreateChannel()
 {
 	TChannel* pChannel = new TChannel();
-
 	InitialiseChannel(pChannel);
-
 	return pChannel;
+}
+
+void CModule::DeleteChannel(TSubtune* pSubtune, UINT channel)
+{
+	if (!pSubtune || !IsValidChannel(channel))
+		return;
+
+	DeleteChannel(pSubtune->channel[channel]);
+	pSubtune->channel[channel] = NULL;
 }
 
 void CModule::DeleteChannel(TChannel* pChannel)
@@ -141,9 +170,7 @@ void CModule::DeleteChannel(TChannel* pChannel)
 	if (!pChannel)
 		return;
 
-	for (int i = 0; i < PATTERN_COUNT; i++)
-		DeletePattern(pChannel->pattern[i]);
-
+	DeleteAllPatterns(pChannel);
 	delete pChannel;
 }
 
@@ -152,24 +179,37 @@ void CModule::InitialiseChannel(TChannel* pChannel)
 	if (!pChannel)
 		return;
 
-	// Set all indexed Patterns to 0
-	for (int i = 0; i < SONGLINE_COUNT; i++)
-		pChannel->songline[i] = 0x00;
-
 	// By default, only 1 Effect Command is enabled in all Track Channels
 	pChannel->isMuted = false;
 	pChannel->isEffectEnabled = true;
 	pChannel->effectCount = 0x01;
 	pChannel->channelVolume = 0x0F;
+
+	// Set all indexed Patterns to 0
+	for (int i = 0; i < SONGLINE_COUNT; i++)
+		pChannel->songline[i] = 0x00;
+
+	// Delete all Patterns with leftover data
+	DeleteAllPatterns(pChannel);
+
+	// Create 1 Empty Pattern associated to the Songline Index
+	pChannel->pattern[0x00] = CreatePattern();
 }
 
 TPattern* CModule::CreatePattern()
 {
 	TPattern* pPattern = new TPattern();
-
 	InitialisePattern(pPattern);
-
 	return pPattern;
+}
+
+void CModule::DeletePattern(TChannel* pChannel, UINT pattern)
+{
+	if (!pChannel || !IsValidPattern(pattern))
+		return;
+
+	DeletePattern(pChannel->pattern[pattern]);
+	pChannel->pattern[pattern] = NULL;
 }
 
 void CModule::DeletePattern(TPattern* pPattern)
@@ -177,9 +217,7 @@ void CModule::DeletePattern(TPattern* pPattern)
 	if (!pPattern)
 		return;
 
-	for (int i = 0; i < ROW_COUNT; i++)
-		DeleteRow(pPattern->row[i]);
-
+	DeleteAllRows(pPattern);
 	delete pPattern;
 }
 
@@ -188,6 +226,10 @@ void CModule::InitialisePattern(TPattern* pPattern)
 	if (!pPattern)
 		return;
 
+	// Delete all Rows with leftover data
+	DeleteAllRows(pPattern);
+
+	// Fill the entire Pattern with brand new Rows
 	for (int i = 0; i < ROW_COUNT; i++)
 		pPattern->row[i] = CreateRow();
 }
@@ -195,10 +237,17 @@ void CModule::InitialisePattern(TPattern* pPattern)
 TRow* CModule::CreateRow()
 {
 	TRow* pRow = new TRow();
-
 	InitialiseRow(pRow);
-
 	return pRow;
+}
+
+void CModule::DeleteRow(TPattern* pPattern, UINT row)
+{
+	if (!pPattern || !IsValidRow(row))
+		return;
+
+	DeleteRow(pPattern->row[row]);
+	pPattern->row[row] = NULL;
 }
 
 void CModule::DeleteRow(TRow* pRow)
@@ -229,48 +278,69 @@ void CModule::InitialiseRow(TRow* pRow)
 
 void CModule::CreateInstrument(UINT instrument)
 {
-/*
-	if (!IsValidInstrument(instrument))
+	if (!m_instrumentIndex || !IsValidInstrument(instrument))
 		return;
 
 	// If there is no Instrument here, create it now and update the Instrument Index accordingly
-	if (!m_instrumentIndex[instrument])
-		m_instrumentIndex[instrument] = new TInstrumentV2;
+	if (!m_instrumentIndex->instrument[instrument])
+		m_instrumentIndex->instrument[instrument] = CreateInstrument();
+}
 
-	// A new Instrument must be initialised when it is created
-	InitialiseInstrument(m_instrumentIndex[instrument]);
-*/
+TInstrumentV2* CModule::CreateInstrument()
+{
+	TInstrumentV2* pInstrument = new TInstrumentV2();
+	InitialiseInstrument(pInstrument);
+	return pInstrument;
 }
 
 void CModule::DeleteInstrument(UINT instrument)
 {
-/*
-	if (!IsValidInstrument(instrument))
+	if (!m_instrumentIndex || !IsValidInstrument(instrument))
 		return;
 
 	// If there is an Instrument here, don't waste any time and delete it without further ado
-	if (m_instrumentIndex[instrument])
-		delete m_instrumentIndex[instrument];
+	DeleteInstrument(m_instrumentIndex->instrument[instrument]);
+	m_instrumentIndex->instrument[instrument] = NULL;
+}
 
-	m_instrumentIndex[instrument] = NULL;
-*/
+void CModule::DeleteInstrument(TInstrumentV2* pInstrument)
+{
+	if (!pInstrument)
+		return;
+	
+	// Do something here...?
+	delete pInstrument;
+}
+
+void CModule::InitialiseInstrument(UINT instrument)
+{
+	InitialiseInstrument(GetInstrument(instrument));
 }
 
 void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 {
-/*
 	if (!pInstrument)
 		return;
 
-	// Clear all values
-	memset(pInstrument, 0x00, sizeof(TInstrumentV2));
-
-	// Set Macros to default, the data itself won't be edited
-	memset(&pInstrument->index, 0x80, sizeof(TMacro));
-
 	// Set the default Instrument name TODO(?): Append the Index Number to it
 	strncpy_s(pInstrument->name, "New Instrument", INSTRUMENT_NAME_MAX);
-*/
+
+	pInstrument->volumeFade = 0x00;
+	pInstrument->volumeSustain = 0x00;
+	pInstrument->vibrato = 0x00;
+	pInstrument->freqShift = 0x00;
+	pInstrument->delay = 0x00;
+
+	// Set the default Envelope parameters, always disabled for newly created Instruments
+	TMacro macro{ 0x00, false, false };
+
+	pInstrument->envelope.volume = macro;
+	pInstrument->envelope.timbre = macro;
+	pInstrument->envelope.audctl = macro;
+	pInstrument->envelope.trigger = macro;
+	pInstrument->envelope.effect = macro;
+	pInstrument->envelope.note = macro;
+	pInstrument->envelope.freq = macro;
 }
 
 /*
@@ -1326,7 +1396,12 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 TSubtune* CModule::GetSubtune(UINT subtune)
 {
 	if (m_subtuneIndex && IsValidSubtune(subtune))
+	{
+		if (!m_subtuneIndex->subtune[subtune])
+			m_subtuneIndex->subtune[subtune] = CreateSubtune();
+
 		return m_subtuneIndex->subtune[subtune];
+	}
 
 	return NULL;
 }
@@ -1339,7 +1414,12 @@ TChannel* CModule::GetChannel(UINT subtune, UINT channel)
 TChannel* CModule::GetChannel(TSubtune* pSubtune, UINT channel)
 {
 	if (pSubtune && IsValidChannel(channel))
+	{
+		if (!pSubtune->channel[channel])
+			pSubtune->channel[channel] = CreateChannel();
+
 		return pSubtune->channel[channel];
+	}
 
 	return NULL;
 }
@@ -1357,7 +1437,12 @@ TPattern* CModule::GetPattern(TSubtune* pSubtune, UINT channel, UINT pattern)
 TPattern* CModule::GetPattern(TChannel* pChannel, UINT pattern)
 {
 	if (pChannel && IsValidPattern(pattern))
+	{
+		if (!pChannel->pattern[pattern])
+			pChannel->pattern[pattern] = CreatePattern();
+
 		return pChannel->pattern[pattern];
+	}
 
 	return NULL;
 }
@@ -1398,7 +1483,12 @@ TRow* CModule::GetRow(TChannel* pChannel, UINT pattern, UINT row)
 TRow* CModule::GetRow(TPattern* pPattern, UINT row)
 {
 	if (pPattern && IsValidRow(row))
+	{
+		if (!pPattern->row[row])
+			pPattern->row[row] = CreateRow();
+
 		return pPattern->row[row];
+	}
 
 	return NULL;
 }
@@ -2053,7 +2143,12 @@ const UINT CModule::GetSubtuneCount()
 TInstrumentV2* CModule::GetInstrument(UINT instrument)
 {
 	if (m_instrumentIndex && IsValidInstrumentIndex(instrument))
+	{
+		if (!m_instrumentIndex->instrument[instrument])
+			m_instrumentIndex->instrument[instrument] = CreateInstrument();
+
 		return m_instrumentIndex->instrument[instrument];
+	}
 
 	return NULL;
 }
@@ -2324,12 +2419,12 @@ bool CModule::IsIdenticalRow(TRow* pFromRow, TRow* pToRow)
 		return false;
 
 	// If there is a different Effect Command, it's not identical
-	for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
+	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
 	{
-		if (pFromRow->effect[j].command != pToRow->effect[j].command)
+		if (pFromRow->effect[i].command != pToRow->effect[i].command)
 			return false;
 
-		if (pFromRow->effect[j].parameter != pToRow->effect[j].parameter)
+		if (pFromRow->effect[i].parameter != pToRow->effect[i].parameter)
 			return false;
 	}
 
@@ -2414,14 +2509,21 @@ bool CModule::ClearPattern(TPattern* pPattern)
 // Copy data from source Row to destination Row, Return True if successful
 bool CModule::CopyRow(TRow* pFromRow, TRow* pToRow)
 {
-	// Make sure both the Patterns from source and destination are not Null pointers
+	// Make sure both the Rows from source and destination are not Null pointers
 	if (!pFromRow || !pToRow)
 		return false;
 
-	// Otherwise, copying Pattern data is pretty straightforward
-	*pToRow = *pFromRow;
+	pToRow->note = pFromRow->note;
+	pToRow->instrument = pFromRow->instrument;
+	pToRow->volume = pFromRow->volume;
 
-	// Pattern data should have been copied successfully
+	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
+	{
+		pToRow->effect[i].command = pFromRow->effect[i].command;
+		pToRow->effect[i].parameter = pFromRow->effect[i].parameter;
+	}
+
+	// Row data should have been copied successfully
 	return true;
 }
 
@@ -2432,11 +2534,37 @@ bool CModule::CopyPattern(TPattern* pFromPattern, TPattern* pToPattern)
 	if (!pFromPattern || !pToPattern)
 		return false;
 
-	// Otherwise, copying Pattern data is pretty straightforward
-	*pToPattern = *pFromPattern;
+	for (int i = 0; i < ROW_COUNT; i++)
+	{
+		// There is no Source Row, delete the Destination Row
+		if (!pFromPattern->row[i])
+		{
+			DeleteRow(pToPattern->row[i]);
+			pToPattern->row[i] = NULL;
+		}
+
+		// There is no Destination Row, create it now
+		else if (!pToPattern->row[i])
+			pToPattern->row[i] = CreateRow();
+
+		// Copy whole Rows, Empty Rows will be skipped automatically
+		CopyRow(pFromPattern->row[i], pToPattern->row[i]);
+	}
 
 	// Pattern data should have been copied successfully
 	return true;
+}
+
+// Copy data from source Channel to destination Channel, Return True if successful
+bool CModule::CopyChannel(UINT subtune, UINT fromChannel, UINT toChannel)
+{
+	return CopyChannel(GetChannel(subtune, fromChannel), GetChannel(subtune, toChannel));
+}
+
+// Copy data from source Channel to destination Channel, Return True if successful
+bool CModule::CopyChannel(TSubtune* pSubtune, UINT fromChannel, UINT toChannel)
+{
+	return CopyChannel(GetChannel(pSubtune, fromChannel), GetChannel(pSubtune, toChannel));
 }
 
 // Copy data from source Channel to destination Channel, Return True if successful
@@ -2446,11 +2574,39 @@ bool CModule::CopyChannel(TChannel* pFromChannel, TChannel* pToChannel)
 	if (!pFromChannel || !pToChannel)
 		return false;
 
-	// Otherwise, copying Channel data is pretty straightforward
-	*pToChannel = *pFromChannel;
+	pToChannel->isMuted = pFromChannel->isMuted;
+	pToChannel->isEffectEnabled = pFromChannel->isEffectEnabled;
+	pToChannel->effectCount = pFromChannel->effectCount;
+	pToChannel->channelVolume = pFromChannel->channelVolume;
 
-	// Index data should have been copied successfully
+	for (int i = 0; i < SONGLINE_COUNT; i++)
+		pToChannel->songline[i] = pFromChannel->songline[i];
+
+	for (int i = 0; i < PATTERN_COUNT; i++)
+	{
+		// There is no Source Pattern, delete the Destination Pattern
+		if (!pFromChannel->pattern[i])
+		{
+			DeletePattern(pToChannel->pattern[i]);
+			pToChannel->pattern[i] = NULL;
+		}
+
+		// There is no Destination Pattern, create it now
+		else if (!pToChannel->pattern[i])
+			pToChannel->pattern[i] = CreatePattern();
+
+		// Copy whole Patterns, Empty Patterns will be skipped automatically
+		CopyPattern(pFromChannel->pattern[i], pToChannel->pattern[i]);
+	}
+
+	// Channel data should have been copied successfully
 	return true;
+}
+
+// Copy data from source Subtune to destination Subtune, Return True if successful
+bool CModule::CopySubtune(UINT fromSubtune, UINT toSubtune)
+{
+	return CopySubtune(GetSubtune(fromSubtune), GetSubtune(toSubtune));
 }
 
 // Copy data from source Subtune to destination Subtune, Return True if successful
@@ -2460,34 +2616,42 @@ bool CModule::CopySubtune(TSubtune* pFromSubtune, TSubtune* pToSubtune)
 	if (!pFromSubtune || !pToSubtune)
 		return false;
 
-	// Otherwise, copying Index data is pretty straightforward
-	*pToSubtune = *pFromSubtune;
+	SetSubtuneName(pToSubtune, pFromSubtune->name);
+
+	pToSubtune->songLength = pFromSubtune->songLength;
+	pToSubtune->patternLength = pFromSubtune->patternLength;
+	pToSubtune->songSpeed = pFromSubtune->songSpeed;
+	pToSubtune->instrumentSpeed = pFromSubtune->instrumentSpeed;
+	pToSubtune->channelCount = pFromSubtune->channelCount;
+
+	for (int i = 0; i < CHANNEL_COUNT; i++)
+	{
+		// There is no Source Channel, delete the Destination Channel
+		if (!pFromSubtune->channel[i])
+		{
+			DeleteChannel(pToSubtune->channel[i]);
+			pToSubtune->channel[i] = NULL;
+		}
+
+		// There is no Destination Channel, create it now
+		else if (!pToSubtune->channel[i])
+			pToSubtune->channel[i] = CreateChannel();
+
+		// Copy whole Channels, Empty Channels will be skipped automatically
+		CopyChannel(pFromSubtune->channel[i], pToSubtune->channel[i]);
+	}
 
 	// Subtune data should have been copied successfully
 	return true;
 }
 
-// Duplicate a Channel Index in a Subtune, Return True if successful
-bool CModule::DuplicateChannelIndex(UINT subtune, UINT sourceIndex, UINT destinationIndex)
-{
-/*
-	// If the duplication failed, nothing will be changed
-	if (!CopyChannel(GetChannel(subtune, sourceIndex), GetChannel(subtune, destinationIndex)))
-		return false;
-*/
-	// Duplication should have been done successfully
-	return true;
-}
-
 // Find and merge duplicated Patterns, and adjust the Songline Index accordingly
-// TODO: Move to CSong
 void CModule::MergeDuplicatedPatterns(UINT subtune)
 {
 	MergeDuplicatedPatterns(GetSubtune(subtune));
 }
 
 // Find and merge duplicated Patterns, and adjust the Songline Index accordingly
-// TODO: Move to CSong
 void CModule::MergeDuplicatedPatterns(TSubtune* pSubtune)
 {
 /*
