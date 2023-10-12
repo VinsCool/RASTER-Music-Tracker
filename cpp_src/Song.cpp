@@ -3661,8 +3661,8 @@ void CSong::CalculateDisplayFPS()
 
 void CSong::DrawSonglines()
 {
-	if (!GetSubtune())
-		return;
+	//if (!GetSubtune())
+	//	return;
 
 	CString s;
 	RECT songblock{};

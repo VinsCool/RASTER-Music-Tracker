@@ -628,18 +628,16 @@ void CSong::FileNew()
 		return;
 
 	// Apply the settings and reset the song data
-	//g_Tracks.SetMaxTrackLength(dlg.m_maxTrackLength);
-
 	g_tracks4_8 = (dlg.m_comboMonoOrStereo == 0) ? 4 : 8;
 	ClearSong(g_tracks4_8);
 
 	g_Module.InitialiseModule();
-	
-	//m_activeSubtune = MODULE_DEFAULT_SUBTUNE;
-	//TSubtune* pSubtune = g_Module.GetSubtune(m_activeSubtune);
-	//pSubtune->patternLength = dlg.m_maxTrackLength;
-	//pSubtune->channelCount = g_tracks4_8;
-	//pSubtune->songLength = 1;
+	g_Module.SetModuleName("Noname Song");
+	g_Module.SetModuleAuthor("Unknown");
+	g_Module.SetModuleCopyright("2023");
+	g_Module.SetSubtuneName(m_activeSubtune, "Noname Subtune");
+	g_Module.SetChannelCount(m_activeSubtune, g_tracks4_8);
+	g_Module.SetPatternLength(m_activeSubtune, dlg.m_maxTrackLength);
 
 	SetRMTTitle();
 
@@ -648,37 +646,6 @@ void CSong::FileNew()
 
 	// Delete undo history
 	g_Undo.Clear();
-
-/*
-	// Stop the music first
-	//Stop();
-
-	//if the last changes were not saved, nothing will be created
-	if (WarnUnsavedChanges()) return;
-
-	CFileNewDlg dlg;
-	if (dlg.DoModal() != IDOK)
-		return;
-	
-	// Apply the settings and reset the song data
-	g_Tracks.SetMaxTrackLength(dlg.m_maxTrackLength);
-
-	g_tracks4_8 = (dlg.m_comboMonoOrStereo == 0) ? 4 : 8;
-	ClearSong(g_tracks4_8);
-	SetRMTTitle();
-
-	// Automatically create 1 songline of empty patterns
-	for (int i = 0; i < g_tracks4_8; i++) m_song[0][i] = i;
-
-	// Set the goto to the first line 
-	m_songgo[1] = 0;
-
-	// All channels ON (unmute all)
-	SetChannelOnOff(-1, 1);		// -1 = all, 1 = on
-
-	// Delete undo history
-	g_Undo.Clear();
-*/
 }
 
 /// <summary>

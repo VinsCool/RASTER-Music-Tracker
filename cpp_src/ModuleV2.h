@@ -35,6 +35,7 @@
 #define MODULE_DEFAULT_SONG_LENGTH		1									// Default Song Length
 #define MODULE_DEFAULT_SONG_SPEED		6									// Default Song Speed
 #define MODULE_DEFAULT_VBI_SPEED		1									// Default VBI Speed
+#define MODULE_DEFAULT_CHANNEL_COUNT	4									// Default Channel Count
 #define MODULE_SONG_NAME_MAX			64									// Maximum length of Song Title
 #define MODULE_AUTHOR_NAME_MAX			64									// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64									// Maximum length of Copyright info
@@ -444,7 +445,7 @@ public:
 
 	void DeleteAllInstruments();
 
-	void CreateSubtune(UINT subtune);
+	TSubtune* CreateSubtune(UINT subtune);
 	TSubtune* CreateSubtune();
 
 	void DeleteSubtune(UINT subtune);
@@ -453,25 +454,31 @@ public:
 	void InitialiseSubtune(UINT subtune);
 	void InitialiseSubtune(TSubtune* pSubtune);
 
+	TChannel* CreateChannel(TSubtune* pSubtune, UINT channel);
 	TChannel* CreateChannel();
 
 	void DeleteChannel(TSubtune* pSubtune, UINT channel);
 	void DeleteChannel(TChannel* pChannel);
+
 	void InitialiseChannel(TChannel* pChannel);
 
+	TPattern* CreatePattern(TChannel* pChannel, UINT pattern);
 	TPattern* CreatePattern();
 
 	void DeletePattern(TChannel* pChannel, UINT pattern);
 	void DeletePattern(TPattern* pPattern);
+
 	void InitialisePattern(TPattern* pPattern);
 
+	TRow* CreateRow(TPattern* pPattern, UINT row);
 	TRow* CreateRow();
 
 	void DeleteRow(TPattern* pPattern, UINT row);
 	void DeleteRow(TRow* pRow);
+
 	void InitialiseRow(TRow* pRow);
 
-	void CreateInstrument(UINT instrument);
+	TInstrumentV2* CreateInstrument(UINT instrument);
 	TInstrumentV2* CreateInstrument();
 
 	void DeleteInstrument(UINT instrument);
@@ -686,10 +693,10 @@ public:
 	bool DuplicatePatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline, UINT pattern);
 	bool DuplicatePatternInSongline(TChannel* pChannel, UINT songline, UINT pattern);
 
-	bool ClearPattern(UINT subtune, UINT channel, UINT pattern);
-	bool ClearPattern(TSubtune* pSubtune, UINT channel, UINT pattern);
-	bool ClearPattern(TChannel* pChannel, UINT pattern);
-	bool ClearPattern(TPattern* pPattern);
+	//bool ClearPattern(UINT subtune, UINT channel, UINT pattern);
+	//bool ClearPattern(TSubtune* pSubtune, UINT channel, UINT pattern);
+	//bool ClearPattern(TChannel* pChannel, UINT pattern);
+	//bool ClearPattern(TPattern* pPattern);
 
 	bool CopyRow(TRow* pFromRow, TRow* pToRow);
 
