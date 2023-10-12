@@ -152,9 +152,9 @@ void CModule::InitialiseChannel(TChannel* pChannel)
 	if (!pChannel)
 		return;
 
-	// Set all indexed Patterns to unique values
+	// Set all indexed Patterns to 0
 	for (int i = 0; i < SONGLINE_COUNT; i++)
-		pChannel->songline[i] = i;	//= 0x00;
+		pChannel->songline[i] = 0x00;
 
 	// By default, only 1 Effect Command is enabled in all Track Channels
 	pChannel->isMuted = false;
@@ -2083,21 +2083,17 @@ void CModule::SetInstrumentName(TInstrumentV2* pInstrument, const char* name)
 }
 
 
-// Identify the shortest pattern length relative to the other ones used in the same Songline
-// TODO: Move to CSong
+//--
+
+// Identify the Shortest Pattern Length relative to the other ones used in the same Songline
 const UINT CModule::GetShortestPatternLength(UINT subtune, UINT songline)
 {
 	return GetShortestPatternLength(GetSubtune(subtune), songline);
 }
 
-// Identify the shortest pattern length relative to the other ones used in the same Songline
-// TODO: Move to CSong
+// Identify the Shortest Pattern Length relative to the other ones used in the same Songline
 const UINT CModule::GetShortestPatternLength(TSubtune* pSubtune, UINT songline)
 {
-	// Make sure the Subtune is not a Null pointer
-	if (!pSubtune)
-		return EMPTY;
-
 	// Get the current Pattern Length first
 	UINT patternLength = GetPatternLength(pSubtune);
 
@@ -2109,56 +2105,95 @@ const UINT CModule::GetShortestPatternLength(TSubtune* pSubtune, UINT songline)
 	{
 		// Get the Pattern currently used in the Songline
 		TPattern* pPattern = GetIndexedPattern(pSubtune, i, songline);
-
+		
 		// Get the Effect Command Count for this Channel
 		UINT effectCount = GetEffectCommandCount(GetChannel(pSubtune, i));
 
-		// Check for each Row that could be used within the shortest Pattern
-		for (UINT j = 0; j < patternLength; j++)
-		{
-			// Check for all the Effect Commands used in each Row
-			for (UINT k = 0; k < effectCount; k++)
-			{
-				// Get the Effect Command Identifier, the Parameter is not needed here
-				UINT command = GetPatternRowEffectCommand(pPattern, j, k);
+		// Get the Effective Pattern Length for this Channel
+		UINT effectiveLength = GetEffectivePatternLength(pPattern, patternLength, effectCount);
 
-				// Set the Pattern Length to the current Row Index if a match is found
-				if (command == EFFECT_GOTO_SONGLINE || command == EFFECT_END_PATTERN)
-				{
-					// Add 1 to match the actual number of Rows per Pattern
-					if (patternLength > j + 1)
-						patternLength = j + 1;
-				}
-			}
-		}
+		// Set the current Pattern Length to the Effective Pattern Length if it is lower
+		if (patternLength > effectiveLength)
+			patternLength = effectiveLength;
 	}
 
 	// The shortest Pattern Length will be returned if successful
 	return patternLength;
 }
 
-// Return True if a Pattern is used at least once within a Songline Index
-bool CModule::IsUnusedPattern(UINT subtune, UINT channel, UINT pattern)
+// Identify the Effective Pattern Length using the provided parameters, the Shortest Pattern Length will be returned accordingly
+const UINT CModule::GetEffectivePatternLength(UINT subtune, UINT channel, UINT pattern)
 {
-	return IsUnusedPattern(GetChannel(subtune, channel), pattern, GetSongLength(subtune));
+	return GetEffectivePatternLength(GetChannel(subtune, channel), pattern, GetPatternLength(subtune));
+}
+
+// Identify the Effective Pattern Length using the provided parameters, the Shortest Pattern Length will be returned accordingly
+const UINT CModule::GetEffectivePatternLength(TSubtune* pSubtune, UINT channel, UINT pattern)
+{
+	return GetEffectivePatternLength(GetChannel(pSubtune, channel), pattern, GetPatternLength(pSubtune));
+}
+
+// Identify the Effective Pattern Length using the provided parameters, the Shortest Pattern Length will be returned accordingly
+const UINT CModule::GetEffectivePatternLength(TChannel* pChannel, UINT pattern, UINT patternLength)
+{
+	return GetEffectivePatternLength(GetPattern(pChannel, pattern), patternLength, GetEffectCommandCount(pChannel));
+}
+
+// Identify the Effective Pattern Length using the provided parameters, the Shortest Pattern Length will be returned accordingly
+const UINT CModule::GetEffectivePatternLength(TPattern* pPattern, UINT patternLength, UINT effectCount)
+{
+	if (pPattern)
+	{
+		// Check for each Row that could be used within the shortest Pattern
+		for (UINT i = 0; i < patternLength; i++)
+		{
+			// Check for all the Effect Commands used in each Row
+			for (UINT j = 0; j < effectCount; j++)
+			{
+				// Get the Effect Command Identifier, the Parameter is not needed here
+				UINT command = GetPatternRowEffectCommand(pPattern, i, j);
+
+				// Set the Pattern Length to the current Row Index if a match is found
+				if (command == EFFECT_GOTO_SONGLINE || command == EFFECT_END_PATTERN)
+				{
+					// Add 1 to match the actual number of Rows per Pattern
+					if (patternLength > i + 1)
+						patternLength = i + 1;
+				}
+			}
+		}
+	}
+
+	// The Effective Pattern Length will be returned if successful
+	return patternLength;
 }
 
 // Return True if a Pattern is used at least once within a Songline Index
-bool CModule::IsUnusedPattern(TChannel* pChannel, UINT pattern, UINT songlength)
+bool CModule::IsUnusedPattern(UINT subtune, UINT channel, UINT pattern)
 {
-/*
-	// Make sure the Index is not a Null pointer
-	if (!pChannel)
-		return false;
+	return IsUnusedPattern(GetChannel(subtune, channel), pattern);
+}
 
-	// All Songlines in the Channel Index will be processed
-	for (int i = 0; i < songlength; i++)
+// Return True if a Pattern is used at least once within a Songline Index
+bool CModule::IsUnusedPattern(TSubtune* pSubtune, UINT channel, UINT pattern)
+{
+	return IsUnusedPattern(GetChannel(pSubtune, channel), pattern);
+}
+
+// Return True if a Pattern is used at least once within a Songline Index
+bool CModule::IsUnusedPattern(TChannel* pChannel, UINT pattern)
+{
+	if (pChannel && IsValidPattern(pattern))
 	{
-		// As soon as a match is found, we know for sure the Pattern is used at least once
-		if (pChannel->songline[i] == pattern)
-			return false;
+		// All Songlines in the Channel Index will be processed
+		for (int i = 0; i < SONGLINE_COUNT; i++)
+		{
+			// As soon as a match is found, we know for sure the Pattern is used at least once
+			if (pChannel->songline[i] == pattern)
+				return false;
+		}
 	}
-*/
+
 	// Otherwise, the Pattern is most likely unused
 	return true;
 }
@@ -2170,37 +2205,28 @@ bool CModule::IsEmptyPattern(UINT subtune, UINT channel, UINT pattern)
 }
 
 // Return True if a Pattern is Empty
+bool CModule::IsEmptyPattern(TSubtune* pSubtune, UINT channel, UINT pattern)
+{
+	return IsEmptyPattern(GetPattern(pSubtune, channel, pattern));
+}
+
+// Return True if a Pattern is Empty
+bool CModule::IsEmptyPattern(TChannel* pChannel, UINT pattern)
+{
+	return IsEmptyPattern(GetPattern(pChannel, pattern));
+}
+
+// Return True if a Pattern is Empty
 bool CModule::IsEmptyPattern(TPattern* pPattern)
 {
-/*
-	// Make sure the Pattern is not a Null pointer
-	if (!pPattern)
-		return false;
-
 	// All Rows in the Pattern Index will be processed
 	for (int i = 0; i < ROW_COUNT; i++)
 	{
-		// If there is a Note, it's not empty
-		if (pPattern->row[i].note != NOTE_EMPTY)
+		// If a Row contains any data, it is not empty
+		if (!IsEmptyRow(pPattern, i))
 			return false;
-
-		// If there is an Instrument, it's not empty
-		if (pPattern->row[i].instrument != INSTRUMENT_EMPTY)
-			return false;
-
-		// If there is a Volume, it's not empty
-		if (pPattern->row[i].volume != VOLUME_EMPTY)
-			return false;
-
-		// If there is an Effect Command, it's not empty
-		for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
-		{
-			// Only the Identifier is checked, since the Parameter cannot be used alone
-			if (pPattern->row[i].effect[j].command != EFFECT_EMPTY)
-				return false;
-		}
 	}
-*/
+
 	// Otherwise, the Pattern is most likely empty
 	return true;
 }
@@ -2212,33 +2238,49 @@ bool CModule::IsEmptyRow(UINT subtune, UINT channel, UINT pattern, UINT row)
 }
 
 // Return True if a Row is Empty
+bool CModule::IsEmptyRow(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row)
+{
+	return IsEmptyRow(GetRow(pSubtune, channel, pattern, row));
+}
+
+// Return True if a Row is Empty
+bool CModule::IsEmptyRow(TChannel* pChannel, UINT pattern, UINT row)
+{
+	return IsEmptyRow(GetRow(pChannel, pattern, row));
+}
+
+// Return True if a Row is Empty
+bool CModule::IsEmptyRow(TPattern* pPattern, UINT row)
+{
+	return IsEmptyRow(GetRow(pPattern, row));
+}
+
+// Return True if a Row is Empty
 bool CModule::IsEmptyRow(TRow* pRow)
 {
-/*
-	// Make sure the Row is not a Null pointer
-	if (!pRow)
-		return false;
-
-	// If there is a Note, it's not empty
-	if (pRow->note != NOTE_EMPTY)
-		return false;
-
-	// If there is an Instrument, it's not empty
-	if (pRow->instrument != INSTRUMENT_EMPTY)
-		return false;
-
-	// If there is a Volume, it's not empty
-	if (pRow->volume != VOLUME_EMPTY)
-		return false;
-
-	// If there is an Effect Command, it's not empty
-	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
+	if (pRow)
 	{
-		// Only the Identifier is checked, since the Parameter cannot be used alone
-		if (pRow->effect[i].command != EFFECT_EMPTY)
+		// If there is a Note, it's not empty
+		if (pRow->note != NOTE_EMPTY)
 			return false;
+
+		// If there is an Instrument, it's not empty
+		if (pRow->instrument != INSTRUMENT_EMPTY)
+			return false;
+
+		// If there is a Volume, it's not empty
+		if (pRow->volume != VOLUME_EMPTY)
+			return false;
+
+		// If there is an Effect Command, it's not empty
+		for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
+		{
+			// Only the Identifier is checked, since the Parameter cannot be used alone
+			if (pRow->effect[i].command != EFFECT_EMPTY)
+				return false;
+		}
 	}
-*/
+
 	// Otherwise, the Row is most likely empty
 	return true;
 }
@@ -2246,7 +2288,6 @@ bool CModule::IsEmptyRow(TRow* pRow)
 // Compare 2 Patterns for identical data, Return True if successful
 bool CModule::IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern)
 {
-/*
 	// Make sure both the Patterns from source and destination are not Null pointers
 	if (!pFromPattern || !pToPattern)
 		return false;
@@ -2254,79 +2295,105 @@ bool CModule::IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern)
 	// All Rows in the Pattern Index will be processed
 	for (int i = 0; i < ROW_COUNT; i++)
 	{
-		// If there is a different Note, it's not identical
-		if (pFromPattern->row[i].note != pToPattern->row[i].note)
+		// If Rows don't match, the Patterns are different
+		if (!IsIdenticalRow(GetRow(pFromPattern, i), GetRow(pToPattern, i)))
 			return false;
-
-		// If there is a different Instrument, it's not identical
-		if (pFromPattern->row[i].instrument != pToPattern->row[i].instrument)
-			return false;
-
-		// If there is a different Volume, it's not identical
-		if (pFromPattern->row[i].volume != pToPattern->row[i].volume)
-			return false;
-
-		// If there is a different Effect Command, it's not identical
-		for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
-		{
-			if (pFromPattern->row[i].effect[j].command != pToPattern->row[i].effect[j].command)
-				return false;
-
-			if (pFromPattern->row[i].effect[j].parameter != pToPattern->row[i].effect[j].parameter)
-				return false;
-		}
 	}
-*/
-	// Otherwise, the Pattern is most likely identical
+
+	// Otherwise, the Patterns are most likely identical
 	return true;
 }
 
-// Duplicate a Pattern used in a Songline, Return True if successful
+// Compare 2 Rows for identical data, Return True if successful
+bool CModule::IsIdenticalRow(TRow* pFromRow, TRow* pToRow)
+{
+	// Make sure both the Rows from source and destination are not Null pointers
+	if (!pFromRow || !pToRow)
+		return false;
+
+	// If there is a different Note, it's not identical
+	if (pFromRow->note != pToRow->note)
+		return false;
+
+	// If there is a different Instrument, it's not identical
+	if (pFromRow->instrument != pToRow->instrument)
+		return false;
+
+	// If there is a different Volume, it's not identical
+	if (pFromRow->volume != pToRow->volume)
+		return false;
+
+	// If there is a different Effect Command, it's not identical
+	for (int j = 0; j < ACTIVE_EFFECT_COUNT; j++)
+	{
+		if (pFromRow->effect[j].command != pToRow->effect[j].command)
+			return false;
+
+		if (pFromRow->effect[j].parameter != pToRow->effect[j].parameter)
+			return false;
+	}
+
+	// Otherwise, the Rows are most likely identical
+	return true;
+}
+
+// Duplicate a Pattern used in a Songline to a new unused position, Return True if successful
 bool CModule::DuplicatePatternInSongline(UINT subtune, UINT channel, UINT songline, UINT pattern)
 {
-/*
-	// Find the first empty and unused Pattern that is available
-	for (int i = 0; i < PATTERN_COUNT; i++)
-	{
-		// Ignore the Pattern that is being duplicated
-		if (i == pattern)
-			continue;
+	return DuplicatePatternInSongline(GetChannel(subtune, channel), songline, pattern);
+}
 
-		// If the Pattern is empty and unused, it will be used for the duplication
-		if (IsUnusedPattern(subtune, channel, i) && IsEmptyPattern(subtune, channel, i))
+// Duplicate a Pattern used in a Songline to a new unused position, Return True if successful
+bool CModule::DuplicatePatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline, UINT pattern)
+{
+	return DuplicatePatternInSongline(GetChannel(pSubtune, channel), songline, pattern);
+}
+
+// Duplicate a Pattern used in a Songline to a new unused position, Return True if successful
+bool CModule::DuplicatePatternInSongline(TChannel* pChannel, UINT songline, UINT pattern)
+{
+	if (pChannel && IsValidSongline(songline) && IsValidPattern(pattern))
+	{
+		// Find the first empty and unused Pattern that is available
+		for (int i = 0; i < PATTERN_COUNT; i++)
 		{
-			// Replace the Pattern used in the Songline Index with the new one as well
-			if (CopyPattern(GetPattern(subtune, channel, pattern), GetPattern(subtune, channel, i)))
+			// Ignore the Pattern that is being duplicated
+			if (i == pattern)
+				continue;
+
+			// If the Pattern is empty and unused, it will be used for the duplication
+			if (IsUnusedPattern(pChannel, i) && IsEmptyPattern(pChannel, i))
 			{
-				SetPatternInSongline(subtune, channel, songline, i);
-				return true;
+				// Replace the Pattern used in the Songline Index with the new one as well
+				if (CopyPattern(GetPattern(pChannel, pattern), GetPattern(pChannel, i)))
+				{
+					SetPatternInSongline(pChannel, songline, i);
+					return true;
+				}
 			}
 		}
 	}
-*/
+
 	// Could not create a Pattern duplicate, no data was edited
 	return false;
-}
-
-// Copy data from source Pattern to destination Pattern, Return True if successful
-bool CModule::CopyPattern(TPattern* pFromPattern, TPattern* pToPattern)
-{
-/*
-	// Make sure both the Patterns from source and destination are not Null pointers
-	if (!pFromPattern || !pToPattern)
-		return false;
-	
-	// Otherwise, copying Pattern data is pretty straightforward
-	*pToPattern = *pFromPattern;
-*/
-	// Pattern data should have been copied successfully
-	return true;
 }
 
 // Clear data from Pattern, Return True if successful
 bool CModule::ClearPattern(UINT subtune, UINT channel, UINT pattern)
 {
 	return ClearPattern(GetPattern(subtune, channel, pattern));
+}
+
+// Clear data from Pattern, Return True if successful
+bool CModule::ClearPattern(TSubtune* pSubtune, UINT channel, UINT pattern)
+{
+	return ClearPattern(GetPattern(pSubtune, channel, pattern));
+}
+
+// Clear data from Pattern, Return True if successful
+bool CModule::ClearPattern(TChannel* pChannel, UINT pattern)
+{
+	return ClearPattern(GetPattern(pChannel, pattern));
 }
 
 // Clear data from Pattern, Return True if successful
@@ -2344,17 +2411,44 @@ bool CModule::ClearPattern(TPattern* pPattern)
 	return true;
 }
 
-// Copy data from source Index to destination Index, Return True if successful
+// Copy data from source Row to destination Row, Return True if successful
+bool CModule::CopyRow(TRow* pFromRow, TRow* pToRow)
+{
+	// Make sure both the Patterns from source and destination are not Null pointers
+	if (!pFromRow || !pToRow)
+		return false;
+
+	// Otherwise, copying Pattern data is pretty straightforward
+	*pToRow = *pFromRow;
+
+	// Pattern data should have been copied successfully
+	return true;
+}
+
+// Copy data from source Pattern to destination Pattern, Return True if successful
+bool CModule::CopyPattern(TPattern* pFromPattern, TPattern* pToPattern)
+{
+	// Make sure both the Patterns from source and destination are not Null pointers
+	if (!pFromPattern || !pToPattern)
+		return false;
+
+	// Otherwise, copying Pattern data is pretty straightforward
+	*pToPattern = *pFromPattern;
+
+	// Pattern data should have been copied successfully
+	return true;
+}
+
+// Copy data from source Channel to destination Channel, Return True if successful
 bool CModule::CopyChannel(TChannel* pFromChannel, TChannel* pToChannel)
 {
-/*
-	// Make sure both the Indexes from source and destination are not Null pointers
+	// Make sure both the Channels from source and destination are not Null pointers
 	if (!pFromChannel || !pToChannel)
 		return false;
 
-	// Otherwise, copying Index data is pretty straightforward
+	// Otherwise, copying Channel data is pretty straightforward
 	*pToChannel = *pFromChannel;
-*/
+
 	// Index data should have been copied successfully
 	return true;
 }
@@ -2362,14 +2456,13 @@ bool CModule::CopyChannel(TChannel* pFromChannel, TChannel* pToChannel)
 // Copy data from source Subtune to destination Subtune, Return True if successful
 bool CModule::CopySubtune(TSubtune* pFromSubtune, TSubtune* pToSubtune)
 {
-/*
 	// Make sure both the Subtunes from source and destination are not Null pointers
 	if (!pFromSubtune || !pToSubtune)
 		return false;
 
 	// Otherwise, copying Index data is pretty straightforward
 	*pToSubtune = *pFromSubtune;
-*/
+
 	// Subtune data should have been copied successfully
 	return true;
 }

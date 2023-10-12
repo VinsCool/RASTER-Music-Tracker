@@ -640,23 +640,43 @@ public:
 	const UINT GetShortestPatternLength(UINT subtune, UINT songline);
 	const UINT GetShortestPatternLength(TSubtune* pSubtune, UINT songline);
 
-	bool DuplicatePatternInSongline(UINT subtune, UINT channel, UINT songline, UINT pattern);
+	const UINT GetEffectivePatternLength(UINT subtune, UINT channel, UINT pattern);
+	const UINT GetEffectivePatternLength(TSubtune* pSubtune, UINT channel, UINT pattern);
+	const UINT GetEffectivePatternLength(TChannel* pChannel, UINT pattern, UINT patternLength);
+	const UINT GetEffectivePatternLength(TPattern* pPattern, UINT patternLength, UINT effectCount);
 
 	bool IsUnusedPattern(UINT subtune, UINT channel, UINT pattern);
-	bool IsUnusedPattern(TChannel* pChannel, UINT pattern, UINT songlength);
+	bool IsUnusedPattern(TSubtune* pSubtune, UINT channel, UINT pattern);
+	bool IsUnusedPattern(TChannel* pChannel, UINT pattern);
 
 	bool IsEmptyPattern(UINT subtune, UINT channel, UINT pattern);
+	bool IsEmptyPattern(TSubtune* pSubtune, UINT channel, UINT pattern);
+	bool IsEmptyPattern(TChannel* pChannel, UINT pattern);
 	bool IsEmptyPattern(TPattern* pPattern);
 
 	bool IsEmptyRow(UINT subtune, UINT channel, UINT pattern, UINT row);
+	bool IsEmptyRow(TSubtune* pSubtune, UINT channel, UINT pattern, UINT row);
+	bool IsEmptyRow(TChannel* pChannel, UINT pattern, UINT row);
+	bool IsEmptyRow(TPattern* pPattern, UINT row);
 	bool IsEmptyRow(TRow* pRow);
 
 	bool IsIdenticalPattern(TPattern* pFromPattern, TPattern* pToPattern);
 
-	bool CopyPattern(TPattern* pFromPattern, TPattern* pToPattern);
+	bool IsIdenticalRow(TRow* pFromRow, TRow* pToRow);
+
+	bool DuplicatePatternInSongline(UINT subtune, UINT channel, UINT songline, UINT pattern);
+	bool DuplicatePatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline, UINT pattern);
+	bool DuplicatePatternInSongline(TChannel* pChannel, UINT songline, UINT pattern);
 
 	bool ClearPattern(UINT subtune, UINT channel, UINT pattern);
+	bool ClearPattern(TSubtune* pSubtune, UINT channel, UINT pattern);
+	bool ClearPattern(TChannel* pChannel, UINT pattern);
 	bool ClearPattern(TPattern* pPattern);
+
+	// FIXME: Copy does not take care of allocated memory! Leaks everywhere!
+	bool CopyRow(TRow* pFromRow, TRow* pToRow);
+
+	bool CopyPattern(TPattern* pFromPattern, TPattern* pToPattern);
 
 	bool CopyChannel(TChannel* pFromChannel, TChannel* pToChannel);
 
