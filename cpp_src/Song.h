@@ -688,6 +688,8 @@ public:
 
 	bool SetEmptyRowInPattern();
 
+	bool DeleteRowInPattern();
+	bool InsertRowInPattern();
 
 private:
 	// Legacy variables

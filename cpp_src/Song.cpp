@@ -5951,3 +5951,41 @@ bool CSong::SetEmptyRowInPattern()
 	
 	return g_Module.InitialiseRow(pRow);
 }
+
+bool CSong::DeleteRowInPattern()
+{
+	TPattern* pPattern = g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline);
+	TRow* pRow = g_Module.GetRow(pPattern, m_activeRow);
+	
+	if (pPattern && pRow)
+	{
+		g_Module.DeleteRow(pRow);
+
+		for (int i = m_activeRow; i < ROW_COUNT; i++)
+			pPattern->row[i] = g_Module.GetRow(pPattern, i + 1);
+
+		return true;
+	}
+
+	return false;
+}
+
+bool CSong::InsertRowInPattern()
+{
+	TPattern* pPattern = g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline);
+	TRow* pRow = g_Module.GetRow(pPattern, ROW_COUNT - 1);
+
+	if (pPattern && pRow)
+	{
+		g_Module.DeleteRow(pRow);
+		
+		for (int i = ROW_COUNT - 2; i >= m_activeRow; i--)
+			pPattern->row[i + 1] = g_Module.GetRow(pPattern, i);
+
+		pPattern->row[m_activeRow] = NULL;
+
+		return true;
+	}
+
+	return false;
+}

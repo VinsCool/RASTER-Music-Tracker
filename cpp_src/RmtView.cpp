@@ -3181,6 +3181,20 @@ void CRmtView::PatternEditorKey(UINT vk)
 		return;
 	}
 
+	// Delete was pressed
+	if (vk == VK_DELETE)
+	{
+		g_Song.DeleteRowInPattern();
+		return;
+	}
+
+	// Insert was pressed
+	if (vk == VK_INSERT)
+	{
+		g_Song.InsertRowInPattern();
+		return;
+	}
+
 	// Everything else
 	switch (g_Song.GetActiveCursor())
 	{
