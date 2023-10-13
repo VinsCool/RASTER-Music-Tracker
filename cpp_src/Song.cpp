@@ -5780,9 +5780,9 @@ void CSong::PlaybackRespectBoundaries(TSubtune* pSubtune)
 
 //-- Editor Functions (TODO: Move elsewhere later) --//
 
-/*
-bool CSong::TransposeNoteInPattern(BYTE semitone)
+bool CSong::TransposeNoteInPattern(int semitone)
 {
+/*
 	TSubtune* pSubtune = GetSubtune();
 
 	if (!pSubtune)
@@ -5799,14 +5799,13 @@ bool CSong::TransposeNoteInPattern(BYTE semitone)
 		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note % NOTE_COUNT;
 		return true;
 	}
-
+*/
 	return false;
 }
-*/
 
-/*
-bool CSong::TransposePattern(BYTE semitone)
+bool CSong::TransposePattern(int semitone)
 {
+/*
 	TSubtune* pSubtune = GetSubtune();
 
 	if (!pSubtune)
@@ -5826,14 +5825,13 @@ bool CSong::TransposePattern(BYTE semitone)
 			pSubtune->channel[m_activeChannel].pattern[pattern].row[i].note = note % NOTE_COUNT;
 		}
 	}
-
+*/
 	return true;
 }
-*/
 
-/*
-bool CSong::TransposeSongline(BYTE semitone)
+bool CSong::TransposeSongline(int semitone)
 {
+/*
 	TSubtune* pSubtune = GetSubtune();
 
 	if (!pSubtune)
@@ -5856,179 +5854,129 @@ bool CSong::TransposeSongline(BYTE semitone)
 			}
 		}
 	}
-
+*/
 	return true;
 }
-*/
 
-/*
-bool CSong::SetNoteInPattern(BYTE semitone)
+bool CSong::SetNoteInPattern(UINT note)
 {
-	TSubtune* pSubtune = GetSubtune();
+	UINT semitone = note + m_activeOctave * 12;
+	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 
-	if (!pSubtune)
-		return false;
-
-	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
-	BYTE note = semitone + m_activeOctave * 12;
-
-	switch (semitone)
+	switch (note)
 	{
 	case NOTE_OFF:
 	case NOTE_RELEASE:
 	case NOTE_RETRIGGER:
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = INSTRUMENT_EMPTY;
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = VOLUME_EMPTY;
+		return g_Module.SetPatternRowNote(pRow, note) && g_Module.SetPatternRowInstrument(pRow, INSTRUMENT_EMPTY) && g_Module.SetPatternRowVolume(pRow, VOLUME_EMPTY);
 
 	case NOTE_EMPTY:
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = semitone;
-		return true;
+		return g_Module.SetPatternRowNote(pRow, note);
 
 	default:
-		if (semitone < NOTE_COUNT && note < NOTE_COUNT)
-		{
-			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note;
-			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = m_activeInstrument;
-			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = m_activeVolume;
-			return true;
-		}
-	}
+		if (g_Module.IsValidNote(note) && g_Module.IsValidNote(semitone))
+			return g_Module.SetPatternRowNote(pRow, semitone) && g_Module.SetPatternRowInstrument(pRow, m_activeInstrument) && g_Module.SetPatternRowVolume(pRow, m_activeVolume);
 
-	return false;
-}
-*/
-
-/*
-bool CSong::SetInstrumentInPattern(BYTE instrument)
-{
-	TSubtune* pSubtune = GetSubtune();
-
-	if (!pSubtune)
 		return false;
+	}
+}
 
-	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
-	BYTE nybble;
+bool CSong::SetInstrumentInPattern(UINT instrument)
+{
+	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 
 	switch (instrument)
 	{
 	case INSTRUMENT_EMPTY:
 		// The Instrument value will be overwritten regardless of the Active Column offset
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
-		return true;
+		return g_Module.SetPatternRowInstrument(pRow, instrument);
 
 	default:
-		if (instrument < INSTRUMENT_COUNT)
+		if (g_Module.IsValidInstrument(instrument))
 		{
 			// High Nybble Column -> Instrument 0x?F, where '?' is the value being edited
 			if (m_activeColumn == 0)
 			{
-				nybble = (instrument & 0x0F) << 4;
+				instrument = ((instrument & 0x0F) << 4) | (g_Module.GetPatternRowInstrument(pRow) & 0x0F);
 
-				if (nybble < INSTRUMENT_COUNT)
-					instrument = nybble | ((pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument) & 0x0F);
-				else
+				if (!g_Module.IsValidInstrument(instrument))
 					instrument = INSTRUMENT_COUNT - 1;
 			}
 
 			// Low Nybble Column -> Instrument 0xF?, where '?' is the value being edited
 			else if (m_activeColumn == 1)
 			{
-				nybble = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument & 0xF0;
+				instrument = (g_Module.GetPatternRowInstrument(pRow) & 0xF0) | (instrument & 0x0F);
 
-				if (nybble < INSTRUMENT_COUNT)
-					instrument = nybble | (instrument & 0x0F);
-				else
+				if (!g_Module.IsValidInstrument(instrument))
 					instrument &= 0x0F;
 			}
 
 			// The Instrument value will be overwritten with the combined value from each Nybble
-			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].instrument = instrument;
-			return true;
+			return g_Module.SetPatternRowInstrument(pRow, instrument);
 		}
-	}
 
-	return false;
-}
-*/
-
-/*
-bool CSong::SetVolumeInPattern(BYTE volume)
-{
-	TSubtune* pSubtune = GetSubtune();
-
-	if (!pSubtune)
 		return false;
+	}
+}
 
-	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
+bool CSong::SetVolumeInPattern(UINT volume)
+{
+	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 
 	switch (volume)
 	{
 	case VOLUME_EMPTY:
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
-		return true;
+		//return g_Module.SetPatternRowVolume(pRow, volume);
 
 	default:
-		if (volume < VOLUME_COUNT)
-		{
-			pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].volume = volume;
-			return true;
-		}
+		return g_Module.SetPatternRowVolume(pRow, volume);
 	}
-
-	return false;
 }
-*/
 
-/*
-bool CSong::SetCommandInPattern(BYTE command)
+bool CSong::SetCommandInPattern(UINT command)
 {
-	TSubtune* pSubtune = GetSubtune();
-
-	if (!pSubtune)
-		return false;
-
-	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
-	BYTE activeCursor = m_activeCursor - 3;	// Due to Note, Instrument and Volume sharing the variable
-	BYTE nybble;
+	// Due to Note, Instrument and Volume sharing the variable
+	UINT activeCursor = m_activeCursor - 3;
+	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 
 	switch (command)
 	{
 	case EFFECT_EMPTY:
 		// The Command value will be overwritten regardless of the Active Column offset
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
-		return true;
+		return g_Module.SetPatternRowEffectCommand(pRow, activeCursor, command);
 
 	default:
-		if (command < PATTERN_EFFECT_COUNT)
+		if (g_Module.IsValidEffectCommand(command))
 		{
 			// Effect Command Identifier -> Command 0x?FF, where '?' is the value being edited
 			if (m_activeColumn == 0)
-				pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command = command;
+				return g_Module.SetPatternRowEffectCommand(pRow, activeCursor, command);
 
 			// Allow editing the Effect Command Parameter only when the Command Identifier is not Empty
-			else if (pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].command != EFFECT_EMPTY)
+			else if (g_Module.IsValidEffectCommand(g_Module.GetPatternRowEffectCommand(pRow, activeCursor)))
 			{
 				// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
 				if (m_activeColumn == 1)
-				{
-					nybble = (command & 0x0F) << 4;
-					command = nybble | ((pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter) & 0x0F);
-				}
+					command = ((command & 0x0F) << 4) | (g_Module.GetPatternRowEffectParameter(pRow, activeCursor) & 0x0F);
 
 				// Effect Command Parameter, Low Nybble -> Command 0xFF?, where '?' is the value being edited
 				else if (m_activeColumn == 2)
-				{
-					nybble = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter & 0xF0;
-					command = nybble | (command & 0x0F);
-				}
+					command = (g_Module.GetPatternRowEffectParameter(pRow, activeCursor) & 0xF0) | (command & 0x0F);
 
 				// The Command Parameter will be overwritten with the combined value from each Nybble
-				pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].effect[activeCursor].parameter = command;
+				return g_Module.SetPatternRowEffectParameter(pRow, activeCursor, command);
 			}
-			return true;
-		}
-	}
 
-	return false;
+		}
+
+		return false;
+	}
 }
-*/
+
+bool CSong::SetEmptyRowInPattern()
+{
+	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
+	
+	return g_Module.InitialiseRow(pRow);
+}

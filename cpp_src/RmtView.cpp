@@ -3134,9 +3134,8 @@ void CRmtView::OnProcessKeyboardInput(UINT vk)
 
 void CRmtView::PatternEditorKey(UINT vk)
 {
-/*
-	BYTE notekey = NoteKey(vk);
-	BYTE numbkey = NumbKey(vk);
+	UINT notekey = NoteKey(vk);
+	UINT numbkey = NumbKey(vk);
 
 	// CTRL is pressed, ALT and SHIFT are NOT pressed
 	if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
@@ -3172,6 +3171,14 @@ void CRmtView::PatternEditorKey(UINT vk)
 		case VK_F3: g_Song.TransposeSongline(-12); return;
 		case VK_F4: g_Song.TransposeSongline(12); return;
 		}
+	}
+
+	// Spacebar was pressed
+	if (vk == VK_SPACE)
+	{
+		if (g_Song.SetEmptyRowInPattern())
+			g_Song.PatternDown(g_linesafter);
+		return;
 	}
 
 	// Everything else
@@ -3219,5 +3226,4 @@ void CRmtView::PatternEditorKey(UINT vk)
 			g_Song.PatternDown(g_linesafter);
 		return;
 	}
-*/
 }

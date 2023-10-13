@@ -476,7 +476,7 @@ public:
 	void DeleteRow(TPattern* pPattern, UINT row);
 	void DeleteRow(TRow* pRow);
 
-	void InitialiseRow(TRow* pRow);
+	bool InitialiseRow(TRow* pRow);
 
 	TInstrumentV2* CreateInstrument(UINT instrument);
 	TInstrumentV2* CreateInstrument();

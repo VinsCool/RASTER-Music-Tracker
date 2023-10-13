@@ -675,16 +675,19 @@ public:
 	void ProcessEffect(TEffect* effect, TChannelVariables* pVariables);
 
 	void PlaybackRespectBoundaries(TSubtune* pSubtune);
-
-	bool TransposeNoteInPattern(BYTE semitone);
-	bool TransposePattern(BYTE semitone);
-	bool TransposeSongline(BYTE semitone);
-
-	bool SetNoteInPattern(BYTE semitone);
-	bool SetInstrumentInPattern(BYTE instrument);
-	bool SetVolumeInPattern(BYTE volume);
-	bool SetCommandInPattern(BYTE command);
 */
+
+	bool TransposeNoteInPattern(int semitone);
+	bool TransposePattern(int semitone);
+	bool TransposeSongline(int semitone);
+
+	bool SetNoteInPattern(UINT note);
+	bool SetInstrumentInPattern(UINT instrument);
+	bool SetVolumeInPattern(UINT volume);
+	bool SetCommandInPattern(UINT command);
+
+	bool SetEmptyRowInPattern();
+
 
 private:
 	// Legacy variables

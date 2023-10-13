@@ -301,10 +301,10 @@ void CModule::DeleteRow(TRow* pRow)
 	delete pRow;
 }
 
-void CModule::InitialiseRow(TRow* pRow)
+bool CModule::InitialiseRow(TRow* pRow)
 {
 	if (!pRow)
-		return;
+		return false;
 
 	pRow->note = NOTE_EMPTY;
 	pRow->instrument = INSTRUMENT_EMPTY;
@@ -315,6 +315,8 @@ void CModule::InitialiseRow(TRow* pRow)
 		pRow->effect[i].command = EFFECT_EMPTY;
 		pRow->effect[i].parameter = EFFECT_PARAMETER_MIN;
 	}
+
+	return true;
 }
 
 //--
