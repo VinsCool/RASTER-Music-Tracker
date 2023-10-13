@@ -5782,80 +5782,51 @@ void CSong::PlaybackRespectBoundaries(TSubtune* pSubtune)
 
 bool CSong::TransposeNoteInPattern(int semitone)
 {
-/*
-	TSubtune* pSubtune = GetSubtune();
+	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
+	UINT note = g_Module.GetPatternRowNote(pRow);
 
-	if (!pSubtune)
-		return false;
+	if (g_Module.IsValidNote(note))
+		return g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
 
-	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
-	BYTE note = pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note;
-
-	if (note < NOTE_COUNT)
-	{
-		if ((note += semitone) >= NOTE_COUNT)
-			note += NOTE_COUNT;
-		
-		pSubtune->channel[m_activeChannel].pattern[pattern].row[m_activeRow].note = note % NOTE_COUNT;
-		return true;
-	}
-*/
 	return false;
 }
 
 bool CSong::TransposePattern(int semitone)
 {
-/*
-	TSubtune* pSubtune = GetSubtune();
+	UINT count = 0;
 
-	if (!pSubtune)
-		return false;
-
-	BYTE pattern = pSubtune->channel[m_activeChannel].songline[m_activeSongline];
-
-	for (int i = 0; i < GetShortestPatternLength(); i++)
+	for (int i = 0; i < ROW_COUNT; i++)
 	{
-		BYTE note = pSubtune->channel[m_activeChannel].pattern[pattern].row[i].note;
+		TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), i);
+		UINT note = g_Module.GetPatternRowNote(pRow);
 
-		if (note < NOTE_COUNT)
-		{
-			if ((note += semitone) >= NOTE_COUNT)
-				note += NOTE_COUNT;
-
-			pSubtune->channel[m_activeChannel].pattern[pattern].row[i].note = note % NOTE_COUNT;
-		}
+		if (g_Module.IsValidNote(note))
+			count += g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
 	}
-*/
-	return true;
+
+	// At least 1 successful transposition will return True
+	return count;
 }
 
 bool CSong::TransposeSongline(int semitone)
 {
-/*
-	TSubtune* pSubtune = GetSubtune();
+	UINT count = 0;
 
-	if (!pSubtune)
-		return false;
-
-	for (int i = 0; i < pSubtune->channelCount; i++)
+	for (int j = 0; j < CHANNEL_COUNT; j++)
 	{
-		BYTE pattern = pSubtune->channel[i].songline[m_activeSongline];
-
-		for (int j = 0; j < GetShortestPatternLength(); j++)
+		for (int i = 0; i < ROW_COUNT; i++)
 		{
-			BYTE note = pSubtune->channel[i].pattern[pattern].row[j].note;
+			TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, j, m_activeSongline), i);
+			UINT note = g_Module.GetPatternRowNote(pRow);
 
-			if (note < NOTE_COUNT)
-			{
-				if ((note += semitone) >= NOTE_COUNT)
-					note += NOTE_COUNT;
-
-				pSubtune->channel[i].pattern[pattern].row[j].note = note % NOTE_COUNT;
-			}
+			if (g_Module.IsValidNote(note))
+				count += g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
 		}
+
 	}
-*/
-	return true;
+
+	// At least 1 successful transposition will return True
+	return count;
 }
 
 bool CSong::SetNoteInPattern(UINT note)
