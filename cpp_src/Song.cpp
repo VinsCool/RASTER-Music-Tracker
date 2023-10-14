@@ -5954,38 +5954,40 @@ bool CSong::SetEmptyRowInPattern()
 
 bool CSong::DeleteRowInPattern()
 {
-	TPattern* pPattern = g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline);
-	TRow* pRow = g_Module.GetRow(pPattern, m_activeRow);
-	
-	if (pPattern && pRow)
+	UINT count = 0;
+
+	// Copying Rows from 1 position ahead will effectively "move" them all back by 1 position
+	for (int i = m_activeRow; i < ROW_COUNT; i++)
 	{
-		g_Module.DeleteRow(pRow);
+		TRow* pFromRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), i + 1);
+		TRow* pToRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), i);
+		count += g_Module.CopyRow(pFromRow, pToRow);
 
-		for (int i = m_activeRow; i < ROW_COUNT; i++)
-			pPattern->row[i] = g_Module.GetRow(pPattern, i + 1);
-
-		return true;
+		// This is the last Row in the Pattern, we can safely clear its data once it was copied over
+		if (i == ROW_COUNT - 1)
+			count += g_Module.InitialiseRow(pToRow);
 	}
 
-	return false;
+	// At least 1 successful operation will return True
+	return count;
 }
 
 bool CSong::InsertRowInPattern()
 {
-	TPattern* pPattern = g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline);
-	TRow* pRow = g_Module.GetRow(pPattern, ROW_COUNT - 1);
+	UINT count = 0;
 
-	if (pPattern && pRow)
+	// Copying Rows from 1 position back will effectively "move" them all ahead by 1 position
+	for (int i = ROW_COUNT - 1; i > m_activeRow; i--)
 	{
-		g_Module.DeleteRow(pRow);
-		
-		for (int i = ROW_COUNT - 2; i >= m_activeRow; i--)
-			pPattern->row[i + 1] = g_Module.GetRow(pPattern, i);
+		TRow* pFromRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), i - 1);
+		TRow* pToRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), i);
+		count += g_Module.CopyRow(pFromRow, pToRow);
 
-		pPattern->row[m_activeRow] = NULL;
-
-		return true;
+		// This is the current Row in the Pattern, we can safely clear its data once it was copied over
+		if (i == m_activeRow + 1)
+			count += g_Module.InitialiseRow(pFromRow);
 	}
 
-	return false;
+	// At least 1 successful operation will return True
+	return count;
 }
