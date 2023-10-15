@@ -693,11 +693,6 @@ public:
 	bool DuplicatePatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline, UINT pattern);
 	bool DuplicatePatternInSongline(TChannel* pChannel, UINT songline, UINT pattern);
 
-	//bool ClearPattern(UINT subtune, UINT channel, UINT pattern);
-	//bool ClearPattern(TSubtune* pSubtune, UINT channel, UINT pattern);
-	//bool ClearPattern(TChannel* pChannel, UINT pattern);
-	//bool ClearPattern(TPattern* pPattern);
-
 	bool CopyRow(TRow* pFromRow, TRow* pToRow);
 
 	bool CopyPattern(TPattern* pFromPattern, TPattern* pToPattern);
