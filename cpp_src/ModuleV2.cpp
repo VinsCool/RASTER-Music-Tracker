@@ -9,6 +9,7 @@ CModule::CModule()
 {
 	m_subtuneIndex = new TSubtuneIndex();
 	m_instrumentIndex = new TInstrumentIndex();
+	InitialiseModule();
 }
 
 CModule::~CModule()
@@ -22,9 +23,6 @@ void CModule::InitialiseModule()
 {
 	// Set the default Module parameters
 	ClearModule();
-	//SetModuleName("Noname Song");
-	//SetModuleAuthor("Unknown");
-	//SetModuleCopyright("2023");
 
 	// Create 1 empty Subtune, which will be used by default
 	CreateSubtune(MODULE_DEFAULT_SUBTUNE);
@@ -243,8 +241,8 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	if (!pInstrument)
 		return false;
 
-	// Set the default Instrument name TODO(?): Append the Index Number to it
-	strncpy_s(pInstrument->name, "New Instrument", INSTRUMENT_NAME_MAX);
+	// Set the default Instrument name
+	SetInstrumentName(pInstrument, "New Instrument");
 
 	pInstrument->volumeFade = 0x00;
 	pInstrument->volumeSustain = 0x00;
@@ -267,76 +265,7 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	return true;
 }
 
-/*
-TInstrumentV2* CModule::CreateInstrument(UINT instrument)
-{
-	if (!m_instrumentIndex || !IsValidInstrument(instrument))
-		return NULL;
-
-	// If there is no Instrument here, create it now and update the Instrument Index accordingly
-	if (!m_instrumentIndex->instrument[instrument])
-		m_instrumentIndex->instrument[instrument] = CreateInstrument();
-
-	return m_instrumentIndex->instrument[instrument];
-}
-
-TInstrumentV2* CModule::CreateInstrument()
-{
-	TInstrumentV2* pInstrument = new TInstrumentV2();
-	InitialiseInstrument(pInstrument);
-	return pInstrument;
-}
-
-void CModule::DeleteInstrument(UINT instrument)
-{
-	if (!m_instrumentIndex || !IsValidInstrument(instrument))
-		return;
-
-	// If there is an Instrument here, don't waste any time and delete it without further ado
-	DeleteInstrument(m_instrumentIndex->instrument[instrument]);
-	m_instrumentIndex->instrument[instrument] = NULL;
-}
-
-void CModule::DeleteInstrument(TInstrumentV2* pInstrument)
-{
-	if (!pInstrument)
-		return;
-
-	// Do something here...?
-	delete pInstrument;
-}
-
-void CModule::InitialiseInstrument(UINT instrument)
-{
-	InitialiseInstrument(GetInstrument(instrument));
-}
-
-void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
-{
-	if (!pInstrument)
-		return;
-
-	// Set the default Instrument name TODO(?): Append the Index Number to it
-	strncpy_s(pInstrument->name, "New Instrument", INSTRUMENT_NAME_MAX);
-
-	pInstrument->volumeFade = 0x00;
-	pInstrument->volumeSustain = 0x00;
-	pInstrument->vibrato = 0x00;
-	pInstrument->freqShift = 0x00;
-	pInstrument->delay = 0x00;
-
-	// Set the default Envelope parameters, always disabled for newly created Instruments
-	TMacro macro{ 0x00, false, false };
-
-	pInstrument->envelope.volume = macro;
-	pInstrument->envelope.timbre = macro;
-	pInstrument->envelope.audctl = macro;
-	pInstrument->envelope.trigger = macro;
-	pInstrument->envelope.effect = macro;
-	pInstrument->envelope.note = macro;
-	pInstrument->envelope.freq = macro;
-}
-*/
+// TODO: Add all the respective Instrument Envelope code back here with the improvements from earlier...
 
 //--
 
