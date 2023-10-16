@@ -137,7 +137,7 @@ struct TRow
 // Pattern Data, indexed by the TRow Struct
 struct TPattern
 {
-	TRow* row[ROW_COUNT];					// Row data is contained withn its associated Pattern index
+	TRow row[ROW_COUNT];					// Row data is contained withn its associated Pattern index
 };
 
 // Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
@@ -148,7 +148,7 @@ struct TChannel
 	BYTE effectCount : 2;					// Number of Effect Commands enabled per Track Channel
 	BYTE channelVolume : 4;
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
-	TPattern* pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
+	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
 };
 
 // Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
@@ -160,7 +160,7 @@ struct TSubtune
 	BYTE songSpeed;							// Song Speed, in Frames per Row
 	BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
 	BYTE channelCount : 4;					// Number of Channels used in Subtune
-	TChannel* channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
+	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
 
 struct TSubtuneIndex
@@ -445,47 +445,22 @@ public:
 
 	void DeleteAllInstruments();
 
-	TSubtune* CreateSubtune(UINT subtune);
-	TSubtune* CreateSubtune();
+	bool CreateSubtune(UINT subtune);
+	bool DeleteSubtune(UINT subtune);
+	bool InitialiseSubtune(TSubtune* pSubtune);
 
-	void DeleteSubtune(UINT subtune);
-	void DeleteSubtune(TSubtune* pSubtune);
+	bool DeleteChannel(TSubtune* pSubtune, UINT channel);
+	bool InitialiseChannel(TChannel* pChannel);
 
-	void InitialiseSubtune(UINT subtune);
-	void InitialiseSubtune(TSubtune* pSubtune);
+	bool DeletePattern(TChannel* pChannel, UINT pattern);
+	bool InitialisePattern(TPattern* pPattern);
 
-	TChannel* CreateChannel(TSubtune* pSubtune, UINT channel);
-	TChannel* CreateChannel();
-
-	void DeleteChannel(TSubtune* pSubtune, UINT channel);
-	void DeleteChannel(TChannel* pChannel);
-
-	void InitialiseChannel(TChannel* pChannel);
-
-	TPattern* CreatePattern(TChannel* pChannel, UINT pattern);
-	TPattern* CreatePattern();
-
-	void DeletePattern(TChannel* pChannel, UINT pattern);
-	void DeletePattern(TPattern* pPattern);
-
-	void InitialisePattern(TPattern* pPattern);
-
-	TRow* CreateRow(TPattern* pPattern, UINT row);
-	TRow* CreateRow();
-
-	void DeleteRow(TPattern* pPattern, UINT row);
-	void DeleteRow(TRow* pRow);
-
+	bool DeleteRow(TPattern* pPattern, UINT row);
 	bool InitialiseRow(TRow* pRow);
 
-	TInstrumentV2* CreateInstrument(UINT instrument);
-	TInstrumentV2* CreateInstrument();
-
-	void DeleteInstrument(UINT instrument);
-	void DeleteInstrument(TInstrumentV2* pInstrument);
-
-	void InitialiseInstrument(UINT instrument);
-	void InitialiseInstrument(TInstrumentV2* pInstrument);
+	bool CreateInstrument(UINT instrument);
+	bool DeleteInstrument(UINT instrument);
+	bool InitialiseInstrument(TInstrumentV2* pInstrument);
 
 	//-- Legacy RMT Module Import Functions --//
 
@@ -724,8 +699,8 @@ public:
 	TInstrumentV2* GetInstrument(UINT instrument);
 	const char* GetInstrumentName(UINT instrument);
 	const char* GetInstrumentName(TInstrumentV2* pInstrument);
-	void SetInstrumentName(UINT instrument, const char* name);
-	void SetInstrumentName(TInstrumentV2* instrument, const char* name);
+	bool SetInstrumentName(UINT instrument, const char* name);
+	bool SetInstrumentName(TInstrumentV2* instrument, const char* name);
 
 private:
 	char m_moduleName[MODULE_SONG_NAME_MAX + 1];

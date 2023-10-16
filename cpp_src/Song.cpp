@@ -172,8 +172,8 @@ void CSong::ClearSong(int numOfTracks)
 	Atari_InitRMTRoutine();
 
 	// Initialise the RMTE Module as well, since it will progressively replace the Legacy format, and will use most of the same functions
-	g_Module.ClearModule();
-	//g_Module.InitialiseModule();
+	//g_Module.ClearModule();
+	g_Module.InitialiseModule();
 
 	// Clear Song variables
 	//ClearSongVariables();

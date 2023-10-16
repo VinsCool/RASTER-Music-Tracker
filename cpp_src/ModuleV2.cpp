@@ -86,57 +86,42 @@ void CModule::DeleteAllInstruments()
 
 //--
 
-TSubtune* CModule::CreateSubtune(UINT subtune)
+bool CModule::CreateSubtune(UINT subtune)
 {
-	if (!m_subtuneIndex || !IsValidSubtune(subtune))
-		return NULL;
+	if (m_subtuneIndex && IsValidSubtune(subtune))
+	{
+		// If there is no Subtune here, create it now and update the Subtune Index accordingly
+		if (!m_subtuneIndex->subtune[subtune])
+			m_subtuneIndex->subtune[subtune] = new TSubtune();
+		
+		return InitialiseSubtune(m_subtuneIndex->subtune[subtune]);
+	}
 
-	// If there is no Subtune here, create it now and update the Subtune Index accordingly
-	if (!m_subtuneIndex->subtune[subtune])
-		m_subtuneIndex->subtune[subtune] = CreateSubtune();
-
-	return m_subtuneIndex->subtune[subtune];
+	return false;
 }
 
-TSubtune* CModule::CreateSubtune()
+bool CModule::DeleteSubtune(UINT subtune)
 {
-	TSubtune* pSubtune = new TSubtune();
-	InitialiseSubtune(pSubtune);
-	return pSubtune;
+	if (m_subtuneIndex && IsValidSubtune(subtune))
+	{
+		// If there is a Subtune here, don't waste any time and delete it without further ado
+		if (m_subtuneIndex->subtune[subtune])
+			delete m_subtuneIndex->subtune[subtune];
+			
+		m_subtuneIndex->subtune[subtune] = NULL;
+		return true;
+	}
+	
+	return false;
 }
 
-void CModule::DeleteSubtune(UINT subtune)
-{
-	if (!m_subtuneIndex || !IsValidSubtune(subtune))
-		return;
-
-	// If there is a Subtune here, don't waste any time and delete it without further ado
-	DeleteSubtune(m_subtuneIndex->subtune[subtune]);
-	m_subtuneIndex->subtune[subtune] = NULL;
-}
-
-void CModule::DeleteSubtune(TSubtune* pSubtune)
+bool CModule::InitialiseSubtune(TSubtune* pSubtune)
 {
 	if (!pSubtune)
-		return;
+		return false;
 
-	DeleteAllChannels(pSubtune);
-	delete pSubtune;
-}
-
-void CModule::InitialiseSubtune(UINT subtune)
-{
-	InitialiseSubtune(GetSubtune(subtune));
-}
-
-void CModule::InitialiseSubtune(TSubtune* pSubtune)
-{
-	if (!pSubtune)
-		return;
-
-	// Set the default Subtune name TODO(?): Append the Index Number to it
+	// Set the default Subtune name
 	SetSubtuneName(pSubtune, "");
-	//strncpy_s(pSubtune->name, "Noname Subtune", SUBTUNE_NAME_MAX);
 
 	// Set the default parameters to all the Subtune variables
 	pSubtune->songLength = MODULE_DEFAULT_SONG_LENGTH;
@@ -148,53 +133,19 @@ void CModule::InitialiseSubtune(TSubtune* pSubtune)
 	// Delete all Channels with leftover data
 	DeleteAllChannels(pSubtune);
 
-	// Create brand new Channels as defined by the parameters above
-	for (int i = 0; i < pSubtune->channelCount; i++)
-		CreateChannel(pSubtune, i);
+	// Subtune was initialised
+	return true;
 }
 
-TChannel* CModule::CreateChannel(TSubtune* pSubtune, UINT channel)
+bool CModule::DeleteChannel(TSubtune* pSubtune, UINT channel)
 {
-	if (!pSubtune || !IsValidChannel(channel))
-		return NULL;
-
-	// If there is no Channel here, create it now and update the Channel Index accordingly
-	if (!pSubtune->channel[channel])
-		pSubtune->channel[channel] = CreateChannel();
-
-	return pSubtune->channel[channel];
+	return InitialiseChannel(GetChannel(pSubtune, channel));
 }
 
-TChannel* CModule::CreateChannel()
-{
-	TChannel* pChannel = new TChannel();
-	InitialiseChannel(pChannel);
-	return pChannel;
-}
-
-void CModule::DeleteChannel(TSubtune* pSubtune, UINT channel)
-{
-	if (!pSubtune || !IsValidChannel(channel))
-		return;
-
-	// If there is a Channel here, don't waste any time and delete it without further ado
-	DeleteChannel(pSubtune->channel[channel]);
-	pSubtune->channel[channel] = NULL;
-}
-
-void CModule::DeleteChannel(TChannel* pChannel)
+bool CModule::InitialiseChannel(TChannel* pChannel)
 {
 	if (!pChannel)
-		return;
-
-	DeleteAllPatterns(pChannel);
-	delete pChannel;
-}
-
-void CModule::InitialiseChannel(TChannel* pChannel)
-{
-	if (!pChannel)
-		return;
+		return false;
 
 	// By default, only 1 Effect Command is enabled in all Track Channels
 	pChannel->isMuted = false;
@@ -209,96 +160,30 @@ void CModule::InitialiseChannel(TChannel* pChannel)
 	// Delete all Patterns with leftover data
 	DeleteAllPatterns(pChannel);
 
-	// Create 1 Empty Pattern associated to the Songline Index
-	CreatePattern(pChannel, 0x00);
+	// Channel was initialised
+	return true;
 }
 
-TPattern* CModule::CreatePattern(TChannel* pChannel, UINT pattern)
+bool CModule::DeletePattern(TChannel* pChannel, UINT pattern)
 {
-	if (!pChannel || !IsValidPattern(pattern))
-		return NULL;
-
-	// If there is no Pattern here, create it now and update the Pattern Index accordingly
-	if (!pChannel->pattern[pattern])
-		pChannel->pattern[pattern] = CreatePattern();
-
-	return pChannel->pattern[pattern];
+	return InitialisePattern(GetPattern(pChannel, pattern));
 }
 
-TPattern* CModule::CreatePattern()
-{
-	TPattern* pPattern = new TPattern();
-	InitialisePattern(pPattern);
-	return pPattern;
-}
-
-void CModule::DeletePattern(TChannel* pChannel, UINT pattern)
-{
-	if (!pChannel || !IsValidPattern(pattern))
-		return;
-
-	// If there is a Pattern here, don't waste any time and delete it without further ado
-	DeletePattern(pChannel->pattern[pattern]);
-	pChannel->pattern[pattern] = NULL;
-}
-
-void CModule::DeletePattern(TPattern* pPattern)
+bool CModule::InitialisePattern(TPattern* pPattern)
 {
 	if (!pPattern)
-		return;
-
-	DeleteAllRows(pPattern);
-	delete pPattern;
-}
-
-void CModule::InitialisePattern(TPattern* pPattern)
-{
-	if (!pPattern)
-		return;
+		return false;
 
 	// Delete all Rows with leftover data
 	DeleteAllRows(pPattern);
 
-	// Fill the entire Pattern with brand new Rows
-	for (int i = 0; i < ROW_COUNT; i++)
-		CreateRow(pPattern, i);
+	// Pattern was initialised
+	return true;
 }
 
-TRow* CModule::CreateRow(TPattern* pPattern, UINT row)
+bool CModule::DeleteRow(TPattern* pPattern, UINT row)
 {
-	if (!pPattern || !IsValidRow(row))
-		return NULL;
-
-	// If there is no Row here, create it now and update the Row Index accordingly
-	if (!pPattern->row[row])
-		pPattern->row[row] = CreateRow();
-
-	return pPattern->row[row];
-}
-
-TRow* CModule::CreateRow()
-{
-	TRow* pRow = new TRow();
-	InitialiseRow(pRow);
-	return pRow;
-}
-
-void CModule::DeleteRow(TPattern* pPattern, UINT row)
-{
-	if (!pPattern || !IsValidRow(row))
-		return;
-
-	// If there is a Row here, don't waste any time and delete it without further ado
-	DeleteRow(pPattern->row[row]);
-	pPattern->row[row] = NULL;
-}
-
-void CModule::DeleteRow(TRow* pRow)
-{
-	if (!pRow)
-		return;
-
-	delete pRow;
+	return InitialiseRow(GetRow(pPattern, row));
 }
 
 bool CModule::InitialiseRow(TRow* pRow)
@@ -316,11 +201,73 @@ bool CModule::InitialiseRow(TRow* pRow)
 		pRow->effect[i].parameter = EFFECT_PARAMETER_MIN;
 	}
 
+	// Row was initialised
 	return true;
 }
 
+
 //--
 
+bool CModule::CreateInstrument(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is no Instrument here, create it now and update the Instrument Index accordingly
+		if (!m_instrumentIndex->instrument[instrument])
+			m_instrumentIndex->instrument[instrument] = new TInstrumentV2();
+
+		return InitialiseInstrument(m_instrumentIndex->instrument[instrument]);
+	}
+
+	return false;
+}
+
+bool CModule::DeleteInstrument(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is an Instrument here, don't waste any time and delete it without further ado
+		if (m_instrumentIndex->instrument[instrument])
+			delete m_instrumentIndex->instrument[instrument];
+
+		m_instrumentIndex->instrument[instrument] = NULL;
+		return true;
+	}
+
+	return false;
+}
+
+
+bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
+{
+	if (!pInstrument)
+		return false;
+
+	// Set the default Instrument name TODO(?): Append the Index Number to it
+	strncpy_s(pInstrument->name, "New Instrument", INSTRUMENT_NAME_MAX);
+
+	pInstrument->volumeFade = 0x00;
+	pInstrument->volumeSustain = 0x00;
+	pInstrument->vibrato = 0x00;
+	pInstrument->freqShift = 0x00;
+	pInstrument->delay = 0x00;
+
+	// Set the default Envelope parameters, always disabled for newly created Instruments
+	TMacro macro{ 0x00, false, false };
+
+	pInstrument->envelope.volume = macro;
+	pInstrument->envelope.timbre = macro;
+	pInstrument->envelope.audctl = macro;
+	pInstrument->envelope.trigger = macro;
+	pInstrument->envelope.effect = macro;
+	pInstrument->envelope.note = macro;
+	pInstrument->envelope.freq = macro;
+
+	// Instrument was initialised
+	return true;
+}
+
+/*
 TInstrumentV2* CModule::CreateInstrument(UINT instrument)
 {
 	if (!m_instrumentIndex || !IsValidInstrument(instrument))
@@ -354,7 +301,7 @@ void CModule::DeleteInstrument(TInstrumentV2* pInstrument)
 {
 	if (!pInstrument)
 		return;
-	
+
 	// Do something here...?
 	delete pInstrument;
 }
@@ -389,222 +336,9 @@ void CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	pInstrument->envelope.note = macro;
 	pInstrument->envelope.freq = macro;
 }
-
-/*
-void CModule::CreateVolumeEnvelope(int envelope)
-{
-	if (!IsValidInstrument(envelope))
-		return;
-
-	// If there is no Envelope here, create it now and update the Envelope Index accordingly
-	if (!m_volumeIndex[envelope])
-		m_volumeIndex[envelope] = new TInstrumentEnvelope;
-
-	// A new Envelope must be initialised when it is created
-	InitialiseInstrumentEnvelope(m_volumeIndex[envelope]);
-}
-
-void CModule::DeleteVolumeEnvelope(int envelope)
-{
-	if (!IsValidInstrument(envelope))
-		return;
-
-	// If there is an Envelope here, don't waste any time and delete it without further ado
-	if (m_volumeIndex[envelope])
-		delete m_volumeIndex[envelope];
-
-	m_volumeIndex[envelope] = NULL;
-}
-
-void CModule::CreateTimbreEnvelope(int envelope)
-{
-	if (!IsValidInstrument(envelope))
-		return;
-
-	// If there is no Envelope here, create it now and update the Envelope Index accordingly
-	if (!m_timbreIndex[envelope])
-		m_timbreIndex[envelope] = new TInstrumentEnvelope;
-
-	// A new Envelope must be initialised when it is created
-	InitialiseInstrumentEnvelope(m_timbreIndex[envelope]);
-}
-
-void CModule::DeleteTimbreEnvelope(int envelope)
-{
-	if (!IsValidInstrument(envelope))
-		return;
-
-	// If there is an Envelope here, don't waste any time and delete it without further ado
-	if (m_timbreIndex[envelope])
-		delete m_timbreIndex[envelope];
-
-	m_timbreIndex[envelope] = NULL;
-}
-
-void CModule::CreateAudctlEnvelope(int envelope)
-{
-	if (!IsValidInstrument(envelope))
-		return;
-
-	// If there is no Envelope here, create it now and update the Envelope Index accordingly
-	if (!m_audctlIndex[envelope])
-		m_audctlIndex[envelope] = new TInstrumentEnvelope;
-
-	// A new Envelope must be initialised when it is created
-	InitialiseInstrumentEnvelope(m_audctlIndex[envelope]);
-}
-
-void CModule::DeleteAudctlEnvelope(int envelope)
-{
-	if (!IsValidInstrument(envelope))
-		return;
-
-	// If there is an Envelope here, don't waste any time and delete it without further ado
-	if (m_audctlIndex[envelope])
-		delete m_audctlIndex[envelope];
-
-	m_audctlIndex[envelope] = NULL;
-}
-
-void CModule::InitialiseInstrumentEnvelope(TInstrumentEnvelope* pEnvelope)
-{
-	if (!pEnvelope)
-		return;
-
-	// Clear all values
-	memset(pEnvelope, 0x00, sizeof(TInstrumentEnvelope));
-}
-
-
-void CModule::CreateTriggerEnvelope(int trigger)
-{
-	if (!IsValidInstrument(trigger))
-		return;
-
-	// If there is no Envelope here, create it now and update the Envelope Index accordingly
-	if (!m_triggerIndex[trigger])
-		m_triggerIndex[trigger] = new TInstrumentTrigger;
-
-	// A new Envelope must be initialised when it is created
-	InitialiseInstrumentTrigger(m_triggerIndex[trigger]);
-}
-
-void CModule::DeleteTriggerEnvelope(int trigger)
-{
-	if (!IsValidInstrument(trigger))
-		return;
-
-	// If there is an Envelope here, don't waste any time and delete it without further ado
-	if (m_triggerIndex[trigger])
-		delete m_triggerIndex[trigger];
-
-	m_triggerIndex[trigger] = NULL;
-}
-
-void CModule::InitialiseInstrumentTrigger(TInstrumentTrigger* pTrigger)
-{
-	if (!pTrigger)
-		return;
-
-	// Clear all values
-	memset(pTrigger, 0x00, sizeof(TInstrumentTrigger));
-}
-
-
-void CModule::CreateEffectEnvelope(int effect)
-{
-	if (!IsValidInstrument(effect))
-		return;
-
-	// If there is no Envelope here, create it now and update the Envelope Index accordingly
-	if (!m_effectIndex[effect])
-		m_effectIndex[effect] = new TInstrumentEffect;
-
-	// A new Envelope must be initialised when it is created
-	InitialiseInstrumentEffect(m_effectIndex[effect]);
-}
-
-void CModule::DeleteEffectEnvelope(int effect)
-{
-	if (!IsValidInstrument(effect))
-		return;
-
-	// If there is an Envelope here, don't waste any time and delete it without further ado
-	if (m_effectIndex[effect])
-		delete m_effectIndex[effect];
-
-	m_effectIndex[effect] = NULL;
-}
-
-void CModule::InitialiseInstrumentEffect(TInstrumentEffect* pEffect)
-{
-	if (!pEffect)
-		return;
-
-	// Clear all values
-	memset(pEffect, 0x00, sizeof(TInstrumentEffect));
-}
-
-
-void CModule::CreateNoteTable(int table)
-{
-	if (!IsValidInstrument(table))
-		return;
-
-	// If there is no Table here, create it now and update the Table Index accordingly
-	if (!m_noteIndex[table])
-		m_noteIndex[table] = new TInstrumentTable;
-
-	// A new Envelope must be initialised when it is created
-	InitialiseInstrumentTable(m_noteIndex[table]);
-}
-
-void CModule::DeleteNoteTable(int table)
-{
-	if (!IsValidInstrument(table))
-		return;
-
-	// If there is a Table here, don't waste any time and delete it without further ado
-	if (m_noteIndex[table])
-		delete m_noteIndex[table];
-
-	m_noteIndex[table] = NULL;
-}
-
-void CModule::CreateFreqTable(int table)
-{
-	if (!IsValidInstrument(table))
-		return;
-
-	// If there is no Table here, create it now and update the Table Index accordingly
-	if (!m_freqIndex[table])
-		m_freqIndex[table] = new TInstrumentTable;
-
-	// A new Envelope must be initialised when it is created
-	InitialiseInstrumentTable(m_freqIndex[table]);
-}
-
-void CModule::DeleteFreqTable(int table)
-{
-	if (!IsValidInstrument(table))
-		return;
-
-	// If there is a Table here, don't waste any time and delete it without further ado
-	if (m_freqIndex[table])
-		delete m_freqIndex[table];
-
-	m_freqIndex[table] = NULL;
-}
-
-void CModule::InitialiseInstrumentTable(TInstrumentTable* pTable)
-{
-	if (!pTable)
-		return;
-
-	// Clear all values
-	memset(pTable, 0x00, sizeof(TInstrumentTable));
-}
 */
+
+//--
 
 bool CModule::ImportLegacyRMT(std::ifstream& in)
 {
@@ -621,7 +355,8 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 	UINT subtuneCount = 0;
 
 	// Create a Temporary Subtune, to make the Import procedure a much easier task
-	TSubtune* importSubtune = CreateSubtune();
+	TSubtune* importSubtune = new TSubtune();
+	InitialiseSubtune(importSubtune);
 
 	// Clear the current module data
 	InitialiseModule();
@@ -785,7 +520,7 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 	}
 
 	// Delete the Temporary Subtune once it is no longer needed
-	DeleteSubtune(importSubtune);
+	delete importSubtune;
 
 	// Spawn a messagebox with the statistics collected during the Legacy RMT Module import procedure
 	MessageBox(g_hwnd, importLog, "Import Legacy RMT", MB_ICONINFORMATION);
@@ -1447,8 +1182,10 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 TSubtune* CModule::GetSubtune(UINT subtune)
 {
-	// A new Subtune will be returned if it didn't already exist
-	return CreateSubtune(subtune);
+	if (m_subtuneIndex && IsValidSubtune(subtune))
+		return m_subtuneIndex->subtune[subtune];
+
+	return NULL;
 }
 
 TChannel* CModule::GetChannel(UINT subtune, UINT channel)
@@ -1458,8 +1195,10 @@ TChannel* CModule::GetChannel(UINT subtune, UINT channel)
 
 TChannel* CModule::GetChannel(TSubtune* pSubtune, UINT channel)
 {
-	// A new Channel will be returned if it didn't already exist
-	return CreateChannel(pSubtune, channel);
+	if (pSubtune && IsValidChannel(channel))
+		return &pSubtune->channel[channel];
+
+	return NULL;
 }
 
 TPattern* CModule::GetPattern(UINT subtune, UINT channel, UINT pattern)
@@ -1474,8 +1213,10 @@ TPattern* CModule::GetPattern(TSubtune* pSubtune, UINT channel, UINT pattern)
 
 TPattern* CModule::GetPattern(TChannel* pChannel, UINT pattern)
 {
-	// A new Pattern will be returned if it didn't already exist
-	return CreatePattern(pChannel, pattern);
+	if (pChannel && IsValidPattern(pattern))
+		return &pChannel->pattern[pattern];
+
+	return NULL;
 }
 
 TPattern* CModule::GetIndexedPattern(UINT subtune, UINT channel, UINT songline)
@@ -1490,10 +1231,7 @@ TPattern* CModule::GetIndexedPattern(TSubtune* pSubtune, UINT channel, UINT song
 
 TPattern* CModule::GetIndexedPattern(TChannel* pChannel, UINT songline)
 {
-	if (pChannel && IsValidSongline(songline))
-		return GetPattern(pChannel, pChannel->songline[songline]);
-
-	return NULL;
+	return GetPattern(pChannel, GetPatternInSongline(pChannel, songline));
 }
 
 TRow* CModule::GetRow(UINT subtune, UINT channel, UINT pattern, UINT row)
@@ -1513,8 +1251,10 @@ TRow* CModule::GetRow(TChannel* pChannel, UINT pattern, UINT row)
 
 TRow* CModule::GetRow(TPattern* pPattern, UINT row)
 {
-	// A new Row will be returned if it didn't already exist
-	return CreateRow(pPattern, row);
+	if (pPattern && IsValidRow(row))
+		return &pPattern->row[row];
+
+	return NULL;
 }
 
 
@@ -2166,8 +1906,10 @@ const UINT CModule::GetSubtuneCount()
 
 TInstrumentV2* CModule::GetInstrument(UINT instrument)
 {
-	// A new Instrument will be returned if it didn't already exist
-	return CreateInstrument(instrument);
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+		return m_instrumentIndex->instrument[instrument];
+
+	return NULL;
 }
 
 const char* CModule::GetInstrumentName(UINT instrument)
@@ -2183,15 +1925,20 @@ const char* CModule::GetInstrumentName(TInstrumentV2* pInstrument)
 	return NULL;
 }
 
-void CModule::SetInstrumentName(UINT instrument, const char* name)
+bool CModule::SetInstrumentName(UINT instrument, const char* name)
 {
-	SetInstrumentName(GetInstrument(instrument), name);
+	return SetInstrumentName(GetInstrument(instrument), name);
 }
 
-void CModule::SetInstrumentName(TInstrumentV2* pInstrument, const char* name)
+bool CModule::SetInstrumentName(TInstrumentV2* pInstrument, const char* name)
 {
 	if (pInstrument)
+	{
 		strncpy_s(pInstrument->name, name, INSTRUMENT_NAME_MAX);
+		return true;
+	}
+
+	return false;
 }
 
 
@@ -2653,7 +2400,8 @@ void CModule::RenumberIndexedPatterns(TSubtune* pSubtune)
 	for (UINT i = 0; i < channelCount; i++)
 	{
 		// Create a Temporary Channel that will be used as a buffer
-		TChannel* backupChannel = CreateChannel();
+		TChannel* backupChannel = new TChannel();
+		InitialiseChannel(backupChannel);
 
 		// Copy the original data to the Temporary Channel first
 		CopyChannel(GetChannel(pSubtune, i), backupChannel);
@@ -2670,7 +2418,7 @@ void CModule::RenumberIndexedPatterns(TSubtune* pSubtune)
 		CopyChannel(backupChannel, GetChannel(pSubtune, i));
 
 		// Delete the Temporary Channel once it's no longer needed
-		DeleteChannel(backupChannel);
+		delete backupChannel;
 	}
 }
 
@@ -2713,7 +2461,8 @@ void CModule::ConcatenateIndexedPatterns(TSubtune* pSubtune)
 	for (UINT i = 0; i < channelCount; i++)
 	{
 		// Create a Temporary Channel that will be used as a buffer
-		TChannel* backupChannel = CreateChannel();
+		TChannel* backupChannel = new TChannel();
+		InitialiseChannel(backupChannel);
 
 		// Copy the original data to the Temporary Channel first
 		CopyChannel(GetChannel(pSubtune, i), backupChannel);
@@ -2751,7 +2500,7 @@ void CModule::ConcatenateIndexedPatterns(TSubtune* pSubtune)
 		CopyChannel(backupChannel, GetChannel(pSubtune, i));
 
 		// Delete the Temporary Channel once it's no longer needed
-		DeleteChannel(backupChannel);
+		delete backupChannel;
 	}
 }
 
