@@ -282,6 +282,18 @@ struct TEnvelopeMacro
 	TMacro freq;
 };
 
+struct TEnvelopeParameter
+{
+	BYTE length;							// Length, in frames
+	BYTE loop;								// Loop point, in frames
+	BYTE release;							// Release point, in frames
+	BYTE speed : 4;							// Speed, in frames
+	bool isLooped : 1;						// Is it Looping?
+	bool isReleased : 1;					// Is it Releasing?
+	bool isAbsolute : 1;					// Is it Absolute?
+	bool isAdditive : 1;					// Is it Additive?
+};
+
 struct TInstrumentV2
 {
 	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
@@ -303,7 +315,16 @@ struct TVolume
 
 struct TTimbre
 {
-	// TODO
+	union
+	{
+		BYTE timbre;
+		struct
+		{
+			BYTE waveForm : 4;				// eg: Buzzy, Gritty, etc
+			BYTE distortion : 4;			// eg: Pure (0xA0), Poly4 (0xC0), etc
+		};
+	};
+	bool isOptimalTuning : 1;				// Use a combination of all possible Waveforms, and output the most in-tune pitch for a given Distortion
 };
 
 struct TAudctl
@@ -349,14 +370,8 @@ struct TTable
 
 struct TEnvelope
 {
-	BYTE length;							// Length, in frames
-	BYTE loop;								// Loop point, in frames
-	BYTE release;							// Release point, in frames
-	BYTE speed : 4;							// Speed, in frames
-	bool isLooped : 1;						// Is it Looping?
-	bool isReleased : 1;					// Is it Releasing?
-	bool isAbsolute : 1;					// Is it Absolute?
-	bool isAdditive : 1;					// Is it Additive?
+	TEnvelopeParameter parameter;
+
 	union
 	{
 		TVolume volume[ENVELOPE_STEP_COUNT];
@@ -461,6 +476,34 @@ public:
 	bool CreateInstrument(UINT instrument);
 	bool DeleteInstrument(UINT instrument);
 	bool InitialiseInstrument(TInstrumentV2* pInstrument);
+
+	bool CreateVolumeEnvelope(UINT instrument);
+	bool DeleteVolumeEnvelope(UINT instrument);
+	bool InitialiseVolumeEnvelope(TEnvelope* pEnvelope);
+
+	bool CreateTimbreEnvelope(UINT instrument);
+	bool DeleteTimbreEnvelope(UINT instrument);
+	bool InitialiseTimbreEnvelope(TEnvelope* pEnvelope);
+
+	bool CreateAudctlEnvelope(UINT instrument);
+	bool DeleteAudctlEnvelope(UINT instrument);
+	bool InitialiseAudctlEnvelope(TEnvelope* pEnvelope);
+
+	bool CreateTriggerEnvelope(UINT instrument);
+	bool DeleteTriggerEnvelope(UINT instrument);
+	bool InitialiseTriggerEnvelope(TEnvelope* pEnvelope);
+
+	bool CreateEffectEnvelope(UINT instrument);
+	bool DeleteEffectEnvelope(UINT instrument);
+	bool InitialiseEffectEnvelope(TEnvelope* pEnvelope);
+
+	bool CreateNoteTableEnvelope(UINT instrument);
+	bool DeleteNoteTableEnvelope(UINT instrument);
+	bool InitialiseNoteTableEnvelope(TEnvelope* pEnvelope);
+
+	bool CreateFreqTableEnvelope(UINT instrument);
+	bool DeleteFreqTableEnvelope(UINT instrument);
+	bool InitialiseFreqTableEnvelope(TEnvelope* pEnvelope);
 
 	//-- Legacy RMT Module Import Functions --//
 
@@ -699,6 +742,10 @@ public:
 	TInstrumentV2* GetInstrument(UINT instrument);
 	const char* GetInstrumentName(UINT instrument);
 	const char* GetInstrumentName(TInstrumentV2* pInstrument);
+
+	TEnvelope* GetVolumeEnvelope(UINT instrument);
+	TEnvelope* GetTimbreEnvelope(UINT instrument);
+
 	bool SetInstrumentName(UINT instrument, const char* name);
 	bool SetInstrumentName(TInstrumentV2* instrument, const char* name);
 
