@@ -252,7 +252,7 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 
 	// Set the default Envelope Macro parameters, always disabled for newly created Instruments
 	TMacro macro{ 0x00, false, false };
-	pInstrument->envelope = { macro, macro, macro, macro, macro, macro, macro };
+	pInstrument->envelope = { macro, macro, macro, macro, macro, macro };	//, macro };
 
 	// Instrument was initialised
 	return true;
@@ -348,7 +348,7 @@ bool CModule::InitialiseTimbreEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope parameters
 	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TTimbre timbre{ TIMBRE_PURE, false };
+	TTimbre timbre{ TIMBRE_PURE };
 
 	pEnvelope->parameter = parameter;
 
@@ -360,6 +360,109 @@ bool CModule::InitialiseTimbreEnvelope(TEnvelope* pEnvelope)
 	return true;
 }
 
+
+//--
+
+bool CModule::CreateAudctlEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is no Envelope here, create it now and update the Instrument Index accordingly
+		if (!m_instrumentIndex->audctl[instrument])
+			m_instrumentIndex->audctl[instrument] = new TEnvelope();
+
+		return InitialiseAudctlEnvelope(m_instrumentIndex->audctl[instrument]);
+	}
+
+	return false;
+}
+
+bool CModule::DeleteAudctlEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is an Envelope here, don't waste any time and delete it without further ado
+		if (m_instrumentIndex->audctl[instrument])
+			delete m_instrumentIndex->audctl[instrument];
+
+		m_instrumentIndex->audctl[instrument] = NULL;
+		return true;
+	}
+
+	return false;
+}
+
+bool CModule::InitialiseAudctlEnvelope(TEnvelope* pEnvelope)
+{
+	if (!pEnvelope)
+		return false;
+
+	// Set the default Envelope parameters
+	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
+	TAudctl audctl{ 0x00 };
+
+	pEnvelope->parameter = parameter;
+
+	// Set the default Envelope values
+	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
+		pEnvelope->audctl[i] = audctl;
+
+	// Audctl Envelope was initialised
+	return true;
+}
+
+
+//--
+
+/*
+bool CModule::CreateTriggerEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is no Envelope here, create it now and update the Instrument Index accordingly
+		if (!m_instrumentIndex->trigger[instrument])
+			m_instrumentIndex->trigger[instrument] = new TEnvelope();
+
+		return InitialiseTriggerEnvelope(m_instrumentIndex->trigger[instrument]);
+	}
+
+	return false;
+}
+
+bool CModule::DeleteTriggerEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is an Envelope here, don't waste any time and delete it without further ado
+		if (m_instrumentIndex->trigger[instrument])
+			delete m_instrumentIndex->trigger[instrument];
+
+		m_instrumentIndex->trigger[instrument] = NULL;
+		return true;
+	}
+
+	return false;
+}
+
+bool CModule::InitialiseTriggerEnvelope(TEnvelope* pEnvelope)
+{
+	if (!pEnvelope)
+		return false;
+
+	// Set the default Envelope parameters
+	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
+	TTrigger trigger{ false, false, false, false, false, false, false, false, false };
+
+	pEnvelope->parameter = parameter;
+
+	// Set the default Envelope values
+	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
+		pEnvelope->trigger[i] = trigger;
+
+	// Trigger Envelope was initialised
+	return true;
+}
+*/
 
 //--
 
@@ -977,8 +1080,8 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		CreateTimbreEnvelope(i);
 		TEnvelope* pTimbreEnvelope = GetTimbreEnvelope(i);
 		
-		//CreateAudctlEnvelope(i);
-		//TEnvelope* pAudctlEnvelope = GetAudctlEnvelope(i);
+		CreateAudctlEnvelope(i);
+		TEnvelope* pAudctlEnvelope = GetAudctlEnvelope(i);
 		
 		//CreateTriggerEnvelope(i);
 		//TEnvelope* pTriggerEnvelope = GetTriggerEnvelope(i);
@@ -994,7 +1097,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 		// Assign everything in the Instrument Index once the data was initialised
 		TMacro macro{ (BYTE)i, true, false };
-		pInstrument->envelope = { macro, macro, macro, macro, macro, macro, macro };
+		pInstrument->envelope = { macro, macro, macro, macro, macro, macro };	//, macro };
 
 		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
 		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
@@ -1055,6 +1158,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 		pVolumeEnvelope->parameter = envelopeParameter;
 		pTimbreEnvelope->parameter = envelopeParameter;
+		pAudctlEnvelope->parameter = envelopeParameter;
 
 /*
 		// Table Type is either Freq or Note, so pick whichever is suitable for the next part
@@ -1148,19 +1252,19 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			switch (distortion)
 			{
 			case 0x00:
-				pTimbreEnvelope->timbre[j].timbre = TIMBRE_PINK_NOISE;
+				distortion = TIMBRE_PINK_NOISE;
 				break;
 
 			case 0x02:
-				pTimbreEnvelope->timbre[j].timbre = TIMBRE_BELL;
+				distortion = TIMBRE_BELL;
 				break;
 
 			case 0x04:
-				pTimbreEnvelope->timbre[j].timbre = TIMBRE_SMOOTH_4;
+				distortion = TIMBRE_SMOOTH_4;
 				break;
 
 			case 0x08:
-				pTimbreEnvelope->timbre[j].timbre = TIMBRE_WHITE_NOISE;
+				distortion = TIMBRE_WHITE_NOISE;
 				break;
 
 			case 0x06:
@@ -1168,17 +1272,20 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 				//pTrigger->trigger[j].auto16Bit = true;
 
 			case 0x0A:
-				pTimbreEnvelope->timbre[j].timbre = TIMBRE_PURE;
+				distortion = TIMBRE_PURE;
 				break;
 
 			case 0x0C:
-				pTimbreEnvelope->timbre[j].timbre = TIMBRE_BUZZY_C;
+				distortion = TIMBRE_BUZZY_C;
 				break;
 
 			case 0x0E:
-				pTimbreEnvelope->timbre[j].timbre = TIMBRE_GRITTY_C;
+				distortion = TIMBRE_GRITTY_C;
 				break;
 			}
+
+			// Envelope Timbre, based on the Distortion parameter
+			pTimbreEnvelope->timbre[j].timbre = distortion;
 
 			// Envelope Volume, only Left POKEY volume is supported by the RMTE format(?)
 			pVolumeEnvelope->volume[j].volumeLevel = envelopeVolume & 0x0F;
@@ -1188,7 +1295,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			pVolumeEnvelope->volume[j].isVolumeOnly = isVolumeOnly;
 
 			// Envelope AUDCTL
-			//pAudctl->envelope[j] = initialAudctl;
+			pAudctlEnvelope->audctl[j].audctl = initialAudctl;
 
 			// AutoFilter Trigger
 			//pTrigger->trigger[j].autoFilter = envelopeCommand >> 7;
@@ -2234,6 +2341,48 @@ TEnvelope* CModule::GetTimbreEnvelope(UINT instrument)
 {
 	if (m_instrumentIndex && IsValidInstrument(instrument))
 		return m_instrumentIndex->timbre[instrument];
+
+	return NULL;
+}
+
+TEnvelope* CModule::GetAudctlEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+		return m_instrumentIndex->audctl[instrument];
+
+	return NULL;
+}
+
+/*
+TEnvelope* CModule::GetTriggerEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+		return m_instrumentIndex->trigger[instrument];
+
+	return NULL;
+}
+*/
+
+TEnvelope* CModule::GetEffectEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+		return m_instrumentIndex->effect[instrument];
+
+	return NULL;
+}
+
+TEnvelope* CModule::GetNoteTableEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+		return m_instrumentIndex->note[instrument];
+
+	return NULL;
+}
+
+TEnvelope* CModule::GetFreqTableEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+		return m_instrumentIndex->freq[instrument];
 
 	return NULL;
 }

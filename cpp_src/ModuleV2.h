@@ -163,6 +163,7 @@ struct TSubtune
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
 
+// Redundant...?
 struct TSubtuneIndex
 {
 	TSubtune* subtune[SUBTUNE_COUNT];
@@ -276,7 +277,7 @@ struct TEnvelopeMacro
 	TMacro volume;
 	TMacro timbre;
 	TMacro audctl;
-	TMacro trigger;
+	//TMacro trigger;
 	TMacro effect;
 	TMacro note;
 	TMacro freq;
@@ -321,24 +322,32 @@ struct TTimbre
 		struct
 		{
 			BYTE waveForm : 4;				// eg: Buzzy, Gritty, etc
-			BYTE distortion : 4;			// eg: Pure (0xA0), Poly4 (0xC0), etc
+			BYTE distortion : 3;			// eg: Pure (0xA0), Poly4 (0xC0), etc
+			bool isOptimalTuning : 1;		// Use a combination of all possible Waveforms, and output the most in-tune pitch for a given Distortion
 		};
 	};
-	bool isOptimalTuning : 1;				// Use a combination of all possible Waveforms, and output the most in-tune pitch for a given Distortion
 };
 
 struct TAudctl
 {
-	bool is15KhzMode : 1;	// In what order again? does it go from Bit 0 to 7 or 7 to 0 in this setup?
-	bool isHighPassCh24 : 1;
-	bool isHighPassCh13 : 1;
-	bool isJoinedCh34 : 1;
-	bool isJoinedCh12 : 1;
-	bool is179MhzCh3 : 1;
-	bool is179MhzCh1 : 1;
-	bool isPoly9Noise : 1;
+	union
+	{
+		BYTE audctl;
+		struct
+		{
+			bool is15KhzMode : 1;
+			bool isHighPassCh24 : 1;
+			bool isHighPassCh13 : 1;
+			bool isJoinedCh34 : 1;
+			bool isJoinedCh12 : 1;
+			bool is179MhzCh3 : 1;
+			bool is179MhzCh1 : 1;
+			bool isPoly9Noise : 1;
+		};
+	};
 };
 
+/*
 struct TTrigger
 {
 	bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
@@ -350,6 +359,38 @@ struct TTrigger
 	bool autoTwoTone : 1;					// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
 	bool autoPortamento : 1;				// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
 	bool autoVibrato : 1;
+};
+*/
+
+struct TEffectEnvelope
+{
+	union
+	{
+		// Legacy RMT (1.28 and 1.34) have the following Effect Commands:
+		// 
+		// CMD1 -> Set Freq (Absolute, 8-bit Parameter only)
+		// CMD2 -> Finetune (Relative)
+		// CMD3 -> ...I forgot, when this even used?
+		// CMD4 -> ...I forgot, when this even used?
+		// CMD5 -> Set Portamento Parameter (Active with Portamento Bit)
+		// CMD6 -> Set Autofilter Offset (1.28), Set Auto16bit Distortion and Set Sawtooth Direction (1.34 only)
+		// CMD7 -> Set Volume Only (1.28), Set Basenote (also 1.28... never used???), Set AUDCTL and Toggle Two-Tone Filter (1.34 only)
+		//
+		// TODO: Come up with something that could do much of the same things with fewer bits
+		// The new Envelope format added multiple things that made few Effect Commands redundant
+		//
+		struct
+		{
+			bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
+			bool auto16Bit : 1;						// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
+			bool autoReverse16 : 1;					// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
+			bool auto179Mhz : 1;					// 1.79Mhz mode, triggered from Channel 1 and/or 3
+			bool auto15Khz : 1;						// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
+			bool autoPoly9 : 1;						// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
+			bool autoTwoTone : 1;					// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
+			bool autoPortamento : 1;				// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
+		};
+	};
 };
 
 struct TTable
@@ -371,26 +412,27 @@ struct TTable
 struct TEnvelope
 {
 	TEnvelopeParameter parameter;
-
 	union
 	{
 		TVolume volume[ENVELOPE_STEP_COUNT];
 		TTimbre timbre[ENVELOPE_STEP_COUNT];
 		TAudctl audctl[ENVELOPE_STEP_COUNT];
-		TTrigger trigger[ENVELOPE_STEP_COUNT];
-		TEffect effect[ENVELOPE_STEP_COUNT];
+		//TTrigger trigger[ENVELOPE_STEP_COUNT];
+		//TEffect effect[ENVELOPE_STEP_COUNT];
+		TEffectEnvelope effect[ENVELOPE_STEP_COUNT];
 		TTable note[ENVELOPE_STEP_COUNT];
 		TTable freq[ENVELOPE_STEP_COUNT];
 	};
 };
 
+// Also sort of redundant...? This is justified for the Envelopes alone, at least...
 struct TInstrumentIndex
 {
 	TInstrumentV2* instrument[INSTRUMENT_COUNT];
 	TEnvelope* volume[INSTRUMENT_COUNT];
 	TEnvelope* timbre[INSTRUMENT_COUNT];
 	TEnvelope* audctl[INSTRUMENT_COUNT];
-	TEnvelope* trigger[INSTRUMENT_COUNT];
+	//TEnvelope* trigger[INSTRUMENT_COUNT];
 	TEnvelope* effect[INSTRUMENT_COUNT];
 	TEnvelope* note[INSTRUMENT_COUNT];
 	TEnvelope* freq[INSTRUMENT_COUNT];
@@ -489,9 +531,9 @@ public:
 	bool DeleteAudctlEnvelope(UINT instrument);
 	bool InitialiseAudctlEnvelope(TEnvelope* pEnvelope);
 
-	bool CreateTriggerEnvelope(UINT instrument);
-	bool DeleteTriggerEnvelope(UINT instrument);
-	bool InitialiseTriggerEnvelope(TEnvelope* pEnvelope);
+	//bool CreateTriggerEnvelope(UINT instrument);
+	//bool DeleteTriggerEnvelope(UINT instrument);
+	//bool InitialiseTriggerEnvelope(TEnvelope* pEnvelope);
 
 	bool CreateEffectEnvelope(UINT instrument);
 	bool DeleteEffectEnvelope(UINT instrument);
@@ -745,6 +787,11 @@ public:
 
 	TEnvelope* GetVolumeEnvelope(UINT instrument);
 	TEnvelope* GetTimbreEnvelope(UINT instrument);
+	TEnvelope* GetAudctlEnvelope(UINT instrument);
+	//TEnvelope* GetTriggerEnvelope(UINT instrument);
+	TEnvelope* GetEffectEnvelope(UINT instrument);
+	TEnvelope* GetNoteTableEnvelope(UINT instrument);
+	TEnvelope* GetFreqTableEnvelope(UINT instrument);
 
 	bool SetInstrumentName(UINT instrument, const char* name);
 	bool SetInstrumentName(TInstrumentV2* instrument, const char* name);
