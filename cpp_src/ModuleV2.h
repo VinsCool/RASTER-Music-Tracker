@@ -368,10 +368,11 @@ struct TEffectEnvelope
 	{
 		// Legacy RMT (1.28 and 1.34) have the following Effect Commands:
 		// 
+		// CMD0 -> Set Note (Relative)
 		// CMD1 -> Set Freq (Absolute, 8-bit Parameter only)
 		// CMD2 -> Finetune (Relative)
-		// CMD3 -> ...I forgot, when this even used?
-		// CMD4 -> ...I forgot, when this even used?
+		// CMD3 -> Set Note (Additive)
+		// CMD4 -> Set FreqShift (Relative)
 		// CMD5 -> Set Portamento Parameter (Active with Portamento Bit)
 		// CMD6 -> Set Autofilter Offset (1.28), Set Auto16bit Distortion and Set Sawtooth Direction (1.34 only)
 		// CMD7 -> Set Volume Only (1.28), Set Basenote (also 1.28... never used???), Set AUDCTL and Toggle Two-Tone Filter (1.34 only)
