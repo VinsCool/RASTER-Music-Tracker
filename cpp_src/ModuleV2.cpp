@@ -78,7 +78,16 @@ void CModule::DeleteAllRows(TPattern* pPattern)
 void CModule::DeleteAllInstruments()
 {
 	for (int i = 0; i < INSTRUMENT_COUNT; i++)
+	{
 		DeleteInstrument(i);
+		DeleteVolumeEnvelope(i);
+		DeleteTimbreEnvelope(i);
+		DeleteAudctlEnvelope(i);
+		//DeleteTriggerEnvelope(i);
+		DeleteEffectEnvelope(i);
+		DeleteNoteTableEnvelope(i);
+		DeleteFreqTableEnvelope(i);
+	}
 }
 
 
@@ -463,6 +472,164 @@ bool CModule::InitialiseTriggerEnvelope(TEnvelope* pEnvelope)
 	return true;
 }
 */
+
+
+//--
+
+bool CModule::CreateEffectEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is no Envelope here, create it now and update the Instrument Index accordingly
+		if (!m_instrumentIndex->effect[instrument])
+			m_instrumentIndex->effect[instrument] = new TEnvelope();
+
+		return InitialiseEffectEnvelope(m_instrumentIndex->effect[instrument]);
+	}
+
+	return false;
+}
+
+bool CModule::DeleteEffectEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is an Envelope here, don't waste any time and delete it without further ado
+		if (m_instrumentIndex->effect[instrument])
+			delete m_instrumentIndex->effect[instrument];
+
+		m_instrumentIndex->effect[instrument] = NULL;
+		return true;
+	}
+
+	return false;
+}
+
+bool CModule::InitialiseEffectEnvelope(TEnvelope* pEnvelope)
+{
+	if (!pEnvelope)
+		return false;
+
+	// Set the default Envelope parameters
+	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
+	TEffectEnvelope effect{ /*TODO*/ };
+
+	pEnvelope->parameter = parameter;
+
+	// Set the default Envelope values
+	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
+		pEnvelope->effect[i] = effect;
+
+	// Effect Envelope was initialised
+	return true;
+}
+
+
+//--
+
+bool CModule::CreateNoteTableEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is no Envelope here, create it now and update the Instrument Index accordingly
+		if (!m_instrumentIndex->note[instrument])
+			m_instrumentIndex->note[instrument] = new TEnvelope();
+
+		return InitialiseNoteTableEnvelope(m_instrumentIndex->note[instrument]);
+	}
+
+	return false;
+}
+
+bool CModule::DeleteNoteTableEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is an Envelope here, don't waste any time and delete it without further ado
+		if (m_instrumentIndex->note[instrument])
+			delete m_instrumentIndex->note[instrument];
+
+		m_instrumentIndex->note[instrument] = NULL;
+		return true;
+	}
+
+	return false;
+}
+
+bool CModule::InitialiseNoteTableEnvelope(TEnvelope* pEnvelope)
+{
+	if (!pEnvelope)
+		return false;
+
+	// Set the default Envelope parameters
+	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
+	TTable table{};
+	table.note = 0x00;
+	table.isAbsolute = false;
+	//table.isNegative = false;
+	table.isScheme = false;
+
+	pEnvelope->parameter = parameter;
+
+	// Set the default Envelope values
+	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
+		pEnvelope->note[i] = table;
+
+	// Note Table Envelope was initialised
+	return true;
+}
+
+
+//--
+
+bool CModule::CreateFreqTableEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is no Envelope here, create it now and update the Instrument Index accordingly
+		if (!m_instrumentIndex->freq[instrument])
+			m_instrumentIndex->freq[instrument] = new TEnvelope();
+
+		return InitialiseFreqTableEnvelope(m_instrumentIndex->freq[instrument]);
+	}
+
+	return false;
+}
+
+bool CModule::DeleteFreqTableEnvelope(UINT instrument)
+{
+	if (m_instrumentIndex && IsValidInstrument(instrument))
+	{
+		// If there is an Envelope here, don't waste any time and delete it without further ado
+		if (m_instrumentIndex->freq[instrument])
+			delete m_instrumentIndex->freq[instrument];
+
+		m_instrumentIndex->freq[instrument] = NULL;
+		return true;
+	}
+
+	return false;
+}
+
+bool CModule::InitialiseFreqTableEnvelope(TEnvelope* pEnvelope)
+{
+	if (!pEnvelope)
+		return false;
+
+	// Set the default Envelope parameters
+	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
+	TTable table{ 0x0000 };
+
+	pEnvelope->parameter = parameter;
+
+	// Set the default Envelope values
+	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
+		pEnvelope->freq[i] = table;
+
+	// Freq Table Envelope was initialised
+	return true;
+}
+
 
 //--
 
@@ -1075,25 +1242,21 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 		// Create all Envelopes and Tables, unique for each Instruments
 		CreateVolumeEnvelope(i);
-		TEnvelope* pVolumeEnvelope = GetVolumeEnvelope(i);
-
-		CreateTimbreEnvelope(i);
-		TEnvelope* pTimbreEnvelope = GetTimbreEnvelope(i);
-		
+		CreateTimbreEnvelope(i);		
 		CreateAudctlEnvelope(i);
+		//CreateTriggerEnvelope(i);		
+		CreateEffectEnvelope(i);
+		CreateNoteTableEnvelope(i);		
+		CreateFreqTableEnvelope(i);
+
+		// Get the pointers to all Envelopes and Tables used in the Instrument
+		TEnvelope* pVolumeEnvelope = GetVolumeEnvelope(i);
+		TEnvelope* pTimbreEnvelope = GetTimbreEnvelope(i);
 		TEnvelope* pAudctlEnvelope = GetAudctlEnvelope(i);
-		
-		//CreateTriggerEnvelope(i);
 		//TEnvelope* pTriggerEnvelope = GetTriggerEnvelope(i);
-		
-		//CreateEffectEnvelope(i);
-		//TEnvelope* pEffectEnvelope = GetEffectEnvelope(i);
-		
-		//CreateNoteTableEnvelope(i);
-		//TEnvelope* pNoteTableEnvelope = GetNoteTableEnvelope(i);
-		
-		//CreateFreqTableEnvelope(i);
-		//TEnvelope* pFreqTableEnvelope = GetFreqTableEnvelope(i);
+		TEnvelope* pEffectEnvelope = GetEffectEnvelope(i);
+		TEnvelope* pNoteTableEnvelope = GetNoteTableEnvelope(i);
+		TEnvelope* pFreqTableEnvelope = GetFreqTableEnvelope(i);
 
 		// Assign everything in the Instrument Index once the data was initialised
 		TMacro macro{ (BYTE)i, true, false };
@@ -1153,45 +1316,26 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		if (envelopeLoop > envelopeLength)
 			envelopeLoop = 0x00;
 
+		// Create the Envelope and Table Parameters
 		TEnvelopeParameter envelopeParameter = { envelopeLength, envelopeLoop, envelopeLength, envelopeSpeed, true, false, false, false };
 		TEnvelopeParameter tableParameter = { tableLength, tableLoop, tableLength, tableSpeed, true, false, false, tableMode };
 
+		// Apply to the respective Envelopes and Tables
 		pVolumeEnvelope->parameter = envelopeParameter;
 		pTimbreEnvelope->parameter = envelopeParameter;
 		pAudctlEnvelope->parameter = envelopeParameter;
+		pEffectEnvelope->parameter = envelopeParameter;
+		pNoteTableEnvelope->parameter = tableParameter;
+		pFreqTableEnvelope->parameter = tableParameter;
 
-/*
-		// Table Type is either Freq or Note, so pick whichever is suitable for the next part
-		TInstrumentTable* pTable = tableType ? m_freqIndex[i] : m_noteIndex[i];
-
-		// Assign the necessary flags and parameters to it
-		pTable->flag.isLooped = true;
-		pTable->flag.isAbsolute = false;
-		pTable->flag.isAdditive = tableMode;
-		pTable->flag.isReleased = false;
-
-		pTable->parameter.length = tableLength;
-		pTable->parameter.loop = tableLoop;
-		pTable->parameter.release = 0x00;
-		pTable->parameter.speed = tableSpeed;
-
-		// Fill the appropriate Table with these values
-		for (int j = 0; j < tableLength; j++)
-			pTable->table[j] = memInstrument[tablePtr + j];
-
-		// Enable all envelopes, since everything may be used at once!
-		TParameter parameter{ envelopeLength, envelopeLoop, 0x00, envelopeSpeed };
-		TFlag flag{ true, false, false, false };
-
-		// Get the pointer to all the Envelopes that will be filled with the imported data
-		TInstrumentEnvelope* pVolume = m_volumeIndex[i], * pTimbre = m_timbreIndex[i], * pAudctl = m_audctlIndex[i];
-		TInstrumentTrigger* pTrigger = m_triggerIndex[i];
-		TInstrumentEffect* pEffect = m_effectIndex[i];
-
-		// Assign the necessary flags and parameters to all of them
-		pVolume->parameter = pTimbre->parameter = pAudctl->parameter = pTrigger->parameter = pEffect->parameter = parameter;
-		pVolume->flag = pTimbre->flag = pAudctl->flag = pTrigger->flag = pEffect->flag = flag;
-*/
+		// Table Type is either Freq or Note, so pick whichever is suitable and fill it accordingly
+		for (UINT j = 0; j < tableLength; j++)
+		{
+			if (tableType)
+				pFreqTableEnvelope->freq[j].freq = memInstrument[tablePtr + j];
+			else
+				pNoteTableEnvelope->note[j].note = memInstrument[tablePtr + j];
+		}
 
 		// Fill the equivalent RMTE envelopes, which might include some compromises due to the format differences
 		for (UINT j = 0; j < envelopeLength; j++)
@@ -1244,7 +1388,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			if (distortion == 0x06)
 			{
 				// The original "Auto16Bit" trigger ;)
-				//pTrigger->trigger[j].auto16Bit = true;
+				pEffectEnvelope->effect[j].auto16Bit = true;
 				distortion = initialTimbre;
 			}
 
@@ -1269,7 +1413,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 			case 0x06:
 				// The original "Auto16Bit" trigger ;)
-				//pTrigger->trigger[j].auto16Bit = true;
+				//pEffectEnvelope->effect[j].auto16Bit = true;
 
 			case 0x0A:
 				distortion = TIMBRE_PURE;
@@ -1298,17 +1442,17 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			pAudctlEnvelope->audctl[j].audctl = initialAudctl;
 
 			// AutoFilter Trigger
-			//pTrigger->trigger[j].autoFilter = envelopeCommand >> 7;
+			pEffectEnvelope->effect[j].autoFilter = envelopeCommand >> 7;
 
 			// AutoTwoTone Trigger
-			//pTrigger->trigger[j].autoTwoTone = initialSkctl;
+			pEffectEnvelope->effect[j].autoTwoTone = initialSkctl;
 
 			// Portamento a Pattern Effect Command could be set where the Portamento is expected as a compromise
-			//pTrigger->trigger[j].autoPortamento = envelopeCommand & 0x01;
+			pEffectEnvelope->effect[j].autoPortamento = envelopeCommand & 0x01;
 
 			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
-			//pEffect->effect[j].command = envelopeEffectCommand;
-			//pEffect->effect[j].parameter = envelopeParameter;
+			//pEffectEnvelope->effect[j].command = envelopeEffectCommand;
+			//pEffectEnvelope->effect[j].parameter = envelopeParameter;
 		}
 
 		// Instrument was loaded
@@ -1317,262 +1461,6 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 	// Legacy RMT Instruments should have been imported successfully
 	return true;
-
-/*
-	// Make sure both the Subtune and Source Memory are not Null pointers
-	if (!pSubtune || !sourceMemory)
-		return false;
-
-	// Get the pointers used for decoding the Legacy RMT Instrument data
-	WORD ptrInstruments = sourceMemory[sourceAddress + 8] + (sourceMemory[sourceAddress + 9] << 8);
-	WORD ptrEnd = sourceMemory[sourceAddress + 10] + (sourceMemory[sourceAddress + 11] << 8);
-
-	// Number of instruments to decode
-	WORD instrumentCount = (ptrEnd - ptrInstruments) / 2;
-
-	// Abort the import procedure if the number of Instruments detected is invalid
-	if (instrumentCount > INSTRUMENT_COUNT)
-		return false;
-
-	// Decode all Instruments, TODO: Add exceptions for V0 Instruments
-	for (int i = 0; i < instrumentCount; i++)
-	{
-		// Get the pointer to Instrument envelope and parameters
-		WORD ptrOneInstrument = sourceMemory[ptrInstruments + i * 2] + (sourceMemory[ptrInstruments + i * 2 + 1] << 8);
-
-		// If it is a NULL pointer, in this case, an offset of 0, the instrument is empty, and must be skipped
-		if (!ptrOneInstrument)
-			continue;
-
-		// Initialise the equivalent RMTE Instrument, then get the pointer to it for the next step
-		CreateInstrument(i);
-		TInstrumentV2* pInstrument = GetInstrument(i);
-
-		// Create all Envelopes and Tables, unique for each Instruments
-		CreateVolumeEnvelope(i);
-		CreateTimbreEnvelope(i);
-		CreateAudctlEnvelope(i);
-		CreateTriggerEnvelope(i);
-		CreateEffectEnvelope(i);
-		CreateNoteTable(i);
-		CreateFreqTable(i);
-
-		// Assign everything in the Instrument Index once the data was initialised
-		pInstrument->index.volume = i;
-		pInstrument->index.timbre = i;
-		pInstrument->index.audctl = i;
-		pInstrument->index.trigger = i;
-		pInstrument->index.effect = i;
-		pInstrument->index.note = i;
-		pInstrument->index.freq = i;
-
-		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
-		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
-		BYTE envelopePtr = memInstrument[0];							// Pointer to Instrument Envelope
-		BYTE tablePtr = 12;												// Pointer to Instrument Table
-
-		// Set the equivalent data to the RMTE instrument, with respect to boundaries
-		BYTE tableLength = envelopePtr - tablePtr + 1;
-		BYTE tableLoop = memInstrument[1] - tablePtr;
-
-		BYTE envelopeLength = ((memInstrument[2] - envelopePtr + 1) / 3) + 1;
-		BYTE envelopeLoop = ((memInstrument[3] - envelopePtr + 1) / 3);
-		BYTE envelopeSpeed = 0x01;
-
-		BYTE tableMode = (memInstrument[4] >> 6) & 0x01;				// Table Mode, 0 = Set, 1 = Additive
-		BYTE tableSpeed = (memInstrument[4] & 0x3F) + 1;				// Table Speed, used to offset the equivalent Tables
-
-		BYTE tableType = memInstrument[4] >> 7;							// Table Type, 0 = Note, 1 = Freq
-		BYTE initialAudctl = memInstrument[5];							// AUDCTL, used to initialise the equivalent Envelope
-		BYTE initialTimbre = 0x0A;										// RMT 1.34 Distortion 6 uses the Distortion A by default
-		bool initialSkctl = false;										// SKCTL, used for the Two-Tone Filter Trigger Envelope
-
-		BYTE delay = memInstrument[8];									// Vibrato/Freq Shift Delay
-		BYTE vibrato = memInstrument[9] & 0x03;							// Vibrato
-		BYTE freqShift = memInstrument[10];								// Freq Shift
-
-		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
-		pInstrument->volumeSustain = memInstrument[7] >> 4;				// Volume Minimum
-
-		// Import the Vibrato with adjustments to make sound similar to the original implementation
-		switch (vibrato)
-		{
-		case 0x01: vibrato = 0x0F; break;
-		case 0x02: vibrato = 0x0B; break;
-		case 0x03: vibrato = 0x07; break;
-		}
-
-		// Overwrite the Delay, Vibrato and Freqshift parameters with updated values if changes were needed
-		pInstrument->delay = delay? delay - 1 : 0x00;
-		pInstrument->vibrato = delay ? vibrato : 0x00;
-		pInstrument->freqShift = delay ? freqShift : 0x00;
-
-		// Fill the equivalent RMTE tables based on the tableType parameter
-		if (tableLength > 32)
-			tableLength = 0x00;
-
-		if (tableLoop > tableLength)
-			tableLoop = 0x00;
-
-		if (envelopeLength > 48)
-			envelopeLength = 0x00;
-
-		if (envelopeLoop > envelopeLength)
-			envelopeLoop = 0x00;
-
-		// Table Type is either Freq or Note, so pick whichever is suitable for the next part
-		TInstrumentTable* pTable = tableType ? m_freqIndex[i] : m_noteIndex[i];
-
-		// Assign the necessary flags and parameters to it
-		pTable->flag.isLooped = true;
-		pTable->flag.isAbsolute = false;
-		pTable->flag.isAdditive = tableMode;
-		pTable->flag.isReleased = false;
-
-		pTable->parameter.length = tableLength;
-		pTable->parameter.loop = tableLoop;
-		pTable->parameter.release = 0x00;
-		pTable->parameter.speed = tableSpeed;
-		
-		// Fill the appropriate Table with these values
-		for (int j = 0; j < tableLength; j++)
-			pTable->table[j] = memInstrument[tablePtr + j];
-
-		// Enable all envelopes, since everything may be used at once!
-		TParameter parameter{ envelopeLength, envelopeLoop, 0x00, envelopeSpeed };
-		TFlag flag{ true, false, false, false };
-
-		// Get the pointer to all the Envelopes that will be filled with the imported data
-		TInstrumentEnvelope* pVolume = m_volumeIndex[i], * pTimbre = m_timbreIndex[i], * pAudctl = m_audctlIndex[i];
-		TInstrumentTrigger* pTrigger = m_triggerIndex[i];
-		TInstrumentEffect* pEffect = m_effectIndex[i];
-
-		// Assign the necessary flags and parameters to all of them
-		pVolume->parameter = pTimbre->parameter = pAudctl->parameter = pTrigger->parameter = pEffect->parameter = parameter;
-		pVolume->flag = pTimbre->flag = pAudctl->flag = pTrigger->flag = pEffect->flag = flag;
-
-		// Fill the equivalent RMTE envelopes, which might include some compromises due to the format differences
-		for (int j = 0; j < envelopeLength; j++)
-		{
-			// Get the 3 bytes used by the original RMT Envelope format
-			BYTE envelopeVolume = memInstrument[envelopePtr + 1 + (j * 3)];
-			BYTE envelopeCommand = memInstrument[envelopePtr + 1 + (j * 3) + 1];
-			BYTE envelopeParameter = memInstrument[envelopePtr + 1 + (j * 3) + 2];
-
-			// Envelope Effect Command, from 0 to 7
-			BYTE envelopeEffectCommand = (envelopeCommand >> 4) & 0x07;
-
-			// Envelope Distortion, from 0 to E, in steps of 2
-			BYTE distortion = envelopeCommand & 0x0E;
-
-			// Volume Only Mode flag, used for the Volume Envelope when it is set
-			bool isVolumeOnly = false;
-
-			// The Envelope Effect Command is used for compatibility tweaks, which may or may not provide perfect results
-			switch (envelopeEffectCommand)
-			{
-			case 0x07:
-				// Overwrite the initialAudctl parameter, for a pseudo AUDCTL envelope when it is used multiple times (Patch16 only)
-				if (envelopeParameter < 0xFD)
-					initialAudctl = envelopeParameter;
-
-				else if (envelopeParameter == 0xFD)
-					initialSkctl = false;
-
-				else if (envelopeParameter == 0xFE)
-					initialSkctl = true;
-
-				else if (envelopeParameter == 0xFF)
-					isVolumeOnly = true;
-
-				envelopeParameter = envelopeEffectCommand = 0x00;
-				break;
-
-			case 0x06:
-				// Various hacks were used with this command in the RMT 1.34 driver, such as the Distortion 6... Distortion used in 16-bit mode
-				if (distortion == 0x06)
-				{
-					initialTimbre = envelopeParameter & 0x0E;
-					envelopeParameter = envelopeEffectCommand = 0x00;
-				}
-				break;
-			}
-
-			// See above? Yeah, that, it does the thing, amazing isn't it?
-			if (distortion == 0x06)
-			{
-				// The original "Auto16Bit" trigger ;)
-				pTrigger->trigger[j].auto16Bit = true;
-				distortion = initialTimbre;
-			}
-
-			// To be converted to the equivalent Timbre parameter
-			switch (distortion)
-			{
-			case 0x00:
-				pTimbre->envelope[j] = TIMBRE_PINK_NOISE;
-				break;
-
-			case 0x02:
-				pTimbre->envelope[j] = TIMBRE_BELL;
-				break;
-
-			case 0x04:
-				pTimbre->envelope[j] = TIMBRE_SMOOTH_4;
-				break;
-
-			case 0x08:
-				pTimbre->envelope[j] = TIMBRE_WHITE_NOISE;
-				break;
-
-			case 0x06:
-				// The original "Auto16Bit" trigger ;)
-				//pTrigger->trigger[j].auto16Bit = true;
-
-			case 0x0A:
-				pTimbre->envelope[j] = TIMBRE_PURE;
-				break;
-
-			case 0x0C:
-				pTimbre->envelope[j] = TIMBRE_BUZZY_C;
-				break;
-
-			case 0x0E:
-				pTimbre->envelope[j] = TIMBRE_GRITTY_C;
-				break;
-			}
-
-			// Envelope Volume, only Left POKEY volume is supported by the RMTE format
-			pVolume->envelope[j] = envelopeVolume & 0x0F;
-
-			// Set the Volume Only Mode as well if needed
-			if (isVolumeOnly)
-				pVolume->envelope[j] |= 0x10;
-
-			// Envelope AUDCTL
-			pAudctl->envelope[j] = initialAudctl;
-
-			// AutoFilter Trigger
-			pTrigger->trigger[j].autoFilter = envelopeCommand >> 7;
-
-			// AutoTwoTone Trigger
-			pTrigger->trigger[j].autoTwoTone = initialSkctl;
-
-			// Portamento a Pattern Effect Command could be set where the Portamento is expected as a compromise
-			pTrigger->trigger[j].autoPortamento = envelopeCommand & 0x01;
-
-			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
-			pEffect->effect[j].command = envelopeEffectCommand;
-			pEffect->effect[j].parameter = envelopeParameter;
-		}
-
-		// Instrument was loaded
-		isLoaded[i]++;
-	}
-
-	// Legacy RMT Instruments should have been imported successfully
-	return true;
-*/
 }
 
 

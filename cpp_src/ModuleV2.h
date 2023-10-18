@@ -380,6 +380,10 @@ struct TEffectEnvelope
 		// TODO: Come up with something that could do much of the same things with fewer bits
 		// The new Envelope format added multiple things that made few Effect Commands redundant
 		//
+		// Idea 1: Keep 4 Commands using 2 bits, use the remaining 6 bits to toggle one of the most useful Automatic commands, discard the least likely to be used/imported
+		// Idea 2: Keep all 8 Commands using 3 bits, use them exactly like how the Legacy/Patched RMT driver would call for them, for maximal backwards compatibility
+		// Idea 3: Same as Idea 1, but attempt to convert most the CMD0/CMD1/CMD2/CMD3 parameters into NoteTable/FreqTable parameters, merging into existing Tables if possible
+		// Idea 4: Attempt to convert Instrument Commands into Pattern Commands, which would be really hard to do, but technically could work to make everything compatible
 		struct
 		{
 			bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
@@ -402,8 +406,9 @@ struct TTable
 		WORD freq16;
 		struct
 		{
-			BYTE note : 7;
-			bool isNegative : 1;
+			//BYTE note : 7;
+			//bool isNegative : 1;
+			BYTE note : 8;
 			bool isAbsolute : 1;
 			bool isScheme : 1;
 		};
@@ -464,7 +469,7 @@ typedef struct LoHeader_t
 	UINT volumeEnvelope[INSTRUMENT_COUNT];		// Offset to Volume Envelope
 	UINT timbreEnvelope[INSTRUMENT_COUNT];		// Offset to Timbre Envelope
 	UINT audctlEnvelope[INSTRUMENT_COUNT];		// Offset to AUDCTL Envelope
-	UINT triggerEnvelope[INSTRUMENT_COUNT];		// Offset to Trigger Envelope
+	//UINT triggerEnvelope[INSTRUMENT_COUNT];		// Offset to Trigger Envelope
 	UINT effectEnvelope[INSTRUMENT_COUNT];		// Offset to Effect Envelope
 	UINT noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
 	UINT freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope
