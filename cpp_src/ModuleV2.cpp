@@ -256,8 +256,9 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	pInstrument->volumeFade = 0x00;
 	pInstrument->volumeSustain = 0x00;
 	pInstrument->vibrato = 0x00;
+	pInstrument->vibratoDelay = 0x00;
 	pInstrument->freqShift = 0x00;
-	pInstrument->delay = 0x00;
+	pInstrument->freqShiftDelay = 0x00;
 
 	// Set the default Envelope Macro parameters, always disabled for newly created Instruments
 	TMacro macro{ 0x00, false, false };
@@ -306,7 +307,7 @@ bool CModule::InitialiseVolumeEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope parameters
 	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TVolume volume{ 0x00, 0x00, 0x40, false };
+	TVolumeEnvelope volume{ 0x00 };
 
 	pEnvelope->parameter = parameter;
 
@@ -357,7 +358,7 @@ bool CModule::InitialiseTimbreEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope parameters
 	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TTimbre timbre{ TIMBRE_PURE };
+	TTimbreEnvelope timbre{ TIMBRE_PURE };
 
 	pEnvelope->parameter = parameter;
 
@@ -408,7 +409,7 @@ bool CModule::InitialiseAudctlEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope parameters
 	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TAudctl audctl{ 0x00 };
+	TAudctlEnvelope audctl{ 0x00 };
 
 	pEnvelope->parameter = parameter;
 
@@ -563,17 +564,13 @@ bool CModule::InitialiseNoteTableEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope parameters
 	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TTable table{};
-	table.note = 0x00;
-	table.isAbsolute = false;
-	//table.isNegative = false;
-	table.isScheme = false;
+	TNoteTableEnvelope noteTable{ 0x00 };
 
 	pEnvelope->parameter = parameter;
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->note[i] = table;
+		pEnvelope->note[i] = noteTable;
 
 	// Note Table Envelope was initialised
 	return true;
@@ -618,13 +615,13 @@ bool CModule::InitialiseFreqTableEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope parameters
 	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TTable table{ 0x0000 };
+	TFreqTableEnvelope freqTable{ 0x0000 };
 
 	pEnvelope->parameter = parameter;
 
 	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->freq[i] = table;
+	for (int i = 0; i < ENVELOPE_STEP_COUNT / 2; i++)
+		pEnvelope->freq[i] = freqTable;
 
 	// Freq Table Envelope was initialised
 	return true;
@@ -1244,7 +1241,6 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		CreateVolumeEnvelope(i);
 		CreateTimbreEnvelope(i);		
 		CreateAudctlEnvelope(i);
-		//CreateTriggerEnvelope(i);		
 		CreateEffectEnvelope(i);
 		CreateNoteTableEnvelope(i);		
 		CreateFreqTableEnvelope(i);
@@ -1253,7 +1249,6 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		TEnvelope* pVolumeEnvelope = GetVolumeEnvelope(i);
 		TEnvelope* pTimbreEnvelope = GetTimbreEnvelope(i);
 		TEnvelope* pAudctlEnvelope = GetAudctlEnvelope(i);
-		//TEnvelope* pTriggerEnvelope = GetTriggerEnvelope(i);
 		TEnvelope* pEffectEnvelope = GetEffectEnvelope(i);
 		TEnvelope* pNoteTableEnvelope = GetNoteTableEnvelope(i);
 		TEnvelope* pFreqTableEnvelope = GetFreqTableEnvelope(i);
@@ -1299,9 +1294,10 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		}
 
 		// Overwrite the Delay, Vibrato and Freqshift parameters with updated values if changes were needed
-		pInstrument->delay = delay ? delay - 1 : 0x00;
-		pInstrument->vibrato = delay ? vibrato : 0x00;
-		pInstrument->freqShift = delay ? freqShift : 0x00;
+		pInstrument->vibrato = delay && vibrato ? vibrato : 0x00;
+		pInstrument->vibratoDelay = delay && vibrato ? delay - 1 : 0x00;
+		pInstrument->freqShift = delay && freqShift ? freqShift : 0x00;
+		pInstrument->freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
 
 		// Fill the equivalent RMTE tables based on the tableType parameter
 		if (tableLength > 32)
@@ -1432,11 +1428,15 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			pTimbreEnvelope->timbre[j].timbre = distortion;
 
 			// Envelope Volume, only Left POKEY volume is supported by the RMTE format(?)
-			pVolumeEnvelope->volume[j].volumeLevel = envelopeVolume & 0x0F;
-			pVolumeEnvelope->volume[j].waveTable = envelopeVolume & 0xF0;	// Or as a Stereo parameter maybe...
+			//pVolumeEnvelope->volume[j].volumeLevel = envelopeVolume & 0x0F;
+			//pVolumeEnvelope->volume[j].waveTable = envelopeVolume & 0xF0;	// Or as a Stereo parameter maybe...
+
+			// Envelope Volume
+			pVolumeEnvelope->volume[j].volumeLeft = envelopeVolume & 0x0F;
+			pVolumeEnvelope->volume[j].volumeRight = envelopeVolume & 0xF0;
 
 			// Set the Volume Only Mode as well if needed
-			pVolumeEnvelope->volume[j].isVolumeOnly = isVolumeOnly;
+			//pVolumeEnvelope->volume[j].isVolumeOnly = isVolumeOnly;
 
 			// Envelope AUDCTL
 			pAudctlEnvelope->audctl[j].audctl = initialAudctl;

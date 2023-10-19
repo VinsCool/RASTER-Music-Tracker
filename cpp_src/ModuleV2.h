@@ -65,6 +65,8 @@
 #define _CH2(x)						((x % POKEY_CHANNEL_COUNT) == CH2)			// POKEY Channel identifier for Pattern Column 2
 #define _CH3(x)						((x % POKEY_CHANNEL_COUNT) == CH3)			// POKEY Channel identifier for Pattern Column 3
 #define _CH4(x)						((x % POKEY_CHANNEL_COUNT) == CH4)			// POKEY Channel identifier for Pattern Column 4
+#define FREQ_COUNT					256											// 0-255 inclusive, POKEY Frequencies (8-bit)
+#define FREQ_COUNT_16				65536										// 0-65535 inclusive, POKEY Frequencies (16-bit)
 #define NOTE_COUNT					120											// 0-119 inclusive, Note index used in Pattern, for a total of 10 octaves
 #define NOTE_EMPTY					NOTE_COUNT									// There is no Note in the Pattern Row
 #define NOTE_OFF					NOTE_COUNT + 1								// The Note Command OFF will stop the last played note in the Track Channel
@@ -173,148 +175,68 @@ struct TSubtuneIndex
 // RMTE Module Structs for Instrument, Envelope, Table, etc
 //
 
-/*
-// Instrument AUDCTL/SKCTL Automatic Trigger bits, useful considering each POKEY channel featuring unique properties
-struct TAutomatic
-{
-	bool autoFilter;						// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
-	bool auto16Bit;							// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
-	bool autoReverse16;						// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
-	bool auto179Mhz;						// 1.79Mhz mode, triggered from Channel 1 and/or 3
-	bool auto15Khz;							// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
-	bool autoPoly9;							// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
-	bool autoTwoTone;						// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-	bool autoPortamento;					// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
-};
-
-// Instrument Macro Parameters
-struct TParameter
-{
-	BYTE length;							// Length, in frames
-	BYTE loop;								// Loop point, in frames
-	BYTE release;							// Release point, in frames
-	BYTE speed;								// Speed, in frames
-};
-
-// Instrument Macro Flags
-struct TFlag
-{
-	bool isLooped;							// Is it Looping?
-	bool isReleased;						// Is it Releasing?
-	bool isAbsolute;						// Is it Absolute?
-	bool isAdditive;						// Is it Additive?
-};
-*/
-
-/*
-// Instrument Envelope Index, 0-63 inclusive, Bit 7 is toggle for enabled/disabled, Bit 6 is unused for now
+// Instrument Envelope Macro, used to specify which Envelope Index is associated to the Instrument and how it is used
 struct TMacro
 {
-	BYTE volume;
-	BYTE timbre;
-	BYTE audctl;
-	BYTE trigger;
-	BYTE effect;
-	BYTE note;
-	BYTE freq;
-};
-*/
-
-/*
-struct TInstrumentEnvelope
-{
-	TParameter parameter;
-	TFlag flag;
-	BYTE envelope[ENVELOPE_STEP_COUNT];
+	BYTE index : 6;							// Unique Envelopes may be shared between all Instruments, useful for using identical Volume, Timbre, Audctl, etc
+	bool isEnabled : 1;						// Envelope is used if True, otherwise it will be skipped, but still displayed on screen for reference
+	bool isReversed : 1;					// Envelope is played backwards if True, otherwise it will be played in the correct order
 };
 
-struct TInstrumentTrigger
-{
-	TParameter parameter;
-	TFlag flag;
-	TAutomatic trigger[ENVELOPE_STEP_COUNT];
-};
-
-struct TInstrumentEffect
-{
-	TParameter parameter;
-	TFlag flag;
-	TEffect effect[ENVELOPE_STEP_COUNT];
-};
-
-struct TInstrumentTable
-{
-	TParameter parameter;
-	TFlag flag;
-	BYTE table[TABLE_STEP_COUNT];
-};
-*/
-
-/*
-// Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
-struct TInstrumentV2
-{
-	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
-	BYTE volumeFade;						// Volume Fade, take priority over Pattern Effect Axx
-	BYTE volumeSustain;						// Volume Sustain, Take priority over Pattern Effect Axx
-	BYTE vibrato;							// Vibrato trigger, take priority over Pattern Effect 4xx
-	BYTE freqShift;							// Freq Shift trigger, take priority over Pattern Effect 1xx and 2xx
-	BYTE delay;								// Vibrato and Freq Shift delay, set to 0x01 for no delay, 0x00 to disable
-	TMacro index;							// Instrument Macro Envelope(s) Index and Parameters
-};
-*/
-
-// An attempt to organise all the Instrument data into 1 place...
-struct TMacro
-{
-	BYTE index : 6;
-	bool isEnabled : 1;
-	bool isReversed : 1;
-};
-
+// A Macro of Instrument Envelope Macros, what else? This should be pretty self-explanatory :D
 struct TEnvelopeMacro
 {
 	TMacro volume;
 	TMacro timbre;
 	TMacro audctl;
-	//TMacro trigger;
 	TMacro effect;
 	TMacro note;
 	TMacro freq;
 };
 
+// Instrument Envelope parameters, used to define things such as the Envelope Length, Loop Point, Speed, etc
 struct TEnvelopeParameter
 {
-	BYTE length;							// Length, in frames
-	BYTE loop;								// Loop point, in frames
-	BYTE release;							// Release point, in frames
-	BYTE speed : 4;							// Speed, in frames
-	bool isLooped : 1;						// Is it Looping?
-	bool isReleased : 1;					// Is it Releasing?
-	bool isAbsolute : 1;					// Is it Absolute?
-	bool isAdditive : 1;					// Is it Additive?
+	BYTE length;							// Envelope Length, in frames
+	BYTE loop;								// Envelope Loop point
+	BYTE release;							// Envelope Release point
+	BYTE speed : 4;							// Envelope Speed, in ticks per frames
+	bool isLooped : 1;						// Loop point is used if True, otherwise the Envelope will end after the last Frame was processed
+	bool isReleased : 1;					// Release point is used if True, could also be combined to Loop Point, useful for sustaining a Note Release
+	bool isAbsolute : 1;					// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
+	bool isAdditive : 1;					// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
 };
 
+// Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
 struct TInstrumentV2
 {
 	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
-	BYTE volumeFade;						// Volume Fade, take priority over Pattern Effect Axx
-	BYTE volumeSustain;						// Volume Sustain, Take priority over Pattern Effect Axx
-	BYTE vibrato;							// Vibrato trigger, take priority over Pattern Effect 4xx
-	BYTE freqShift;							// Freq Shift trigger, take priority over Pattern Effect 1xx and 2xx
-	BYTE delay;								// Vibrato and Freq Shift delay, set to 0x01 for no delay, 0x00 to disable
-	TEnvelopeMacro envelope;				// Instrument Macro Envelope(s) Index and Parameters
+	BYTE volumeFade;						// Volume Fadeout parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
+	BYTE volumeSustain;						// Volume Sustain parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
+	BYTE vibrato;							// Vibrato parameter, taking priority over EFFECT_VIBRATO for Legacy RMT Instrument compatibility
+	BYTE vibratoDelay;						// Vibrato Delay parameter, used when Vibrato is a non-zero parameter, a delay of 0x00 is immediate
+	BYTE freqShift;							// Freq Shift parameter, taking priority EFFECT_PITCH_UP and EFFECT_PITCH_DOWN for Legacy RMT Instrument compatibility
+	BYTE freqShiftDelay;					// FreqShift Delay parameter, used when FreqShift is a non-zero parameter, a delay of 0x00 is immediate
+	TEnvelopeMacro envelope;				// Envelope Macros associated to the Instrument, taking priority over certain Pattern Effect Commands
 };
 
-struct TVolume
+// Instrument Volume Envelope
+struct TVolumeEnvelope
 {
-	BYTE volumeLevel : 4;
-	BYTE waveTable : 4;
-	BYTE stereoPanning : 7;
-	bool isVolumeOnly : 1;
+	union
+	{
+		BYTE volume;
+		struct
+		{
+			BYTE volumeLeft : 4;			// Left POKEY Volume, for Legacy RMT Instrument Compatibility
+			BYTE volumeRight : 4;			// Right POKEY Volume, for Legacy RMT Instrument Compatibility
+			//bool isVolumeOnly : 1;		// TODO: Move to Timbre(?) or Effect Envelope...
+		};
+	};
 };
 
-struct TTimbre
+// Instrument Timbre Envelope
+struct TTimbreEnvelope
 {
 	union
 	{
@@ -328,7 +250,8 @@ struct TTimbre
 	};
 };
 
-struct TAudctl
+// Instrument AUDCTL Envelope
+struct TAudctlEnvelope
 {
 	union
 	{
@@ -347,87 +270,135 @@ struct TAudctl
 	};
 };
 
-/*
-struct TTrigger
-{
-	bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
-	bool auto16Bit : 1;						// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
-	bool autoReverse16 : 1;					// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
-	bool auto179Mhz : 1;					// 1.79Mhz mode, triggered from Channel 1 and/or 3
-	bool auto15Khz : 1;						// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
-	bool autoPoly9 : 1;						// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
-	bool autoTwoTone : 1;					// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-	bool autoPortamento : 1;				// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
-	bool autoVibrato : 1;
-};
-*/
-
+// Instrument Effect(s) Envelope
 struct TEffectEnvelope
 {
+	// Legacy RMT (1.28 and 1.34) have the following Effect Commands:
+	// 
+	// CMD0 -> Set Note (Relative)
+	// CMD1 -> Set Freq (Absolute, 8-bit Parameter only)
+	// CMD2 -> Finetune (Relative)
+	// CMD3 -> Set Note (Additive)
+	// CMD4 -> Set FreqShift (Relative)
+	// CMD5 -> Set Portamento Parameter (Active with Portamento Bit)
+	// CMD6 -> Set Autofilter Offset (1.28), Set Auto16bit Distortion and Set Sawtooth Direction (1.34 only)
+	// CMD7 -> Set Volume Only (1.28), Set Basenote (also 1.28... never used???), Set AUDCTL and Toggle Two-Tone Filter (1.34 only)
+	//
+	// TODO: Come up with something that could do much of the same things with fewer bits
+	// The new Envelope format added multiple things that made few Effect Commands redundant
+	//
+	// Idea 1: Keep 4 Commands using 2 bits, use the remaining 6 bits to toggle one of the most useful Automatic commands, discard the least likely to be used/imported
+	// Idea 2: Keep all 8 Commands using 3 bits, use them exactly like how the Legacy/Patched RMT driver would call for them, for maximal backwards compatibility
+	// Idea 3: Same as Idea 1, but attempt to convert most the CMD0/CMD1/CMD2/CMD3 parameters into NoteTable/FreqTable parameters, merging into existing Tables if possible
+	// Idea 4: Attempt to convert Instrument Commands into Pattern Commands, which would be really hard to do, but technically could work to make everything compatible
+	//
 	union
 	{
-		// Legacy RMT (1.28 and 1.34) have the following Effect Commands:
-		// 
-		// CMD0 -> Set Note (Relative)
-		// CMD1 -> Set Freq (Absolute, 8-bit Parameter only)
-		// CMD2 -> Finetune (Relative)
-		// CMD3 -> Set Note (Additive)
-		// CMD4 -> Set FreqShift (Relative)
-		// CMD5 -> Set Portamento Parameter (Active with Portamento Bit)
-		// CMD6 -> Set Autofilter Offset (1.28), Set Auto16bit Distortion and Set Sawtooth Direction (1.34 only)
-		// CMD7 -> Set Volume Only (1.28), Set Basenote (also 1.28... never used???), Set AUDCTL and Toggle Two-Tone Filter (1.34 only)
-		//
-		// TODO: Come up with something that could do much of the same things with fewer bits
-		// The new Envelope format added multiple things that made few Effect Commands redundant
-		//
-		// Idea 1: Keep 4 Commands using 2 bits, use the remaining 6 bits to toggle one of the most useful Automatic commands, discard the least likely to be used/imported
-		// Idea 2: Keep all 8 Commands using 3 bits, use them exactly like how the Legacy/Patched RMT driver would call for them, for maximal backwards compatibility
-		// Idea 3: Same as Idea 1, but attempt to convert most the CMD0/CMD1/CMD2/CMD3 parameters into NoteTable/FreqTable parameters, merging into existing Tables if possible
-		// Idea 4: Attempt to convert Instrument Commands into Pattern Commands, which would be really hard to do, but technically could work to make everything compatible
 		struct
 		{
-			bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
-			bool auto16Bit : 1;						// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
-			bool autoReverse16 : 1;					// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
-			bool auto179Mhz : 1;					// 1.79Mhz mode, triggered from Channel 1 and/or 3
-			bool auto15Khz : 1;						// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
-			bool autoPoly9 : 1;						// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
-			bool autoTwoTone : 1;					// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-			bool autoPortamento : 1;				// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
+			union
+			{
+				BYTE byte1;
+				struct
+				{
+					bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
+					bool auto16Bit : 1;						// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
+					bool autoReverse16 : 1;					// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
+					bool auto179Mhz : 1;					// 1.79Mhz mode, triggered from Channel 1 and/or 3
+					bool auto15Khz : 1;						// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
+					bool autoPoly9 : 1;						// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
+					bool autoTwoTone : 1;					// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
+					bool autoPortamento : 1;				// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
+				};
+			};
+
+			union
+			{
+				BYTE byte2;
+				struct
+				{
+					// Insert something here...
+				};
+			};
+
+			union
+			{
+				BYTE byte3;
+				struct
+				{
+					// Insert something here...
+				};
+			};
+
+			union
+			{
+				BYTE byte4;
+				struct
+				{
+					// Insert something here...
+				};
+			};
 		};
 	};
 };
 
-struct TTable
+// Instrument Note Table Envelope
+struct TNoteTableEnvelope
 {
 	union
 	{
-		BYTE freq;
-		WORD freq16;
+		BYTE noteTable;						// Set Note Index 0-255 (Absolute/Additive), capped to NOTE_COUNT
 		struct
 		{
-			//BYTE note : 7;
-			//bool isNegative : 1;
-			BYTE note : 8;
-			bool isAbsolute : 1;
-			bool isScheme : 1;
+			union
+			{
+				SBYTE note : 7;				// Transpose by +- 64 semitones (Relative/Additive), capped to NOTE_COUNT
+				struct
+				{
+					SBYTE noteXY : 6;		// Transpose by +- 32 semitones (Relative/Additive), capped to NOTE_COUNT
+					bool isNoteY : 1;		// Add X or Y semitones to noteXY (Relative only), capped to NOTE_COUNT
+				};
+			};
+			bool isArpeggioScheme : 1;		// Arpeggio Scheme is paired to the Pattern Command 0xy if it is active, taking priority over it
 		};
 	};
 };
 
+// Instrument Freq Table Envelope, 2 bytes are used per Envelope step, in order to form the corresponding 8-bit/16-bit Freq values when needed
+struct TFreqTableEnvelope
+{
+	union
+	{
+		WORD freqTable;						// Set Freq Index 0-65535 (Absolute/Additive), capped to FREQ_COUNT or FREQ_COUNT_16 if used in 16-bit Mode
+		struct
+		{
+			union
+			{
+				SWORD freq;					// Transpose by +- 32768 Freq units (Relative/Additive), capped to FREQ_COUNT_16
+				struct
+				{
+					SBYTE freqLo;			// Transpose by +- 128 Freq units (Relative/Additive), capped to FREQ_COUNT
+					SBYTE freqHi;			// Transpose by +- 128 Freq units (Relative/Additive), capped to FREQ_COUNT
+				};
+			};
+		};
+	};
+};
+
+// Instrument Envelope data, with all the data structures unified, making virtually any Envelope compatible between each others
 struct TEnvelope
 {
 	TEnvelopeParameter parameter;
 	union
 	{
-		TVolume volume[ENVELOPE_STEP_COUNT];
-		TTimbre timbre[ENVELOPE_STEP_COUNT];
-		TAudctl audctl[ENVELOPE_STEP_COUNT];
-		//TTrigger trigger[ENVELOPE_STEP_COUNT];
-		//TEffect effect[ENVELOPE_STEP_COUNT];
-		TEffectEnvelope effect[ENVELOPE_STEP_COUNT];
-		TTable note[ENVELOPE_STEP_COUNT];
-		TTable freq[ENVELOPE_STEP_COUNT];
+		TVolumeEnvelope volume[ENVELOPE_STEP_COUNT];
+		TTimbreEnvelope timbre[ENVELOPE_STEP_COUNT];
+		TAudctlEnvelope audctl[ENVELOPE_STEP_COUNT];
+		//TEffectEnvelope effect[ENVELOPE_STEP_COUNT];
+		TEffectEnvelope effect[ENVELOPE_STEP_COUNT / 4];	// Due to Legacy Effect commands, and a lot of new parameters
+		TNoteTableEnvelope note[ENVELOPE_STEP_COUNT];
+		//TFreqTableEnvelope freq[ENVELOPE_STEP_COUNT];
+		TFreqTableEnvelope freq[ENVELOPE_STEP_COUNT / 2];	// Due to 16-bit Freq values
 	};
 };
 
@@ -438,7 +409,6 @@ struct TInstrumentIndex
 	TEnvelope* volume[INSTRUMENT_COUNT];
 	TEnvelope* timbre[INSTRUMENT_COUNT];
 	TEnvelope* audctl[INSTRUMENT_COUNT];
-	//TEnvelope* trigger[INSTRUMENT_COUNT];
 	TEnvelope* effect[INSTRUMENT_COUNT];
 	TEnvelope* note[INSTRUMENT_COUNT];
 	TEnvelope* freq[INSTRUMENT_COUNT];
@@ -469,7 +439,6 @@ typedef struct LoHeader_t
 	UINT volumeEnvelope[INSTRUMENT_COUNT];		// Offset to Volume Envelope
 	UINT timbreEnvelope[INSTRUMENT_COUNT];		// Offset to Timbre Envelope
 	UINT audctlEnvelope[INSTRUMENT_COUNT];		// Offset to AUDCTL Envelope
-	//UINT triggerEnvelope[INSTRUMENT_COUNT];		// Offset to Trigger Envelope
 	UINT effectEnvelope[INSTRUMENT_COUNT];		// Offset to Effect Envelope
 	UINT noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
 	UINT freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope

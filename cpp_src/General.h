@@ -2,6 +2,9 @@
 
 #include "resource.h"
 
+typedef signed char SBYTE;
+typedef signed short SWORD;
+
 // ----------------------------------------------------------------------------
 // GUI color setup
 // The text is defined in IDB_GFX as bitmap font in various colours
