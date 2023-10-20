@@ -518,7 +518,7 @@ bool CModule::InitialiseEffectEnvelope(TEnvelope* pEnvelope)
 	pEnvelope->parameter = parameter;
 
 	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
+	for (int i = 0; i < ENVELOPE_STEP_COUNT / 4; i++)
 		pEnvelope->effect[i] = effect;
 
 	// Effect Envelope was initialised
@@ -1328,9 +1328,9 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		for (UINT j = 0; j < tableLength; j++)
 		{
 			if (tableType)
-				pFreqTableEnvelope->freq[j].freq = memInstrument[tablePtr + j];
+				pFreqTableEnvelope->freq[j].freqAbsolute = memInstrument[tablePtr + j];
 			else
-				pNoteTableEnvelope->note[j].note = memInstrument[tablePtr + j];
+				pNoteTableEnvelope->note[j].noteAbsolute = memInstrument[tablePtr + j];
 		}
 
 		// Fill the equivalent RMTE envelopes, which might include some compromises due to the format differences
@@ -1427,10 +1427,6 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			// Envelope Timbre, based on the Distortion parameter
 			pTimbreEnvelope->timbre[j].timbre = distortion;
 
-			// Envelope Volume, only Left POKEY volume is supported by the RMTE format(?)
-			//pVolumeEnvelope->volume[j].volumeLevel = envelopeVolume & 0x0F;
-			//pVolumeEnvelope->volume[j].waveTable = envelopeVolume & 0xF0;	// Or as a Stereo parameter maybe...
-
 			// Envelope Volume
 			pVolumeEnvelope->volume[j].volumeLeft = envelopeVolume & 0x0F;
 			pVolumeEnvelope->volume[j].volumeRight = envelopeVolume & 0xF0;
@@ -1451,8 +1447,8 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			pEffectEnvelope->effect[j].autoPortamento = envelopeCommand & 0x01;
 
 			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
-			//pEffectEnvelope->effect[j].command = envelopeEffectCommand;
-			//pEffectEnvelope->effect[j].parameter = envelopeParameter;
+			pEffectEnvelope->effect[j].effectCommand = envelopeEffectCommand;
+			pEffectEnvelope->effect[j].effectParameter = envelopeParameter;
 		}
 
 		// Instrument was loaded

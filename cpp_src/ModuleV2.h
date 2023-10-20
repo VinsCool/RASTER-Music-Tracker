@@ -245,7 +245,7 @@ struct TTimbreEnvelope
 		{
 			BYTE waveForm : 4;				// eg: Buzzy, Gritty, etc
 			BYTE distortion : 3;			// eg: Pure (0xA0), Poly4 (0xC0), etc
-			bool isOptimalTuning : 1;		// Use a combination of all possible Waveforms, and output the most in-tune pitch for a given Distortion
+			//bool isOptimalTuning : 1;		// Use a combination of all possible Waveforms, and output the most in-tune pitch for a given Distortion
 		};
 	};
 };
@@ -292,54 +292,53 @@ struct TEffectEnvelope
 	// Idea 3: Same as Idea 1, but attempt to convert most the CMD0/CMD1/CMD2/CMD3 parameters into NoteTable/FreqTable parameters, merging into existing Tables if possible
 	// Idea 4: Attempt to convert Instrument Commands into Pattern Commands, which would be really hard to do, but technically could work to make everything compatible
 	//
+	// Idea 5: Make a completely different setup that would combine the best of both worlds
+	// The format would make use of 4 bytes per Envelope Step, limiting itself to 1/4 of the maximal Envelope length as a compromise
+	// 
+	// Byte 1 -> Most of the AutoParameter bits, providing combined effects if they are compatible
+	// Byte 2 -> Instrument Effect Command Identifier, used for either 2 8-bit Commands, or 1 16-bit Command
+	// Byte 3 -> If it is a 16-bit Command, Byte 3 and 4 will be combined and used as the Effect Command Parameter
+	// Byte 4 -> Else, Byte 3 and 4 will be distinct 8-bit parameters, both assigned to their respective 8-bit Commands
+	// 
+
 	union
 	{
+		BYTE autoParameter;
 		struct
 		{
-			union
-			{
-				BYTE byte1;
-				struct
-				{
-					bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
-					bool auto16Bit : 1;						// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
-					bool autoReverse16 : 1;					// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
-					bool auto179Mhz : 1;					// 1.79Mhz mode, triggered from Channel 1 and/or 3
-					bool auto15Khz : 1;						// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
-					bool autoPoly9 : 1;						// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
-					bool autoTwoTone : 1;					// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-					bool autoPortamento : 1;				// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
-				};
-			};
-
-			union
-			{
-				BYTE byte2;
-				struct
-				{
-					// Insert something here...
-				};
-			};
-
-			union
-			{
-				BYTE byte3;
-				struct
-				{
-					// Insert something here...
-				};
-			};
-
-			union
-			{
-				BYTE byte4;
-				struct
-				{
-					// Insert something here...
-				};
-			};
+			bool autoFilter : 1;			// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
+			bool auto16Bit : 1;				// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
+			bool autoReverse16 : 1;			// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
+			bool auto179Mhz : 1;			// 1.79Mhz mode, triggered from Channel 1 and/or 3
+			bool auto15Khz : 1;				// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
+			bool autoPoly9 : 1;				// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
+			bool autoTwoTone : 1;			// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
+			bool autoPortamento : 1;		// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
 		};
 	};
+
+	union
+	{
+		BYTE effectCommand;					// Could be either 2 8-Bit Effect Commands, or 1 16-bit Effect Command
+		struct
+		{
+			BYTE effectCommandLo : 3;
+			BYTE effectCommandHi : 3;
+			bool is16BitCommand : 1;		// The 16-bit Command is used if True, otherwise 2 8-bit Commands will be used
+			bool isEffectEnabled : 1;
+		};
+	};
+
+	union
+	{
+		WORD effectParameter;
+		struct
+		{
+			BYTE effectParameterLo;
+			BYTE effectParameterHi;
+		};
+	};
+
 };
 
 // Instrument Note Table Envelope
@@ -347,20 +346,14 @@ struct TNoteTableEnvelope
 {
 	union
 	{
-		BYTE noteTable;						// Set Note Index 0-255 (Absolute/Additive), capped to NOTE_COUNT
+		BYTE noteAbsolute;					// Set Note Index 0-255 (Absolute/Additive), capped to NOTE_COUNT
 		struct
 		{
-			union
-			{
-				SBYTE note : 7;				// Transpose by +- 64 semitones (Relative/Additive), capped to NOTE_COUNT
-				struct
-				{
-					SBYTE noteXY : 6;		// Transpose by +- 32 semitones (Relative/Additive), capped to NOTE_COUNT
-					bool isNoteY : 1;		// Add X or Y semitones to noteXY (Relative only), capped to NOTE_COUNT
-				};
-			};
+			SBYTE noteRelativeXY : 6;		// Transpose by +- 32 semitones (Relative/Additive), capped to NOTE_COUNT
+			bool isNoteY : 1;				// Add X or Y semitones to noteXY (Relative only), capped to NOTE_COUNT
 			bool isArpeggioScheme : 1;		// Arpeggio Scheme is paired to the Pattern Command 0xy if it is active, taking priority over it
 		};
+		SBYTE noteRelative : 7;				// Transpose by +- 64 semitones (Relative/Additive), capped to NOTE_COUNT
 	};
 };
 
@@ -369,18 +362,17 @@ struct TFreqTableEnvelope
 {
 	union
 	{
-		WORD freqTable;						// Set Freq Index 0-65535 (Absolute/Additive), capped to FREQ_COUNT or FREQ_COUNT_16 if used in 16-bit Mode
+		WORD freqAbsolute;					// Set Freq Index 0-65535 (Absolute/Additive), capped to FREQ_COUNT_16
 		struct
 		{
-			union
-			{
-				SWORD freq;					// Transpose by +- 32768 Freq units (Relative/Additive), capped to FREQ_COUNT_16
-				struct
-				{
-					SBYTE freqLo;			// Transpose by +- 128 Freq units (Relative/Additive), capped to FREQ_COUNT
-					SBYTE freqHi;			// Transpose by +- 128 Freq units (Relative/Additive), capped to FREQ_COUNT
-				};
-			};
+			BYTE freqAbsoluteLo;			// Set Freq LSB Index 0-255 (Absolute/Additive), capped to FREQ_COUNT
+			BYTE freqAbsoluteHi;			// Set Freq MSB Index 0-255 (Absolute/Additive), capped to FREQ_COUNT
+		};
+		SWORD freqRelative;					// Transpose by +- 32768 Freq units (Relative/Additive), capped to FREQ_COUNT_16
+		struct
+		{
+			SBYTE freqRelativeLo;			// Transpose by +- 128 Freq LSB units (Relative/Additive), capped to FREQ_COUNT
+			SBYTE freqRelativeHi;			// Transpose by +- 128 Freq MSB units (Relative/Additive), capped to FREQ_COUNT
 		};
 	};
 };
@@ -394,10 +386,8 @@ struct TEnvelope
 		TVolumeEnvelope volume[ENVELOPE_STEP_COUNT];
 		TTimbreEnvelope timbre[ENVELOPE_STEP_COUNT];
 		TAudctlEnvelope audctl[ENVELOPE_STEP_COUNT];
-		//TEffectEnvelope effect[ENVELOPE_STEP_COUNT];
 		TEffectEnvelope effect[ENVELOPE_STEP_COUNT / 4];	// Due to Legacy Effect commands, and a lot of new parameters
 		TNoteTableEnvelope note[ENVELOPE_STEP_COUNT];
-		//TFreqTableEnvelope freq[ENVELOPE_STEP_COUNT];
 		TFreqTableEnvelope freq[ENVELOPE_STEP_COUNT / 2];	// Due to 16-bit Freq values
 	};
 };
