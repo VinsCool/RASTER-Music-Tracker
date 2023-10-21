@@ -3,6 +3,7 @@
 //
 // TODO: Move the Legacy Import code to IO_Song.cpp or similar, in order to get most of the CModule functions cleared from unrelated stuff
 // TODO: Move most of the Editor Functions to CSong or similar for the same reason
+// TODO: Create an enum for the majority of the things defined below, it might make future revisions a lot easier...
 
 #pragma once
 
@@ -80,7 +81,7 @@
 #define VOLUME_EMPTY				VOLUME_COUNT								// There is no Volume in the Pattern Row
 #define VOLUME_INDEX_MAX			VOLUME_COUNT + 1							// All the valid Volume Commands that could be used in the Pattern Editor
 #define PATTERN_EFFECT_COUNT		16											// 0-15 inclusive, Effect index used in Pattern
-#define EFFECT_EMPTY				PATTERN_EFFECT_COUNT						// There is no Effect Command in the Pattern Row
+#define PATTERN_EFFECT_EMPTY		PATTERN_EFFECT_COUNT						// There is no Effect Command in the Pattern Row
 #define PATTERN_EFFECT_INDEX_MAX	PATTERN_EFFECT_COUNT + 1					// All the valid Effect Commands that could be used in the Pattern Editor
 #define ACTIVE_EFFECT_COUNT			4											// 0-3 inclusive, Number of Active Effect columns in Track Channel
 #define INVALID						-1											// Failsafe value for invalid data
@@ -105,11 +106,27 @@
 #define EFFECT_PARAMETER_MIN		0x00	// The $XY Parameter of 0 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_DEFAULT	0x80	// The $XY Parameter of 128 may be used to disable certain Effect Commands
 #define EFFECT_PARAMETER_COUNT		0x100	// Maximum range for the Effect Parameter in the Pattern Editor
-#define EFFECT_VIBRATO				0x04	// Effect Command 4xy -> Set Vibrato Depth $x and Vibrato Speed $y
+
+#define EFFECT_ARPEGGIO				0x00	// Effect Command 0xy -> Set Arpeggio Notes $x and $y
+#define EFFECT_PITCH_UP				0x01	// Effect Command 1xx -> Pitch Freq Up $xx
+#define EFFECT_PITCH_DOWN			0x02	// Effect Command 2xx -> Pitch Freq Down $xx
 #define EFFECT_PORTAMENTO			0x03	// Effect Command 3xy -> Set Portamento Depth $x and Portamento Speed $y
+#define EFFECT_VIBRATO				0x04	// Effect Command 4xy -> Set Vibrato Depth $x and Vibrato Speed $y
+
+// 0x05-0x09?
+
+#define EFFECT_VOLUME_FADEOUT		0x0A	// Effect Command Axx -> Volume Fadeout $xx
 #define EFFECT_GOTO_SONGLINE		0x0B	// Effect Command Bxx -> Goto Songline $xx
+
+// 0x0C?
+
 #define EFFECT_END_PATTERN			0x0D	// Effect Command Dxx -> End Pattern, Goto Row $xx
+
+// 0x0E?
+
 #define EFFECT_SET_SONG_SPEED		0x0F	// Effect Command Fxx -> Set Song Speed $xx
+#define EFFECT_EMPTY				0x10	// There is no Effect Command
+
 #define CMD1						0		// Effect Command identifier for Effect Column 1
 #define CMD2						1		// Effect Command identifier for Effect Column 2
 #define CMD3						2		// Effect Command identifier for Effect Column 3
@@ -213,6 +230,7 @@ struct TInstrumentV2
 	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
 	BYTE volumeFade;						// Volume Fadeout parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
 	BYTE volumeSustain;						// Volume Sustain parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
+	BYTE volumeDelay;						// Volume Delay parameter, used when VolumeFade is a non-zero parameter, a delay of 0x00 is immediate
 	BYTE vibrato;							// Vibrato parameter, taking priority over EFFECT_VIBRATO for Legacy RMT Instrument compatibility
 	BYTE vibratoDelay;						// Vibrato Delay parameter, used when Vibrato is a non-zero parameter, a delay of 0x00 is immediate
 	BYTE freqShift;							// Freq Shift parameter, taking priority EFFECT_PITCH_UP and EFFECT_PITCH_DOWN for Legacy RMT Instrument compatibility
@@ -225,7 +243,7 @@ struct TVolumeEnvelope
 {
 	union
 	{
-		BYTE volume;
+		BYTE volumeEnvelope;
 		struct
 		{
 			BYTE volumeLeft : 4;			// Left POKEY Volume, for Legacy RMT Instrument Compatibility
@@ -240,7 +258,7 @@ struct TTimbreEnvelope
 {
 	union
 	{
-		BYTE timbre;
+		BYTE timbreEnvelope;
 		struct
 		{
 			BYTE waveForm : 4;				// eg: Buzzy, Gritty, etc
@@ -255,7 +273,7 @@ struct TAudctlEnvelope
 {
 	union
 	{
-		BYTE audctl;
+		BYTE audctlEnvelope;
 		struct
 		{
 			bool is15KhzMode : 1;
@@ -322,10 +340,10 @@ struct TEffectEnvelope
 		BYTE effectCommand;					// Could be either 2 8-Bit Effect Commands, or 1 16-bit Effect Command
 		struct
 		{
-			BYTE effectCommandLo : 3;
-			BYTE effectCommandHi : 3;
+			BYTE effectCommandLo : 3;		// Instrument Command 1, also the default offset when the 16-bit Command is used
+			BYTE effectCommandHi : 3;		// Instrument Command 2, ignored when the 16-bit Command is used
 			bool is16BitCommand : 1;		// The 16-bit Command is used if True, otherwise 2 8-bit Commands will be used
-			bool isEffectEnabled : 1;
+			bool isEffectEnabled : 1;		// No Effect Command will be used if True, even if there is pre-existing data
 		};
 	};
 
@@ -334,8 +352,8 @@ struct TEffectEnvelope
 		WORD effectParameter;
 		struct
 		{
-			BYTE effectParameterLo;
-			BYTE effectParameterHi;
+			BYTE effectParameterLo;			// Instrument Command 1 parameter, or LSB byte when the 16-bit Command is used
+			BYTE effectParameterHi;			// Instrument Command 2 parameter, or MSB byte when the 16-bit Command is used
 		};
 	};
 

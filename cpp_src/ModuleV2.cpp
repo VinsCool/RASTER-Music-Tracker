@@ -204,7 +204,7 @@ bool CModule::InitialiseRow(TRow* pRow)
 
 	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
 	{
-		pRow->effect[i].command = EFFECT_EMPTY;
+		pRow->effect[i].command = PATTERN_EFFECT_EMPTY;
 		pRow->effect[i].parameter = EFFECT_PARAMETER_MIN;
 	}
 
@@ -255,6 +255,7 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 
 	pInstrument->volumeFade = 0x00;
 	pInstrument->volumeSustain = 0x00;
+	pInstrument->volumeDelay = 0x00;
 	pInstrument->vibrato = 0x00;
 	pInstrument->vibratoDelay = 0x00;
 	pInstrument->freqShift = 0x00;
@@ -783,7 +784,7 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 						// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
 						for (UINT m = CMD2; m < ACTIVE_EFFECT_COUNT; m++)
 						{
-							SetPatternRowEffectCommand(i, k, GetPatternInSongline(i, k, j), l, m, EFFECT_EMPTY);
+							SetPatternRowEffectCommand(i, k, GetPatternInSongline(i, k, j), l, m, PATTERN_EFFECT_EMPTY);
 							SetPatternRowEffectParameter(i, k, GetPatternInSongline(i, k, j), l, m, EFFECT_PARAMETER_MIN);
 						}
 					}
@@ -1264,10 +1265,25 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 		// Set the equivalent data to the RMTE instrument, with respect to boundaries
 		BYTE tableLength = envelopePtr - tablePtr + 1;
+
+		if (tableLength > 32)
+			tableLength = 0x00;
+
 		BYTE tableLoop = memInstrument[1] - tablePtr;
 
+		if (tableLoop > tableLength)
+			tableLoop = 0x00;
+
 		BYTE envelopeLength = ((memInstrument[2] - envelopePtr + 1) / 3) + 1;
+
+		if (envelopeLength > 48)
+			envelopeLength = 0x00;
+
 		BYTE envelopeLoop = ((memInstrument[3] - envelopePtr + 1) / 3);
+
+		if (envelopeLoop > envelopeLength)
+			envelopeLoop = 0x00;
+
 		BYTE envelopeSpeed = 0x01;
 
 		bool tableMode = (memInstrument[4] >> 6) & 0x01;				// Table Mode, 0 = Set, 1 = Additive
@@ -1284,13 +1300,23 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 
 		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
 		pInstrument->volumeSustain = memInstrument[7] >> 4;				// Volume Minimum
+		pInstrument->volumeDelay = envelopeLength;						// Volume Slide delay, RMT originally processed this at Envelope Loop point
 
 		// Import the Vibrato with adjustments to make sound similar to the original implementation
+		// FIXME: Not a proper Vibrato Command conversion, this is a SineVibrato hack, the Pitch itself was used for calculations
 		switch (vibrato)
 		{
-		case 0x01: vibrato = 0x0F; break;
-		case 0x02: vibrato = 0x0B; break;
-		case 0x03: vibrato = 0x07; break;
+		case 0x01:
+			vibrato = 0x0F;
+			break;
+
+		case 0x02:
+			vibrato = 0x0B;
+			break;
+
+		case 0x03:
+			vibrato = 0x07;
+			break;
 		}
 
 		// Overwrite the Delay, Vibrato and Freqshift parameters with updated values if changes were needed
@@ -1298,19 +1324,6 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		pInstrument->vibratoDelay = delay && vibrato ? delay - 1 : 0x00;
 		pInstrument->freqShift = delay && freqShift ? freqShift : 0x00;
 		pInstrument->freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
-
-		// Fill the equivalent RMTE tables based on the tableType parameter
-		if (tableLength > 32)
-			tableLength = 0x00;
-
-		if (tableLoop > tableLength)
-			tableLoop = 0x00;
-
-		if (envelopeLength > 48)
-			envelopeLength = 0x00;
-
-		if (envelopeLoop > envelopeLength)
-			envelopeLoop = 0x00;
 
 		// Create the Envelope and Table Parameters
 		TEnvelopeParameter envelopeParameter = { envelopeLength, envelopeLoop, envelopeLength, envelopeSpeed, true, false, false, false };
@@ -1350,6 +1363,15 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			// Volume Only Mode flag, used for the Volume Envelope when it is set
 			bool isVolumeOnly = false;
 
+			// AutoFilter flag, used to automatically set the High Pass Filter bit in Channel 1 or 2
+			bool autoFilter = envelopeCommand >> 7;
+
+			// Auto16Bit flag, used to automatically set the 16-bit mode in Channel 2 or 4
+			bool auto16Bit = false;
+
+			// AutoPortamento flag, used to automatically apply the Portamento parameters during playback
+			bool autoPortamento = envelopeCommand & 0x01;
+
 			// The Envelope Effect Command is used for compatibility tweaks, which may or may not provide perfect results
 			switch (envelopeEffectCommand)
 			{
@@ -1367,6 +1389,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 				else if (envelopeParameter == 0xFF)
 					isVolumeOnly = true;
 
+				// The CMD7 is unused once these paramaters are converted, so set both the Command and Parameter to 0
 				envelopeParameter = envelopeEffectCommand = 0x00;
 				break;
 
@@ -1384,7 +1407,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			if (distortion == 0x06)
 			{
 				// The original "Auto16Bit" trigger ;)
-				pEffectEnvelope->effect[j].auto16Bit = true;
+				auto16Bit = true;
 				distortion = initialTimbre;
 			}
 
@@ -1408,8 +1431,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 				break;
 
 			case 0x06:
-				// The original "Auto16Bit" trigger ;)
-				//pEffectEnvelope->effect[j].auto16Bit = true;
+				// RMT 1.28 would set Distortion C by default, this is just assuming 1.34 behaviour for now
 
 			case 0x0A:
 				distortion = TIMBRE_PURE;
@@ -1425,7 +1447,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			}
 
 			// Envelope Timbre, based on the Distortion parameter
-			pTimbreEnvelope->timbre[j].timbre = distortion;
+			pTimbreEnvelope->timbre[j].timbreEnvelope = distortion;
 
 			// Envelope Volume
 			pVolumeEnvelope->volume[j].volumeLeft = envelopeVolume & 0x0F;
@@ -1435,20 +1457,27 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			//pVolumeEnvelope->volume[j].isVolumeOnly = isVolumeOnly;
 
 			// Envelope AUDCTL
-			pAudctlEnvelope->audctl[j].audctl = initialAudctl;
+			pAudctlEnvelope->audctl[j].audctlEnvelope = initialAudctl;
 
 			// AutoFilter Trigger
-			pEffectEnvelope->effect[j].autoFilter = envelopeCommand >> 7;
+			pEffectEnvelope->effect[j].autoFilter = autoFilter;
+
+			// Auto16Bit Trigger
+			pEffectEnvelope->effect[j].auto16Bit = auto16Bit;
 
 			// AutoTwoTone Trigger
 			pEffectEnvelope->effect[j].autoTwoTone = initialSkctl;
 
 			// Portamento a Pattern Effect Command could be set where the Portamento is expected as a compromise
-			pEffectEnvelope->effect[j].autoPortamento = envelopeCommand & 0x01;
+			pEffectEnvelope->effect[j].autoPortamento = autoPortamento;
 
 			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
-			pEffectEnvelope->effect[j].effectCommand = envelopeEffectCommand;
-			pEffectEnvelope->effect[j].effectParameter = envelopeParameter;
+			pEffectEnvelope->effect[j].effectCommandLo = envelopeEffectCommand;
+			pEffectEnvelope->effect[j].effectCommandHi = 0x00;
+			pEffectEnvelope->effect[j].is16BitCommand = false;
+			pEffectEnvelope->effect[j].isEffectEnabled = true;
+			pEffectEnvelope->effect[j].effectParameterLo = envelopeParameter;
+			pEffectEnvelope->effect[j].effectParameterHi = 0x00;
 		}
 
 		// Instrument was loaded
@@ -2484,7 +2513,7 @@ bool CModule::IsEmptyRow(TRow* pRow)
 		for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
 		{
 			// Only the Identifier is checked, since the Parameter cannot be used alone
-			if (pRow->effect[i].command != EFFECT_EMPTY)
+			if (pRow->effect[i].command != PATTERN_EFFECT_EMPTY)
 				return false;
 		}
 	}

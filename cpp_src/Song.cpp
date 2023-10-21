@@ -4310,7 +4310,7 @@ void CSong::DrawPatternEditor()
 
 				switch (command)
 				{
-				case EFFECT_EMPTY: s.AppendFormat("--- "); break;
+				case PATTERN_EFFECT_EMPTY: s.AppendFormat("--- "); break;
 				default:
 					if (command < PATTERN_EFFECT_COUNT)
 						s.AppendFormat("%01X%02X ", command, parameter);
@@ -5913,7 +5913,7 @@ bool CSong::SetCommandInPattern(UINT command)
 
 	switch (command)
 	{
-	case EFFECT_EMPTY:
+	case PATTERN_EFFECT_EMPTY:
 		// The Command value will be overwritten regardless of the Active Column offset
 		return g_Module.SetPatternRowEffectCommand(pRow, activeCursor, command);
 
