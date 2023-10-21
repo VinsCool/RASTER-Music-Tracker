@@ -4407,510 +4407,168 @@ void CSong::DrawPatternEditor()
 
 void CSong::DrawInstrumentEditor()
 {
-	TInstrumentV2* pInstrument = GetInstrument();
-
-	if (!pInstrument)
-		return;
-
 	CString s;
-	RECT instrumentBlock{};
+	UINT c, m, x, y, z;
+	UINT px, py, vx, vy;
 
-	BYTE activeChannel = m_activeChannel;
-	BYTE activeInstrument = m_activeInstrument;
-
-	//TChannelVariables* pVariables = m_channelVariables[activeChannel];
-
-	//bool isActiveInstrument = activeInstrument == pVariables->channelInstrument;
-	//bool isActiveInstrument = activeInstrument == pVariables->instrument;
+	TInstrumentV2* pInstrument = g_Module.GetInstrument(m_activeInstrument);
+	TEnvelope* pEnvelope;
+	TEnvelopeParameter* pParameter;
+	TMacro* pMacro;
 
 	// Actual dimensions used by the Instrument Editor Block
-	instrumentBlock.left = INSTRUMENTBLOCK_X - 4;
-	instrumentBlock.top = INSTRUMENTBLOCK_Y;
-	instrumentBlock.right = INSTRUMENTBLOCK_X + (22 * 8) + (MODULE_SONG_NAME_MAX + 1) * 8 - 4;
-	instrumentBlock.bottom = INSTRUMENTBLOCK_Y + (g_tracklines * 16);
-
-	// Coordinates used for drawing most of the Pattern Editor block on screen
-	int x = instrumentBlock.left + 4;
-	int y = instrumentBlock.top;
-
-	s.Format("INSTRUMENT %02X", activeInstrument);
-	TextXY(s, x, y);
-	s.Format("NAME: ");
-	s.AppendFormat(pInstrument->name);
-	TextXY(s, x, y += 16);
-	TextMiniXY("ENVELOPE", x, y + 24);
-	TextXY("        VOLUME:", x, y += 6 * 16);
-	TextXY("    DISTORTION:", x, y += 16);
-	TextXY("        TIMBRE:", x, y += 16);
-	TextXY("     AUDCTL X/:", x, y += 16);
-	TextXY("     AUDCTL Y\\:", x, y += 16);
-	TextXY("    AUTOFILTER:", x, y += 16);
-	TextXY("     AUTO16BIT:", x, y += 16);
-	TextXY(" AUTOREVERSE16:", x, y += 16);
-	TextXY("    AUTO179MHZ:", x, y += 16);
-	TextXY("     AUTO15KHZ:", x, y += 16);
-	TextXY("     AUTOPOLY9:", x, y += 16);
-	TextXY("   AUTOTWOTONE:", x, y += 16);
-	TextXY("    AUTOTOGGLE:", x, y += 16);
-	TextXY("EFFECT COMMAND:", x, y += 16);
-	TextXY("  PARAMETER X/:", x, y += 16);
-	TextXY("  PARAMETER Y\\:", x, y += 16);
-	//TextXY("  LOOP/RELEASE:", x , y += 16);
-
-	////x = instrumentBlock.left + 4;
-	////y = instrumentBlock.top + (24 * 16);
-
-	TextMiniXY("TABLE", x, (y += 16) + 8);
-	TextXY("       NOTE X/:", x, y += 16);
-	TextXY("       NOTE Y\\:", x, y += 16);
-	TextXY("       FREQ X/:", x, y += 16);
-	TextXY("       FREQ Y\\:", x, y += 16);
-	//TextXY("  LOOP/RELEASE:", x, y += 16);
-
-	x = instrumentBlock.left + 4 + (16 * 8);
-	y = instrumentBlock.top + (7 * 16);
-
-	// Delimitation of the Volume Envelope
-	g_mem_dc->MoveTo(x - 1, y - 2);
-	g_mem_dc->LineTo(x + ENVELOPE_MAX_COLUMNS * 8, y - 2);
-
-	// Volume Envelope markers
-	TextDownXY("\x0E\x0E\x0E\x0E", x - 8 - 1, y - 4 * 16 - 1, TEXT_COLOR_GRAY);
-
-/*
-	// Instrument Macros, used by Envelopes and Tables
-	for (int i = 0; i < InstrumentMacro::COUNT; i++)
+	RECT instrumentBlock
 	{
-		TMacro* pChannelMacro = &pVariables->instrumentMacro[i];
-		TMacro* pInstrumentMacro;
+		INSTRUMENTBLOCK_X - 4,
+		INSTRUMENTBLOCK_Y,
+		INSTRUMENTBLOCK_X + (22 * 8) + (MODULE_SONG_NAME_MAX + 1) * 8 - 4,
+		INSTRUMENTBLOCK_Y + (g_tracklines * 16),
+	};
 
-		switch (i)
+	// Quick and Dirty test for the Instrument Editor to display imported data...
+	if (pInstrument)
+	{
+		x = instrumentBlock.left + 4;
+		y = instrumentBlock.top;
+		m = 1;
+		z = 8;
+		c = TEXT_MINI_COLOR_WHITE;
+
+		s.Format("INSTRUMENT %02X: \"%s\"", m_activeInstrument, pInstrument->name);
+		TextXY(s, x, y);
+
+		TextMiniXY("PARAMETERS", x, y + z * ++++m);
+		s.Format(" VOLUMEFADE:     %02X", pInstrument->volumeFade);
+		TextMiniXY(s, x, y + z * ++m, c);
+		s.Format(" VOLUMESUSTAIN:  %02X", pInstrument->volumeSustain);
+		TextMiniXY(s, x, y + z * ++m, c);
+		s.Format(" VOLUMEDELAY:    %02X", pInstrument->volumeDelay);
+		TextMiniXY(s, x, y + z * ++m, c);
+		s.Format(" VIBRATO:        %02X", pInstrument->vibrato);
+		TextMiniXY(s, x, y + z * ++m, c);
+		s.Format(" VIBRATODELAY:   %02X", pInstrument->vibratoDelay);
+		TextMiniXY(s, x, y + z * ++m, c);
+		s.Format(" FREQSHIFT:      %02X", pInstrument->freqShift);
+		TextMiniXY(s, x, y + z * ++m, c);
+		s.Format(" FREQSHIFTDELAY: %02X", pInstrument->freqShiftDelay);
+		TextMiniXY(s, x, y + z * ++m, c);
+
+		pMacro = &pInstrument->envelope.volume;
+		pEnvelope = g_Module.GetVolumeEnvelope(pMacro->index);
+		c = TEXT_MINI_COLOR_WHITE;
+
+		TextMiniXY("VOLUME ENVELOPE", x, y + z * ++++m);
+		s.Format(" INDEX:      %02X", pMacro->index);
+		TextMiniXY(s, x, y + z * ++m, c);
+		s.Format(" ISENABLED:   %1X", pMacro->isEnabled);
+		TextMiniXY(s, x, y + z * ++m, c);
+		s.Format(" ISREVERSED:  %1X", pMacro->isReversed);
+		TextMiniXY(s, x, y + z * ++m, c);
+
+		if (pEnvelope)
 		{
-		case InstrumentMacro::VOLUME:
-			pInstrumentMacro = &pInstrument->volumeMacro;
+			pParameter = &pEnvelope->parameter;
+			c = pMacro->isEnabled ? TEXT_MINI_COLOR_WHITE : TEXT_MINI_COLOR_GRAY;
 
-			for (int j = 0; j < pInstrumentMacro->length; j++)
+			s.Format(" LENGTH:     %02X", pParameter->length);
+			TextMiniXY(s, x, y + z * ++m, c);
+			s.Format(" LOOP:       %02X", pParameter->loop);
+			TextMiniXY(s, x, y + z * ++m, c);
+			s.Format(" RELEASE:    %02X", pParameter->release);
+			TextMiniXY(s, x, y + z * ++m, c);
+			s.Format(" SPEED:      %02X", pParameter->speed);
+			TextMiniXY(s, x, y + z * ++m, c);
+			s.Format(" ISLOOPED:    %1X", pParameter->isLooped);
+			TextMiniXY(s, x, y + z * ++m, c);
+			s.Format(" ISRELEASED:  %1X", pParameter->isReleased);
+			TextMiniXY(s, x, y + z * ++m, c);
+			s.Format(" ISABSOLUTE:  %1X", pParameter->isAbsolute);
+			TextMiniXY(s, x, y + z * ++m, c);
+			s.Format(" ISADDITIVE:  %1X", pParameter->isAdditive);
+			TextMiniXY(s, x, y + z * ++m, c);
+
+			px = x + 18 * z;
+			py = y + z * (m - 1);
+
+			// Delimitation of the Volume Envelope
+			g_mem_dc->MoveTo(px - 1, py - 2);
+			g_mem_dc->LineTo(px + pParameter->length * 8, py - 2);
+
+			// Volume Envelope markers
+			TextDownXY("\x0E\x0E\x0E\x0E", px - 8 - 1, py - 4 * 16 - 1, TEXT_COLOR_GRAY);
+
+			for (UINT i = 0; i < pParameter->length; i++)
 			{
-				x = instrumentBlock.left + 4 + ((16 + j) * 8);
-				y = instrumentBlock.top + (3 * 16);
+				vx = px - 1 + i * z;
+				vy = py - 4 * 16 + 1;
 
-				bool isPlayingFrame = j == pChannelMacro->length;
-				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
-				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
-				bool isEndPoint = j + 1 == pInstrumentMacro->length;
-				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
+				//int channel = GetActiveColumn();
+				bool isActiveInstrument = false;// m_activeInstrument == m_channelVariables[channel]->channelInstrument;
+				bool isPlayingFrame = false;// i == m_channelVariables[channel]->instrumentEnvelopeOffset;
 
-				BYTE volume = pInstrument->envelope.volume[j];
+				bool isLoopPoint = i == pParameter->loop;
+				bool isReleasePoint = i == pParameter->release;
+				bool isEndPoint = i + 1 == pParameter->length;
 
-				//COLORREF fillColour = isBetweenPoints? RGB(143, 254, 237) : RGB(255, 255, 255);
 				COLORREF fillColour = RGB(255, 255, 255);
 				COLORREF playColour = RGB(253, 236, 117);
 
-				if (volume)
-					g_mem_dc->FillSolidRect(x, y + 4 * (15 - volume) + 1, 8, volume * 4, isActiveInstrument && isPlayingFrame ? playColour : fillColour);
+				BYTE volume = pEnvelope->volume[i].volumeLeft;
 
-				s.Format("%01X", volume);
+				g_mem_dc->FillSolidRect(vx, vy + 4 * (15 - volume) + 1, 8, volume * 4, isActiveInstrument && isPlayingFrame ? playColour : fillColour);
 
-				//TextDownXY(s, x, y + 4 * 16, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-				TextDownXY(s, x, y + 4 * 16, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+				s.Format("%1X", volume);
+
+				TextDownXY(s, vx, py, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+
+				if (isLoopPoint && isEndPoint)
+					s.Format("\x16");
+				else if (isLoopPoint)
+					s.Format("\x06");
+				else if (isEndPoint)
+					s.Format("\x07");
+				else
+					s.Format(" ");
+
+				TextXY(s, vx, py + 16);
 
 				// Delimitation of the Envelope Loop Point
 				if (isLoopPoint)
 				{
-					g_mem_dc->MoveTo(x - 1, y);	// +4 * 16);
-					g_mem_dc->LineTo(x - 1, y + 5 * 16 - 2);
+					g_mem_dc->MoveTo(vx - 1, vy);
+					g_mem_dc->LineTo(vx - 1, py + 32 - 1);
 				}
 
 				// Delimitation of the Envelope End Point
 				if (isEndPoint)
 				{
-					g_mem_dc->MoveTo(x + 8, y);	// +4 * 16);
-					g_mem_dc->LineTo(x + 8, y + 5 * 16 - 2);
+					g_mem_dc->MoveTo(vx + 8, vy);
+					g_mem_dc->LineTo(vx + 8, py + 32 - 1);
 				}
+
 			}
-			break;
-
-		case InstrumentMacro::TIMBRE:
-			pInstrumentMacro = &pInstrument->timbreMacro;
-
-			for (int j = 0; j < pInstrumentMacro->length; j++)
-			{
-				x = instrumentBlock.left + 4 + ((16 + j) * 8);
-				y = instrumentBlock.top + (8 * 16);
-
-				bool isPlayingFrame = j == pChannelMacro->length;
-				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
-				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
-				bool isEndPoint = j + 1 == pInstrumentMacro->length;
-				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
-
-				BYTE timbre = pInstrument->envelope.timbre[j];
-
-				s.Format("%01X", timbre >> 4);
-				s.AppendFormat("%01X", timbre & 0x0F);
-
-				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
-
-				// Delimitation of the Envelope Loop Point
-				if (isLoopPoint)
-				{
-					g_mem_dc->MoveTo(x - 1, y);
-					g_mem_dc->LineTo(x - 1, y + 2 * 16 - 2);
-				}
-
-				// Delimitation of the Envelope End Point
-				if (isEndPoint)
-				{
-					g_mem_dc->MoveTo(x + 8, y);
-					g_mem_dc->LineTo(x + 8, y + 2 * 16 - 2);
-				}
-			}
-			break;
-
-		case InstrumentMacro::AUDCTL:
-			pInstrumentMacro = &pInstrument->audctlMacro;
-
-			for (int j = 0; j < pInstrumentMacro->length; j++)
-			{
-				x = instrumentBlock.left + 4 + ((16 + j) * 8);
-				y = instrumentBlock.top + (10 * 16);
-
-				bool isPlayingFrame = j == pChannelMacro->length;
-				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
-				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
-				bool isEndPoint = j + 1 == pInstrumentMacro->length;
-				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
-
-				BYTE audctl = pInstrument->envelope.audctl[j];
-
-				s.Format("%01X", audctl >> 4);
-				s.AppendFormat("%01X", audctl & 0x0F);
-
-				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
-
-				// Delimitation of the Envelope Loop Point
-				if (isLoopPoint)
-				{
-					g_mem_dc->MoveTo(x - 1, y);
-					g_mem_dc->LineTo(x - 1, y + 2 * 16 - 2);
-				}
-
-				// Delimitation of the Envelope End Point
-				if (isEndPoint)
-				{
-					g_mem_dc->MoveTo(x + 8, y);
-					g_mem_dc->LineTo(x + 8, y + 2 * 16 - 2);
-				}
-			}
-			break;
-
-		case InstrumentMacro::TRIGGER:
-			pInstrumentMacro = &pInstrument->triggerMacro;
-
-			for (int j = 0; j < pInstrumentMacro->length; j++)
-			{
-				x = instrumentBlock.left + 4 + ((16 + j) * 8);
-				y = instrumentBlock.top + (12 * 16);
-
-				bool isPlayingFrame = j == pChannelMacro->length;
-				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
-				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
-				bool isEndPoint = j + 1 == pInstrumentMacro->length;
-				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
-
-				TAutoMode* pTrigger = &pInstrument->envelope.trigger[j];
-
-				s.Format(pTrigger->autoFilter ? "\x09" : "\x08");
-				s.AppendFormat(pTrigger->auto16Bit ? "\x09" : "\x08");
-				s.AppendFormat(pTrigger->autoReverse16 ? "\x09" : "\x08");
-				s.AppendFormat(pTrigger->auto179Mhz ? "\x09" : "\x08");
-				s.AppendFormat(pTrigger->auto15Khz ? "\x09" : "\x08");
-				s.AppendFormat(pTrigger->autoPoly9 ? "\x09" : "\x08");
-				s.AppendFormat(pTrigger->autoTwoTone ? "\x09" : "\x08");
-				s.AppendFormat(pTrigger->autoToggle ? "\x09" : "\x08");
-
-				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
-
-				// Delimitation of the Envelope Loop Point
-				if (isLoopPoint)
-				{
-					g_mem_dc->MoveTo(x - 1, y);
-					g_mem_dc->LineTo(x - 1, y + 8 * 16 - 2);
-				}
-
-				// Delimitation of the Envelope End Point
-				if (isEndPoint)
-				{
-					g_mem_dc->MoveTo(x + 8, y);
-					g_mem_dc->LineTo(x + 8, y + 8 * 16 - 2);
-				}
-			}
-			break;
-
-		case InstrumentMacro::EFFECT:
-			pInstrumentMacro = &pInstrument->effectMacro;
-
-			for (int j = 0; j < pInstrumentMacro->length; j++)
-			{
-				x = instrumentBlock.left + 4 + ((16 + j) * 8);
-				y = instrumentBlock.top + (20 * 16);
-
-				bool isPlayingFrame = j == pChannelMacro->length;
-				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
-				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
-				bool isEndPoint = j + 1 == pInstrumentMacro->length;
-				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
-
-				TEffect* pEffect = &pInstrument->envelope.effect[j];
-
-				s.Format("%01X", pEffect->command);
-				s.AppendFormat("%01X", pEffect->parameter >> 4);
-				s.AppendFormat("%01X", pEffect->parameter & 0x0F);
-
-				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
-
-				// Delimitation of the Envelope Loop Point
-				if (isLoopPoint)
-				{
-					g_mem_dc->MoveTo(x - 1, y);
-					g_mem_dc->LineTo(x - 1, y + 3 * 16 - 2);
-				}
-
-				// Delimitation of the Envelope End Point
-				if (isEndPoint)
-				{
-					g_mem_dc->MoveTo(x + 8, y);
-					g_mem_dc->LineTo(x + 8, y + 3 * 16 - 2);
-				}
-			}
-			break;
-
-		case InstrumentMacro::NOTE:
-			pInstrumentMacro = &pInstrument->noteMacro;
-
-			for (int j = 0; j < pInstrumentMacro->length; j++)
-			{
-				x = instrumentBlock.left + 4 + ((16 + j) * 8);
-				y = instrumentBlock.top + (24 * 16);
-
-				bool isPlayingFrame = j == pChannelMacro->length;
-				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
-				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
-				bool isEndPoint = j + 1 == pInstrumentMacro->length;
-				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
-
-				BYTE note = pInstrument->table.note[j];
-
-				s.Format("%01X", note >> 4);
-				s.AppendFormat("%01X", note & 0x0F);
-
-				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
-
-				// Delimitation of the Envelope Loop Point
-				if (isLoopPoint)
-				{
-					g_mem_dc->MoveTo(x - 1, y);
-					g_mem_dc->LineTo(x - 1, y + 2 * 16 - 2);
-				}
-
-				// Delimitation of the Envelope End Point
-				if (isEndPoint)
-				{
-					g_mem_dc->MoveTo(x + 8, y);
-					g_mem_dc->LineTo(x + 8, y + 2 * 16 - 2);
-				}
-			}
-			break;
-
-		case InstrumentMacro::FREQ:
-			pInstrumentMacro = &pInstrument->freqMacro;
-
-			for (int j = 0; j < pInstrumentMacro->length; j++)
-			{
-				x = instrumentBlock.left + 4 + ((16 + j) * 8);
-				y = instrumentBlock.top + (26 * 16);
-
-				bool isPlayingFrame = j == pChannelMacro->length;
-				bool isLoopPoint = pInstrumentMacro->isLooped && j == pInstrumentMacro->loop;
-				//bool isReleasePoint = pInstrumentMacro->isReleased && j == pInstrumentMacro->release;
-				bool isEndPoint = j + 1 == pInstrumentMacro->length;
-				//bool isBetweenPoints = j >= pInstrumentMacro->loop && j + 1 <= pInstrumentMacro->length;
-
-				BYTE freq = pInstrument->table.freq[j];
-
-				s.Format("%01X", freq >> 4);
-				s.AppendFormat("%01X", freq & 0x0F);
-
-				//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-				TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
-
-				// Delimitation of the Envelope Loop Point
-				if (isLoopPoint)
-				{
-					g_mem_dc->MoveTo(x - 1, y);
-					g_mem_dc->LineTo(x - 1, y + 2 * 16 - 2);
-				}
-
-				// Delimitation of the Envelope End Point
-				if (isEndPoint)
-				{
-					g_mem_dc->MoveTo(x + 8, y);
-					g_mem_dc->LineTo(x + 8, y + 2 * 16 - 2);
-				}
-			}
-			break;
 
 		}
 
-	}
-*/
-
-/*
-	// Envelope(s)
-	for (int i = 0; i < pInstrument->envelopeMacro.length; i++)
-	{
-		x = instrumentBlock.left + 4 + ((16 + i) * 8);
-		y = instrumentBlock.top + (3 * 16);
-
-		int channel = GetActiveColumn();
-
-		bool isActiveInstrument = m_activeInstrument == m_channelVariables[channel]->channelInstrument;
-		bool isPlayingFrame = i == m_channelVariables[channel]->instrumentEnvelopeOffset;
-
-		bool isLoopPoint = i == pInstrument->envelopeMacro.loop;
-		//bool isReleasePoint = i == pInstrument->envelopeMacro.release;
-		bool isEndPoint = i + 1 == pInstrument->envelopeMacro.length;
-		//bool isBetweenPoints = i >= pInstrument->envelopeMacro.loop && i + 1 <= pInstrument->envelopeMacro.length;
-
-		TEnvelope* envelope = &pInstrument->envelopeMacro.envelope[i];
-		//COLORREF fillColour = isBetweenPoints? RGB(143, 254, 237) : RGB(255, 255, 255);
-		COLORREF fillColour = RGB(255, 255, 255);
-		COLORREF playColour = RGB(253, 236, 117);
-
-		if (envelope->volume)
-			g_mem_dc->FillSolidRect(x, y + 4 * (15 - envelope->volume) + 1, 8, envelope->volume * 4, isActiveInstrument && isPlayingFrame ? playColour : fillColour);
-
-		s.Format("%01X", envelope->volume);
-		s.AppendFormat("%01X", envelope->timbre >> 4);
-		s.AppendFormat("%01X", envelope->timbre & 0x0F);
-		s.AppendFormat("%01X", envelope->audctl >> 4);
-		s.AppendFormat("%01X", envelope->audctl & 0x0F);
-		s.AppendFormat(envelope->trigger.autoFilter ? "\x09" : "\x08");
-		s.AppendFormat(envelope->trigger.auto16Bit ? "\x09" : "\x08");
-		s.AppendFormat(envelope->trigger.autoReverse16 ? "\x09" : "\x08");
-		s.AppendFormat(envelope->trigger.auto179Mhz ? "\x09" : "\x08");
-		s.AppendFormat(envelope->trigger.auto15Khz ? "\x09" : "\x08");
-		s.AppendFormat(envelope->trigger.autoPoly9 ? "\x09" : "\x08");
-		s.AppendFormat(envelope->trigger.autoTwoTone ? "\x09" : "\x08");
-		s.AppendFormat(envelope->trigger.autoToggle ? "\x09" : "\x08");
-		s.AppendFormat("%01X", envelope->effect.command);
-		s.AppendFormat("%01X", envelope->effect.parameter >> 4);
-		s.AppendFormat("%01X", envelope->effect.parameter & 0x0F);
-
-		//TextDownXY(s, x, y + 4 * 16, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-		TextDownXY(s, x, y + 4 * 16, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
-
-		if (isLoopPoint && isEndPoint)
-			s.Format("\x16");
-		else if (isLoopPoint)
-			s.Format("\x06");
-		else if (isEndPoint)
-			s.Format("\x07");
+		// In practice, this shouldn't be a problem, this should just show a prompt to "Create New" data later...
 		else
-			s.Format(" ");
-
-		TextXY(s, x, y + 20 * 16);
-
-		//if (isReleasePoint)
-		//	TextXY("!", x, y + 21 * 16);
-
-		// Delimitation of the Envelope Loop Point
-		if (isLoopPoint)
 		{
-			g_mem_dc->MoveTo(x - 1, y);
-			g_mem_dc->LineTo(x - 1, y + 20 * 16 - 2);
-		}
-
-		// Delimitation of the Envelope End Point
-		if (isEndPoint)
-		{
-			g_mem_dc->MoveTo(x + 8, y);
-			g_mem_dc->LineTo(x + 8, y + 20 * 16 - 2);
+			s.Format("Error: Could not load Volume Envelope %02X, g_Module.GetVolumeEnvelope() returned NULL", pMacro->index);
+			TextXY(s, x, y + z * ++++m);
+			m += 2;
 		}
 
 	}
 
-	x = instrumentBlock.left + 4;
-	y = instrumentBlock.top + (24 * 16);
-
-	TextMiniXY("TABLE", x, y + 8);
-	TextXY("       NOTE X/:", x, y += 16);
-	TextXY("       NOTE Y\\:", x, y += 16);
-	TextXY("       FREQ X/:", x, y += 16);
-	TextXY("       FREQ Y\\:", x, y += 16);
-	//TextXY("  LOOP/RELEASE:", x, y += 16);
-
-	// Tables(s)
-	for (int i = 0; i < pInstrument->tableMacro.length; i++)
+	// In practice, this shouldn't be a problem, this should just show a prompt to "Create New" data later...
+	else
 	{
-		x = instrumentBlock.left + 4 + ((16 + i) * 8);
-		y = instrumentBlock.top + (25 * 16);
+		x = instrumentBlock.left + (instrumentBlock.right - instrumentBlock.left) / 16;
+		y = instrumentBlock.top + (instrumentBlock.bottom - instrumentBlock.top) / 2;
 
-		int channel = GetActiveColumn();
-
-		bool isActiveInstrument = m_activeInstrument == m_channelVariables[channel]->channelInstrument;
-		bool isPlayingFrame = i == m_channelVariables[channel]->instrumentTableOffset;
-
-		bool isLoopPoint = i == pInstrument->tableMacro.loop;
-		//bool isReleasePoint = i == pInstrument->tableMacro.release;
-		bool isEndPoint = i + 1 == pInstrument->tableMacro.length;
-		//bool isBetweenPoints = i >= pInstrument->tableMacro.loop && i + 1 <= pInstrument->tableMacro.length;
-
-		TTable* table = &pInstrument->tableMacro.table[i];
-
-		s.Format("%01X", table->note >> 4);
-		s.AppendFormat("%01X", table->note & 0x0F);
-		s.AppendFormat("%01X", table->freq >> 4);
-		s.AppendFormat("%01X", table->freq & 0x0F);
-
-		//TextDownXY(s, x, y, isBetweenPoints ? TEXT_COLOR_TURQUOISE : TEXT_COLOR_WHITE);
-		TextDownXY(s, x, y, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
-
-		if (isLoopPoint && isEndPoint)
-			s.Format("\x16");
-		else if (isLoopPoint)
-			s.Format("\x06");
-		else if (isEndPoint)
-			s.Format("\x07");
-		else
-			s.Format(" ");
-
-		TextXY(s, x, y + 4 * 16);
-
-		//if (isReleasePoint)
-		//	TextXY("!", x, y + 25 * 16);
-
-		// Delimitation of the Table Loop Point
-		if (isLoopPoint)
-		{
-			g_mem_dc->MoveTo(x - 1, y);
-			g_mem_dc->LineTo(x - 1, y + 4 * 16 - 2);
-		}
-
-		// Delimitation of the Tabke End Point
-		if (isEndPoint)
-		{
-			g_mem_dc->MoveTo(x + 8, y);
-			g_mem_dc->LineTo(x + 8, y + 4 * 16 - 2);
-		}
-
+		s.Format("Error: Could not load Instrument %02X, g_Module.GetInstrument() returned NULL", m_activeInstrument);
+		TextXY(s, x, y);
 	}
-*/
 
 	// The Instrument Editor Block itself:
 	g_mem_dc->DrawEdge(&instrumentBlock, EDGE_BUMP, BF_RECT);
