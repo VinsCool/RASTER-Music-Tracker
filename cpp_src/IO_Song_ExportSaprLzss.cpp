@@ -542,7 +542,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 	BYTE* buff2, * buff3;
 
 	//int subsongs = GetSubsongParts(t);
-	int subsongs = GetSubtuneCount();
+	int subsongs = g_Module.GetSubtuneCount();
 	int count = 0;
 
 	//int subtune[256];
@@ -738,7 +738,7 @@ bool CSong::ExportLZSS_XEX(std::ofstream& ou)
 void CSong::DumpSongToPokeyBuffer(int playmode, int songline, int trackline)
 {
 	CString statusBarLog;
-	TSubtune* pSubtune = GetSubtune(songline);
+	TSubtune* pSubtune = g_Module.GetSubtune(songline);
 
 	if (!pSubtune)
 		return;

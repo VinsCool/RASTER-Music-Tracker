@@ -15,122 +15,144 @@
 // Module Header definition
 //
 
-#define MODULE_VERSION					0									// Module Version number, the highest value is always assumed to be the most recent
-#define MODULE_IDENTIFIER				"RMTE"								// Raster Music Tracker Extended, "DUMB" is another potential identifier
-#define MODULE_REGION					g_ntsc								// 0 for PAL, 1 for NTSC, anything else is also assumed to be NTSC
-#define MODULE_CHANNEL_COUNT			g_tracks4_8							// 4 for Mono, 8 for Stereo, add more for whatever setup that could be used
-#define MODULE_BASE_TUNING				g_baseTuning						// Default A-4 Tuning
-#define MODULE_BASE_NOTE				g_baseNote							// Default Base Note (A-)
-#define MODULE_BASE_OCTAVE				g_baseOctave						// Default Base Octave (0)
-#define MODULE_TEMPERAMENT				g_baseTemperament					// Default Tuning Temperament
-#define MODULE_PRIMARY_HIGHLIGHT		g_trackLinePrimaryHighlight			// Pattern Primary Highlight
-#define MODULE_SECONDARY_HIGHLIGHT		g_trackLineSecondaryHighlight		// Pattern Secondary Highlight
-#define MODULE_LINE_NUMBERING_MODE		g_tracklinealtnumbering				// Row numbering mode
-#define MODULE_LINE_STEP				g_linesafter						// Line Step between cursor movements
-#define MODULE_DISPLAY_FLAT_NOTES		g_displayflatnotes					// Display accidentals as Flat instead of Sharp
-#define MODULE_DISPLAY_GERMAN_NOTATION	g_usegermannotation					// Display notes using the German Notation
-#define MODULE_SCALING_PERCENTAGE		g_scaling_percentage				// Display scaling percentage
-#define MODULE_DEFAULT_SUBTUNE			0									// Default Active Subtune
-#define MODULE_DEFAULT_INSTRUMENT		0									// Default Active Instrument
-#define MODULE_DEFAULT_PATTERN_LENGTH	64									// Default Pattern Length
-#define MODULE_DEFAULT_SONG_LENGTH		1									// Default Song Length
-#define MODULE_DEFAULT_SONG_SPEED		6									// Default Song Speed
-#define MODULE_DEFAULT_VBI_SPEED		1									// Default VBI Speed
-#define MODULE_DEFAULT_CHANNEL_COUNT	4									// Default Channel Count
-#define MODULE_SONG_NAME_MAX			64									// Maximum length of Song Title
-#define MODULE_AUTHOR_NAME_MAX			64									// Maximum length of Author name
-#define MODULE_COPYRIGHT_INFO_MAX		64									// Maximum length of Copyright info
-#define MODULE_PATTERN_EMPTY			0xFF								// Empty Pattern in Module if encountered
-#define MODULE_ROW_EMPTY				0xFE								// Empty Row in Module if encountered
+#define MODULE_VERSION					0											// Module Version number, the highest value is always assumed to be the most recent
+#define MODULE_IDENTIFIER				"RMTE"										// "Raster Music Tracker Extended" Module Identifier
+#define MODULE_REGION					g_ntsc										// 0 for PAL, 1 for NTSC, anything else is also assumed to be NTSC
+#define MODULE_CHANNEL_COUNT			g_tracks4_8									// 4 for Mono, 8 for Stereo, add more for whatever setup that could be used
+#define MODULE_BASE_TUNING				g_baseTuning								// Default A-4 Tuning
+#define MODULE_BASE_NOTE				g_baseNote									// Default Base Note (A-)
+#define MODULE_BASE_OCTAVE				g_baseOctave								// Default Base Octave (0)
+#define MODULE_TEMPERAMENT				g_baseTemperament							// Default Tuning Temperament
+#define MODULE_PRIMARY_HIGHLIGHT		g_trackLinePrimaryHighlight					// Pattern Primary Highlight
+#define MODULE_SECONDARY_HIGHLIGHT		g_trackLineSecondaryHighlight				// Pattern Secondary Highlight
+#define MODULE_LINE_NUMBERING_MODE		g_tracklinealtnumbering						// Row numbering mode
+#define MODULE_LINE_STEP				g_linesafter								// Line Step between cursor movements
+#define MODULE_DISPLAY_FLAT_NOTES		g_displayflatnotes							// Display accidentals as Flat instead of Sharp
+#define MODULE_DISPLAY_GERMAN_NOTATION	g_usegermannotation							// Display notes using the German Notation
+#define MODULE_SCALING_PERCENTAGE		g_scaling_percentage						// Display scaling percentage
+#define MODULE_DEFAULT_SUBTUNE			0											// Default Active Subtune
+#define MODULE_DEFAULT_INSTRUMENT		0											// Default Active Instrument
+#define MODULE_DEFAULT_PATTERN_LENGTH	64											// Default Pattern Length
+#define MODULE_DEFAULT_SONG_LENGTH		1											// Default Song Length
+#define MODULE_DEFAULT_SONG_SPEED		6											// Default Song Speed
+#define MODULE_DEFAULT_INSTRUMENT_SPEED	1											// Default Instrument Speed
+#define MODULE_DEFAULT_CHANNEL_COUNT	4											// Default Channel Count
+#define MODULE_SONG_NAME_MAX			64											// Maximum length of Song Title
+#define MODULE_AUTHOR_NAME_MAX			64											// Maximum length of Author name
+#define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info
 
 
 // ----------------------------------------------------------------------------
-// Song and Track Pattern definition
+// Song, Pattern and Instrument definition
 //
 
-#define SUBTUNE_NAME_MAX			64											// 0-63 inclusive, Maximum length of Subtune name
-#define SUBTUNE_COUNT				64											// 0-63 inclusive, Maximum number of Subtunes in a Module file
-#define SONGLINE_COUNT				256											// 0-255 inclusive, Songline index used in Song
-#define PATTERN_COUNT				256											// 0-255 inclusive, Pattern index used in Song
-#define ROW_COUNT					256											// 0-255 inclusive, Row index used in Pattern
-#define SONG_SPEED_MAX				256											// 0-255 inclusive, Song Speed used during playback
-#define INSTRUMENT_SPEED_MAX		16											// 0-15 inclusive, Instrument Speed used during playback
-#define POKEY_CHANNEL_COUNT			4											// 0-3 inclusive, each POKEY soundchip could use up to 4 Channels at once
-#define POKEY_CHIP_COUNT			4											// 0-3 inclusive, Quad POKEY configuration (theoretical)
-#define CHANNEL_COUNT				POKEY_CHIP_COUNT * POKEY_CHANNEL_COUNT		// Total number of Channels, Pattern column index used for Note, Instrument, Volume, and Effect Commands
-#define CH1							0											// POKEY Channel identifier for Pattern Column 1
-#define CH2							1											// POKEY Channel identifier for Pattern Column 2
-#define CH3							2											// POKEY Channel identifier for Pattern Column 3
-#define CH4							3											// POKEY Channel identifier for Pattern Column 4
-#define _CH1(x)						((x % POKEY_CHANNEL_COUNT) == CH1)			// POKEY Channel identifier for Pattern Column 1
-#define _CH2(x)						((x % POKEY_CHANNEL_COUNT) == CH2)			// POKEY Channel identifier for Pattern Column 2
-#define _CH3(x)						((x % POKEY_CHANNEL_COUNT) == CH3)			// POKEY Channel identifier for Pattern Column 3
-#define _CH4(x)						((x % POKEY_CHANNEL_COUNT) == CH4)			// POKEY Channel identifier for Pattern Column 4
-#define FREQ_COUNT					256											// 0-255 inclusive, POKEY Frequencies (8-bit)
-#define FREQ_COUNT_16				65536										// 0-65535 inclusive, POKEY Frequencies (16-bit)
-#define NOTE_COUNT					120											// 0-119 inclusive, Note index used in Pattern, for a total of 10 octaves
-#define NOTE_EMPTY					NOTE_COUNT									// There is no Note in the Pattern Row
-#define NOTE_OFF					NOTE_COUNT + 1								// The Note Command OFF will stop the last played note in the Track Channel
-#define NOTE_RELEASE				NOTE_COUNT + 2								// The Note Command === will release the last played note in the Track Channel
-#define NOTE_RETRIGGER				NOTE_COUNT + 3								// The Note Command ~~~ will retrigger the last played note in the Track Channel
-#define NOTE_INDEX_MAX				NOTE_COUNT + 4								// All the valid Note Commands that could be used in the Pattern Editor
-#define INSTRUMENT_COUNT			64											// 0-63 inclusive, Instrument index used in Pattern
-#define INSTRUMENT_EMPTY			INSTRUMENT_COUNT							// There is no Instrument in the Pattern Row
-#define INSTRUMENT_INDEX_MAX		INSTRUMENT_COUNT + 1						// All the valid Instrument Commands that could be used in the Pattern Editor
-#define VOLUME_COUNT				16											// 0-15 inclusive, Volume index used in Pattern
-#define VOLUME_EMPTY				VOLUME_COUNT								// There is no Volume in the Pattern Row
-#define VOLUME_INDEX_MAX			VOLUME_COUNT + 1							// All the valid Volume Commands that could be used in the Pattern Editor
-#define PATTERN_EFFECT_COUNT		16											// 0-15 inclusive, Effect index used in Pattern
-#define PATTERN_EFFECT_EMPTY		PATTERN_EFFECT_COUNT						// There is no Effect Command in the Pattern Row
-#define PATTERN_EFFECT_INDEX_MAX	PATTERN_EFFECT_COUNT + 1					// All the valid Effect Commands that could be used in the Pattern Editor
-#define ACTIVE_EFFECT_COUNT			4											// 0-3 inclusive, Number of Active Effect columns in Track Channel
-#define INVALID						-1											// Failsafe value for invalid data
-#define EMPTY						0											// Failsafe value for invalid data
+#define SUBTUNE_NAME_MAX			64												// Maximum length of Subtune name
+#define SUBTUNE_COUNT				64												// Maximum number of Subtunes
+#define SONGLINE_COUNT				256												// Maximum Songline Index
+#define PATTERN_COUNT				256												// Maximum Pattern Index
+#define ROW_COUNT					256												// Maximum Row Index
+#define SONG_SPEED_MAX				256												// Maximum Song Speed
+#define INSTRUMENT_SPEED_MAX		16												// Maximum Instrument Speed
+#define CHANNEL_COUNT				(POKEY_SOUNDCHIP_COUNT * POKEY_CHANNEL_COUNT)	// Maximum number of Channels in total
+#define _CH1(x)						((x % POKEY_CHANNEL_COUNT) == CH1)				// Is POKEY Channel 1?
+#define _CH2(x)						((x % POKEY_CHANNEL_COUNT) == CH2)				// Is POKEY Channel 2?
+#define _CH3(x)						((x % POKEY_CHANNEL_COUNT) == CH3)				// Is POKEY Channel 3?
+#define _CH4(x)						((x % POKEY_CHANNEL_COUNT) == CH4)				// Is POKEY Channel 4?
+#define NOTE_COUNT					120												// Maximum Note Index, for a total of 10 octaves
+#define INSTRUMENT_COUNT			64												// Maximum Instrument Index
+#define VOLUME_COUNT				16												// Maximum Volume Index
+#define INVALID						-1												// Constant value for Invalid data
+#define EMPTY						0												// Constant value for Empty data
+#define EFFECT_PARAMETER_COUNT		256												// Maximum Effect Parameter $XY Index
+#define INSTRUMENT_NAME_MAX			64												// Maximum length of Instrument name
+#define ENVELOPE_STEP_COUNT			256												// Maximum Envelope Index
 
 
 // ----------------------------------------------------------------------------
-// Instrument definition
+// RMTE Module Enums for Subtune, Pattern, Row, etc
 //
 
-#define INSTRUMENT_NAME_MAX			64		// Maximum length of Instrument name
-#define TABLE_STEP_COUNT			256		// Instrument Note/Freq Table 0-255, inclusive
-#define ENVELOPE_STEP_COUNT			256		// Instrument Envelope 0-255, inclusive
-#define INSTRUMENT_EFFECT_COUNT		16		// Instrument Envelope Effect Command 0-15, inclusive
+// Maximum number of Channels per POKEY soundchip defined by Count
+typedef enum pokeyChannel_t : BYTE
+{
+	CH1 = 0,
+	CH2,
+	CH3,
+	CH4,
+	POKEY_CHANNEL_COUNT,
+}TPokeyChannel;
 
+// Maximum number of POKEY soundchips defined by Count
+typedef enum pokeySoundchip_t : BYTE
+{
+	POKEY1 = 0,
+	POKEY2,
+	POKEY3,
+	POKEY4,
+	POKEY_SOUNDCHIP_COUNT,
+}TPokeySoundchip;
 
-// ----------------------------------------------------------------------------
-// Effect Command definition
-//
+// Maximum number of Effect Commands in Pattern defined by Count
+typedef enum effectCommandColumn_t : BYTE
+{
+	CMD1 = 0,
+	CMD2,
+	CMD3,
+	CMD4,
+	PATTERN_EFFECT_COUNT,
+}TEffectCommandColumn;
 
-#define EFFECT_PARAMETER_MAX		0xFF	// 0-255 inclusive, Effect $XY Parameter used in Pattern
-#define EFFECT_PARAMETER_MIN		0x00	// The $XY Parameter of 0 may be used to disable certain Effect Commands
-#define EFFECT_PARAMETER_DEFAULT	0x80	// The $XY Parameter of 128 may be used to disable certain Effect Commands
-#define EFFECT_PARAMETER_COUNT		0x100	// Maximum range for the Effect Parameter in the Pattern Editor
+// Valid Note Index ranges from 0 to the value of NOTE_COUNT
+// Additional entries must be inserted at the end before NOTE_INDEX_MAX
+typedef enum patternNote_t : BYTE
+{
+	NOTE_EMPTY = NOTE_COUNT,
+	NOTE_OFF,
+	NOTE_RELEASE,
+	NOTE_RETRIGGER,
+	NOTE_INDEX_MAX,
+} TPatternNote;
 
-#define EFFECT_ARPEGGIO				0x00	// Effect Command 0xy -> Set Arpeggio Notes $x and $y
-#define EFFECT_PITCH_UP				0x01	// Effect Command 1xx -> Pitch Freq Up $xx
-#define EFFECT_PITCH_DOWN			0x02	// Effect Command 2xx -> Pitch Freq Down $xx
-#define EFFECT_PORTAMENTO			0x03	// Effect Command 3xy -> Set Portamento Depth $x and Portamento Speed $y
-#define EFFECT_VIBRATO				0x04	// Effect Command 4xy -> Set Vibrato Depth $x and Vibrato Speed $y
+// Valid Instrument Index ranges from 0 to the value of INSTRUMENT_COUNT
+// Additional entries must be inserted at the end before INSTRUMENT_INDEX_MAX
+typedef enum patternInstrument_t : BYTE
+{
+	INSTRUMENT_EMPTY = INSTRUMENT_COUNT,
+	INSTRUMENT_INDEX_MAX,
+} TPatternInstrument;
 
-// 0x05-0x09?
+// Valid Volume Index ranges from 0 to the value of VOLUME_COUNT
+// Additional entries must be inserted at the end before VOLUME_INDEX_MAX
+typedef enum patternVolume_t : BYTE
+{
+	VOLUME_EMPTY = VOLUME_COUNT,
+	VOLUME_INDEX_MAX,
+} TPatternVolume;
 
-#define EFFECT_VOLUME_FADEOUT		0x0A	// Effect Command Axx -> Volume Fadeout $xx
-#define EFFECT_GOTO_SONGLINE		0x0B	// Effect Command Bxx -> Goto Songline $xx
+// Effect Commands, there is no definitive count so it's structured slightly differently
+// Additional entries must be inserted at the end before PE_INDEX_MAX
+typedef enum patternEffectCommand_t : BYTE
+{
+	PE_EMPTY = EMPTY,
+	PE_ARPEGGIO,
+	PE_PITCH_UP,
+	PE_PITCH_DOWN,
+	PE_PORTAMENTO,
+	PE_VIBRATO,
+	PE_VOLUME_FADE,
+	PE_GOTO_SONGLINE,
+	PE_END_PATTERN,
+	PE_SET_SPEED,
+	PE_INDEX_MAX,
+} TPatternEffectCommand;
 
-// 0x0C?
-
-#define EFFECT_END_PATTERN			0x0D	// Effect Command Dxx -> End Pattern, Goto Row $xx
-
-// 0x0E?
-
-#define EFFECT_SET_SONG_SPEED		0x0F	// Effect Command Fxx -> Set Song Speed $xx
-#define EFFECT_EMPTY				0x10	// There is no Effect Command
-
-#define CMD1						0		// Effect Command identifier for Effect Column 1
-#define CMD2						1		// Effect Command identifier for Effect Column 2
-#define CMD3						2		// Effect Command identifier for Effect Column 3
-#define CMD4						3		// Effect Command identifier for Effect Column 4
+// Effect Command Parameter preset values
+typedef enum effectParameter_t : BYTE
+{
+	EFFECT_PARAMETER_MIN = 0x00,
+	EFFECT_PARAMETER_MED = 0x80,
+	EFFECT_PARAMETER_MAX = 0xFF,
+} TEffectParameter;
 
 
 // ----------------------------------------------------------------------------
@@ -150,7 +172,7 @@ struct TRow
 	BYTE note;								// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
 	BYTE instrument;						// Instrument Index
 	BYTE volume;							// Volume Index
-	TEffect effect[ACTIVE_EFFECT_COUNT];	// Effect Command, toggled from the Active Effect Columns in Track Channels
+	TEffect effect[PATTERN_EFFECT_COUNT];	// Effect Command, toggled from the Active Effect Columns in Track Channels
 };
 
 // Pattern Data, indexed by the TRow Struct
@@ -514,10 +536,6 @@ public:
 	bool DeleteAudctlEnvelope(UINT instrument);
 	bool InitialiseAudctlEnvelope(TEnvelope* pEnvelope);
 
-	//bool CreateTriggerEnvelope(UINT instrument);
-	//bool DeleteTriggerEnvelope(UINT instrument);
-	//bool InitialiseTriggerEnvelope(TEnvelope* pEnvelope);
-
 	bool CreateEffectEnvelope(UINT instrument);
 	bool DeleteEffectEnvelope(UINT instrument);
 	bool InitialiseEffectEnvelope(TEnvelope* pEnvelope);
@@ -551,10 +569,9 @@ public:
 	const bool IsValidInstrumentIndex(UINT instrument) { return instrument < INSTRUMENT_INDEX_MAX; };
 	const bool IsValidVolume(UINT volume) { return volume < VOLUME_COUNT; };
 	const bool IsValidVolumeIndex(UINT volume) { return volume < VOLUME_INDEX_MAX; };
-	const bool IsValidEffectCommand(UINT command) { return command < PATTERN_EFFECT_COUNT; };
-	const bool IsValidEffectCommandIndex(UINT command) { return command < PATTERN_EFFECT_INDEX_MAX; };
+	const bool IsValidEffectCommandIndex(UINT command) { return command < PE_INDEX_MAX; };
 	const bool IsValidEffectParameter(UINT parameter) { return parameter < EFFECT_PARAMETER_COUNT; };
-	const bool IsValidCommandColumn(UINT column) { return column < ACTIVE_EFFECT_COUNT; };
+	const bool IsValidCommandColumn(UINT column) { return column < PATTERN_EFFECT_COUNT; };
 
 	//-- Pointers to Module Data --//
 
@@ -771,13 +788,16 @@ public:
 	TEnvelope* GetVolumeEnvelope(UINT instrument);
 	TEnvelope* GetTimbreEnvelope(UINT instrument);
 	TEnvelope* GetAudctlEnvelope(UINT instrument);
-	//TEnvelope* GetTriggerEnvelope(UINT instrument);
 	TEnvelope* GetEffectEnvelope(UINT instrument);
 	TEnvelope* GetNoteTableEnvelope(UINT instrument);
 	TEnvelope* GetFreqTableEnvelope(UINT instrument);
 
 	bool SetInstrumentName(UINT instrument, const char* name);
 	bool SetInstrumentName(TInstrumentV2* instrument, const char* name);
+
+	//-- Other functions --//
+
+	const char* GetPatternEffectCommandIdentifier(TPatternEffectCommand command);
 
 private:
 	char m_moduleName[MODULE_SONG_NAME_MAX + 1];

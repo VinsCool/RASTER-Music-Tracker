@@ -76,7 +76,7 @@ struct TPokeyRegisters
 // POKEY registers buffer Frame, used for every call of Instrument and/or Effect routines
 struct TPokeyFrame
 {
-	TPokeyRegisters pokey[POKEY_CHIP_COUNT];
+	TPokeyRegisters pokey[POKEY_SOUNDCHIP_COUNT];
 };
 
 // POKEY registers buffer Heap, used for rendering sound for a set number of Millisecond Chunks
@@ -236,7 +236,7 @@ public:
 	//void ActiveInstrPrev() { g_Undo.Separator(); int instr = (m_activeInstrument - 1) & 0x3f; ActiveInstrSet(instr); };
 	//void ActiveInstrNext() { g_Undo.Separator(); int instr = (m_activeInstrument + 1) & 0x3f; ActiveInstrSet(instr); };
 
-	const BYTE GetActiveSubtune() { if (!g_Module.IsValidSubtune(m_activeSubtune)) m_activeSubtune = MODULE_DEFAULT_SUBTUNE; return m_activeSubtune; };
+	//const BYTE GetActiveSubtune() { if (!g_Module.IsValidSubtune(m_activeSubtune)) m_activeSubtune = MODULE_DEFAULT_SUBTUNE; return m_activeSubtune; };
 
 	int GetActiveInstr() { return m_activeInstrument; };
 	int GetActiveColumn() { return m_activeChannel; };
@@ -246,7 +246,7 @@ public:
 	int GetActiveOctave() { return m_activeOctave; };
 	int GetActiveVolume() { return m_activeVolume; };
 
-	void SetActiveSubtune(int subtune) { if (g_Module.IsValidSubtune(subtune)) m_activeSubtune = subtune; };
+	//void SetActiveSubtune(int subtune) { if (g_Module.IsValidSubtune(subtune)) m_activeSubtune = subtune; };
 
 	//void SetActiveLine(int line) { m_activeRow = line; };
 	//void SetPlayLine(int line) { m_playRow = line; };
@@ -316,7 +316,7 @@ public:
 	//BOOL SongTrackInc();
 	//BOOL SongTrackEmpty();
 	int SongGetActiveTrack() { return (m_songgo[m_activeSongline] >= 0) ? -1 : m_song[m_activeSongline][m_activeChannel]; };
-	int SongGetTrack(int songline, int trackcol) { return IsValidSongline(songline) && !IsSongGo(songline) ? m_song[songline][trackcol] : -1; };
+	int SongGetTrack(int songline, int trackcol) { return m_song[songline][trackcol]; /*IsValidSongline(songline) && !IsSongGo(songline) ? m_song[songline][trackcol] : -1;*/ };
 	//int SongGetActiveTrackInColumn(int column) { return m_song[m_activeSongline][column]; };
 	int SongGetActiveLine() { return m_activeSongline; };
 	//int SongGetPlayLine() { return m_playSongline; };
@@ -546,11 +546,12 @@ public:
 	void SetSongInfoPars(TInfo* info) { memcpy(m_songname, info->songname, SONG_NAME_MAX_LEN); m_playSpeed = info->speed; m_mainSpeed = info->mainspeed; m_instrumentSpeed = info->instrspeed; m_songnamecur = info->songnamecur; };
 
 	//BOOL IsValidSongline(int songline) { return songline >= 0 && songline < SONGLEN; };
-	BOOL IsSongGo(int songline) { return IsValidSongline(songline) ? m_songgo[songline] >= 0 : 0; };
+	//BOOL IsSongGo(int songline) { return IsValidSongline(songline) ? m_songgo[songline] >= 0 : 0; };
 
 
 	// Prototype C++ RMTE Module Driver functions
 
+/*
 	TSubtune* GetSubtune() { return GetSubtune(m_activeSubtune); };
 	TSubtune* GetSubtune(int subtune) { return g_Module.GetSubtune(subtune); };
 
@@ -562,6 +563,7 @@ public:
 
 	void CreateInstrument() { CreateInstrument(m_activeInstrument); };
 	void CreateInstrument(int instrument) { g_Module.CreateInstrument(instrument); };
+*/
 
 /*
 	TInstrumentEnvelope* GetVolumeEnvelope(BYTE envelope) { return g_Module.GetVolumeEnvelope(envelope); };
@@ -593,6 +595,7 @@ public:
 	void CreateFreqTable(int table) { g_Module.CreateFreqTable(table); };
 */
 
+/*
 	const UINT GetSubtuneCount() { return g_Module.GetSubtuneCount(); };
 
 	const char* GetSongName() { return g_Module.GetModuleName(); };
@@ -657,6 +660,7 @@ public:
 	bool IsValidEffectCommand(UINT command) { return g_Module.IsValidEffectCommand(command); };
 	bool IsValidEffectParameter(UINT parameter) { return g_Module.IsValidEffectParameter(parameter); };
 	bool IsValidCommandColumn(UINT column) { return g_Module.IsValidCommandColumn(column); };
+*/
 
 /*
 	void PlayFrame(TSubtune* pSubtune);

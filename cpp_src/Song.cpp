@@ -1094,6 +1094,7 @@ BOOL CSong::TrackRight(BOOL column)
 
 void CSong::PatternLeft()
 {
+/*
 	if (--m_activeColumn < 0)
 	{
 		if (--m_activeCursor < 0)
@@ -1113,10 +1114,12 @@ void CSong::PatternLeft()
 		case 6: m_activeColumn = 2; break;
 		}
 	}
+*/
 }
 
 void CSong::PatternRight()
 {
+/*
 	BYTE max;
 
 	switch (m_activeCursor)
@@ -1140,10 +1143,12 @@ void CSong::PatternRight()
 
 		m_activeColumn = 0;
 	}
+*/
 }
 
 void CSong::PatternUp(int rows)
 {
+/*
 	// Prevent movements during playback if followplay is enabled
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 		return;
@@ -1163,10 +1168,12 @@ void CSong::PatternUp(int rows)
 	}
 
 	m_activeRow = offset;
+*/
 }
 
 void CSong::PatternDown(int rows)
 {
+/*
 	// Prevent movements during playback if followplay is enabled
 	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
 		return;
@@ -1187,10 +1194,12 @@ void CSong::PatternDown(int rows)
 	}
 
 	m_activeRow = offset;
+*/
 }
 
 void CSong::ChannelLeft()
 {
+/*
 	if (GetChannelCount() == 0)
 		return;
 	
@@ -1221,10 +1230,12 @@ void CSong::ChannelLeft()
 
 	if (m_activeColumn > max)
 		m_activeColumn = max;
+*/
 }
 
 void CSong::ChannelRight()
 {
+/*
 	if (GetChannelCount() == 0)
 		return;
 
@@ -1256,6 +1267,7 @@ void CSong::ChannelRight()
 
 	if (m_activeColumn > max)
 		m_activeColumn = max;
+*/
 }
 
 /*
@@ -1540,6 +1552,7 @@ BOOL CSong::SongSubsongNext()
 
 void CSong::SonglineUp()
 {
+/*
 	if (GetSongLength() == 0)
 		return;
 
@@ -1555,10 +1568,12 @@ void CSong::SonglineUp()
 
 	// Prevent the Active Pattern Row to go out of bounds
 	//m_activeRow %= GetShortestPatternLength();
+*/
 }
 
 void CSong::SonglineDown()
 {
+/*
 	if (GetSongLength() == 0)
 		return;
 
@@ -1575,10 +1590,12 @@ void CSong::SonglineDown()
 
 	// Prevent the Active Pattern Row to go out of bounds
 	//m_activeRow %= GetShortestPatternLength();
+*/
 }
 
 void CSong::SeekNextSubtune()
 {
+/*
 	if (GetSubtuneCount() == 0)
 		return;
 
@@ -1591,10 +1608,12 @@ void CSong::SeekNextSubtune()
 
 	if (m_playMode != MPLAY_STOP)
 		Play(MPLAY_START, m_isFollowPlay);
+*/
 }
 
 void CSong::SeekPreviousSubtune()
 {
+/*
 	if (GetSubtuneCount() == 0)
 		return;
 
@@ -1607,6 +1626,7 @@ void CSong::SeekPreviousSubtune()
 
 	if (m_playMode != MPLAY_STOP)
 		Play(MPLAY_START, m_isFollowPlay);
+*/
 }
 
 /*
@@ -2308,6 +2328,7 @@ void CSong::InstrInfo(int instr, TInstrInfo* iinfo, int instrto)
 
 void CSong::InstrChange(int instr)
 {
+/*
 	if (!g_Instruments.IsValidInstrument(instr)) return;
 
 	CInstrumentChangeDlg dlg;
@@ -2549,6 +2570,7 @@ void CSong::InstrChange(int instr)
 
 		MessageBox(g_hwnd, s, "Instrument changes", MB_ICONINFORMATION);
 	}
+*/
 }
 
 void CSong::TrackInfo(int track)
@@ -2812,6 +2834,7 @@ void CSong::TracksAllExpandLoops(int& tracksmodified, int& loopsexpanded)
 
 void CSong::SongClearUnusedTracksAndParts(int& clearedtracks, int& truncatedtracks, int& truncatedbeats)
 {
+/*
 	int i, j, ch;
 	int ttracks = 0, tbeats = 0, ctracks = 0;
 	int tracklen[TRACKSNUM];
@@ -2912,6 +2935,7 @@ void CSong::SongClearUnusedTracksAndParts(int& clearedtracks, int& truncatedtrac
 	clearedtracks = ctracks;
 	truncatedtracks = ttracks;
 	truncatedbeats = tbeats;
+*/
 }
 
 int CSong::SongClearDuplicatedTracks()
@@ -3661,6 +3685,7 @@ void CSong::CalculateDisplayFPS()
 
 void CSong::DrawSonglines()
 {
+/*
 	//if (!GetSubtune())
 	//	return;
 
@@ -3817,10 +3842,12 @@ void CSong::DrawSonglines()
 
 	// The Songline Block itself:
 	g_mem_dc->DrawEdge(&songblock, EDGE_BUMP, BF_RECT);
+*/
 }
 
 void CSong::DrawSubtuneInfos()
 {
+/*
 	CString s;
 	RECT infoblock{};
 	int colour, x, y;
@@ -3931,10 +3958,12 @@ void CSong::DrawSubtuneInfos()
 
 	// The Info Block itself:
 	g_mem_dc->DrawEdge(&infoblock, EDGE_BUMP, BF_RECT);
+*/
 }
 
 void CSong::DrawRegistersState()
 {
+/*
 	if (!g_viewPokeyRegisters)
 		return;
 
@@ -4130,10 +4159,12 @@ void CSong::DrawRegistersState()
 
 	// The Registers Block itself:
 	g_mem_dc->DrawEdge(&registersBlock, EDGE_BUMP, BF_RECT);
+*/
 }
 
 void CSong::DrawPatternEditor()
 {
+/*
 	CString s;
 	RECT patternblock{};
 
@@ -4403,6 +4434,7 @@ void CSong::DrawPatternEditor()
 
 	// The Pattern Editor Block itself:
 	g_mem_dc->DrawEdge(&patternblock, EDGE_BUMP, BF_RECT);
+*/
 }
 
 void CSong::DrawInstrumentEditor()
@@ -5443,8 +5475,8 @@ bool CSong::TransposeNoteInPattern(int semitone)
 	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 	UINT note = g_Module.GetPatternRowNote(pRow);
 
-	if (g_Module.IsValidNote(note))
-		return g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
+	//if (g_Module.IsValidNote(note))
+	//	return g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
 
 	return false;
 }
@@ -5458,8 +5490,8 @@ bool CSong::TransposePattern(int semitone)
 		TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), i);
 		UINT note = g_Module.GetPatternRowNote(pRow);
 
-		if (g_Module.IsValidNote(note))
-			count += g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
+		//if (g_Module.IsValidNote(note))
+		//	count += g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
 	}
 
 	// At least 1 successful transposition will return True
@@ -5477,8 +5509,8 @@ bool CSong::TransposeSongline(int semitone)
 			TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, j, m_activeSongline), i);
 			UINT note = g_Module.GetPatternRowNote(pRow);
 
-			if (g_Module.IsValidNote(note))
-				count += g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
+			//if (g_Module.IsValidNote(note))
+			//	count += g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
 		}
 
 	}
@@ -5492,6 +5524,7 @@ bool CSong::SetNoteInPattern(UINT note)
 	UINT semitone = note + m_activeOctave * 12;
 	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 
+/*
 	switch (note)
 	{
 	case NOTE_OFF:
@@ -5508,12 +5541,16 @@ bool CSong::SetNoteInPattern(UINT note)
 
 		return false;
 	}
+*/
+
+	return false;
 }
 
 bool CSong::SetInstrumentInPattern(UINT instrument)
 {
 	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 
+/*
 	switch (instrument)
 	{
 	case INSTRUMENT_EMPTY:
@@ -5547,12 +5584,16 @@ bool CSong::SetInstrumentInPattern(UINT instrument)
 
 		return false;
 	}
+*/
+
+	return false;
 }
 
 bool CSong::SetVolumeInPattern(UINT volume)
 {
 	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 
+/*
 	switch (volume)
 	{
 	case VOLUME_EMPTY:
@@ -5561,6 +5602,9 @@ bool CSong::SetVolumeInPattern(UINT volume)
 	default:
 		return g_Module.SetPatternRowVolume(pRow, volume);
 	}
+*/
+
+	return false;
 }
 
 bool CSong::SetCommandInPattern(UINT command)
@@ -5569,6 +5613,7 @@ bool CSong::SetCommandInPattern(UINT command)
 	UINT activeCursor = m_activeCursor - 3;
 	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
 
+/*
 	switch (command)
 	{
 	case PATTERN_EFFECT_EMPTY:
@@ -5601,6 +5646,9 @@ bool CSong::SetCommandInPattern(UINT command)
 
 		return false;
 	}
+*/
+
+	return false;
 }
 
 bool CSong::SetEmptyRowInPattern()

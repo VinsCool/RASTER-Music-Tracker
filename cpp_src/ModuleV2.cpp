@@ -83,7 +83,6 @@ void CModule::DeleteAllInstruments()
 		DeleteVolumeEnvelope(i);
 		DeleteTimbreEnvelope(i);
 		DeleteAudctlEnvelope(i);
-		//DeleteTriggerEnvelope(i);
 		DeleteEffectEnvelope(i);
 		DeleteNoteTableEnvelope(i);
 		DeleteFreqTableEnvelope(i);
@@ -135,7 +134,7 @@ bool CModule::InitialiseSubtune(TSubtune* pSubtune)
 	pSubtune->patternLength = MODULE_DEFAULT_PATTERN_LENGTH;
 	pSubtune->channelCount = MODULE_DEFAULT_CHANNEL_COUNT;
 	pSubtune->songSpeed = MODULE_DEFAULT_SONG_SPEED;
-	pSubtune->instrumentSpeed = MODULE_DEFAULT_VBI_SPEED;
+	pSubtune->instrumentSpeed = MODULE_DEFAULT_INSTRUMENT_SPEED;
 
 	// Delete all Channels with leftover data
 	DeleteAllChannels(pSubtune);
@@ -202,9 +201,9 @@ bool CModule::InitialiseRow(TRow* pRow)
 	pRow->instrument = INSTRUMENT_EMPTY;
 	pRow->volume = VOLUME_EMPTY;
 
-	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
+	for (int i = 0; i < PATTERN_EFFECT_COUNT; i++)
 	{
-		pRow->effect[i].command = PATTERN_EFFECT_EMPTY;
+		pRow->effect[i].command = PE_EMPTY;
 		pRow->effect[i].parameter = EFFECT_PARAMETER_MIN;
 	}
 
@@ -263,7 +262,7 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 
 	// Set the default Envelope Macro parameters, always disabled for newly created Instruments
 	TMacro macro{ 0x00, false, false };
-	pInstrument->envelope = { macro, macro, macro, macro, macro, macro };	//, macro };
+	pInstrument->envelope = { macro, macro, macro, macro, macro, macro };
 
 	// Instrument was initialised
 	return true;
@@ -421,59 +420,6 @@ bool CModule::InitialiseAudctlEnvelope(TEnvelope* pEnvelope)
 	// Audctl Envelope was initialised
 	return true;
 }
-
-
-//--
-
-/*
-bool CModule::CreateTriggerEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is no Envelope here, create it now and update the Instrument Index accordingly
-		if (!m_instrumentIndex->trigger[instrument])
-			m_instrumentIndex->trigger[instrument] = new TEnvelope();
-
-		return InitialiseTriggerEnvelope(m_instrumentIndex->trigger[instrument]);
-	}
-
-	return false;
-}
-
-bool CModule::DeleteTriggerEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is an Envelope here, don't waste any time and delete it without further ado
-		if (m_instrumentIndex->trigger[instrument])
-			delete m_instrumentIndex->trigger[instrument];
-
-		m_instrumentIndex->trigger[instrument] = NULL;
-		return true;
-	}
-
-	return false;
-}
-
-bool CModule::InitialiseTriggerEnvelope(TEnvelope* pEnvelope)
-{
-	if (!pEnvelope)
-		return false;
-
-	// Set the default Envelope parameters
-	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TTrigger trigger{ false, false, false, false, false, false, false, false, false };
-
-	pEnvelope->parameter = parameter;
-
-	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->trigger[i] = trigger;
-
-	// Trigger Envelope was initialised
-	return true;
-}
-*/
 
 
 //--
@@ -640,7 +586,7 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 	memset(songlineStep, INVALID, sizeof(songlineStep));
 
 	UINT subtuneOffset[SONGLINE_COUNT];
-	memset(subtuneOffset, 0, sizeof(subtuneOffset));
+	memset(subtuneOffset, EMPTY, sizeof(subtuneOffset));
 
 	// This will become the final count of decoded Subtunes from the Legacy RMT Module
 	UINT subtuneCount = 0;
@@ -764,14 +710,14 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 				// If the Shortest Pattern Length is below actual Pattern Length, a Dxx Command was already used somewhere, and must be replaced
 				if (GetShortestPatternLength(i, j) < GetPatternLength(i))
 				{
-					SetPatternRowEffectCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EFFECT_END_PATTERN);
+					SetPatternRowEffectCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, PE_END_PATTERN);
 					SetPatternRowEffectParameter(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EFFECT_PARAMETER_MIN);
 				}
 
 				// Set the final Goto Songline Command Bxx to the Songline found at the loop point
 				if (j == GetSongLength(i) - 1)
 				{
-					SetPatternRowEffectCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EFFECT_GOTO_SONGLINE);
+					SetPatternRowEffectCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, PE_GOTO_SONGLINE);
 					SetPatternRowEffectParameter(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, songlineStep[offset] - 1);
 				}
 
@@ -782,9 +728,9 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 					for (UINT l = 0; l < ROW_COUNT; l++)
 					{
 						// The Fxx Commands are perfectly fine as they are, so the Effect Column 1 is also skipped
-						for (UINT m = CMD2; m < ACTIVE_EFFECT_COUNT; m++)
+						for (UINT m = CMD2; m < PATTERN_EFFECT_COUNT; m++)
 						{
-							SetPatternRowEffectCommand(i, k, GetPatternInSongline(i, k, j), l, m, PATTERN_EFFECT_EMPTY);
+							SetPatternRowEffectCommand(i, k, GetPatternInSongline(i, k, j), l, m, PE_EMPTY);
 							SetPatternRowEffectParameter(i, k, GetPatternInSongline(i, k, j), l, m, EFFECT_PARAMETER_MIN);
 						}
 					}
@@ -894,7 +840,7 @@ bool CModule::DecodeLegacyRMT(std::ifstream& in, TSubtune* pSubtune, CString& lo
 	// Invalid Instrument Speed
 	if (instrumentSpeed < 1 || instrumentSpeed > 8)
 	{
-		instrumentSpeed = MODULE_DEFAULT_VBI_SPEED;
+		instrumentSpeed = MODULE_DEFAULT_INSTRUMENT_SPEED;
 		log.AppendFormat("Warning: Instrument Speed could only be set between 1 and 8 inclusive.\n");
 		log.AppendFormat("Default value of %02X will be used instead.\n\n", instrumentSpeed);
 	}
@@ -1098,7 +1044,7 @@ bool CModule::ImportLegacyPatterns(TSubtune* pSubtune, BYTE* sourceMemory, WORD 
 				if (!count)
 				{
 					// Speed, set Fxx command
-					SetPatternRowEffectCommand(pSubtune, CH1, pattern, row, CMD1, EFFECT_SET_SONG_SPEED);
+					SetPatternRowEffectCommand(pSubtune, CH1, pattern, row, CMD1, PE_SET_SPEED);
 					SetPatternRowEffectParameter(pSubtune, CH1, pattern, row, CMD1, memPattern[src + 1]);
 					src += 2;	// 2 bytes were processed
 				}
@@ -1110,7 +1056,7 @@ bool CModule::ImportLegacyPatterns(TSubtune* pSubtune, BYTE* sourceMemory, WORD 
 				if (count == 0xC0)
 				{
 					// End of Pattern, set a Dxx command here, no extra data to process
-					SetPatternRowEffectCommand(pSubtune, CH1, pattern, row - 1, CMD2, EFFECT_END_PATTERN);
+					SetPatternRowEffectCommand(pSubtune, CH1, pattern, row - 1, CMD2, PE_END_PATTERN);
 					SetPatternRowEffectParameter(pSubtune, CH1, pattern, row - 1, CMD2, EFFECT_PARAMETER_MIN);
 					src = patternSize;
 				}
@@ -2050,7 +1996,7 @@ const UINT CModule::GetEffectCommandCount(TChannel* pChannel)
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (effectCount == 0)
-			effectCount = ACTIVE_EFFECT_COUNT;
+			effectCount = PATTERN_EFFECT_COUNT;
 
 		return effectCount;
 	}
@@ -2189,10 +2135,10 @@ bool CModule::SetEffectCommandCount(TSubtune* pSubtune, UINT channel, UINT colum
 
 bool CModule::SetEffectCommandCount(TChannel* pChannel, UINT column)
 {
-	if (pChannel)// && column <= ACTIVE_EFFECT_COUNT)
+	if (pChannel)// && column <= PATTERN_EFFECT_COUNT)
 	{
 		// 0 is actually the highest possible value due to base 0 indexing
-		if (column >= ACTIVE_EFFECT_COUNT)
+		if (column >= PATTERN_EFFECT_COUNT)
 			column = 0;
 
 		pChannel->effectCount = column;
@@ -2265,16 +2211,6 @@ TEnvelope* CModule::GetAudctlEnvelope(UINT instrument)
 
 	return NULL;
 }
-
-/*
-TEnvelope* CModule::GetTriggerEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-		return m_instrumentIndex->trigger[instrument];
-
-	return NULL;
-}
-*/
 
 TEnvelope* CModule::GetEffectEnvelope(UINT instrument)
 {
@@ -2391,7 +2327,7 @@ const UINT CModule::GetEffectivePatternLength(TPattern* pPattern, UINT patternLe
 				UINT command = GetPatternRowEffectCommand(pPattern, i, j);
 
 				// Set the Pattern Length to the current Row Index if a match is found
-				if (command == EFFECT_GOTO_SONGLINE || command == EFFECT_END_PATTERN)
+				if (command == PE_GOTO_SONGLINE || command == PE_END_PATTERN)
 				{
 					// Add 1 to match the actual number of Rows per Pattern
 					if (patternLength > i + 1)
@@ -2510,10 +2446,10 @@ bool CModule::IsEmptyRow(TRow* pRow)
 			return false;
 
 		// If there is an Effect Command, it's not empty
-		for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
+		for (int i = 0; i < PATTERN_EFFECT_COUNT; i++)
 		{
 			// Only the Identifier is checked, since the Parameter cannot be used alone
-			if (pRow->effect[i].command != PATTERN_EFFECT_EMPTY)
+			if (pRow->effect[i].command != PE_EMPTY)
 				return false;
 		}
 	}
@@ -2561,7 +2497,7 @@ bool CModule::IsIdenticalRow(TRow* pFromRow, TRow* pToRow)
 		return false;
 
 	// If there is a different Effect Command, it's not identical
-	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
+	for (int i = 0; i < PATTERN_EFFECT_COUNT; i++)
 	{
 		if (pFromRow->effect[i].command != pToRow->effect[i].command)
 			return false;
@@ -2626,7 +2562,7 @@ bool CModule::CopyRow(TRow* pFromRow, TRow* pToRow)
 	pToRow->instrument = pFromRow->instrument;
 	pToRow->volume = pFromRow->volume;
 
-	for (int i = 0; i < ACTIVE_EFFECT_COUNT; i++)
+	for (int i = 0; i < PATTERN_EFFECT_COUNT; i++)
 	{
 		pToRow->effect[i].command = pFromRow->effect[i].command;
 		pToRow->effect[i].parameter = pFromRow->effect[i].parameter;
@@ -2907,4 +2843,45 @@ void CModule::AllSizeOptimisations(TSubtune* pSubtune)
 	ConcatenateIndexedPatterns(pSubtune);
 
 	// And then...? Most likely a lot more... That's for another day...
+}
+
+// Return the Pattern Effect Command Identifier characters
+const char* CModule::GetPatternEffectCommandIdentifier(TPatternEffectCommand command)
+{
+	switch (command)
+	{
+	case PE_EMPTY:
+		return "-";
+
+	case PE_ARPEGGIO:
+		return "0";
+
+	case PE_PITCH_UP:
+		return "1";
+
+	case PE_PITCH_DOWN:
+		return "2";
+
+	case PE_PORTAMENTO:
+		return "3";
+
+	case PE_VIBRATO:
+		return "4";
+
+	case PE_VOLUME_FADE:
+		return "A";
+
+	case PE_GOTO_SONGLINE:
+		return "B";
+
+	case PE_END_PATTERN:
+		return "D";
+
+	case PE_SET_SPEED:
+		return "F";
+
+	default:
+		// Unknown or Invalid Pattern Effect Command Identifier
+		return "?";
+	}
 }
