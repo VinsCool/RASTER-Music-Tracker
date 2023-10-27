@@ -5,6 +5,9 @@
 #include "ModuleV2.h"
 #include "Atari6502.h"
 
+// Temporary workaround to avoid including whole header shit
+extern const char* notesandscales[5][40];
+
 CModule::CModule()
 {
 	m_subtuneIndex = new TSubtuneIndex();
@@ -2883,5 +2886,71 @@ const char* CModule::GetPatternEffectCommandIdentifier(TPatternEffectCommand com
 	default:
 		// Unknown or Invalid Pattern Effect Command Identifier
 		return "?";
+	}
+}
+
+const char* CModule::GetPatternNoteCommand(TPatternNote note)
+{
+	switch (note)
+	{
+	case NOTE_EMPTY:
+		return "---";
+
+	case NOTE_OFF:
+		return "OFF";
+
+	case NOTE_RELEASE:
+		return "===";
+
+	case NOTE_RETRIGGER:
+		return "^^^";
+
+	default:
+		// Unknown or Invalid Pattern Note Identifier
+		return "???";
+	}
+}
+
+const char* CModule::GetPatternNoteIndex(TPatternNote note)
+{
+	BYTE notation = 0;
+
+	if (MODULE_DISPLAY_FLAT_NOTES)
+		notation += 1;
+
+	if (MODULE_DISPLAY_GERMAN_NOTATION)
+		notation += 2;
+
+	return notesandscales[notation][note % 12];
+}
+
+UINT CModule::GetPatternNoteOctave(TPatternNote note)
+{
+	return note / 12;
+}
+
+const char* CModule::GetPatternInstrumentCommand(TPatternInstrument instrument)
+{
+	switch (instrument)
+	{
+	case INSTRUMENT_EMPTY:
+		return "--";
+
+	default:
+		// Unknown or Invalid Pattern Instrument Identifier
+		return "??";
+	}
+}
+
+const char* CModule::GetPatternVolumeCommand(TPatternVolume volume)
+{
+	switch (volume)
+	{
+	case VOLUME_EMPTY:
+		return "--";
+
+	default:
+		// Unknown or Invalid Pattern Volume Identifier
+		return "??";
 	}
 }

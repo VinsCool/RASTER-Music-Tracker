@@ -4164,7 +4164,6 @@ void CSong::DrawRegistersState()
 
 void CSong::DrawPatternEditor()
 {
-/*
 	CString s;
 	RECT patternblock{};
 
@@ -4173,18 +4172,18 @@ void CSong::DrawPatternEditor()
 
 	// Caching global variables is necessary in order to display Patterns without random "jumps" around during playback 
 	// This is caused by the screen update timing, and this is the main reason why these bugs seem to happen randomly
-	BYTE activeSubtune = m_activeSubtune;
-	BYTE activeRow = m_activeRow;
-	BYTE playRow = m_playRow;
-	BYTE activeSongline = m_activeSongline;
-	BYTE playSongline = m_playSongline;
-	BYTE songLength = GetSongLength();
-	BYTE activeCursor = m_activeCursor;
-	BYTE activeColumn = m_activeColumn;
-	BYTE activeChannel = m_activeChannel;
-	BYTE channelCount = GetChannelCount();
-	int playSpeed = m_playSpeed > 0 ? m_playSpeed : 256;
-	int speedTimer = m_speedTimer > 0 ? m_speedTimer : 256;
+	UINT activeSubtune = m_activeSubtune;
+	UINT activeRow = m_activeRow;
+	UINT playRow = m_playRow;
+	UINT activeSongline = m_activeSongline;
+	UINT playSongline = m_playSongline;
+	UINT songLength = g_Module.GetSongLength(activeSubtune);
+	UINT activeCursor = m_activeCursor;
+	UINT activeColumn = m_activeColumn;
+	UINT activeChannel = m_activeChannel;
+	UINT channelCount = g_Module.GetChannelCount(activeSubtune);
+	UINT playSpeed = m_playSpeed > 0 ? m_playSpeed : 256;
+	UINT speedTimer = m_speedTimer > 0 ? m_speedTimer : 256;
 
 	// Coordinates used for drawing most of the Pattern Editor block on screen
 	int x = 3 * 8, y = 0;
@@ -4195,53 +4194,41 @@ void CSong::DrawPatternEditor()
 	bool active_smooth = (g_viewDoSmoothScrolling && ((m_playMode != MPLAY_STOP && m_isFollowPlay) && (speedTimer <= playSpeed)));
 	int smooth_y = active_smooth ? speedTimer * 16 / playSpeed - 8 : 0;
 
-	// Standard notation FIXME: create a proper method for the Note and Octave text format
-	int notation = 0;
-
-	if (g_displayflatnotes)
-		notation += 1;
-
-	if (g_usegermannotation)
-		notation += 2;
-
-	// Non-12 scales don't yet have proper display
-	//if (g_notesperoctave != 12)
-	//	notation = 4;
-
 	// Process Channels 1 by 1, for all the Patterns to be drawn on screen
-	for (int i = 0; i < channelCount; i++)
+	for (UINT i = 0; i < channelCount; i++)
 	{
 		// The Y offset is always reset to 0 between Channels
 		y = smooth_y;
+		UINT effectCommandCount = g_Module.GetEffectCommandCount(activeSubtune, i);
 
 		// For as many Pattern Rows there are to display on screen, execute this loop
-		for (int j = 0; j < g_tracklines + active_smooth; j++, y += 16)
+		for (UINT j = 0; j < (UINT)g_tracklines + active_smooth; j++, y += 16)
 		{
 			// The first 3 Rows are used by the Channel Header, which will be drawn after everything
-			if (j < 3 - active_smooth)
+			if (j < (UINT)(3 - active_smooth))
 				continue;
 
 			// Get the Row Index, derived from the active cursor offset and j, minus 9
 			int row = g_cursoractview + j - 9;
 
 			// This will be used for wrapping around the Pattern Row Index
-			BYTE offsetSongline = activeSongline;
+			UINT offsetSongline = activeSongline;
 
 			// If the Row Index is out of bounds, wrap around relative to the Shortest Pattern Length itself
-			if (isOutOfBounds = row < 0 || row >= GetShortestPatternLength(activeSubtune, offsetSongline))
+			if (isOutOfBounds = row < 0 || row >= (int)g_Module.GetShortestPatternLength(activeSubtune, offsetSongline))
 			{
 				// Add Rows for as many Songlines there are to offset above it
 				while (row < 0)
 				{
 					if (--offsetSongline >= songLength)
 						offsetSongline += songLength;
-					row += GetShortestPatternLength(activeSubtune, offsetSongline);
+					row += g_Module.GetShortestPatternLength(activeSubtune, offsetSongline);
 				}
 
 				// Subtract Rows for as many Songlines there are to offset below it
-				while (row >= GetShortestPatternLength(activeSubtune, offsetSongline))
+				while (row >= (int)g_Module.GetShortestPatternLength(activeSubtune, offsetSongline))
 				{
-					row -= GetShortestPatternLength(activeSubtune, offsetSongline);
+					row -= g_Module.GetShortestPatternLength(activeSubtune, offsetSongline);
 					++offsetSongline %= songLength;
 				}
 			}
@@ -4249,7 +4236,7 @@ void CSong::DrawPatternEditor()
 			if (row == 1)
 			{
 				g_mem_dc->MoveTo(x - 12, PATTERNBLOCK_Y - 16 + y);
-				g_mem_dc->LineTo(x - 12 + (13 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8)), PATTERNBLOCK_Y - 16 + y);
+				g_mem_dc->LineTo(x - 12 + (13 * 8) + (effectCommandCount * (4 * 8)), PATTERNBLOCK_Y - 16 + y);
 			}
 
 			// Highlight Colour used to draw the Pattern Rows, from lowest to highest in priority
@@ -4288,66 +4275,38 @@ void CSong::DrawPatternEditor()
 			// Conditions needed for displaying the Active Cursor Highlight
 			bool isActiveCursor = g_activepart == PART_TRACKS && row == activeRow && i == activeChannel && !isOutOfBounds;
 
-			// Get the Pattern Index from the Songline offset
-			BYTE pattern = GetPatternInSongline(activeSubtune, i, offsetSongline);
+			// Get the Pattern Row data from the Songline offset
+			UINT pattern = g_Module.GetPatternInSongline(activeSubtune, i, offsetSongline);
 
-			// Note and Octave
-			BYTE note = GetPatternRowNote(activeSubtune, i, pattern, row);
+			UINT note = g_Module.GetPatternRowNote(activeSubtune, i, pattern, row);
+			
+			if (g_Module.IsValidNote(note))
+				s.AppendFormat("%s%X ", g_Module.GetPatternNoteIndex((TPatternNote)note), g_Module.GetPatternNoteOctave((TPatternNote)note));
+			else
+				s.AppendFormat("%s ", g_Module.GetPatternNoteCommand((TPatternNote)note));
 
-			switch (note)
+			UINT instrument = g_Module.GetPatternRowInstrument(activeSubtune, i, pattern, row);
+
+			if (g_Module.IsValidInstrument(instrument))
+				s.AppendFormat("%02X ", instrument);
+			else
+				s.AppendFormat("%s ", g_Module.GetPatternInstrumentCommand((TPatternInstrument)instrument));
+
+			UINT volume = g_Module.GetPatternRowVolume(activeSubtune, i, pattern, row);
+
+			if (g_Module.IsValidVolume(volume))
+				s.AppendFormat("v%X ", volume);
+			else
+				s.AppendFormat("%s ", g_Module.GetPatternVolumeCommand((TPatternVolume)volume));
+
+			// Command(s) are handled a little differently since there is a variable number of them at our disposal
+			for (UINT k = 0; k < effectCommandCount; k++)
 			{
-			case NOTE_EMPTY: s.AppendFormat("--- "); break;
-			case NOTE_OFF: s.AppendFormat("OFF "); break;
-			case NOTE_RELEASE: s.AppendFormat("=== "); break;
-			case NOTE_RETRIGGER: s.AppendFormat("~~~ "); break;
-			default:
-				if (note < NOTE_COUNT)
-					s.AppendFormat("%s%1X ", notesandscales[notation][note % 12], note / 12);
-				else
-					s.AppendFormat("??? ");
-			}
+				UINT command = g_Module.GetPatternRowEffectCommand(activeSubtune, i, pattern, row, k);
+				UINT parameter = g_Module.GetPatternRowEffectParameter(activeSubtune, i, pattern, row, k);
 
-			// Instrument
-			BYTE instrument = GetPatternRowInstrument(activeSubtune, i, pattern, row);
-
-			switch (instrument)
-			{
-			case INSTRUMENT_EMPTY: s.AppendFormat("-- "); break;
-			default:
-				if (instrument < INSTRUMENT_COUNT)
-					s.AppendFormat("%02X ", instrument);
-				else
-					s.AppendFormat("?? ");
-			}
-
-			// Volume
-			BYTE volume = GetPatternRowVolume(activeSubtune, i, pattern, row);
-
-			switch (volume)
-			{
-			case VOLUME_EMPTY: s.AppendFormat("-- "); break;
-			default:
-				if (volume < VOLUME_COUNT)
-					s.AppendFormat("v%01X ", volume);
-				else
-					s.AppendFormat("?? ");
-			}
-
-			// Command(s)
-			for (int k = 0; k < GetEffectCommandCount(activeSubtune, i); k++)
-			{
-				BYTE command = GetPatternRowEffectCommand(activeSubtune, i, pattern, row, k);
-				BYTE parameter = GetPatternRowEffectParameter(activeSubtune, i, pattern, row, k);
-
-				switch (command)
-				{
-				case PATTERN_EFFECT_EMPTY: s.AppendFormat("--- "); break;
-				default:
-					if (command < PATTERN_EFFECT_COUNT)
-						s.AppendFormat("%01X%02X ", command, parameter);
-					else
-						s.AppendFormat("??? ");
-				}
+				s.AppendFormat("%s", g_Module.GetPatternEffectCommandIdentifier((TPatternEffectCommand)command));
+				s.AppendFormat(command == PE_EMPTY ? "-- " : "%02X ", parameter);
 			}
 
 			// Draw the formated Pattern Row on screen once it is ready to be output, using the cursor position for highlighted column
@@ -4355,7 +4314,7 @@ void CSong::DrawPatternEditor()
 		}
 
 		// Update the X offset with the Channel's width, including the Active Effect Commands
-		x += (10 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8));
+		x += (10 * 8) + (effectCommandCount * (4 * 8));
 	}
 
 	// Actual dimensions used by the Pattern Editor block, including the Channels Header
@@ -4387,16 +4346,17 @@ void CSong::DrawPatternEditor()
 	g_mem_dc->LineTo(patternblock.right, patternblock.top + (3 * 16));
 
 	// Separation between each POKEY Channels, and the Channels Header on top of it
-	for (int i = 0; i < channelCount; i++)
+	for (UINT i = 0; i < channelCount; i++)
 	{
 		y = 0;
+		UINT effectCommandCount = g_Module.GetEffectCommandCount(activeSubtune, i);
 
-		for (int j = 0; j < 3; j++, y += 16)
+		for (UINT j = 0; j < 3; j++, y += 16)
 		{
 			switch (j)
 			{
 			case 0:
-				s.Format(" PATTERN: %02X", GetPatternInSongline(activeSubtune, i, activeSongline));
+				s.Format(" PATTERN: %02X", g_Module.GetPatternInSongline(activeSubtune, i, activeSongline));
 				break;
 
 			case 1:
@@ -4419,7 +4379,7 @@ void CSong::DrawPatternEditor()
 			}
 
 			case 2:
-				s.Format("      FX%i", GetEffectCommandCount(activeSubtune, i));
+				s.Format("      FX%i", effectCommandCount);
 				TextXYSelN("<>", -1, PATTERNBLOCK_X + x + 10 * 8, PATTERNBLOCK_Y + y);
 				break;
 			}
@@ -4427,14 +4387,13 @@ void CSong::DrawPatternEditor()
 			TextXY(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, GetChannelOnOff(i) == 0);
 		}
 
-		x += (10 * 8) + (GetEffectCommandCount(activeSubtune, i) * (4 * 8));
+		x += (10 * 8) + (effectCommandCount * (4 * 8));
 		g_mem_dc->MoveTo(patternblock.left + x, patternblock.top);
 		g_mem_dc->LineTo(patternblock.left + x, patternblock.bottom);
 	}
 
 	// The Pattern Editor Block itself:
 	g_mem_dc->DrawEdge(&patternblock, EDGE_BUMP, BF_RECT);
-*/
 }
 
 void CSong::DrawInstrumentEditor()

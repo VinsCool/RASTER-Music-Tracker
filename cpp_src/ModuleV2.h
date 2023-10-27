@@ -799,6 +799,14 @@ public:
 
 	const char* GetPatternEffectCommandIdentifier(TPatternEffectCommand command);
 
+	const char* GetPatternNoteCommand(TPatternNote note);
+	const char* GetPatternNoteIndex(TPatternNote note);
+	UINT GetPatternNoteOctave(TPatternNote note);
+
+	const char* GetPatternInstrumentCommand(TPatternInstrument instrument);
+
+	const char* GetPatternVolumeCommand(TPatternVolume volume);
+
 private:
 	char m_moduleName[MODULE_SONG_NAME_MAX + 1];
 	char m_moduleAuthor[MODULE_AUTHOR_NAME_MAX + 1];
