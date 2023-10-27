@@ -104,7 +104,7 @@ bool CSong::ExportSAP_R(std::ofstream& ou)
 		ou << "NTSC" << EOL;
 	}
 
-	if (m_instrumentSpeed > 1)
+	if (m_instrumentSpeed > 1 || g_ntsc)
 	{
 		ou << "FASTPLAY ";
 		switch (m_instrumentSpeed)
@@ -448,7 +448,7 @@ bool CSong::ExportLZSS_SAP(std::ofstream& ou)
 		ou << "NTSC" << EOL;
 	}
 
-	if (m_instrumentSpeed > 1)
+	if (m_instrumentSpeed > 1 || g_ntsc)
 	{
 		ou << "FASTPLAY ";
 		switch (m_instrumentSpeed)
