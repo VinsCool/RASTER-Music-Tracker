@@ -2883,6 +2883,12 @@ const char* CModule::GetPatternEffectCommandIdentifier(TPatternEffectCommand com
 	case PE_SET_SPEED:
 		return "F";
 
+	case PE_SET_FINETUNE:
+		return "P";
+
+	case PE_SET_DELAY:
+		return "G";
+
 	default:
 		// Unknown or Invalid Pattern Effect Command Identifier
 		return "?";

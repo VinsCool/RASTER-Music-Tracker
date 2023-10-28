@@ -3134,8 +3134,8 @@ void CRmtView::OnProcessKeyboardInput(UINT vk)
 
 void CRmtView::PatternEditorKey(UINT vk)
 {
-	UINT notekey = NoteKey(vk);
-	UINT numbkey = NumbKey(vk);
+	UINT notekey = INVALID;	//NoteKey(vk);
+	UINT numbkey = INVALID;	//NumbKey(vk);
 
 	// CTRL is pressed, ALT and SHIFT are NOT pressed
 	if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
@@ -3202,20 +3202,23 @@ void CRmtView::PatternEditorKey(UINT vk)
 		switch (vk)
 		{
 		case VK_BACKSPACE:
-			//notekey = NOTE_EMPTY;
+			notekey = NOTE_EMPTY;
 			break;
 
 		case VK_OEM_MINUS:
-			//notekey = NOTE_OFF;
+			notekey = NOTE_OFF;
 			break;
 
 		case VK_OEM_PLUS:
-			//notekey = NOTE_RELEASE;
+			notekey = NOTE_RELEASE;
 			break;
 
 		case VK_OEM_6:
-			//notekey = NOTE_RETRIGGER;
+			notekey = NOTE_RETRIGGER;
 			break;
+
+		default:
+			notekey = NoteKey(vk);
 		}
 		if (g_Song.SetNoteInPattern(notekey))
 			g_Song.PatternDown(g_linesafter);
@@ -3225,8 +3228,11 @@ void CRmtView::PatternEditorKey(UINT vk)
 		switch (vk)
 		{
 		case VK_BACKSPACE:
-			//numbkey = INSTRUMENT_EMPTY;
+			numbkey = INSTRUMENT_EMPTY;
 			break;
+
+		default:
+			numbkey = NumbKey(vk);
 		}
 		if (g_Song.SetInstrumentInPattern(numbkey))
 			g_Song.PatternDown(g_linesafter);
@@ -3236,8 +3242,11 @@ void CRmtView::PatternEditorKey(UINT vk)
 		switch (vk)
 		{
 		case VK_BACKSPACE:
-			//numbkey = VOLUME_EMPTY;
+			numbkey = VOLUME_EMPTY;
 			break;
+
+		default:
+			numbkey = NumbKey(vk);
 		}
 		if (g_Song.SetVolumeInPattern(numbkey))
 			g_Song.PatternDown(g_linesafter);
@@ -3247,14 +3256,85 @@ void CRmtView::PatternEditorKey(UINT vk)
 	case 4:
 	case 5:
 	case 6:
-		switch (vk)
+	default:
+		// The Effect Commands Identifier are being processed in priority if the Column is 0
+		if (g_Song.GetActiveColumn() == 0)
 		{
-		case VK_BACKSPACE:
-			//numbkey = PATTERN_EFFECT_EMPTY;
-			break;
+			switch (vk)
+			{
+			case VK_BACKSPACE:
+				numbkey = PE_EMPTY;
+				break;
+
+			case VK_0:
+				numbkey = PE_ARPEGGIO;
+				break;
+
+			case VK_1:
+				numbkey = PE_PITCH_UP;
+				break;
+
+			case VK_2:
+				numbkey = PE_PITCH_DOWN;
+				break;
+
+			case VK_3:
+				numbkey = PE_PORTAMENTO;
+				break;
+
+			case VK_4:
+				numbkey = PE_VIBRATO;
+				break;
+
+			case VK_A:
+				numbkey = PE_VOLUME_FADE;
+				break;
+
+			case VK_B:
+				numbkey = PE_GOTO_SONGLINE;
+				break;
+
+			case VK_D:
+				numbkey = PE_END_PATTERN;
+				break;
+
+			case VK_F:
+				numbkey = PE_SET_SPEED;
+				break;
+
+			case VK_P:
+				numbkey = PE_SET_FINETUNE;
+				break;
+
+			case VK_G:
+				numbkey = PE_SET_DELAY;
+				break;
+
+				// No Default numbkey case for Effect Commands since it MUST be attributed to a specific Effect Command Identifier to be used at all!
+			}
+			if (g_Song.SetCommandIdentifierInPattern(numbkey))
+				g_Song.PatternDown(g_linesafter);
+			return;
 		}
-		if (g_Song.SetCommandInPattern(numbkey))
-			g_Song.PatternDown(g_linesafter);
-		return;
+
+		// Exception for BACKSPACE, the Effect Command Column will be cleared regardless of the Cursor Column in this case
+		if (vk == VK_BACKSPACE)
+		{
+			numbkey = PE_EMPTY;
+			
+			if (g_Song.SetCommandIdentifierInPattern(numbkey))
+				g_Song.PatternDown(g_linesafter);
+			return;
+		}
+
+		// Otherwise, the Effect Commands Parameter is the last possible case to be processed
+		else
+		{
+			numbkey = NumbKey(vk);
+
+			if (g_Song.SetCommandParameterInPattern(numbkey))
+				g_Song.PatternDown(g_linesafter);
+			return;
+		}
 	}
 }

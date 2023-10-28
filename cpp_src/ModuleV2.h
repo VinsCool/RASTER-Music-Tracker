@@ -143,6 +143,8 @@ typedef enum patternEffectCommand_t : BYTE
 	PE_GOTO_SONGLINE,
 	PE_END_PATTERN,
 	PE_SET_SPEED,
+	PE_SET_FINETUNE,
+	PE_SET_DELAY,
 	PE_INDEX_MAX,
 } TPatternEffectCommand;
 

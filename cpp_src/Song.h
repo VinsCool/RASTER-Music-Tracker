@@ -239,10 +239,11 @@ public:
 	//const BYTE GetActiveSubtune() { if (!g_Module.IsValidSubtune(m_activeSubtune)) m_activeSubtune = MODULE_DEFAULT_SUBTUNE; return m_activeSubtune; };
 
 	int GetActiveInstr() { return m_activeInstrument; };
-	int GetActiveColumn() { return m_activeChannel; };
+	int GetActiveChannel() { return m_activeChannel; };
 	int GetActiveLine() { return m_activeRow; };
 	int GetPlayLine() { return m_playRow; };
 	int GetActiveCursor() { return m_activeCursor; };
+	int GetActiveColumn() { return m_activeColumn; };
 	int GetActiveOctave() { return m_activeOctave; };
 	int GetActiveVolume() { return m_activeVolume; };
 
@@ -688,7 +689,8 @@ public:
 	bool SetNoteInPattern(UINT note);
 	bool SetInstrumentInPattern(UINT instrument);
 	bool SetVolumeInPattern(UINT volume);
-	bool SetCommandInPattern(UINT command);
+	bool SetCommandIdentifierInPattern(UINT command);
+	bool SetCommandParameterInPattern(UINT parameter);
 
 	bool SetEmptyRowInPattern();
 
