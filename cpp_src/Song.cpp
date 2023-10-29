@@ -3670,10 +3670,6 @@ void CSong::CalculateDisplayFPS()
 
 void CSong::DrawSonglines()
 {
-/*
-	//if (!GetSubtune())
-	//	return;
-
 	CString s;
 	RECT songblock{};
 	const int linescount = 11, linesoffset = -5;
@@ -3683,15 +3679,15 @@ void CSong::DrawSonglines()
 
 	// Caching global variables is necessary in order to display Patterns without random "jumps" around during playback 
 	// This is caused by the screen update timing, and this is the main reason why these bugs seem to happen randomly
-	BYTE activeSongline = m_activeSongline;
-	BYTE playSongline = m_playSongline;
-	BYTE activeChannel = m_activeChannel;
-	BYTE activeSubtune = GetActiveSubtune();
-	BYTE channelCount = GetChannelCount();
-	BYTE songLength = GetSongLength();
-	BYTE activeRow = m_activeRow;
-	int patternLength = GetShortestPatternLength() > 0 ? GetShortestPatternLength() : 256;
-	
+	UINT activeSongline = m_activeSongline;
+	UINT playSongline = m_playSongline;
+	UINT activeChannel = m_activeChannel;
+	UINT activeSubtune = m_activeSubtune;
+	UINT channelCount = g_Module.GetChannelCount(activeSubtune);
+	UINT songLength = g_Module.GetSongLength(activeSubtune);
+	UINT activeRow = m_activeRow;
+	UINT patternLength = g_Module.GetShortestPatternLength(activeSubtune, activeSongline);
+
 	bool active_smooth = (g_viewDoSmoothScrolling && ((m_playMode != MPLAY_STOP && m_isFollowPlay) && (activeRow <= patternLength)));
 	int smooth_y = active_smooth ? activeRow * 16 / patternLength - 8 : 0;
 
@@ -3701,14 +3697,14 @@ void CSong::DrawSonglines()
 	songblock.right = SONGBLOCK_X + (3 * 8) + (channelCount * (3 * 8)) - 4;
 	songblock.bottom = SONGBLOCK_Y + (linescount * 16);
 
-	// Draw all the Indexed Songlines that could be displayed at once
-	for (int i = 0; i < linescount; i++)
-	{
-		// Offset for the Y axis, each character use a 8x16 Bitmap tile
-		int y = (1 + i) * 16 - smooth_y;
+	// Coordinates used for drawing most of the Songline Editor block on screen
+	int x = SONGBLOCK_X, y = SONGBLOCK_Y + 16 - smooth_y;
 
+	// Draw all the Indexed Songlines that could be displayed at once
+	for (UINT i = 0; i < linescount; i++)
+	{
 		// Fetch the actual Songline number relative to the Index Offset
-		BYTE songline = activeSongline + i + linesoffset;
+		UINT songline = activeSongline + i + linesoffset;
 
 		// If the Songline Index is out of bounds, wrap around relative to the Song Length itself
 		if (isOutOfBounds = songline >= songLength)
@@ -3717,7 +3713,10 @@ void CSong::DrawSonglines()
 		songline %= songLength;
 
 		// Default Colour for all Songlines
-		int colour = songline == playSongline ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE;
+		int colour = TEXT_COLOR_WHITE;
+
+		if (songline == playSongline)
+			colour = TEXT_COLOR_YELLOW;
 
 		if (songline == activeSongline)
 			colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
@@ -3726,82 +3725,124 @@ void CSong::DrawSonglines()
 			colour = TEXT_COLOR_DARK_GRAY;
 
 		s.Format("%02X", songline);
-		TextXY(s, SONGBLOCK_X, SONGBLOCK_Y + y, colour);
+		TextXY(s, x, y, colour);
 
 		// Draw all Songlines used in every Channels
-		for (int j = 0; j < channelCount; j++)
+		for (UINT j = 0; j < channelCount; j++)
 		{
+			// Fetch the Pattern Index number used in the current Songline Channel
+			UINT pattern = g_Module.GetPatternInSongline(activeSubtune, j, songline);
+			
 			// Offset for the X axis, each character use a 8x16 Bitmap tile
-			int x = (3 * 8) + (j * (3 * 8));
+			x += 3 * 8;
 
 			// Default Colour for all Channels
-			colour = GetChannelOnOff(j) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
+			colour = TEXT_COLOR_WHITE;
 
-			if (GetChannelOnOff(j) && songline == playSongline)
+			if (songline == playSongline)
 				colour = TEXT_COLOR_YELLOW;
 
-			if (GetChannelOnOff(j) && activeSongline == songline)
+			if (activeSongline == songline)
 				colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
 
 			// If the Channel is both Active and Enabled, use the Highlight Colour instead
-			if (GetChannelOnOff(j) && activeChannel == j && activeSongline == songline && g_activepart == PART_SONG)
+			if (activeChannel == j && activeSongline == songline && g_activepart == PART_SONG)
 				colour = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
 
+			// If the mouse cursor is hovering the screen coordinate currently being drawn, use the Hovered colour
+			if (IsHoveredXY(x, y, 3 * 8, 16))
+				colour = COLOR_HOVERED;
+
+			// Unless the part being drawn is out of bounds, in this case it will always take priority over all colours
 			if (isOutOfBounds)
 				colour = TEXT_COLOR_DARK_GRAY;
 
-			// Fetch the Pattern number used in the Songline's Channel, and draw it in the Songline Block
-			s.Format("%02X", GetPatternInSongline(activeSubtune, j, songline));
-			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + y, colour);
+			// Draw the Pattern Index number in the Songline Block
+			s.Format("%02X", pattern);
+			TextXY(s, x, y, colour);
 		}
+
+		// On the Songline Index 0, draw the separation line between itself and the last Songline after everything else was drawn below it
+		if (songline == 0)
+		{
+			g_mem_dc->MoveTo(songblock.left, y);
+			g_mem_dc->LineTo(songblock.right, y);
+		}
+
+		// Update the screen coordinates for the next Songline to be drawn
+		x = SONGBLOCK_X;
+		y += 16;
 	}
 
 	// Mask out the excess of Songlines used for smooth scroll
 	g_mem_dc->FillSolidRect(songblock.left, songblock.top + 1, songblock.right - songblock.left, 2 * 16, RGB_BACKGROUND);
 	g_mem_dc->FillSolidRect(songblock.left, songblock.bottom - 1, songblock.right - songblock.left, 2 * 16, RGB_BACKGROUND);
 
+	// Update the screen coordinates for the next part
+	x = SONGBLOCK_X, y = SONGBLOCK_Y;
+
 	// All Channels used in the Subtune will be displayed within the Songline Index
-	for (int i = 0; i < channelCount; i++)
+	for (UINT i = 0; i < channelCount; i++)
 	{
-		// Offset for the X axis, each character use a 8x16 Bitmap tile
-		int x = (3 * 8) + (i * (3 * 8));
-
-		// Default Colour for all Channels
-		int colour = GetChannelOnOff(i) ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
-
-		// If the Channel is both Active and Enabled, use the Highlight Colour instead
-		if (GetChannelOnOff(i) && activeChannel == i)
-			colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
-
-		// Each POKEY chips may use up to 4 Channels, numbered between 1 to 4 inclusive
-		s.Format("%i", (i % 4) + 1);
-		TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y + 16, colour);
-
 		// For each POKEY chip, display the chip number above the Channel Index
-		if (i % 4 == 0)
+		if (_CH1(i))
 		{
-			bool enabled = false;
-			bool active = false;
+			bool isEnabled = false;
+			bool isActive = false;
+
+			// The POKEY chip number is derived from i, divided by 4, plus 1, due to being a Zero Based Index
+			UINT pokey = (i / POKEY_SOUNDCHIP_COUNT) + 1;
+
+			// Default Colour for all Channels
+			int colour = TEXT_COLOR_WHITE;
 
 			// Check if at least one of the associated Channels is either Enabled or Active
-			for (int j = 0; j < 4; j++)
+			for (UINT j = 0; j < POKEY_CHANNEL_COUNT; j++)
 			{
-				if (GetChannelOnOff((i + j)))
-					enabled = true;
+				// Offset for the X axis, each character use a 8x16 Bitmap tile
+				x += 3 * 8;
 
+				// The POKEY Channel number is derived from i, modulo by 4, plus 1, due to being a Zero Based Index
+				UINT channel = ((i + j) % POKEY_CHANNEL_COUNT) + 1;
+
+				// If the Channel is Enabled, use the White colour by default
+				if (GetChannelOnOff((i + j)))
+				{
+					isEnabled = true;
+					colour = TEXT_COLOR_WHITE;
+				}
+
+				// Else, use the Gray colour to clearly indicate it is Muted
+				else
+					colour = TEXT_COLOR_GRAY;
+
+				// If the Channel is Active, use the Selected colour to clearly indicate it is being used
 				if (activeChannel == i + j)
-					active = true;
+				{
+					isActive = true;
+					colour = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
+				}
+
+				// If the mouse cursor is hovering the screen coordinate currently being drawn, use the Hovered colour
+				if (IsHoveredXY(x, y + 16, 3 * 8, 16))
+					colour = COLOR_HOVERED;
+
+				// Each POKEY chips may use up to 4 Channels, numbered between 1 to 4 inclusive
+				s.Format("%i\xFF", channel);
+				TextXY(s, x, y + 16, colour);
 			}
 
 			// The same Colour condition is used here, this time for the whole POKEY chip
-			if (active && enabled)
+			if (isActive)
 				colour = (g_prove) ? TEXT_COLOR_BLUE : TEXT_COLOR_RED;
 			else
-				colour = enabled ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
+				colour = isEnabled ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
 
-			// The POKEY chip number is derived from i, divided by 4, plus 1, due to being a Zero Based Index
-			s.Format("POKEY %i", (i / 4) + 1);
-			TextXY(s, SONGBLOCK_X + x, SONGBLOCK_Y, colour);
+			if (IsHoveredXY(x - ((POKEY_CHANNEL_COUNT - 1) * (3 * 8)), y, 8 * 8, 16))
+				colour = COLOR_HOVERED;
+
+			s.Format("POKEY\xFF%i", pokey);
+			TextXY(s, x - ((POKEY_CHANNEL_COUNT - 1) * (3 * 8)), y, colour);
 		}
 	}
 
@@ -3810,7 +3851,7 @@ void CSong::DrawSonglines()
 	// Songline Index and Songline Data:
 	g_mem_dc->MoveTo(songblock.left + (3 * 8) - 1, songblock.top);
 	g_mem_dc->LineTo(songblock.left + (3 * 8) - 1, songblock.bottom);
-	
+
 	// Left and Right POKEY:
 	g_mem_dc->MoveTo(songblock.left + (5 * (3 * 8)) - 1, songblock.top);
 	g_mem_dc->LineTo(songblock.left + (5 * (3 * 8)) - 1, songblock.bottom);
@@ -3827,24 +3868,19 @@ void CSong::DrawSonglines()
 
 	// The Songline Block itself:
 	g_mem_dc->DrawEdge(&songblock, EDGE_BUMP, BF_RECT);
-*/
 }
 
 void CSong::DrawSubtuneInfos()
 {
-/*
 	CString s;
 	RECT infoblock{};
-	int colour, x, y;
+	int x, y;
 
 	//-- General Infos --//
 
 	// Set the coordinates to the correct position on screen
 	x = INFOBLOCK_X;
 	y = INFOBLOCK_Y;
-
-	// A nicer colour for everything that can be edited
-	colour = TEXT_COLOR_TURQUOISE;
 
 	// Time
 	TextXY("TIME:", x, y);
@@ -3859,12 +3895,15 @@ void CSong::DrawSubtuneInfos()
 	TextXY(s, x += 5 * 8, y, m_playMode != MPLAY_STOP ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY);
 
 	// Highlights
-	TextXY("HIGHLIGHT:", x += 9 * 8, y);
-	s.Format("%02X/%02X", g_trackLinePrimaryHighlight, g_trackLineSecondaryHighlight);
-	TextXY(s, x += 12 * 8, y, colour);
+	TextXY("HIGHLIGHT:   /", x += 10 * 8, y);
+	s.Format("%02X", g_trackLinePrimaryHighlight);
+	TextXY(s, x, y, IsHoveredXY(x += 11 * 8, y, 2 * 8, 16) ? COLOR_HOVERED : TEXT_COLOR_TURQUOISE);
+	s.Format("%02X", g_trackLineSecondaryHighlight);
+	TextXY(s, x, y, IsHoveredXY(x += 3 * 8, y, 2 * 8, 16) ? COLOR_HOVERED : TEXT_COLOR_TURQUOISE);
 
 	// Region
-	TextXY(g_ntsc ? "NTSC" : "PAL", x += 7 * 8, y, colour);
+	TextXY("REGION:", x += 5 * 8, y);
+	TextXY(g_ntsc ? "NTSC" : "PAL", x, y, IsHoveredXY(x += 8 * 8, y, 4 * 8, 16) ? COLOR_HOVERED : TEXT_COLOR_TURQUOISE);
 
 	//-- Subtune Parameters --//
 
@@ -3872,29 +3911,31 @@ void CSong::DrawSubtuneInfos()
 	x = INFOBLOCK_X;
 	y = INFOBLOCK_Y;
 
+	int colour = TEXT_COLOR_TURQUOISE;
+
 	// Song Length
 	TextMiniXY("SONG LENGTH", x, y += 1 * 16 + 8);
-	s.Format("%02X", GetSongLength());
+	s.Format("%02X", g_Module.GetSongLength(m_activeSubtune));
 	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", -1, x + 3 * 8, y);
+	TextXYSelN("<>", INVALID, x + 3 * 8, y);
 
 	// Pattern Length
 	TextMiniXY("PATTERN LENGTH", x, y += 1 * 16 + 8);
-	s.Format("%02X", GetPatternLength());
+	s.Format("%02X", g_Module.GetPatternLength(m_activeSubtune));
 	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", -1, x + 3 * 8, y);
+	TextXYSelN("<>", INVALID, x + 3 * 8, y);
 
 	// Song Speed
 	TextMiniXY("SONG SPEED", x, y += 1 * 16 + 8);
-	s.Format("%02X", GetSongSpeed());
+	s.Format("%02X", g_Module.GetSongSpeed(m_activeSubtune));
 	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", -1, x + 3 * 8, y);
+	TextXYSelN("<>", INVALID, x + 3 * 8, y);
 
 	// Instrument Speed
 	TextMiniXY("INSTRUMENT SPEED", x, y += 1 * 16 + 8);
-	s.Format("%02X", GetInstrumentSpeed());
+	s.Format("%02X", g_Module.GetInstrumentSpeed(m_activeSubtune));
 	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", -1, x + 3 * 8, y);
+	TextXYSelN("<>", INVALID, x + 3 * 8, y);
 
 	//-- Subtune Metadata --//
 
@@ -3904,20 +3945,20 @@ void CSong::DrawSubtuneInfos()
 
 	// Module Name
 	TextMiniXY("MODULE NAME", x, y += 1 * 16 + 8);
-	TextXY(GetSongName(), x, y += 8, colour);
+	TextXY(g_Module.GetModuleName(), x, y += 8, colour);
 
 	// Author
 	TextMiniXY("AUTHOR", x, y += 1 * 16 + 8);
-	TextXY(GetSongAuthor(), x, y += 8, colour);
+	TextXY(g_Module.GetModuleAuthor(), x, y += 8, colour);
 
 	// Copyright
 	TextMiniXY("COPYRIGHT", x, y += 1 * 16 + 8);
-	TextXY(GetSongCopyright(), x, y += 8, colour);
+	TextXY(g_Module.GetModuleCopyright(), x, y += 8, colour);
 
 	// Subtune
-	s.Format("SUBTUNE %02X/%02X", GetActiveSubtune() + 1, GetSubtuneCount());
+	s.Format("SUBTUNE %02X/%02X", m_activeSubtune + 1, g_Module.GetSubtuneCount());
 	TextMiniXY(s, x, y += 1 * 16 + 8);
-	TextXY(GetSubtuneName(), x, y += 8, colour);
+	TextXY(g_Module.GetSubtuneName(m_activeSubtune), x, y += 8, colour);
 
 	//-- Line Boundaries
 
@@ -3943,7 +3984,6 @@ void CSong::DrawSubtuneInfos()
 
 	// The Info Block itself:
 	g_mem_dc->DrawEdge(&infoblock, EDGE_BUMP, BF_RECT);
-*/
 }
 
 void CSong::DrawRegistersState()
