@@ -2987,6 +2987,8 @@ void CRmtView::OnKeyMoveLeft()
 	case PART_TRACKS:
 		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
 			g_Song.InstrumentLeft();
+		else if (IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.ChangeEffectCommandColumnCount(-1);
 		else if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
 			g_Song.ChannelLeft();
 		else
@@ -3019,6 +3021,8 @@ void CRmtView::OnKeyMoveRight()
 	case PART_TRACKS:
 		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
 			g_Song.InstrumentRight();
+		else if (IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
+			g_Song.ChangeEffectCommandColumnCount(1);
 		else if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
 			g_Song.ChannelRight();
 		else

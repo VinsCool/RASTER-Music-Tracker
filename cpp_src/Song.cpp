@@ -1259,6 +1259,13 @@ void CSong::ChannelRight()
 		m_activeColumn = max;
 }
 
+void CSong::ChangeEffectCommandColumnCount(int offset)
+{
+	UINT columnCount = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel);
+	g_Module.SetEffectCommandCount(m_activeSubtune, m_activeChannel, columnCount + offset);
+}
+
+
 /*
 // FIXME: Not actually needed, but required for working around issues with the Legacy functions...
 void CSong::RespectBoundaries()

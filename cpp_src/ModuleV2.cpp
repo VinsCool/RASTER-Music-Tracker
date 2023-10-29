@@ -2138,11 +2138,15 @@ bool CModule::SetEffectCommandCount(TSubtune* pSubtune, UINT channel, UINT colum
 
 bool CModule::SetEffectCommandCount(TChannel* pChannel, UINT column)
 {
-	if (pChannel)// && column <= PATTERN_EFFECT_COUNT)
+	if (pChannel)
 	{
 		// 0 is actually the highest possible value due to base 0 indexing
-		if (column >= PATTERN_EFFECT_COUNT)
+		if (!IsValidCommandColumn(column))
 			column = 0;
+
+		// If the value of 0 is used for whatever reason, assume it was meant to be 1
+		else if (column == 0)
+			column++;
 
 		pChannel->effectCount = column;
 		return true;

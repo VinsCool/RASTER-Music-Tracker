@@ -270,6 +270,7 @@ public:
 	void PatternDown(int rows);
 	void ChannelLeft();
 	void ChannelRight();
+	void ChangeEffectCommandColumnCount(int offset);
 
 	//BOOL TrackDelNoteInstrVolSpeed(int noteinstrvolspeed) { return g_Tracks.DelNoteInstrVolSpeed(noteinstrvolspeed, SongGetActiveTrack(), m_activeRow); };
 	BOOL TrackSetNoteActualInstrVol(int note) { return g_Tracks.SetNoteInstrVol(note, m_activeInstrument, m_activeVolume, SongGetActiveTrack(), m_activeRow); };
