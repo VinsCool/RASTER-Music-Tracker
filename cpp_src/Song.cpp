@@ -1263,6 +1263,10 @@ void CSong::ChangeEffectCommandColumnCount(int offset)
 {
 	UINT columnCount = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel);
 	g_Module.SetEffectCommandCount(m_activeSubtune, m_activeChannel, columnCount + offset);
+
+	// Workaround for broken boundaries, a better method is needed later.
+	if (m_activeCursor >= (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2)
+		m_activeCursor = (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2;
 }
 
 
@@ -3918,31 +3922,36 @@ void CSong::DrawSubtuneInfos()
 	x = INFOBLOCK_X;
 	y = INFOBLOCK_Y;
 
-	int colour = TEXT_COLOR_TURQUOISE;
-
 	// Song Length
 	TextMiniXY("SONG LENGTH", x, y += 1 * 16 + 8);
 	s.Format("%02X", g_Module.GetSongLength(m_activeSubtune));
-	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", INVALID, x + 3 * 8, y);
+	TextXY(s, x + 8, y, IsHoveredXY(x + 8, y += 8, 2 * 8, 16) ? COLOR_HOVERED : TEXT_COLOR_TURQUOISE);
+	TextXYSelN("<>", INVALID, x + 4 * 8, y);
 
 	// Pattern Length
 	TextMiniXY("PATTERN LENGTH", x, y += 1 * 16 + 8);
 	s.Format("%02X", g_Module.GetPatternLength(m_activeSubtune));
-	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", INVALID, x + 3 * 8, y);
+	TextXY(s, x + 8, y, IsHoveredXY(x + 8, y += 8, 2 * 8, 16) ? COLOR_HOVERED : TEXT_COLOR_TURQUOISE);
+	TextXYSelN("<>", INVALID, x + 4 * 8, y);
 
 	// Song Speed
 	TextMiniXY("SONG SPEED", x, y += 1 * 16 + 8);
 	s.Format("%02X", g_Module.GetSongSpeed(m_activeSubtune));
-	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", INVALID, x + 3 * 8, y);
+	TextXY(s, x + 8, y, IsHoveredXY(x + 8, y += 8, 2 * 8, 16) ? COLOR_HOVERED : TEXT_COLOR_TURQUOISE);
+	TextXYSelN("<>", INVALID, x + 4 * 8, y);
 
 	// Instrument Speed
 	TextMiniXY("INSTRUMENT SPEED", x, y += 1 * 16 + 8);
 	s.Format("%02X", g_Module.GetInstrumentSpeed(m_activeSubtune));
-	TextXY(s, x, y += 8, colour);
-	TextXYSelN("<>", INVALID, x + 3 * 8, y);
+	TextXY(s, x + 8, y, IsHoveredXY(x + 8, y += 8, 2 * 8, 16) ? COLOR_HOVERED : TEXT_COLOR_TURQUOISE);
+	TextXYSelN("<>", INVALID, x + 4 * 8, y);
+
+	// Subtune Index
+	s.Format("SUBTUNE (%02X ACTIVE)", g_Module.GetSubtuneCount());
+	TextMiniXY(s, x, y += 1 * 16 + 8);
+	s.Format("%02X", m_activeSubtune + 1);
+	TextXY(s, x + 8, y, IsHoveredXY(x + 8, y += 8, 2 * 8, 16) ? COLOR_HOVERED : TEXT_COLOR_TURQUOISE);
+	TextXYSelN("<>", INVALID, x + 4 * 8, y);
 
 	//-- Subtune Metadata --//
 
@@ -3952,20 +3961,21 @@ void CSong::DrawSubtuneInfos()
 
 	// Module Name
 	TextMiniXY("MODULE NAME", x, y += 1 * 16 + 8);
-	TextXY(g_Module.GetModuleName(), x, y += 8, colour);
+	TextXYSelN(g_Module.GetModuleName(), INVALID, x, y += 8, TEXT_COLOR_TURQUOISE);
 
 	// Author
 	TextMiniXY("AUTHOR", x, y += 1 * 16 + 8);
-	TextXY(g_Module.GetModuleAuthor(), x, y += 8, colour);
+	TextXYSelN(g_Module.GetModuleAuthor(), INVALID, x, y += 8, TEXT_COLOR_TURQUOISE);
 
 	// Copyright
 	TextMiniXY("COPYRIGHT", x, y += 1 * 16 + 8);
-	TextXY(g_Module.GetModuleCopyright(), x, y += 8, colour);
+	TextXYSelN(g_Module.GetModuleCopyright(), INVALID, x, y += 8, TEXT_COLOR_TURQUOISE);
 
 	// Subtune
-	s.Format("SUBTUNE %02X/%02X", m_activeSubtune + 1, g_Module.GetSubtuneCount());
-	TextMiniXY(s, x, y += 1 * 16 + 8);
-	TextXY(g_Module.GetSubtuneName(m_activeSubtune), x, y += 8, colour);
+	//s.Format("SUBTUNE %02X/%02X", m_activeSubtune + 1, g_Module.GetSubtuneCount());
+	//TextMiniXY(s, x, y += 1 * 16 + 8);
+	TextMiniXY("SUBTUNE NAME", x, y += 1 * 16 + 8);
+	TextXYSelN(g_Module.GetSubtuneName(m_activeSubtune), INVALID, x, y += 8, TEXT_COLOR_TURQUOISE);
 
 	//-- Line Boundaries
 
