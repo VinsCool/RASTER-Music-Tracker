@@ -4296,8 +4296,8 @@ void CSong::DrawPatternEditor()
 			if (isOutOfBounds)
 				colour = TEXT_COLOR_DARK_GRAY;
 
-			// If the procedure is set to run from Channel 1, the Row Index will also be drawn on screen
-			if (_CH1(i))
+			// If the Channel is the very first among all, the Row Index will also be drawn on screen next to it
+			if (i == 0)
 			{
 				s.Format("%02X", row);
 
