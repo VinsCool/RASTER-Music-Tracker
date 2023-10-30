@@ -121,18 +121,33 @@ END
 // Dialog
 //
 
-IDD_FILENEW DIALOGEX 0, 0, 186, 106
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_FILENEW DIALOGEX 0, 0, 360, 270
+STYLE DS_SETFONT | DS_MODALFRAME | DS_NOFAILCREATE | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "New RMT module"
 FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
-    EDITTEXT        IDC_MAXTRACKLEN,119,14,29,14,ES_AUTOHSCROLL
-    COMBOBOX        IDC_COMBOTYPE,37,34,112,38,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    DEFPUSHBUTTON   "OK",IDOK,75,86,50,14
-    PUSHBUTTON      "Cancel",IDCANCEL,129,86,50,14
-    LTEXT           "Maximal length of tracks",IDC_STATIC,37,17,77,8
-    CTEXT           "Warning: Current data will be discarded!",IDC_STATIC,7,55,172,11
-    CTEXT           "This operation cannot be undone!",IDC_STATIC,1,69,184,11
+    LTEXT           "Module Name", IDC_STATIC, 20, 10, 320, 10
+    EDITTEXT        IDC_MODULE_NAME, 20, 20, 320, 12, ES_AUTOHSCROLL
+    LTEXT           "Module Author", IDC_STATIC, 20, 40, 320, 10
+    EDITTEXT        IDC_MODULE_AUTHOR, 20, 50, 320, 12, ES_AUTOHSCROLL
+    LTEXT           "Module Copyright", IDC_STATIC, 20, 70, 320, 10
+    EDITTEXT        IDC_MODULE_COPYRIGHT, 20, 80, 320, 12, ES_AUTOHSCROLL
+    LTEXT           "Subtune Name (Optional)", IDC_STATIC, 20, 100, 320, 10
+    EDITTEXT        IDC_MODULE_SUBTUNE_NAME, 20, 110, 320, 12, ES_AUTOHSCROLL
+    LTEXT           "Song Length (Songlines per Subtune)", IDC_STATIC, 20, 130, 320, 10
+    EDITTEXT        IDC_MODULE_SONG_LENGTH, 20, 140, 30, 12, ES_AUTOHSCROLL
+    LTEXT           "Pattern Length (Rows per Pattern)", IDC_STATIC, 20, 160, 320, 10
+    EDITTEXT        IDC_MODULE_PATTERN_LENGTH, 20, 170, 30, 12, ES_AUTOHSCROLL
+    LTEXT           "Song Speed (Frames per Row)", IDC_STATIC, 20, 190, 320, 10
+    EDITTEXT        IDC_MODULE_SONG_SPEED, 20, 200, 30, 12, ES_AUTOHSCROLL
+    LTEXT           "Instrument Speed (Ticks per Frame)", IDC_STATIC, 20, 220, 320, 10
+    EDITTEXT        IDC_MODULE_INSTRUMENT_SPEED, 20, 230, 30, 12, ES_AUTOHSCROLL
+    LTEXT           "Channel Count (up to 4 Channels per POKEY Soundchip)", IDC_STATIC, 160, 130, 320, 10
+    COMBOBOX        IDC_MODULE_SOUNDCHIP_COUNT, 160, 140, 112, 94, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    RTEXT           "Warning: Current data will be discarded!", IDC_STATIC, 180, 220, 160, 10
+    RTEXT           "This operation cannot be undone!", IDC_STATIC, 180, 230, 160, 10
+    DEFPUSHBUTTON   "OK", IDOK, 240, 250, 50, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 300, 250, 50, 14
 END
 
 IDD_EXPSAP DIALOGEX 0, 0, 280, 129
@@ -674,15 +689,6 @@ END
 // Dialog Info
 //
 
-IDD_FILENEW DLGINIT
-BEGIN
-    IDC_COMBOTYPE, 0x403, 16, 0
-0x4f4d, 0x4f4e, 0x2d20, 0x3420, 0x5420, 0x4152, 0x4b43, 0x0053, 
-    IDC_COMBOTYPE, 0x403, 18, 0
-0x5453, 0x5245, 0x4f45, 0x2d20, 0x3820, 0x5420, 0x4152, 0x4b43, 0x0053, 
-
-    0
-END
 
 
 /////////////////////////////////////////////////////////////////////////////

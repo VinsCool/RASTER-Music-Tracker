@@ -30,6 +30,10 @@
 #define MODULE_DISPLAY_FLAT_NOTES		g_displayflatnotes							// Display accidentals as Flat instead of Sharp
 #define MODULE_DISPLAY_GERMAN_NOTATION	g_usegermannotation							// Display notes using the German Notation
 #define MODULE_SCALING_PERCENTAGE		g_scaling_percentage						// Display scaling percentage
+#define MODULE_DEFAULT_NAME				"Noname Module"
+#define MODULE_DEFAULT_AUTHOR			"Unknown"
+#define MODULE_DEFAULT_COPYRIGHT		"2023"
+#define MODULE_DEFAULT_SUBTUNE_NAME		"Noname Subtune"
 #define MODULE_DEFAULT_SUBTUNE			0											// Default Active Subtune
 #define MODULE_DEFAULT_INSTRUMENT		0											// Default Active Instrument
 #define MODULE_DEFAULT_PATTERN_LENGTH	64											// Default Pattern Length
@@ -37,6 +41,7 @@
 #define MODULE_DEFAULT_SONG_SPEED		6											// Default Song Speed
 #define MODULE_DEFAULT_INSTRUMENT_SPEED	1											// Default Instrument Speed
 #define MODULE_DEFAULT_CHANNEL_COUNT	4											// Default Channel Count
+#define MODULE_DEFAULT_SOUNDCHIP_COUNT	POKEY1
 #define MODULE_SONG_NAME_MAX			64											// Maximum length of Song Title
 #define MODULE_AUTHOR_NAME_MAX			64											// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info

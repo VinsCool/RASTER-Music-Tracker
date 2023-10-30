@@ -280,7 +280,7 @@ protected:
 	afx_msg void OnUpdateViewToolbar(CCmdUI* pCmdUI);
 	afx_msg void OnViewStatusBar();
 	afx_msg void OnUpdateViewStatusBar(CCmdUI* pCmdUI);
-	afx_msg void OnSongSongchangemaximallengthoftracks();
+	//afx_msg void OnSongSongchangemaximallengthoftracks();
 	//}}AFX_MSG
 	afx_msg void OnWantExit();
 	DECLARE_MESSAGE_MAP()

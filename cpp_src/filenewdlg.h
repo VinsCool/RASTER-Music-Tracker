@@ -19,33 +19,34 @@ public:
 	CFileNewDlg(CWnd* pParent = NULL);   // standard constructor
 
 // Dialog Data
-	//{{AFX_DATA(CFileNewDlg)
 	enum { IDD = IDD_FILENEW };
-	int		m_maxTrackLength;			// How many notes/beats per track 1 - 256
-	int		m_comboMonoOrStereo;		// 0 = mono, 1 = stereo
-	//}}AFX_DATA
-
+	CString m_moduleName;
+	CString m_moduleAuthor;
+	CString m_moduleCopyright;
+	CString m_subtuneName;
+	UINT m_songLength;
+	UINT m_patternLength;
+	UINT m_songSpeed;
+	UINT m_instrumentSpeed;
+	UINT m_channelCount;
+	CComboBox m_soundchipCount;
 
 // Overrides
 	// ClassWizard generated virtual function overrides
-	//{{AFX_VIRTUAL(CFileNewDlg)
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
-	//}}AFX_VIRTUAL
 
 // Implementation
 protected:
-
 	// Generated message map functions
-	//{{AFX_MSG(CFileNewDlg)
+	virtual BOOL OnInitDialog();
 	virtual void OnOK();
-	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
 
 /////////////////////////////////////////////////////////////////////////////
 // CChangeMaxtracklenDlg dialog
-
+/*
 class CChangeMaxtracklenDlg : public CDialog
 {
 // Construction
@@ -76,6 +77,7 @@ protected:
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };
+*/
 //{{AFX_INSERT_LOCATION}}
 // Microsoft Visual C++ will insert additional declarations immediately before the previous line.
 

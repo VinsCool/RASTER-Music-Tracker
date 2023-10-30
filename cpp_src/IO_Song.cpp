@@ -627,17 +627,23 @@ void CSong::FileNew()
 	if (dlg.DoModal() != IDOK)
 		return;
 
-	// Apply the settings and reset the song data
-	g_tracks4_8 = (dlg.m_comboMonoOrStereo == 0) ? 4 : 8;
-	ClearSong(g_tracks4_8);
+	// Temporary workaround for Legacy data
+	ClearSong(8);
 
+	// Apply the settings and reset the song data
 	g_Module.InitialiseModule();
-	g_Module.SetModuleName("Noname Song");
-	g_Module.SetModuleAuthor("Unknown");
-	g_Module.SetModuleCopyright("2023");
-	g_Module.SetSubtuneName(m_activeSubtune, "Noname Subtune");
-	g_Module.SetChannelCount(m_activeSubtune, g_tracks4_8);
-	g_Module.SetPatternLength(m_activeSubtune, dlg.m_maxTrackLength);
+	g_Module.SetModuleName(dlg.m_moduleName);
+	g_Module.SetModuleAuthor(dlg.m_moduleAuthor);
+	g_Module.SetModuleCopyright(dlg.m_moduleCopyright);
+	g_Module.SetSubtuneName(m_activeSubtune, dlg.m_subtuneName);
+	g_Module.SetChannelCount(m_activeSubtune, dlg.m_channelCount);
+	g_Module.SetPatternLength(m_activeSubtune, dlg.m_patternLength);
+	g_Module.SetSongLength(m_activeSubtune, dlg.m_songLength);
+	g_Module.SetSongSpeed(m_activeSubtune, dlg.m_songSpeed);
+	g_Module.SetInstrumentSpeed(m_activeSubtune, dlg.m_instrumentSpeed);
+
+	// Still a temporary workaround because of Legacy Data
+	g_tracks4_8 = dlg.m_channelCount;
 
 	SetRMTTitle();
 

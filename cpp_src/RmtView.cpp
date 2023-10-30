@@ -210,7 +210,7 @@ BEGIN_MESSAGE_MAP(CRmtView, CView)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_TOOLBAR, OnUpdateViewToolbar)
 	ON_COMMAND(ID_VIEW_STATUS_BAR, OnViewStatusBar)
 	ON_UPDATE_COMMAND_UI(ID_VIEW_STATUS_BAR, OnUpdateViewStatusBar)
-	ON_COMMAND(ID_SONG_SONGCHANGEMAXIMALLENGTHOFTRACKS, OnSongSongchangemaximallengthoftracks)
+	//ON_COMMAND(ID_SONG_SONGCHANGEMAXIMALLENGTHOFTRACKS, OnSongSongchangemaximallengthoftracks)
 	//}}AFX_MSG_MAP
 	ON_COMMAND(ID_WANTEXIT, OnWantExit)
 	// Standard printing commands
@@ -2666,6 +2666,8 @@ void CRmtView::OnSongSongswitch4_8()
 	g_Song.Songswitch4_8((g_tracks4_8<=4)? 8 : 4);
 }
 
+// Legacy function, a different method will be used for the new Module format
+/*
 void CRmtView::OnSongSongchangemaximallengthoftracks()
 {
 	g_Song.Stop();
@@ -2683,6 +2685,7 @@ void CRmtView::OnSongSongchangemaximallengthoftracks()
 		g_Song.ChangeMaxtracklen(ma);
 	}
 }
+*/
 
 void CRmtView::OnSongSearchandrebuildloopsinalltracks() 
 {
