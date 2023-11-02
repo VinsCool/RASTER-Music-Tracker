@@ -1838,6 +1838,7 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	// Store the last pressed key in memory for debugging purposes
 	g_lastKeyPressed = nChar;
 
+/*
 	// If nothing was pressed, or a key without a function was pressed, nothing will happen
 	switch (nChar)
 	{
@@ -1860,6 +1861,10 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	case VK_PAGE_DOWN: OnKeyPageDown(); break;
 	default: OnProcessKeyboardInput(nChar);
 	}
+*/
+
+	// If nothing was pressed, or a key without a function was pressed, nothing will happen
+	OnProcessKeyboardInput(nChar);
 
 	CView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
@@ -2910,21 +2915,87 @@ void CRmtView::OnRespectVolume()
 void CRmtView::OnOctaveUp()
 {
 	g_Song.OctaveUp();
+	//g_Song.ChangeActiveOctave(1);
 }
 
 void CRmtView::OnOctaveDown()
 {
 	g_Song.OctaveDown();
+	//g_Song.ChangeActiveOctave(-1);
 }
 
 void CRmtView::OnVolumeUp()
 {
 	g_Song.VolumeUp();
+	//g_Song.ChangeActiveVolume(1);
 }
 
 void CRmtView::OnVolumeDown()
 {
 	g_Song.VolumeDown();
+	//g_Song.ChangeActiveVolume(-1);
+}
+
+void CRmtView::OnInstrumentLeft()
+{
+	g_Song.InstrumentLeft();
+	//g_Song.ChangeActiveInstrument(-1);
+}
+
+void CRmtView::OnInstrumentRight()
+{
+	g_Song.InstrumentRight();
+	//g_Song.ChangeActiveInstrument(1);
+}
+
+void CRmtView::OnChannelLeft()
+{
+	g_Song.ChannelLeftRightMovement(-1);
+}
+
+void CRmtView::OnChannelRight()
+{
+	g_Song.ChannelLeftRightMovement(1);
+}
+
+void CRmtView::OnSonglineUp()
+{
+	g_Song.SonglineUpDownMovement(-1);
+}
+
+void CRmtView::OnSonglineDown()
+{
+	g_Song.SonglineUpDownMovement(1);
+}
+
+void CRmtView::OnSonglineLeft()
+{
+	g_Song.SonglineLeftRightMovement(-1);
+}
+
+void CRmtView::OnSonglineRight()
+{
+	g_Song.SonglineLeftRightMovement(1);
+}
+
+void CRmtView::OnPatternUp()
+{
+	g_Song.PatternUpDownMovement(g_linesafter * -1);
+}
+
+void CRmtView::OnPatternDown()
+{
+	g_Song.PatternUpDownMovement(g_linesafter);
+}
+
+void CRmtView::OnPatternLeft()
+{
+	g_Song.PatternLeftRightMovement(-1);
+}
+
+void CRmtView::OnPatternRight()
+{
+	g_Song.PatternLeftRightMovement(1);
 }
 
 
@@ -2932,273 +3003,328 @@ void CRmtView::OnVolumeDown()
 // CRmtView functions for movements and actions executed from keyboard inputs
 
 
-void CRmtView::OnKeyMoveUp()
-{
-	switch (g_activepart)
-	{
-	case PART_INFO:
-		break;
-
-	case PART_TRACKS:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-			g_Song.SonglineUp();
-		else
-			g_Song.PatternUp(g_linesafter);
-		break;
-
-	case PART_INSTRUMENTS:
-		break;
-
-	case PART_SONG:
-		g_Song.SonglineUp();
-		break;
-	}
-}
-
-void CRmtView::OnKeyMoveDown()
-{
-	switch (g_activepart)
-	{
-	case PART_INFO:
-		break;
-
-	case PART_TRACKS:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-			g_Song.SonglineDown();
-		else
-			g_Song.PatternDown(g_linesafter);
-		break;
-
-	case PART_INSTRUMENTS:
-		break;
-
-	case PART_SONG:
-		g_Song.SonglineDown();
-		break;
-	}
-}
-
-void CRmtView::OnKeyMoveLeft()
-{
-	switch (g_activepart)
-	{
-	case PART_INFO:
-		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.InstrumentLeft();
-		break;
-
-	case PART_TRACKS:
-		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.InstrumentLeft();
-		else if (IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.ChangeEffectCommandColumnCount(-1);
-		else if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-			g_Song.ChannelLeft();
-		else
-			g_Song.PatternLeft();
-		break;
-
-	case PART_INSTRUMENTS:
-		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.InstrumentLeft();
-		break;
-
-	case PART_SONG:
-		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.InstrumentLeft();
-		else
-			g_Song.ChannelLeft();
-		break;
-	}
-}
-
-void CRmtView::OnKeyMoveRight()
-{
-	switch (g_activepart)
-	{
-	case PART_INFO:
-		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.InstrumentRight();
-		break;
-
-	case PART_TRACKS:
-		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.InstrumentRight();
-		else if (IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.ChangeEffectCommandColumnCount(1);
-		else if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-			g_Song.ChannelRight();
-		else
-			g_Song.PatternRight();
-		break;
-
-	case PART_INSTRUMENTS:
-		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.InstrumentRight();
-		break;
-
-	case PART_SONG:
-		if (!IsPressingAlt() && !IsPressingCtrl() && IsPressingShift())
-			g_Song.InstrumentRight();
-		else
-			g_Song.ChannelRight();
-		break;
-	}
-}
-
-void CRmtView::OnKeyPageUp()
-{
-	switch (g_activepart)
-	{
-	case PART_TRACKS:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-			g_Song.SeekPreviousSubtune();
-		else if (IsPressingCtrl() && !IsPressingAlt() && !IsPressingShift())
-			g_Song.SonglineUp();
-		else
-			g_Song.PatternUp(g_trackLinePrimaryHighlight);
-		break;
-
-	default:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-			g_Song.SeekPreviousSubtune();
-		else
-			g_Song.SonglineUp();
-	}
-}
-
-void CRmtView::OnKeyPageDown()
-{
-	switch (g_activepart)
-	{
-	case PART_TRACKS:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-			g_Song.SeekNextSubtune();
-		else if (IsPressingCtrl() && !IsPressingAlt() && !IsPressingShift())
-			g_Song.SonglineDown();
-		else
-			g_Song.PatternDown(g_trackLinePrimaryHighlight);
-		break;
-
-	default:
-		if (IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-			g_Song.SeekNextSubtune();
-		else
-			g_Song.SonglineDown();
-	}
-}
-
 void CRmtView::OnProcessKeyboardInput(UINT vk)
 {
-	// CTRL is pressed, ALT and SHIFT are NOT pressed
-	if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
+	bool keyCtrl = IsPressingCtrl();
+	bool keyShift = IsPressingShift();
+	bool keyAlt = IsPressingAlt();
+
+	switch (vk)
 	{
-		switch (vk)
+	case VK_ESCAPE:
+		if (!keyCtrl && !keyAlt && !keyShift)
 		{
-		case 48:	// VK_0
-			SetChannelOnOff(INVALID, FALSE);	// Turn All Channels Off
-			return;
-
-		case 49:	// VK_1
-		case 50:	// VK_2
-		case 51:	// VK_3
-		case 52:	// VK_4
-		case 53:	// VK_5
-		case 54:	// VK_6
-		case 55:	// VK_7
-		case 56:	// VK_8
-			SetChannelOnOff(vk - 49, INVALID);	// Turn Channel On/Off
-			return;
-
-		case 57:	// VK_9
-			SetChannelOnOff(INVALID, TRUE);		// Turn All Channels On
+			OnPlaystop();
 			return;
 		}
+		break;
+
+	case VK_F1:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnEmTracks();
+			return;
+		}
+		break;
+
+	case VK_F2:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnEmInstruments();
+			return;
+		}
+		break;
+
+	case VK_F3:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnEmInfo();
+			return;
+		}
+		break;
+
+	case VK_F4:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnEmSong();
+			return;
+		}
+		break;
+
+	case VK_F5:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnPlay(MPLAY_START);
+			return;
+		}
+		break;
+
+	case VK_F6:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnPlay(MPLAY_PATTERN);
+			return;
+		}
+		break;
+
+	case VK_F7:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnPlay(MPLAY_FROM);
+			return;
+		}
+		break;
+
+	case VK_F10:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnRegion();
+			return;
+		}
+		break;
+
+	case VK_F11:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnRespectVolume();
+			return;
+		}
+		break;
+
+	case VK_F12:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnPlayfollow();
+			return;
+		}
+		break;
+
+	case VK_0:
+		// Turn All Channels Off
+		if (keyCtrl && !keyAlt && !keyShift)
+		{
+			SetChannelOnOff(INVALID, FALSE);
+			return;
+		}
+		break;
+
+	case VK_1:
+	case VK_2:
+	case VK_3:
+	case VK_4:
+	case VK_5:
+	case VK_6:
+	case VK_7:
+	case VK_8:
+		// Turn Channel 1-8 On/Off
+		if (keyCtrl && !keyAlt && !keyShift)
+		{
+			SetChannelOnOff(vk - VK_1, INVALID);
+			return;
+		}
+		break;
+
+	case VK_9:
+		// Turn All Channels On
+		if (keyCtrl && !keyAlt && !keyShift)
+		{
+			SetChannelOnOff(INVALID, TRUE);
+			return;
+		}
+		break;
+
+	case VK_SUBTRACT:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnVolumeDown();
+			return;
+		}
+		break;
+
+	case VK_ADD:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnVolumeUp();
+			return;
+		}
+		break;
+
+	case VK_DIVIDE:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnOctaveDown();
+			return;
+		}
+		break;
+
+	case VK_MULTIPLY:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			OnOctaveUp();
+			return;
+		}
+		break;
+
+	case VK_LEFT:
+		if (!keyCtrl && !keyAlt && keyShift)
+		{
+			OnInstrumentLeft();
+			return;
+		}
+		break;
+
+	case VK_RIGHT:
+		if (!keyCtrl && !keyAlt && keyShift)
+		{
+			OnInstrumentRight();
+			return;
+		}
+		break;
+
+	case VK_PAGE_UP:
+		if (!keyCtrl && keyAlt && !keyShift)
+		{
+			g_Song.SeekPreviousSubtune();
+			return;
+		}
+		break;
+
+	case VK_PAGE_DOWN:
+		if (!keyCtrl && keyAlt && !keyShift)
+		{
+			g_Song.SeekNextSubtune();
+			return;
+		}
+		break;
 	}
 
-	// ALT, CTRL and SHIFT are NOT pressed
-	if (!IsPressingAlt() && !IsPressingCtrl() && !IsPressingShift())
-	{
-		switch (vk)
-		{
-		case VK_F1: OnEmTracks(); return;
-		case VK_F2: OnEmInstruments(); return;
-		case VK_F3: OnEmInfo(); return;
-		case VK_F4: OnEmSong(); return;
-		}
-	}
-	
 	// The remaining inputs are processed within the active screen region
 	switch (g_activepart)
 	{
-	//case PART_INFO: InfoEditorKey(vk); return;
-	case PART_TRACKS: PatternEditorKey(vk); return;
-	//case PART_INSTRUMENTS: InstrumentEditorKey(vk); return;
-	//case PART_SONG: SongEditorKey(vk); return;
+	//case PART_INFO:
+		//InfoEditorKey(vk);
+		//break;
+
+	case PART_TRACKS:
+		PatternEditorKey(vk, keyCtrl, keyAlt, keyShift);
+		break;
+
+	//case PART_INSTRUMENTS:
+		//InstrumentEditorKey(vk);
+		//break;
+
+	case PART_SONG:
+		SongEditorKey(vk, keyCtrl, keyAlt, keyShift);
+		break;
 	}
 
 }
 
-void CRmtView::PatternEditorKey(UINT vk)
+void CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift)
 {
-	UINT notekey = INVALID;	//NoteKey(vk);
-	UINT numbkey = INVALID;	//NumbKey(vk);
+	UINT notekey = INVALID;
+	UINT numbkey = INVALID;
 
-	// CTRL is pressed, ALT and SHIFT are NOT pressed
-	if (!IsPressingAlt() && IsPressingCtrl() && !IsPressingShift())
+	switch (vk)
 	{
-		switch (vk)
-		{
-		case VK_F1: g_Song.TransposeNoteInPattern(-1); return;
-		case VK_F2: g_Song.TransposeNoteInPattern(1); return;
-		case VK_F3: g_Song.TransposeNoteInPattern(-12); return;
-		case VK_F4: g_Song.TransposeNoteInPattern(12); return;
-		}
-	}
-
-	// CTRL and SHIFT are pressed, ALT is NOT pressed
-	if (!IsPressingAlt() && IsPressingCtrl() && IsPressingShift())
-	{
-		switch (vk)
-		{
-		case VK_F1: g_Song.TransposePattern(-1); return;
-		case VK_F2: g_Song.TransposePattern(1); return;
-		case VK_F3: g_Song.TransposePattern(-12); return;
-		case VK_F4: g_Song.TransposePattern(12); return;
-		}
-	}
-
-	// ALT, CTRL and SHIFT are pressed simultaneously
-	if (IsPressingAlt() && IsPressingCtrl() && IsPressingShift())
-	{
-		switch (vk)
-		{
-		case VK_F1: g_Song.TransposeSongline(-1); return;
-		case VK_F2: g_Song.TransposeSongline(1); return;
-		case VK_F3: g_Song.TransposeSongline(-12); return;
-		case VK_F4: g_Song.TransposeSongline(12); return;
-		}
-	}
-
-	// Spacebar was pressed
-	if (vk == VK_SPACE)
-	{
-		if (g_Song.SetEmptyRowInPattern())
-			g_Song.PatternDown(g_linesafter);
+	case VK_UP:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnPatternUp();
+		else if (!keyCtrl && keyAlt && !keyShift)
+			OnSonglineUp();
 		return;
-	}
 
-	// Delete was pressed
-	if (vk == VK_DELETE)
-	{
-		g_Song.DeleteRowInPattern();
+	case VK_DOWN:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnPatternDown();
+		else if (!keyCtrl && keyAlt && !keyShift)
+			OnSonglineDown();
 		return;
-	}
 
-	// Insert was pressed
-	if (vk == VK_INSERT)
-	{
-		g_Song.InsertRowInPattern();
+	case VK_LEFT:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnPatternLeft();
+		else if (!keyCtrl && keyAlt && keyShift)
+			g_Song.ChangeEffectCommandColumnCount(-1);
+		else if (!keyCtrl && keyAlt && !keyShift)
+			OnChannelLeft();
+		return;
+
+	case VK_RIGHT:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnPatternRight();
+		else if (!keyCtrl && keyAlt && keyShift)
+			g_Song.ChangeEffectCommandColumnCount(1);
+		else if (!keyCtrl && keyAlt && !keyShift)
+			OnChannelRight();
+		return;
+
+	case VK_PAGE_UP:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			g_Song.PatternUpDownMovement(g_trackLinePrimaryHighlight * -1);
+		else if (keyCtrl && !keyAlt && !keyShift)
+			OnSonglineUp();
+		return;
+
+	case VK_PAGE_DOWN:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			g_Song.PatternUpDownMovement(g_trackLinePrimaryHighlight);
+		else if (keyCtrl && !keyAlt && !keyShift)
+			OnSonglineDown();
+		return;
+
+	case VK_F1:
+		if (keyCtrl && !keyAlt && !keyShift)
+			g_Song.TransposeNoteInPattern(-1);
+		else if (keyCtrl && !keyAlt && keyShift)
+			g_Song.TransposePattern(-1);
+		else if (keyCtrl && keyAlt && keyShift)
+			g_Song.TransposeSongline(-1);
+		return;
+
+	case VK_F2:
+		if (keyCtrl && !keyAlt && !keyShift)
+			g_Song.TransposeNoteInPattern(1);
+		else if (keyCtrl && !keyAlt && keyShift)
+			g_Song.TransposePattern(1);
+		else if (keyCtrl && keyAlt && keyShift)
+			g_Song.TransposeSongline(1);
+		return;
+
+	case VK_F3:
+		if (keyCtrl && !keyAlt && !keyShift)
+			g_Song.TransposeNoteInPattern(-12);
+		else if (keyCtrl && !keyAlt && keyShift)
+			g_Song.TransposePattern(-12);
+		else if (keyCtrl && keyAlt && keyShift)
+			g_Song.TransposeSongline(-12);
+		return;
+
+	case VK_F4:
+		if (keyCtrl && !keyAlt && !keyShift)
+			g_Song.TransposeNoteInPattern(12);
+		else if (keyCtrl && !keyAlt && keyShift)
+			g_Song.TransposePattern(12);
+		else if (keyCtrl && keyAlt && keyShift)
+			g_Song.TransposeSongline(12);
+		return;
+
+	case VK_SPACE:
+		if (!keyCtrl && !keyAlt && !keyShift)
+		{
+			if (g_Song.SetEmptyRowInPattern())
+				OnPatternDown();
+		}
+		return;
+
+	case VK_DELETE:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			g_Song.DeleteRowInPattern();
+		return;
+
+	case VK_INSERT:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			g_Song.InsertRowInPattern();
 		return;
 	}
 
@@ -3228,7 +3354,7 @@ void CRmtView::PatternEditorKey(UINT vk)
 			notekey = NoteKey(vk);
 		}
 		if (g_Song.SetNoteInPattern(notekey))
-			g_Song.PatternDown(g_linesafter);
+			OnPatternDown();
 		return;
 
 	case 1: // Instrument Column
@@ -3242,7 +3368,7 @@ void CRmtView::PatternEditorKey(UINT vk)
 			numbkey = NumbKey(vk);
 		}
 		if (g_Song.SetInstrumentInPattern(numbkey))
-			g_Song.PatternDown(g_linesafter);
+			OnPatternDown();
 		return;
 
 	case 2: // Volume Column
@@ -3256,7 +3382,7 @@ void CRmtView::PatternEditorKey(UINT vk)
 			numbkey = NumbKey(vk);
 		}
 		if (g_Song.SetVolumeInPattern(numbkey))
-			g_Song.PatternDown(g_linesafter);
+			OnPatternDown();
 		return;
 
 	case 3: // Effect Column(s)
@@ -3320,7 +3446,7 @@ void CRmtView::PatternEditorKey(UINT vk)
 				// No Default numbkey case for Effect Commands since it MUST be attributed to a specific Effect Command Identifier to be used at all!
 			}
 			if (g_Song.SetCommandIdentifierInPattern(numbkey))
-				g_Song.PatternDown(g_linesafter);
+				OnPatternDown();
 			return;
 		}
 
@@ -3328,9 +3454,9 @@ void CRmtView::PatternEditorKey(UINT vk)
 		if (vk == VK_BACKSPACE)
 		{
 			numbkey = PE_EMPTY;
-			
+
 			if (g_Song.SetCommandIdentifierInPattern(numbkey))
-				g_Song.PatternDown(g_linesafter);
+				OnPatternDown();
 			return;
 		}
 
@@ -3340,8 +3466,62 @@ void CRmtView::PatternEditorKey(UINT vk)
 			numbkey = NumbKey(vk);
 
 			if (g_Song.SetCommandParameterInPattern(numbkey))
-				g_Song.PatternDown(g_linesafter);
+				OnPatternDown();
 			return;
 		}
 	}
+}
+
+void CRmtView::SongEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift)
+{
+	switch (vk)
+	{
+	case VK_UP:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnSonglineUp();
+		break;
+
+	case VK_DOWN:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnSonglineDown();
+		break;
+
+	case VK_LEFT:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnSonglineLeft();
+		break;
+
+	case VK_RIGHT:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnSonglineRight();
+		break;
+
+	case VK_PAGE_UP:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnSonglineUp();
+		break;
+
+	case VK_PAGE_DOWN:
+		if (!keyCtrl && !keyAlt && !keyShift)
+			OnSonglineDown();
+		break;
+
+	case VK_D:
+		// Duplicate the Pattern in Songline only when the CTRL key alone is held down
+		if (keyCtrl && !keyAlt && !keyShift)
+			g_Song.DuplicatePatternInSongline();
+		break;
+
+	case VK_N:
+		// Set a New Empty the Pattern in Songline only when the CTRL key alone is held down
+		if (keyCtrl && !keyAlt && !keyShift)
+			g_Song.SetNewEmptyPatternInSongline();
+		break;
+
+	default:
+		// Input the Pattern Index values in Songline only when none of the Special keys are held down
+		if (!keyCtrl && !keyAlt && !keyShift)
+			g_Song.SetPatternInSongline(NumbKey(vk));
+	}
+
 }

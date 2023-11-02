@@ -760,6 +760,10 @@ public:
 	bool DuplicatePatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline, UINT pattern);
 	bool DuplicatePatternInSongline(TChannel* pChannel, UINT songline, UINT pattern);
 
+	bool SetNewEmptyPatternInSongline(UINT subtune, UINT channel, UINT songline);
+	bool SetNewEmptyPatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline);
+	bool SetNewEmptyPatternInSongline(TChannel* pChannel, UINT songline);
+
 	bool CopyRow(TRow* pFromRow, TRow* pToRow);
 
 	bool CopyPattern(TPattern* pFromPattern, TPattern* pToPattern);

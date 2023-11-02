@@ -115,7 +115,7 @@ void CSong::ClearSong(int numOfTracks)
 	g_activepart = g_active_ti = PART_TRACKS;
 
 	m_activeSubtune = 0;
-	m_playSongline = m_activeSongline = 0;
+	m_playSongline = m_activeSongline = m_activeSonglineColumn = 0;
 	m_activeRow = m_playRow = 0;
 	m_activeChannel = m_activeCursor = m_activeColumn = 0;
 	m_activeInstrument = 0;
@@ -1092,181 +1092,244 @@ BOOL CSong::TrackRight(BOOL column)
 }
 */
 
-void CSong::PatternLeft()
+void CSong::PatternUpDownMovement(int rows)
 {
-	if (--m_activeColumn < 0)
-	{
-		if (--m_activeCursor < 0)
-		{
-			ChannelLeft();
-			m_activeCursor = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2;
-		}
-
-		switch (m_activeCursor)
-		{
-		case 0:
-		case 2: m_activeColumn = 0; break;
-		case 1: m_activeColumn = 1; break;
-		case 3:
-		case 4:
-		case 5:
-		case 6: m_activeColumn = 2; break;
-		}
-	}
-}
-
-void CSong::PatternRight()
-{
-	BYTE max;
-
-	switch (m_activeCursor)
-	{
-	case 0:
-	case 2: max = 0; break;
-	case 1: max = 1; break;
-	case 3:
-	case 4:
-	case 5:
-	case 6: max = 2; break;
-	}
-
-	if (++m_activeColumn > max)
-	{
-		if (++m_activeCursor > (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2)
-		{
-			ChannelRight();
-			m_activeCursor = 0;
-		}
-
-		m_activeColumn = 0;
-	}
-}
-
-void CSong::PatternUp(int rows)
-{
-	// Prevent movements during playback if followplay is enabled
-	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
-		return;
-
-	// This should not happen...
-	if (g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline) == 0)
-		return;
-
-	UINT offset = m_activeRow - rows;
-
-	if (offset >= g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline))
-	{
-		// Moving between Songlines from Pattern boundaries is enabled
-		if (g_keyboard_updowncontinue)
-			SonglineUp();
-
-		offset += g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline);
-	}
-
-	m_activeRow = offset;
-}
-
-void CSong::PatternDown(int rows)
-{
-	// Prevent movements during playback if followplay is enabled
-	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
-		return;
-
-	// This should not happen...
-	if (g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline) == 0)
-		return;
-
 	UINT offset = m_activeRow + rows;
+	UINT patternLength = g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline);
 
-	if (offset >= g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline))
+	// If moving between Songlines from Pattern boundaries is enabled...
+	if (g_keyboard_updowncontinue)
 	{
-		// Adjustment for the Row Index between Songlines, done before updating the Songline
-		offset -= g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline);
+		// If the offset is out of bounds...
+		while (offset >= patternLength)
+		{
+			// ...and the number of rows added is positive...
+			if (rows >= 0)
+			{
+				offset -= patternLength;
+				SonglineUpDownMovement(1);
+				patternLength = g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline);
+			}
 
-		// Moving between Songlines from Pattern boundaries is enabled
-		if (g_keyboard_updowncontinue)
-			SonglineDown();
+			// ...and the number of rows added is negative...
+			else
+			{
+				SonglineUpDownMovement(-1);
+				patternLength = g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline);
+				offset += patternLength;
+			}
+		}
 	}
 
+	// Update the offset with the Modulo of the Shortest Pattern Length
+	offset %= patternLength;
+
+	// Update the Active Row cursor position
 	m_activeRow = offset;
+
+	// If Playback and Followplay is enabled, update the Play Row cursor as well
+	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
+		m_playRow = m_activeRow;
 }
 
-void CSong::ChannelLeft()
+void CSong::PatternLeftRightMovement(int columns)
 {
-	if (g_Module.GetChannelCount(m_activeSubtune) == 0)
-		return;
-	
-	if (--m_activeChannel < 0)
-		m_activeChannel += g_Module.GetChannelCount(m_activeSubtune);
+	// NoteInsVolCmd Cmd Cmd Cmd
+	// G#1 01 v2 420 069 G22 B02
+	// 1   2  1  3   3   3   3
+	// Total: 16 Cursor Positions
+	// 0   1  2  3   4   5   6
+	// Total: 7 Cursor Columns
+	// 012 34 56 789 ABC DEF GHI
+	// Total: 19 Columns
 
-	if (m_activeCursor < 0)
-		m_activeCursor = 0;
+	UINT offset = m_activeCursor + columns;
+	UINT columnCount = (g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) * 3) + 1 + 2 + 1;
 
-	if (m_activeCursor >= (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2)
-		m_activeCursor = (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2;
+	// If the offset is out of bounds...
+	while (offset >= columnCount)
+	{
+		// ...and the number of rows added is positive...
+		if (columns >= 0)
+		{
+			offset -= columnCount;
+			ChannelLeftRightMovement(1);
+			columnCount = (g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) * 3) + 1 + 2 + 1;
+		}
 
-	if (m_activeColumn < 0)
-		m_activeColumn = 0;
+		// ...and the number of rows added is negative...
+		else
+		{
+			ChannelLeftRightMovement(-1);
+			columnCount = (g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) * 3) + 1 + 2 + 1;
+			offset += columnCount;
+		}
+	}
 
-	BYTE max;
+	// Update the offset with the Modulo of the Pattern Column Count
+	offset %= columnCount;
 
+	// Update the Active Pattern Cursor position
+	m_activeCursor = offset;
+
+	// Update the Active Pattern Column position
 	switch (m_activeCursor)
 	{
 	case 0:
-	case 2: max = 0; break;
-	case 1: max = 1; break;
+		// Note, 1 Byte
+		m_activeColumn = 0;
+		break;
+
+	case 1:
+	case 2:
+		// Instrument, 2 Nybbles
+		m_activeColumn = 1;
+		break;
+
 	case 3:
+		// Volume, 1 Byte
+		m_activeColumn = 2;
+		break;
+
 	case 4:
 	case 5:
-	case 6: max = 2; break;
+	case 6:
+		// CMD1, 3 Nybbles
+		m_activeColumn = 3;
+		break;
+
+	case 7:
+	case 8:
+	case 9:
+		// CMD2, 3 Nybbles
+		m_activeColumn = 4;
+		break;
+
+	case 10:
+	case 11:
+	case 12:
+		// CMD3, 3 Nybbles
+		m_activeColumn = 5;
+		break;
+
+	case 13:
+	case 14:
+	case 15:
+		// CMD4, 3 Nybbles
+		m_activeColumn = 6;
+		break;
 	}
 
-	if (m_activeColumn > max)
-		m_activeColumn = max;
 }
 
-void CSong::ChannelRight()
+void CSong::ChannelLeftRightMovement(int channels)
 {
-	if (g_Module.GetChannelCount(m_activeSubtune) == 0)
+	UINT offset = m_activeChannel + channels;
+	UINT channelCount = g_Module.GetChannelCount(m_activeSubtune);
+
+	// If the offset is out of bounds...
+	while (offset >= channelCount)
+	{
+		// ...and the number of channels added is positive...
+		if (channels >= 0)
+			offset -= channelCount;
+
+		// ...and the number of channels added is negative...
+		else
+			offset += channelCount;
+	}
+
+	// Update the offset with the Modulo of the Channel Count
+	offset %= channelCount;
+
+	// Update the Active Channel cursor position
+	m_activeChannel = offset;
+}
+
+void CSong::SonglineUpDownMovement(int songlines)
+{
+	UINT offset = m_activeSongline + songlines;
+	UINT songLength = g_Module.GetSongLength(m_activeSubtune);
+
+	// If the offset is out of bounds, add the Song Length back to it first
+	if (offset >= songLength)
+		offset += songLength;
+
+	// Update the offset with the Modulo of the Song Length
+	offset %= songLength;
+
+	// Update the Active Songline cursor position
+	m_activeSongline = offset;
+
+	// If Playback and Followplay is enabled, update the Play Row cursor as well
+	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
+	{
+		m_nextSongline = m_playSongline = m_activeSongline;
+		m_nextRow = m_playRow = m_activeRow = 0;
+	}
+}
+
+void CSong::SonglineLeftRightMovement(int columns)
+{
+	UINT offset = m_activeSonglineColumn + columns;
+
+	// If the offset is out of bounds...
+	while (offset >= 2)
+	{
+		// ...and the number of columns added is positive...
+		if (columns >= 0)
+		{
+			ChannelLeftRightMovement(1);
+			offset -= 2;
+		}
+
+		// ...and the number of columns added is negative...
+		else
+		{
+			ChannelLeftRightMovement(-1);
+			offset += 2;
+		}
+	}
+
+	// Update the offset with the Modulo of the Songline Nybble Cursor
+	offset %= 2;
+
+	// Update the Active Songline Column cursor position
+	m_activeSonglineColumn = offset;
+}
+
+void CSong::SeekNextSubtune()
+{
+	// This should never happen...
+	if (g_Module.GetSubtuneCount() == 0)
 		return;
 
-	if (++m_activeChannel >= (int)g_Module.GetChannelCount(m_activeSubtune))
-		m_activeChannel -= g_Module.GetChannelCount(m_activeSubtune);
+	if (++m_activeSubtune >= (int)g_Module.GetSubtuneCount())
+		m_activeSubtune = 0;
 
-	if (m_activeCursor < 0)
-		m_activeCursor = 0;
+	m_playSongline = m_activeSongline = 0;
+	m_activeRow = m_playRow = 0;
+	m_activeChannel = m_activeCursor = m_activeColumn = 0;
 
-	if (m_activeCursor >= (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2)
-		m_activeCursor = (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2;
-
-	if (m_activeColumn < 0)
-		m_activeColumn = 0;
-
-	BYTE max;
-
-	switch (m_activeCursor)
-	{
-	case 0:
-	case 2: max = 0; break;
-	case 1: max = 1; break;
-	case 3:
-	case 4:
-	case 5:
-	case 6: max = 2; break;
-	}
-
-	if (m_activeColumn > max)
-		m_activeColumn = max;
+	if (m_playMode != MPLAY_STOP)
+		Play(MPLAY_START, m_isFollowPlay);
 }
 
-void CSong::ChangeEffectCommandColumnCount(int offset)
+void CSong::SeekPreviousSubtune()
 {
-	UINT columnCount = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel);
-	g_Module.SetEffectCommandCount(m_activeSubtune, m_activeChannel, columnCount + offset);
+	// This should never happen...
+	if (g_Module.GetSubtuneCount() == 0)
+		return;
 
-	// Workaround for broken boundaries, a better method is needed later.
-	if (m_activeCursor >= (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2)
-		m_activeCursor = (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2;
+	if (--m_activeSubtune >= (int)g_Module.GetSubtuneCount())
+		m_activeSubtune = g_Module.GetSubtuneCount() - 1;
+
+	m_playSongline = m_activeSongline = 0;
+	m_activeRow = m_playRow = 0;
+	m_activeChannel = m_activeCursor = m_activeColumn = 0;
+
+	if (m_playMode != MPLAY_STOP)
+		Play(MPLAY_START, m_isFollowPlay);
 }
 
 
@@ -1549,81 +1612,6 @@ BOOL CSong::SongSubsongNext()
 	return 1;
 }
 */
-
-void CSong::SonglineUp()
-{
-	// This should never happen...
-	if (g_Module.GetSongLength(m_activeSubtune) == 0)
-		return;
-
-	if (--m_activeSongline < 0)
-		m_activeSongline += g_Module.GetSongLength(m_activeSubtune);
-
-	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
-	{
-		m_nextSongline = m_playSongline = m_activeSongline;
-		m_nextRow = m_playRow = m_activeRow = 0;
-		return;
-	}
-
-	// Prevent the Active Pattern Row to go out of bounds
-	//m_activeRow %= GetShortestPatternLength();
-}
-
-void CSong::SonglineDown()
-{
-	// This should never happen...
-	if (g_Module.GetSongLength(m_activeSubtune) == 0)
-		return;
-
-	//++m_activeSongline %= GetSongLength();
-	if (++m_activeSongline >= (int)g_Module.GetSongLength(m_activeSubtune))
-		m_activeSongline = 0;
-
-	if (m_playMode != MPLAY_STOP && m_isFollowPlay)
-	{
-		m_nextSongline = m_playSongline = m_activeSongline;
-		m_nextRow = m_playRow = m_activeRow = 0;
-		return;
-	}
-
-	// Prevent the Active Pattern Row to go out of bounds
-	//m_activeRow %= GetShortestPatternLength();
-}
-
-void CSong::SeekNextSubtune()
-{
-	// This should never happen...
-	if (g_Module.GetSubtuneCount() == 0)
-		return;
-
-	if (++m_activeSubtune >= (int)g_Module.GetSubtuneCount())
-		m_activeSubtune = 0;
-
-	m_playSongline = m_activeSongline = 0;
-	m_activeRow = m_playRow = 0;
-	m_activeChannel = m_activeCursor = m_activeColumn = 0;
-
-	if (m_playMode != MPLAY_STOP)
-		Play(MPLAY_START, m_isFollowPlay);
-}
-
-void CSong::SeekPreviousSubtune()
-{
-	// This should never happen...
-	if (g_Module.GetSubtuneCount() == 0)
-		return;
-
-	if (--m_activeSubtune >= (int)g_Module.GetSubtuneCount())
-		m_activeSubtune = g_Module.GetSubtuneCount() - 1;
-
-	m_playSongline = m_activeSongline = 0;
-	m_activeRow = m_playRow = 0;
-	m_activeChannel = m_activeCursor = m_activeColumn = 0;
-
-	if (m_playMode != MPLAY_STOP)
-		Play(MPLAY_START, m_isFollowPlay);
-}
 
 /*
 BOOL CSong::SongTrackSet(int t)
@@ -3692,6 +3680,7 @@ void CSong::DrawSonglines()
 	// This is caused by the screen update timing, and this is the main reason why these bugs seem to happen randomly
 	UINT activeSongline = m_activeSongline;
 	UINT playSongline = m_playSongline;
+	UINT songlineColumn = m_activeSonglineColumn;
 	UINT activeChannel = m_activeChannel;
 	UINT activeSubtune = m_activeSubtune;
 	UINT channelCount = g_Module.GetChannelCount(activeSubtune);
@@ -3743,6 +3732,9 @@ void CSong::DrawSonglines()
 		{
 			// Fetch the Pattern Index number used in the current Songline Channel
 			UINT pattern = g_Module.GetPatternInSongline(activeSubtune, j, songline);
+
+			// Needed to display the Songline Nybble that is currently being edited
+			bool isActiveEnabled = false;
 			
 			// Offset for the X axis, each character use a 8x16 Bitmap tile
 			x += 3 * 8;
@@ -3758,7 +3750,7 @@ void CSong::DrawSonglines()
 
 			// If the Channel is both Active and Enabled, use the Highlight Colour instead
 			if (activeChannel == j && activeSongline == songline && g_activepart == PART_SONG)
-				colour = (g_prove) ? COLOR_SELECTED_PROVE : COLOR_SELECTED;
+				isActiveEnabled = true;
 
 			// If the mouse cursor is hovering the screen coordinate currently being drawn, use the Hovered colour
 			if (IsHoveredXY(x, y, 3 * 8, 16))
@@ -3770,7 +3762,11 @@ void CSong::DrawSonglines()
 
 			// Draw the Pattern Index number in the Songline Block
 			s.Format("%02X", pattern);
-			TextXY(s, x, y, colour);
+
+			if (isOutOfBounds)
+				TextXY(s, x, y, colour);
+			else
+				TextXYSelN(s, (isActiveEnabled ? songlineColumn : INVALID), x, y, colour);
 		}
 
 		// On the Songline Index 0, draw the separation line between itself and the last Songline after everything else was drawn below it
@@ -4346,7 +4342,13 @@ void CSong::DrawPatternEditor()
 			}
 
 			// Draw the formated Pattern Row on screen once it is ready to be output, using the cursor position for highlighted column
-			TextXYCol(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, isActiveCursor ? activeCursor : INVALID, isActiveCursor ? activeColumn : INVALID, colour);
+			//TextXYCol(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, isActiveCursor ? activeCursor : INVALID, isActiveCursor ? activeColumn : INVALID, colour);
+
+			if (isOutOfBounds)
+				TextXY(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, colour);
+
+			else
+				TextXYCol(s, PATTERNBLOCK_X + x, PATTERNBLOCK_Y + y, isActiveCursor ? activeCursor : INVALID, isActiveCursor ? activeColumn : INVALID, colour);
 
 			// On the Row Index 0, draw the Pattern separation line after everything else was drawn below it
 			if (row == 0)
@@ -5677,4 +5679,32 @@ bool CSong::InsertRowInPattern()
 
 	// At least 1 successful operation will return True
 	return count;
+}
+
+bool CSong::SetPatternInSongline(UINT pattern)
+{
+	// Add code here to handle the Nybble individually
+	return g_Module.SetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline, pattern);
+}
+
+bool CSong::DuplicatePatternInSongline()
+{
+	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
+
+	return g_Module.DuplicatePatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline, pattern);
+}
+
+bool CSong::SetNewEmptyPatternInSongline()
+{
+	return g_Module.SetNewEmptyPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
+}
+
+void CSong::ChangeEffectCommandColumnCount(int offset)
+{
+	UINT columnCount = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel);
+	g_Module.SetEffectCommandCount(m_activeSubtune, m_activeChannel, columnCount + offset);
+
+	// Workaround for broken boundaries, a better method is needed later.
+	if (m_activeCursor >= (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2)
+		m_activeCursor = (int)g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) + 2;
 }

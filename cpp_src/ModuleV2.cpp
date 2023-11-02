@@ -2558,6 +2558,35 @@ bool CModule::DuplicatePatternInSongline(TChannel* pChannel, UINT songline, UINT
 	return false;
 }
 
+// Create a new Pattern in a Songline to a new unused position, Return True if successful
+bool CModule::SetNewEmptyPatternInSongline(UINT subtune, UINT channel, UINT songline)
+{
+	return SetNewEmptyPatternInSongline(GetChannel(subtune, channel), songline);
+}
+
+// Create a new Pattern in a Songline to a new unused position, Return True if successful
+bool CModule::SetNewEmptyPatternInSongline(TSubtune* pSubtune, UINT channel, UINT songline)
+{
+	return SetNewEmptyPatternInSongline(GetChannel(pSubtune, channel), songline);
+}
+
+// Create a new Pattern in a Songline to a new unused position, Return True if successful
+bool CModule::SetNewEmptyPatternInSongline(TChannel* pChannel, UINT songline)
+{
+	if (pChannel && IsValidSongline(songline))
+	{
+		// Find the first empty and unused Pattern that is available
+		for (int i = 0; i < PATTERN_COUNT; i++)
+		{
+			if (IsUnusedPattern(pChannel, i) && IsEmptyPattern(GetPattern(pChannel, i)))
+				return SetPatternInSongline(pChannel, songline, i);
+		}
+	}
+
+	// Could not create a new Pattern, no data was edited
+	return false;
+}
+
 // Copy data from source Row to destination Row, Return True if successful
 bool CModule::CopyRow(TRow* pFromRow, TRow* pToRow)
 {

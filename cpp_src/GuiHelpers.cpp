@@ -211,7 +211,7 @@ void TextXYSelN(const char* txt, int n, int x, int y, int color)
 }
 
 // Draw 8x16 chars with given color array per char position
-// TODO: make a lookup table for the cursor highlight position
+// This is absolutely terrible code, but it works somewhat okay, so whatever
 void TextXYCol(const char* txt, int x, int y, int cursor, int column, int color)
 {
 	if (!txt)
@@ -219,27 +219,54 @@ void TextXYCol(const char* txt, int x, int y, int cursor, int column, int color)
 
 	color <<= 4;
 
-	int contiguous = 0;
 	int highlight = (g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED) << 4;
 	int hover = COLOR_HOVERED << 4;
 
-	switch (cursor)
-	{
-	case 0: cursor = 0; contiguous = 3; break;				// Note
-	case 1: cursor = 4 + column; contiguous = 1; break;		// Instrument
-	case 2: cursor = 7; contiguous = 2; break;				// Volume
-	case 3:													// Command(s)
-	case 4:
-	case 5:
-	case 6: cursor = 10 + 4 * (cursor - 3) + column; contiguous = 1; break;
-	}
+	const int cursorTable[16] = { 3, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	const int columnTable[7] = { 0, 3, 4, 6, 9, 12, 15 };
+	const int hoverTable[26] = { 3, 2, 1, 0, 2, 1, 0, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0 };
+
+	int v = 0, w = 0, z = 0;
 
 	for (int i = 0; char charToDraw = txt[i]; i++, x += 8)
 	{
 		if (charToDraw == 32)
 			continue;	// Don't draw the space
 
-		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7F) << 3, IsHoveredXY(x, y, 8, 16) ? hover : i >= cursor && i < cursor + contiguous ? highlight : color, SRCCOPY);
+		int contiguous = 1;
+		int offset = 0;
+
+		if (cursor >= 0 && column >= 0)
+		{
+			contiguous = cursorTable[cursor];
+			offset = columnTable[column];
+		}
+
+		if (--v <= 0)
+		{
+			w = hoverTable[i];
+			v = w;
+			z = 0;
+		}
+
+		bool isHovering = IsHoveredXY(x - (8 * z++), y, (8 * w), 16);
+		bool isHighlight = i >= cursor + offset && i < cursor + offset + contiguous;
+
+		int colorToUse = color;
+
+		if (isHighlight)
+			colorToUse = highlight;
+
+		if (isHovering)
+			colorToUse = hover;
+
+		if (isHighlight && isHovering)
+		{
+			isHovering = IsHoveredXY(x, y, 8, 16);
+			colorToUse = isHovering ? hover : highlight;
+		}
+		
+		g_mem_dc->BitBlt(x, y, 8, 16, g_gfx_dc, (charToDraw & 0x7F) << 3, colorToUse, SRCCOPY);
 	}
 }
 
