@@ -174,6 +174,34 @@ struct TSongVariables
 };
 */
 
+
+// Pattern Editor Cursor Column Index
+typedef enum patternCursorColumn_t : BYTE
+{
+	CC_NOTE = 0, //CC_OCTAVE,
+	CC_INSTRUMENT_X, CC_INSTRUMENT_Y,
+	CC_VOLUME,
+	CC_CMD1_IDENTIFIER, CC_CMD1_X, CC_CMD1_Y,
+	CC_CMD2_IDENTIFIER, CC_CMD2_X, CC_CMD2_Y,
+	CC_CMD3_IDENTIFIER, CC_CMD3_X, CC_CMD3_Y,
+	CC_CMD4_IDENTIFIER, CC_CMD4_X, CC_CMD4_Y,
+	CC_INDEX_MAX,
+} TPatternCursorColumn;
+
+// Simplified Column Index macros, useful when the exact Cursor position isn't absolutely necessary
+#define CC_NOTE(x)			(x == CC_NOTE /*|| x == CC_OCTAVE*/)
+#define CC_INSTRUMENT(x)	(x == CC_INSTRUMENT_X || x == CC_INSTRUMENT_Y)
+#define CC_VOLUME(x)		(x == CC_VOLUME)
+#define CC_CMD1(x)			(x == CC_CMD1_IDENTIFIER || x == CC_CMD1_X || x == CC_CMD1_Y)
+#define CC_CMD2(x)			(x == CC_CMD2_IDENTIFIER || x == CC_CMD2_X || x == CC_CMD2_Y)
+#define CC_CMD3(x)			(x == CC_CMD3_IDENTIFIER || x == CC_CMD3_X || x == CC_CMD3_Y)
+#define CC_CMD4(x)			(x == CC_CMD4_IDENTIFIER || x == CC_CMD4_X || x == CC_CMD4_Y)
+#define VALID_CC_INDEX(x)	(x < CC_INDEX_MAX)
+
+// The Effect Command Column Index formula is derived from the Cursor Column Index value itself
+#define CC_CMD_INDEX(x)		((x - CC_CMD1_IDENTIFIER) / (CC_CMD2_IDENTIFIER - CC_CMD1_IDENTIFIER))
+
+
 extern CModule g_Module;
 
 class CSong
@@ -243,7 +271,7 @@ public:
 	int GetActiveLine() { return m_activeRow; };
 	int GetPlayLine() { return m_playRow; };
 	int GetActiveCursor() { return m_activeCursor; };
-	int GetActiveColumn() { return m_activeColumn; };
+	//int GetActiveColumn() { return m_activeColumn; };
 	int GetActiveOctave() { return m_activeOctave; };
 	int GetActiveVolume() { return m_activeVolume; };
 
@@ -612,7 +640,7 @@ private:
 	int m_activeChannel;				// Active POKEY Channel
 
 	int m_activeCursor;					// 0 -> Note, 1 -> Instrument, 2 -> Volume, 3-6 -> Command
-	int m_activeColumn;					// 0-3 -> Cursor Offset for Instrument and Command values
+	//int m_activeColumn;					// 0-3 -> Cursor Offset for Instrument and Command values
 
 	int m_activeSonglineColumn;			// 0-1 -> Active Songline Nybble Cursor for Editor
 

@@ -3224,6 +3224,7 @@ void CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 {
 	UINT notekey = INVALID;
 	UINT numbkey = INVALID;
+	UINT activeCursor = g_Song.GetActiveCursor();
 
 	switch (vk)
 	{
@@ -3329,9 +3330,10 @@ void CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 	}
 
 	// Everything else
-	switch (g_Song.GetActiveCursor())
+
+	// Note Column
+	if (CC_NOTE(activeCursor))
 	{
-	case 0: // Note Column
 		switch (vk)
 		{
 		case VK_BACKSPACE:
@@ -3353,11 +3355,16 @@ void CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		default:
 			notekey = NoteKey(vk);
 		}
+
 		if (g_Song.SetNoteInPattern(notekey))
 			OnPatternDown();
-		return;
 
-	case 1: // Instrument Column
+		return;
+	}
+
+	// Instrument Column
+	if (CC_INSTRUMENT(activeCursor))
+	{
 		switch (vk)
 		{
 		case VK_BACKSPACE:
@@ -3367,11 +3374,16 @@ void CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		default:
 			numbkey = NumbKey(vk);
 		}
+
 		if (g_Song.SetInstrumentInPattern(numbkey))
 			OnPatternDown();
-		return;
 
-	case 2: // Volume Column
+		return;
+	}
+
+	// Volume Column
+	if (CC_VOLUME(activeCursor))
+	{
 		switch (vk)
 		{
 		case VK_BACKSPACE:
@@ -3381,17 +3393,29 @@ void CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		default:
 			numbkey = NumbKey(vk);
 		}
+
 		if (g_Song.SetVolumeInPattern(numbkey))
 			OnPatternDown();
-		return;
 
-	case 3: // Effect Column(s)
-	case 4:
-	case 5:
-	case 6:
-	default:
-		// The Effect Commands Identifier are being processed in priority if the Column is 0
-		if (g_Song.GetActiveColumn() == 0)
+		return;
+	}
+
+	// Effect Command Columns
+	if (CC_CMD1(activeCursor) || CC_CMD2(activeCursor) || CC_CMD3(activeCursor) || CC_CMD4(activeCursor))
+	{
+		// Exception for BACKSPACE, the Effect Command Column will be cleared regardless of the Cursor Column in this case
+		if (vk == VK_BACKSPACE)
+		{
+			numbkey = PE_EMPTY;
+
+			if (g_Song.SetCommandIdentifierInPattern(numbkey))
+				OnPatternDown();
+
+			return;
+		}
+
+		// The Effect Commands Identifier are being processed in priority
+		if (activeCursor == CC_CMD1_IDENTIFIER || activeCursor == CC_CMD2_IDENTIFIER || activeCursor == CC_CMD3_IDENTIFIER || activeCursor == CC_CMD4_IDENTIFIER)
 		{
 			switch (vk)
 			{
@@ -3445,18 +3469,10 @@ void CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 
 				// No Default numbkey case for Effect Commands since it MUST be attributed to a specific Effect Command Identifier to be used at all!
 			}
-			if (g_Song.SetCommandIdentifierInPattern(numbkey))
-				OnPatternDown();
-			return;
-		}
-
-		// Exception for BACKSPACE, the Effect Command Column will be cleared regardless of the Cursor Column in this case
-		if (vk == VK_BACKSPACE)
-		{
-			numbkey = PE_EMPTY;
 
 			if (g_Song.SetCommandIdentifierInPattern(numbkey))
 				OnPatternDown();
+
 			return;
 		}
 
@@ -3467,6 +3483,7 @@ void CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 
 			if (g_Song.SetCommandParameterInPattern(numbkey))
 				OnPatternDown();
+
 			return;
 		}
 	}

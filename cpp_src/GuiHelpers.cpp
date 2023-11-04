@@ -7,6 +7,8 @@
 
 #include "global.h"
 
+#include "Song.h"
+
 void SetStatusBarText(const char* text)
 {
 	CStatusBar& sb = ((CMainFrame*)AfxGetApp()->GetMainWnd())->m_wndStatusBar;
@@ -212,7 +214,7 @@ void TextXYSelN(const char* txt, int n, int x, int y, int color)
 
 // Draw 8x16 chars with given color array per char position
 // This is absolutely terrible code, but it works somewhat okay, so whatever
-void TextXYCol(const char* txt, int x, int y, int cursor, int column, int color)
+void TextXYCol(const char* txt, int x, int y, int cursor, /*int column,*/ int color)
 {
 	if (!txt)
 		return;
@@ -222,25 +224,63 @@ void TextXYCol(const char* txt, int x, int y, int cursor, int column, int color)
 	int highlight = (g_prove ? COLOR_SELECTED_PROVE : COLOR_SELECTED) << 4;
 	int hover = COLOR_HOVERED << 4;
 
-	const int cursorTable[16] = { 3, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-	const int columnTable[7] = { 0, 3, 4, 6, 9, 12, 15 };
 	const int hoverTable[26] = { 3, 2, 1, 0, 2, 1, 0, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0 };
 
 	int v = 0, w = 0, z = 0;
+
+	int contiguous = 1;
+	int offset = 0;
+	
+	if (VALID_CC_INDEX((UINT)cursor))
+	{
+		if (CC_NOTE(cursor))
+		{
+			contiguous = 3;
+			offset = 0;
+		}
+
+		else if (CC_INSTRUMENT(cursor))
+		{
+			contiguous = 1;
+			offset = 3;
+		}
+
+		else if (CC_VOLUME(cursor))
+		{
+			contiguous = 2;
+			offset = 4;
+		}
+
+		else if (CC_CMD1(cursor))
+		{
+			contiguous = 1;
+			offset = 6;
+		}
+
+		else if (CC_CMD2(cursor))
+		{
+			contiguous = 1;
+			offset = 7;
+		}
+
+		else if (CC_CMD3(cursor))
+		{
+			contiguous = 1;
+			offset = 8;
+		}
+
+		else if (CC_CMD4(cursor))
+		{
+			contiguous = 1;
+			offset = 9;
+		}
+	}
+
 
 	for (int i = 0; char charToDraw = txt[i]; i++, x += 8)
 	{
 		if (charToDraw == 32)
 			continue;	// Don't draw the space
-
-		int contiguous = 1;
-		int offset = 0;
-
-		if (cursor >= 0 && column >= 0)
-		{
-			contiguous = cursorTable[cursor];
-			offset = columnTable[column];
-		}
 
 		if (--v <= 0)
 		{
