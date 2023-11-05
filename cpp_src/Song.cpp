@@ -1249,38 +1249,108 @@ void CSong::SonglineLeftRightMovement(int columns)
 	m_activeSonglineColumn = offset;
 }
 
-void CSong::SeekNextSubtune()
+void CSong::SeekSubtune(int subtunes)
 {
 	// This should never happen...
 	if (g_Module.GetSubtuneCount() == 0)
 		return;
 
-	if (++m_activeSubtune >= (int)g_Module.GetSubtuneCount())
-		m_activeSubtune = 0;
+	UINT offset = m_activeSubtune + subtunes;
+	TSubtune* pSubtune = g_Module.GetSubtune(offset);
 
+	// Seek until a valid Subtune is found...
+	while (pSubtune == NULL)
+	{
+		// ...and the number of subtunes added is positive...
+		if (subtunes >= 0)
+			offset += 1;
+
+		// ...and the number of subtunes added is negative...
+		else
+			offset -= 1;
+
+		// Keep the offset within valid range
+		offset %= SUBTUNE_COUNT;
+
+		// Get the Subtune pointer from the offset
+		pSubtune = g_Module.GetSubtune(offset);
+	}
+
+	// Update the Active Subtune Index
+	m_activeSubtune = offset;
+
+	// Reset Song variables
 	m_playSongline = m_activeSongline = 0;
 	m_activeRow = m_playRow = 0;
-	m_activeChannel = m_activeCursor = 0;	// = m_activeColumn = 0;
+	m_activeChannel = m_activeCursor = 0;
 
+	// Resume playback if it was already playing
 	if (m_playMode != MPLAY_STOP)
 		Play(MPLAY_START, m_isFollowPlay);
 }
 
-void CSong::SeekPreviousSubtune()
+// Workaround for broken boundaries, may be called as often as necessary...
+void CSong::RespectBoundaries()
 {
-	// This should never happen...
-	if (g_Module.GetSubtuneCount() == 0)
-		return;
+	// Get all variables that could go out of bounds at some point
+	UINT activeSubtune = m_activeSubtune;
+	UINT activeSongline = m_activeSongline;
+	UINT playSongline = m_playSongline;
+	UINT activeRow = m_activeRow;
+	UINT playRow = m_playRow;
+	UINT activeChannel = m_activeChannel;
+	UINT activeCursor = m_activeCursor;
+	UINT activeSonglineColumn = m_activeSonglineColumn;
 
-	if (--m_activeSubtune >= (int)g_Module.GetSubtuneCount())
-		m_activeSubtune = g_Module.GetSubtuneCount() - 1;
+	// Snap the Subtune Index to 0
+	UINT subtuneCount = g_Module.GetSubtuneCount();
 
-	m_playSongline = m_activeSongline = 0;
-	m_activeRow = m_playRow = 0;
-	m_activeChannel = m_activeCursor = 0;	// = m_activeColumn = 0;
+	if (activeSubtune >= subtuneCount)
+		activeSubtune = 0;
 
-	if (m_playMode != MPLAY_STOP)
-		Play(MPLAY_START, m_isFollowPlay);
+	// Snap the Channel Index to 0
+	UINT channelCount = g_Module.GetChannelCount(activeSubtune);
+
+	if (activeChannel >= channelCount)
+		activeChannel = 0;
+
+	// Snap the Songline Index to the last possible position
+	UINT songLength = g_Module.GetSongLength(activeSubtune);
+
+	if (activeSongline >= songLength)
+		activeSongline = songLength - 1;
+
+	if (playSongline >= songLength)
+		playSongline = songLength - 1;
+
+	// Snap the Songline Cursor Column to the last possible position
+	if (activeSonglineColumn >= 2)
+		activeSonglineColumn = 1;
+
+	// Snap the Row Index to the last possible position
+	UINT patternLength = g_Module.GetShortestPatternLength(activeSubtune, activeSongline);	//= g_Module.GetPatternLength(activeSubtune);
+
+	if (activeRow >= patternLength)
+		activeRow = patternLength - 1;
+
+	if (playRow >= patternLength)
+		playRow = patternLength - 1;
+
+	// Snap the Pattern Cursor Column to the last possible position
+	UINT effectCommandCount = g_Module.GetEffectCommandCount(activeSubtune, activeChannel);
+
+	if (activeCursor >= CMD_TO_CC_INDEX(effectCommandCount))
+		activeCursor = CMD_TO_CC_INDEX(effectCommandCount) - 1;
+
+	// Update all variable, just to make sure all changes were applied correctly
+	m_activeSubtune = activeSubtune;
+	m_activeSongline = activeSongline;
+	m_playSongline = playSongline;
+	m_activeRow = activeRow;
+	m_playRow = playRow;
+	m_activeChannel = activeChannel;
+	m_activeCursor = activeCursor;
+	m_activeSonglineColumn = activeSonglineColumn;
 }
 
 
@@ -5496,46 +5566,35 @@ bool CSong::SetNoteInPattern(UINT note)
 	}
 }
 
-bool CSong::SetInstrumentInPattern(UINT instrument)
+bool CSong::SetInstrumentInPattern(UINT instrument, UINT cursor)
 {
-	if (!CC_INSTRUMENT(m_activeCursor))
-		return false;
-
 	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
 
 	// Get the Instrument currently in memory
 	UINT lastInstrument = g_Module.GetPatternRowInstrument(m_activeSubtune, m_activeChannel, pattern, m_activeRow);
 
-	switch (instrument)
+	// If the Instrument is invalid, do not process further
+	if (!g_Module.IsValidInstrumentIndex(instrument) || !g_Module.IsValidInstrumentIndex(lastInstrument))
+		return false;
+
+	// High Nybble Column -> Instrument 0x?F, where '?' is the value being edited
+	if (CC_INSTRUMENT_X(cursor))
 	{
-	case INSTRUMENT_EMPTY:
-		// The Instrument value will be overwritten regardless of the Active Column offset
-		break;
+		instrument = ((instrument & 0x0F) << 4) | (lastInstrument & 0x0F);
 
-	default:
-		// If the Instrument is invalid, do not process further
+		// If the Instrument Index is beyond the maximum range, set the highest possible value directly
 		if (!g_Module.IsValidInstrument(instrument))
-			return false;
+			instrument = INSTRUMENT_COUNT - 1;
+	}
 
-		// High Nybble Column -> Instrument 0x?F, where '?' is the value being edited
-		if (m_activeCursor == CC_INSTRUMENT_X)
-		{
-			instrument = ((instrument & 0x0F) << 4) | (lastInstrument & 0x0F);
+	// Low Nybble Column -> Instrument 0xF?, where '?' is the value being edited
+	else if (CC_INSTRUMENT_Y(cursor))
+	{
+		instrument = (lastInstrument & 0xF0) | (instrument & 0x0F);
 
-			// If the Instrument Index is beyond the maximum range, set the highest possible value directly
-			if (!g_Module.IsValidInstrument(instrument))
-				instrument = INSTRUMENT_COUNT - 1;
-		}
-
-		// Low Nybble Column -> Instrument 0xF?, where '?' is the value being edited
-		else if (m_activeCursor == CC_INSTRUMENT_Y)
-		{
-			instrument = (lastInstrument & 0xF0) | (instrument & 0x0F);
-
-			// If the Instrument Index is beyond the maximum range, only keep the Low Nybble value
-			if (!g_Module.IsValidInstrument(instrument))
-				instrument &= 0x0F;
-		}
+		// If the Instrument Index is beyond the maximum range, only keep the Low Nybble value
+		if (!g_Module.IsValidInstrument(instrument))
+			instrument &= 0x0F;
 	}
 
 	// The Instrument value will be overwritten with the combined value from each Nybble
@@ -5544,9 +5603,6 @@ bool CSong::SetInstrumentInPattern(UINT instrument)
 
 bool CSong::SetVolumeInPattern(UINT volume)
 {
-	if (!CC_VOLUME(m_activeCursor))
-		return false;
-
 	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
 
 	return g_Module.SetPatternRowVolume(m_activeSubtune, m_activeChannel, pattern, m_activeRow, volume);
@@ -5555,7 +5611,7 @@ bool CSong::SetVolumeInPattern(UINT volume)
 bool CSong::SetCommandIdentifierInPattern(UINT command)
 {
 	// Due to Note, Instrument and Volume sharing the variable
-	UINT column = CC_CMD_INDEX(m_activeCursor);
+	UINT column = CC_TO_CMD_INDEX(m_activeCursor);
 	UINT effectCommandCount = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel);
 
 	// If the column is out of bounds, no data should be edited
@@ -5567,10 +5623,10 @@ bool CSong::SetCommandIdentifierInPattern(UINT command)
 	return g_Module.SetPatternRowEffectCommand(m_activeSubtune, m_activeChannel, pattern, m_activeRow, column, command);
 }
 
-bool CSong::SetCommandParameterInPattern(UINT parameter)
+bool CSong::SetCommandParameterInPattern(UINT parameter, UINT cursor)
 {
 	// Due to Note, Instrument and Volume sharing the variable
-	UINT column = CC_CMD_INDEX(m_activeCursor);
+	UINT column = CC_TO_CMD_INDEX(m_activeCursor);
 	UINT effectCommandCount = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel);
 
 	// If the column is out of bounds, no data should be edited
@@ -5579,40 +5635,20 @@ bool CSong::SetCommandParameterInPattern(UINT parameter)
 
 	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
 
-	// Get both the Effect Command Identifier and Parameter currently in memory
-	//UINT lastCommand = g_Module.GetPatternRowEffectCommand(m_activeSubtune, m_activeChannel, pattern, m_activeRow, column);
+	// Get the Effect Command Parameter currently in memory
 	UINT lastParameter = g_Module.GetPatternRowEffectParameter(m_activeSubtune, m_activeChannel, pattern, m_activeRow, column);
 
-	// Allow editing only when the last Command Identifier is both Valid and Not Empty
-	//if (!g_Module.IsValidEffectCommandIndex(lastCommand) || lastCommand == PE_EMPTY)
-	//	return false;
-
 	// If the Effect Parameter is invalid, do not process further
-	if (!g_Module.IsValidEffectParameter(parameter))
+	if (!g_Module.IsValidEffectParameter(parameter) || !g_Module.IsValidEffectParameter(lastParameter))
 		return false;
 
-	switch (m_activeCursor)
-	{
-	case CC_CMD1_X:
-	case CC_CMD2_X:
-	case CC_CMD3_X:
-	case CC_CMD4_X:
-		// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
+	// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
+	if (CC_CMD_X(cursor))
 		parameter = ((parameter & 0x0F) << 4) | (lastParameter & 0x0F);
-		break;
 
-	case CC_CMD1_Y:
-	case CC_CMD2_Y:
-	case CC_CMD3_Y:
-	case CC_CMD4_Y:
-		// Effect Command Parameter, Low Nybble -> Command 0xFF?, where '?' is the value being edited
+	// Effect Command Parameter, Low Nybble -> Command 0xFF?, where '?' is the value being edited
+	else if (CC_CMD_Y(cursor))
 		parameter = (lastParameter & 0xF0) | (parameter & 0x0F);
-		break;
-
-	default:
-		// If None of the Effect Parameter columns are being edited, there is nothing to be done here
-		return false;
-	}
 
 	// The Command Parameter will be overwritten with the combined value from each Nybble
 	return g_Module.SetPatternRowEffectParameter(m_activeSubtune, m_activeChannel, pattern, m_activeRow, column, parameter);
@@ -5667,8 +5703,33 @@ bool CSong::InsertRowInPattern()
 
 bool CSong::SetPatternInSongline(UINT pattern)
 {
-	// Add code here to handle the Nybble individually
+	if (m_activeSonglineColumn != 0 && m_activeSonglineColumn != 1)
+		return false;
+
+	// Get the Pattern currently in memory
+	UINT lastPattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
+
+	// If the Pattern is invalid, do not process further
+	if (!g_Module.IsValidPattern(pattern) || !g_Module.IsValidPattern(lastPattern))
+		return false;
+
+	// High Nybble Column -> Pattern 0x?F, where '?' is the value being edited
+	if (m_activeSonglineColumn == 0)
+		pattern = ((pattern & 0x0F) << 4) | (lastPattern & 0x0F);
+
+	// Low Nybble Column -> Pattern 0xF?, where '?' is the value being edited
+	else if (m_activeSonglineColumn == 1)
+		pattern = (lastPattern & 0xF0) | (pattern & 0x0F);
+
+	// The Pattern will be overwritten with the combined value from each Nybble
 	return g_Module.SetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline, pattern);
+}
+
+bool CSong::ChangePatternInSongline(int offset)
+{
+	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
+
+	return g_Module.SetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline, pattern + offset);
 }
 
 bool CSong::DuplicatePatternInSongline()
@@ -5683,14 +5744,9 @@ bool CSong::SetNewEmptyPatternInSongline()
 	return g_Module.SetNewEmptyPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
 }
 
-void CSong::ChangeEffectCommandColumnCount(int offset)
+bool CSong::ChangeEffectCommandColumnCount(int offset)
 {
 	UINT columnCount = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel);
-	g_Module.SetEffectCommandCount(m_activeSubtune, m_activeChannel, columnCount + offset);
 
-	// Workaround for broken boundaries, a better method is needed later.
-	columnCount = (g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) * 3) + 1 + 2 + 1;
-
-	if (m_activeCursor >= (int)columnCount)
-		m_activeCursor = (int)columnCount - 1;
+	return g_Module.SetEffectCommandCount(m_activeSubtune, m_activeChannel, columnCount + offset);
 }

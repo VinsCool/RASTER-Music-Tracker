@@ -189,17 +189,50 @@ typedef enum patternCursorColumn_t : BYTE
 } TPatternCursorColumn;
 
 // Simplified Column Index macros, useful when the exact Cursor position isn't absolutely necessary
-#define CC_NOTE(x)			(x == CC_NOTE /*|| x == CC_OCTAVE*/)
-#define CC_INSTRUMENT(x)	(x == CC_INSTRUMENT_X || x == CC_INSTRUMENT_Y)
-#define CC_VOLUME(x)		(x == CC_VOLUME)
-#define CC_CMD1(x)			(x == CC_CMD1_IDENTIFIER || x == CC_CMD1_X || x == CC_CMD1_Y)
-#define CC_CMD2(x)			(x == CC_CMD2_IDENTIFIER || x == CC_CMD2_X || x == CC_CMD2_Y)
-#define CC_CMD3(x)			(x == CC_CMD3_IDENTIFIER || x == CC_CMD3_X || x == CC_CMD3_Y)
-#define CC_CMD4(x)			(x == CC_CMD4_IDENTIFIER || x == CC_CMD4_X || x == CC_CMD4_Y)
-#define VALID_CC_INDEX(x)	(x < CC_INDEX_MAX)
+#define CC_NOTE(x)				(x == CC_NOTE /*|| x == CC_OCTAVE*/)
+
+#define CC_INSTRUMENT_X(x)		(x == CC_INSTRUMENT_X)
+#define CC_INSTRUMENT_Y(x)		(x == CC_INSTRUMENT_Y)
+
+#define CC_INSTRUMENT(x)		(CC_INSTRUMENT_X(x) || CC_INSTRUMENT_Y(x))
+
+#define CC_VOLUME(x)			(x == CC_VOLUME)
+
+#define CC_CMD1_IDENTIFIER(x)	(x == CC_CMD1_IDENTIFIER)
+#define CC_CMD1_X(x)			(x == CC_CMD1_X)
+#define CC_CMD1_Y(x)			(x == CC_CMD1_Y)
+
+#define CC_CMD1(x)				(CC_CMD1_IDENTIFIER(x) || CC_CMD1_X(x) || CC_CMD1_Y(x))
+
+#define CC_CMD2_IDENTIFIER(x)	(x == CC_CMD2_IDENTIFIER)
+#define CC_CMD2_X(x)			(x == CC_CMD2_X)
+#define CC_CMD2_Y(x)			(x == CC_CMD2_Y)
+
+#define CC_CMD2(x)				(CC_CMD2_IDENTIFIER(x) || CC_CMD2_X(x) || CC_CMD2_Y(x))
+
+#define CC_CMD3_IDENTIFIER(x)	(x == CC_CMD3_IDENTIFIER)
+#define CC_CMD3_X(x)			(x == CC_CMD3_X)
+#define CC_CMD3_Y(x)			(x == CC_CMD3_Y)
+
+#define CC_CMD3(x)				(CC_CMD3_IDENTIFIER(x) || CC_CMD3_X(x) || CC_CMD3_Y(x))
+
+#define CC_CMD4_IDENTIFIER(x)	(x == CC_CMD4_IDENTIFIER)
+#define CC_CMD4_X(x)			(x == CC_CMD4_X)
+#define CC_CMD4_Y(x)			(x == CC_CMD4_Y)
+
+#define CC_CMD4(x)				(CC_CMD4_IDENTIFIER(x) || CC_CMD4_X(x) || CC_CMD4_Y(x))
+
+#define CC_CMD_IDENTIFIER(x)	(CC_CMD1_IDENTIFIER(x) || CC_CMD2_IDENTIFIER(x) || CC_CMD3_IDENTIFIER(x) || CC_CMD4_IDENTIFIER(x))
+#define CC_CMD_X(x)				(CC_CMD1_X(x) || CC_CMD2_X(x) || CC_CMD3_X(x) || CC_CMD4_X(x))
+#define CC_CMD_Y(x)				(CC_CMD1_Y(x) || CC_CMD2_Y(x) || CC_CMD3_Y(x) || CC_CMD4_Y(x))
+
+#define CC_CMD(x)				(CC_CMD1(x) || CC_CMD2(x) || CC_CMD3(x) || CC_CMD4(x))
+
+#define VALID_CC_INDEX(x)		(x < CC_INDEX_MAX)
 
 // The Effect Command Column Index formula is derived from the Cursor Column Index value itself
-#define CC_CMD_INDEX(x)		((x - CC_CMD1_IDENTIFIER) / (CC_CMD2_IDENTIFIER - CC_CMD1_IDENTIFIER))
+#define CC_TO_CMD_INDEX(x)		((x - CC_CMD1_IDENTIFIER) / (CC_CMD2_IDENTIFIER - CC_CMD1_IDENTIFIER))
+#define CMD_TO_CC_INDEX(x)		(((x * (CC_CMD2_IDENTIFIER - CC_CMD1_IDENTIFIER)) + CC_CMD1_IDENTIFIER))
 
 
 extern CModule g_Module;
@@ -303,8 +336,10 @@ public:
 	void SonglineLeftRightMovement(int columns);
 
 	// RMTE Subtune Movement functions
-	void SeekNextSubtune();
-	void SeekPreviousSubtune();
+	void SeekSubtune(int subtunes);
+
+	// A kind of a catch-all I guess...
+	void RespectBoundaries();
 
 	//BOOL TrackDelNoteInstrVolSpeed(int noteinstrvolspeed) { return g_Tracks.DelNoteInstrVolSpeed(noteinstrvolspeed, SongGetActiveTrack(), m_activeRow); };
 	BOOL TrackSetNoteActualInstrVol(int note) { return g_Tracks.SetNoteInstrVol(note, m_activeInstrument, m_activeVolume, SongGetActiveTrack(), m_activeRow); };
@@ -605,10 +640,10 @@ public:
 	bool TransposeSongline(int semitone);
 
 	bool SetNoteInPattern(UINT note);
-	bool SetInstrumentInPattern(UINT instrument);
+	bool SetInstrumentInPattern(UINT instrument, UINT cursor);
 	bool SetVolumeInPattern(UINT volume);
 	bool SetCommandIdentifierInPattern(UINT command);
-	bool SetCommandParameterInPattern(UINT parameter);
+	bool SetCommandParameterInPattern(UINT parameter, UINT cursor);
 
 	bool SetEmptyRowInPattern();
 
@@ -616,10 +651,11 @@ public:
 	bool InsertRowInPattern();
 
 	bool SetPatternInSongline(UINT pattern);
+	bool ChangePatternInSongline(int offset);
 	bool DuplicatePatternInSongline();
 	bool SetNewEmptyPatternInSongline();
 
-	void ChangeEffectCommandColumnCount(int offset);
+	bool ChangeEffectCommandColumnCount(int offset);
 
 private:
 	// Legacy variables

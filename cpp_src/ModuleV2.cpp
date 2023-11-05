@@ -2162,8 +2162,8 @@ const UINT CModule::GetSubtuneCount()
 {
 	UINT count = 0;
 
-	for (int i = 0; i < SUBTUNE_COUNT; i++)
-		count += m_subtuneIndex->subtune[i] != NULL;
+	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+		count += GetSubtune(i) != NULL;
 
 	return count;
 }
