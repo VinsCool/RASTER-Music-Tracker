@@ -635,11 +635,15 @@ public:
 	void PlaybackRespectBoundaries(TSubtune* pSubtune);
 */
 
+	TRow* GetActiveRow();
+
 	bool TransposeNoteInPattern(int semitone);
 	bool TransposePattern(int semitone);
 	bool TransposeSongline(int semitone);
 
-	bool SetNoteInPattern(UINT note);
+	bool SetNoteInPattern(UINT note) { return SetNoteInPattern(GetActiveRow(), note, m_activeOctave, m_activeInstrument, m_activeVolume); };
+	bool SetNoteInPattern(TRow* pRow, UINT note, UINT octave, UINT instrument, UINT volume);
+
 	bool SetInstrumentInPattern(UINT instrument, UINT cursor);
 	bool SetVolumeInPattern(UINT volume);
 	bool SetCommandIdentifierInPattern(UINT command);

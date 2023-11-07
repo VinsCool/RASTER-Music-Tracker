@@ -5489,7 +5489,16 @@ void CSong::PlaybackRespectBoundaries(TSubtune* pSubtune)
 }
 */
 
-//-- Editor Functions (TODO: Move elsewhere later) --//
+
+//-- Editor Functions (TODO(?): Move elsewhere later) --//
+
+TRow* CSong::GetActiveRow()
+{
+	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
+	TRow* pRow = g_Module.GetRow(m_activeSubtune, m_activeChannel, pattern, m_activeRow);
+
+	return pRow;
+}
 
 bool CSong::TransposeNoteInPattern(int semitone)
 {
@@ -5543,27 +5552,31 @@ bool CSong::TransposeSongline(int semitone)
 	return count;
 }
 
-bool CSong::SetNoteInPattern(UINT note)
+bool CSong::SetNoteInPattern(TRow* pRow, UINT note, UINT octave, UINT instrument, UINT volume)
 {
-	UINT semitone = note + m_activeOctave * 12;
-	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
-
 	switch (note)
 	{
 	case NOTE_OFF:
 	case NOTE_RELEASE:
 	case NOTE_RETRIGGER:
+		// Overwrite the Instrument and Volume columns with Empty values alongside any of these Note Commands
 		return g_Module.SetPatternRowNote(pRow, note) && g_Module.SetPatternRowInstrument(pRow, INSTRUMENT_EMPTY) && g_Module.SetPatternRowVolume(pRow, VOLUME_EMPTY);
 
 	case NOTE_EMPTY:
+		// Set the Note Command without Instrument or Volume
 		return g_Module.SetPatternRowNote(pRow, note);
 
 	default:
-		if (g_Module.IsValidNote(note) && g_Module.IsValidNote(semitone))
-			return g_Module.SetPatternRowNote(pRow, semitone) && g_Module.SetPatternRowInstrument(pRow, m_activeInstrument) && g_Module.SetPatternRowVolume(pRow, m_activeVolume);
+		// Calculate the Note Index with the Octave parameter, and set it alongside the Instrument and Volume parameters
+		note += octave * 12;
 
-		return false;
+		// The resulting Semitone must be within the Valid Notes range, in order to not set a Note Command by accident!
+		if (g_Module.IsValidNote(note))
+			return g_Module.SetPatternRowNote(pRow, note) && g_Module.SetPatternRowInstrument(pRow, instrument) && g_Module.SetPatternRowVolume(pRow, volume);
 	}
+
+	// Nothing was edited
+	return false;
 }
 
 bool CSong::SetInstrumentInPattern(UINT instrument, UINT cursor)

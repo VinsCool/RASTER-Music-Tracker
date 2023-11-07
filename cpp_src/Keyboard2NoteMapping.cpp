@@ -92,6 +92,7 @@ const char keynumblock09[256] =
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 };
 
+// TODO: Replace with a different system, there are many issues with accidental values being input!
 char NoteKey(int vk)
 {
 	switch (g_keyboard_layout)

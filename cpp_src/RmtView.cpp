@@ -3422,7 +3422,7 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		}
 
 		// Something went wrong, do no take a chance here and just return false
-		return false;
+		//return false;
 	}
 
 	// Instrument Column
