@@ -59,15 +59,13 @@
 #define SONG_SPEED_MAX				256												// Maximum Song Speed
 #define INSTRUMENT_SPEED_MAX		16												// Maximum Instrument Speed
 #define CHANNEL_COUNT				(POKEY_SOUNDCHIP_COUNT * POKEY_CHANNEL_COUNT)	// Maximum number of Channels in total
-#define _CH1(x)						((x % POKEY_CHANNEL_COUNT) == CH1)				// Is POKEY Channel 1?
-#define _CH2(x)						((x % POKEY_CHANNEL_COUNT) == CH2)				// Is POKEY Channel 2?
-#define _CH3(x)						((x % POKEY_CHANNEL_COUNT) == CH3)				// Is POKEY Channel 3?
-#define _CH4(x)						((x % POKEY_CHANNEL_COUNT) == CH4)				// Is POKEY Channel 4?
+#define CH1(x)						((x % POKEY_CHANNEL_COUNT) == CH1)				// Is POKEY Channel 1?
+#define CH2(x)						((x % POKEY_CHANNEL_COUNT) == CH2)				// Is POKEY Channel 2?
+#define CH3(x)						((x % POKEY_CHANNEL_COUNT) == CH3)				// Is POKEY Channel 3?
+#define CH4(x)						((x % POKEY_CHANNEL_COUNT) == CH4)				// Is POKEY Channel 4?
 #define NOTE_COUNT					120												// Maximum Note Index, for a total of 10 octaves
 #define INSTRUMENT_COUNT			64												// Maximum Instrument Index
 #define VOLUME_COUNT				16												// Maximum Volume Index
-#define INVALID						-1												// Constant value for Invalid data
-#define EMPTY						0												// Constant value for Empty data
 #define EFFECT_PARAMETER_COUNT		256												// Maximum Effect Parameter $XY Index
 #define INSTRUMENT_NAME_MAX			64												// Maximum length of Instrument name
 #define ENVELOPE_STEP_COUNT			256												// Maximum Envelope Index
@@ -85,7 +83,7 @@ typedef enum pokeyChannel_t : BYTE
 	CH3,
 	CH4,
 	POKEY_CHANNEL_COUNT,
-}TPokeyChannel;
+} TPokeyChannel;
 
 // Maximum number of POKEY soundchips defined by Count
 typedef enum pokeySoundchip_t : BYTE
@@ -95,7 +93,7 @@ typedef enum pokeySoundchip_t : BYTE
 	POKEY3,
 	POKEY4,
 	POKEY_SOUNDCHIP_COUNT,
-}TPokeySoundchip;
+} TPokeySoundchip;
 
 // Maximum number of Effect Commands in Pattern defined by Count
 typedef enum effectCommandColumn_t : BYTE
@@ -105,7 +103,7 @@ typedef enum effectCommandColumn_t : BYTE
 	CMD3,
 	CMD4,
 	PATTERN_EFFECT_COUNT,
-}TEffectCommandColumn;
+} TEffectCommandColumn;
 
 // Valid Note Index ranges from 0 to the value of NOTE_COUNT
 // Additional entries must be inserted at the end before NOTE_INDEX_MAX

@@ -120,7 +120,7 @@
     <ClCompile Include="GuiHelpers.cpp">
       <Filter>Source Files\GUI</Filter>
     </ClCompile>
-    <ClCompile Include="Keyboard2NoteMapping.cpp">
+    <ClCompile Include="Keyboard.cpp">
       <Filter>Source Files\Data</Filter>
     </ClCompile>
     <ClCompile Include="ChannelControl.cpp">
@@ -248,7 +248,7 @@
     <ClInclude Include="GuiHelpers.h">
       <Filter>Source Files\GUI</Filter>
     </ClInclude>
-    <ClInclude Include="Keyboard2NoteMapping.h">
+    <ClInclude Include="Keyboard.h">
       <Filter>Source Files\Data</Filter>
     </ClInclude>
     <ClInclude Include="ChannelControl.h">

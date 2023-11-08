@@ -4,6 +4,7 @@
 #include "MainFrm.h"
 
 #include "GuiHelpers.h"
+#include "Keyboard.h"
 
 #include "global.h"
 

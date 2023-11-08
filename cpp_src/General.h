@@ -5,6 +5,9 @@
 typedef signed char SBYTE;
 typedef signed short SWORD;
 
+#define INVALID						-1
+#define EMPTY						0
+
 // ----------------------------------------------------------------------------
 // GUI color setup
 // The text is defined in IDB_GFX as bitmap font in various colours
@@ -54,19 +57,14 @@ typedef signed short SWORD;
 #define PROVE_POKEY_EXPLORER_MODE	4							// Ctrl + Shift + F5
 #define PROVE_MODE_MAX				4							// <-- Adjust as you add/remove modes
 
-// ----------------------------------------------------------------------------
-// Keyboard layouts that may be used with RMT for Notes input
-//
-#define KEYBOARD_QWERTY				0
-#define KEYBOARD_AZERTY				1
-
+/*
 // ----------------------------------------------------------------------------
 // TODO: add more keys definition to simplify things
 //
-#define VK_BACKSPACE	8
-#define VK_ENTER		13
-#define VK_PAGE_UP		33
-#define VK_PAGE_DOWN	34
+#define VK_BACKSPACE	VK_BACK
+#define VK_ENTER		VK_RETURN
+#define VK_PAGE_UP		VK_PRIOR
+#define VK_PAGE_DOWN	VK_NEXT
 #define VK_0			0x30
 #define VK_1			0x31
 #define VK_2			0x32
@@ -93,7 +91,7 @@ typedef signed short SWORD;
 #define VK_N			0x4E
 #define VK_O			0x4F
 #define VK_P			0x50
-
+*/
 
 #define CONFIG_FILENAME "rmt.ini"
 #define TUNING_FILENAME "tuning.ini"

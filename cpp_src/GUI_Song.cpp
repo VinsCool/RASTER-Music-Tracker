@@ -23,7 +23,7 @@
 
 #include "global.h"
 
-#include "Keyboard2NoteMapping.h"
+//#include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 
 extern CInstruments	g_Instruments;

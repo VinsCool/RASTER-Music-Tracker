@@ -18,7 +18,7 @@
 #include "Instruments.h"
 #include "Clipboard.h"
 #include "global.h"
-#include "Keyboard2NoteMapping.h"
+//#include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 #include "PokeyStream.h"
 #include "ModuleV2.h"
@@ -3813,7 +3813,7 @@ void CSong::DrawSonglines()
 	for (UINT i = 0; i < channelCount; i++)
 	{
 		// For each POKEY chip, display the chip number above the Channel Index
-		if (_CH1(i))
+		if (CH1(i))
 		{
 			bool isEnabled = false;
 			bool isActive = false;
@@ -5567,6 +5567,10 @@ bool CSong::SetNoteInPattern(TRow* pRow, UINT note, UINT octave, UINT instrument
 		return g_Module.SetPatternRowNote(pRow, note);
 
 	default:
+		// Invalid Note Index should be ignored
+		if (!g_Module.IsValidNote(note))
+			break;
+
 		// Calculate the Note Index with the Octave parameter, and set it alongside the Instrument and Volume parameters
 		note += octave * 12;
 

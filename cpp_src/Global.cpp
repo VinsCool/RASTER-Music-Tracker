@@ -6,6 +6,7 @@
 #include "PokeyStream.h"
 #include "ModuleV2.h"
 #include "Tuning.h"
+#include "Keyboard.h"
 #include "global.h"
 
 //-- Atari 6502 and POKEY Emulation Variables (TODO: Delete and replace with a better method) --//
@@ -149,14 +150,16 @@ int g_AsmFormat = ASSEMBLER_FORMAT_XASM;
 
 // ----------------------------------------------------------------------------
 // Here are the main global objects that make up 99% of RMT.
+// FIXME: Find a way to make all of these 'extern' in a clean way, the current setup is a mess!
 //
 CSong			g_Song;				// There is one active song
 CRmtMidi		g_Midi;				// There is one midi interface
-CUndo			g_Undo;				// Undo buffer tracker
-CXPokey			g_Pokey;			// The simulated Pokey chip
-CInstruments	g_Instruments;		// Instrument routines
-CTracks			g_Tracks;			// Track and Pattern routines
-CTrackClipboard g_TrackClipboard;	// Clipboard functions
-CTuning			g_Tuning;			// Tuning calculations and POKEY tuning lookup tables generation
+CKeyboard		g_Keyboard;			// Computer Keyboard Mapping configuration and Input Handler functions
+CUndo			g_Undo;				// Undo buffer tracker, TODO: Replace or Delete
+CXPokey			g_Pokey;			// The simulated Pokey chip, TODO: Replace or Delete
+CInstruments	g_Instruments;		// Instrument routines, TODO: Replace or Delete
+CTracks			g_Tracks;			// Track and Pattern routines, TODO: Replace or Delete
+CTrackClipboard g_TrackClipboard;	// Clipboard functions, TODO: Replace or Delete
+CTuning			g_Tuning;			// Tuning calculations and POKEY notation tables generation
 CPokeyStream	g_PokeyStream;		// POKEY registers state stream buffer functions
-CModule			g_Module;			// Extended RMT Module Format (WIP)
+CModule			g_Module;			// Extended RMT Module Format variables and functions, used for playback, editing, importing, exporting, etc

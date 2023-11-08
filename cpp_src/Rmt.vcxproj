@@ -402,7 +402,7 @@
     <ClCompile Include="IO_Song_ExportAsm.cpp" />
     <ClCompile Include="IO_Song_ExportSaprLzss.cpp" />
     <ClCompile Include="IO_Tracks.cpp" />
-    <ClCompile Include="Keyboard2NoteMapping.cpp" />
+    <ClCompile Include="Keyboard.cpp" />
     <ClCompile Include="lzss_sap.cpp">
       <LanguageStandard_C Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdc17</LanguageStandard_C>
       <LanguageStandard_C Condition="'$(Configuration)|$(Platform)'=='Release|x64'">stdc17</LanguageStandard_C>
@@ -554,7 +554,7 @@
     <ClInclude Include="ChannelControl.h" />
     <ClInclude Include="Instruments.h" />
     <ClInclude Include="IOHelpers.h" />
-    <ClInclude Include="Keyboard2NoteMapping.h" />
+    <ClInclude Include="Keyboard.h" />
     <ClInclude Include="lzssp.h" />
     <ClInclude Include="lzss_sap.h" />
     <ClInclude Include="PokeyStream.h" />

@@ -23,7 +23,7 @@
 #include "global.h"
 
 #include "GuiHelpers.h"
-#include "Keyboard2NoteMapping.h"
+#include "Keyboard.h"
 #include "ChannelControl.h"
 
 #ifdef _DEBUG
@@ -34,6 +34,7 @@ static char THIS_FILE[] = __FILE__;
 
 extern CSong	g_Song;
 extern CRmtMidi	g_Midi;
+extern CKeyboard g_Keyboard;
 extern CUndo	g_Undo;
 extern CXPokey	g_Pokey;
 extern CInstruments	g_Instruments;
@@ -570,7 +571,7 @@ void CRmtView::ResetRMTConfig()
 	g_defaultSongsPath = "";					// Default path for songs
 	g_defaultInstrumentsPath = "";				// Default path for instruments
 	g_defaultTracksPath = "";					// Default path for tracks
-	g_keyboard_layout = KEYBOARD_QWERTY;		// Keyboard layout used by RMT. eg: QWERTY, AZERTY, etc 
+	g_keyboard_layout = KB_LAYOUT_QWERTY;		// Keyboard layout used by RMT. eg: QWERTY, AZERTY, etc 
 	g_keyboard_updowncontinue = 1;				// Scroll to the next/previous Songline when the Pattern limits are crossed 
 	g_keyboard_RememberOctavesAndVolumes = 1;	// Remember the last octave and volume values used with an Instrument 
 	g_keyboard_escresetatarisound = 1;			// Reset the RMT Atari routines if the ESC key is pressed 
@@ -3002,6 +3003,127 @@ bool CRmtView::OnProcessKeyboardInput(UINT vk)
 	bool keyShift = IsPressingShift();
 	bool keyAlt = IsPressingAlt();
 
+	// Get the Action to process from a matching Key Combination
+	UINT action = g_Keyboard.GetKeyBindingAction(vk, keyCtrl, keyAlt, keyShift);
+
+	switch (action)
+	{
+	case AB_PLAY_STOP:
+		OnPlaystop();
+		return true;
+
+	case AB_PLAY_START:
+		OnPlay(MPLAY_START);
+		return true;
+
+	case AB_PLAY_PATTERN:
+		OnPlay(MPLAY_PATTERN);
+		return true;
+
+	case AB_PLAY_CURSOR:
+		OnPlay(MPLAY_FROM);
+		return true;
+
+	case AB_MOVE_PATTERN_EDITOR:
+		OnEmTracks();
+		return true;
+
+	case AB_MOVE_INSTRUMENT_EDITOR:
+		OnEmInstruments();
+		return true;
+
+	case AB_MOVE_SONGLINE_EDITOR:
+		OnEmSong();
+		return true;
+
+	case AB_MOVE_INFO_EDITOR:
+		OnEmInfo();
+		return true;
+
+	case AB_TOGGLE_REGION:
+		OnRegion();
+		return true;
+
+	case AB_TOGGLE_FOLLOW:
+		OnPlayfollow();
+		return true;
+
+	case AB_ACTIVE_OCTAVE_UP:
+		OnOctaveUp();
+		return true;
+
+	case AB_ACTIVE_OCTAVE_DOWN:
+		OnOctaveDown();
+		return true;
+
+	case AB_ACTIVE_VOLUME_UP:
+		OnVolumeUp();
+		return true;
+
+	case AB_ACTIVE_VOLUME_DOWN:
+		OnVolumeDown();
+		return true;
+		
+	case AB_ACTIVE_INSTRUMENT_LEFT:
+		OnInstrumentLeft();
+		return true;
+
+	case AB_ACTIVE_INSTRUMENT_RIGHT:
+		OnInstrumentRight();
+		return true;
+
+	case AB_MOVE_SONGLINE_UP:
+		OnSonglineUp();
+		return true;
+
+	case AB_MOVE_SONGLINE_DOWN:
+		OnSonglineDown();
+		return true;
+
+	case AB_MOVE_CHANNEL_LEFT:
+		OnChannelLeft();
+		return true;
+
+	case AB_MOVE_CHANNEL_RIGHT:
+		OnChannelRight();
+		return true;
+
+	case AB_MOVE_SUBTUNE_LEFT:
+		OnSubtuneLeft();
+		return true;
+
+	case AB_MOVE_SUBTUNE_RIGHT:
+		OnSubtuneRight();
+		return true;
+	}
+	
+	// The remaining keys are processed within their respective screen region
+	// This is the second priority level to pass through, further subscreen divisions may also be used for specialised keys
+	switch (g_activepart)
+	{
+		//case PART_INFO:
+			// return InfoEditorKey(vk, keyCtrl, keyAlt, keyShift);
+
+	case PART_TRACKS:
+		return PatternEditorKey(vk, keyCtrl, keyAlt, keyShift);
+
+		//case PART_INSTRUMENTS:
+			//return InstrumentEditorKey(vk, keyCtrl, keyAlt, keyShift);
+
+	case PART_SONG:
+		return SongEditorKey(vk, keyCtrl, keyAlt, keyShift);
+	}
+
+	// No action taken, nothing to be done
+	return false;
+
+
+/*
+	// Caching the Modifier Key flags will ensure that no key combination is accidentally dropped or duplicated
+	bool keyCtrl = IsPressingCtrl();
+	bool keyShift = IsPressingShift();
+	bool keyAlt = IsPressingAlt();
+
 	// Process all keys with the highest priority level first, anything passing through will be handled further below
 	// It is indeed possible to use the same key multiple times, thanks to this priority system
 	switch (vk)
@@ -3212,10 +3334,248 @@ bool CRmtView::OnProcessKeyboardInput(UINT vk)
 
 	// No action taken, nothing to be done
 	return false;
+*/
 }
 
 bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift)
 {
+	UINT noteKey = INVALID;
+	UINT numberKey = INVALID;
+	UINT activeCursor = g_Song.GetActiveCursor();
+	UINT action = g_Keyboard.GetKeyBindingAction(vk, keyCtrl, keyAlt, keyShift);
+
+	// Process all keys with the highest priority in the Pattern Editor, anything passing through will be handled further below
+	// The cursor position will then be used to further narrow down which action should be taken in the Pattern Editor
+	switch (action)
+	{
+	case AB_MOVE_UP:
+		OnPatternUp();
+		return true;
+
+	case AB_MOVE_DOWN:
+		OnPatternDown();
+		return true;
+
+	case AB_MOVE_LEFT:
+		OnPatternLeft();
+		return true;
+
+	case AB_MOVE_RIGHT:
+		OnPatternRight();
+		return true;
+
+	case AB_MOVE_HIGHLIGHT_PRIMARY_UP:
+		g_Song.PatternUpDownMovement(g_trackLinePrimaryHighlight * -1);
+		return true;
+
+	case AB_MOVE_HIGHLIGHT_PRIMARY_DOWN:
+		g_Song.PatternUpDownMovement(g_trackLinePrimaryHighlight);
+		return true;
+
+	case AB_EDIT_INCREMENT:
+		return g_Song.ChangePatternInSongline(1);
+
+	case AB_EDIT_DECREMENT:
+		return g_Song.ChangePatternInSongline(-1);
+
+	case AB_EDIT_INCREMENT_MORE:
+		return g_Song.ChangePatternInSongline(16);
+
+	case AB_EDIT_DECREMENT_MORE:
+		return g_Song.ChangePatternInSongline(-16);
+
+	case AB_MISC_INCREMENT_COMMAND_COLUMN:
+		return g_Song.ChangeEffectCommandColumnCount(1);
+
+	case AB_MISC_DECREMENT_COMMAND_COLUMN:
+		return g_Song.ChangeEffectCommandColumnCount(-1);
+
+	case AB_TRANSPOSE_NOTE_UP:
+		return g_Song.TransposeNoteInPattern(1);
+
+	case AB_TRANSPOSE_NOTE_DOWN:
+		return g_Song.TransposeNoteInPattern(-1);
+
+	case AB_TRANSPOSE_PATTERN_UP:
+		return g_Song.TransposePattern(1);
+
+	case AB_TRANSPOSE_PATTERN_DOWN:
+		return g_Song.TransposePattern(-1);
+
+	case AB_TRANSPOSE_SONGLINE_UP:
+		return g_Song.TransposeSongline(1);
+
+	case AB_TRANSPOSE_SONGLINE_DOWN:
+		return g_Song.TransposeSongline(-1);
+
+	case AB_TRANSPOSE_NOTE_UP_MORE:
+		return g_Song.TransposeNoteInPattern(NOTE_OCTAVE);
+
+	case AB_TRANSPOSE_NOTE_DOWN_MORE:
+		return g_Song.TransposeNoteInPattern(-NOTE_OCTAVE);
+
+	case AB_TRANSPOSE_PATTERN_UP_MORE:
+		return g_Song.TransposePattern(NOTE_OCTAVE);
+
+	case AB_TRANSPOSE_PATTERN_DOWN_MORE:
+		return g_Song.TransposePattern(-NOTE_OCTAVE);
+
+	case AB_TRANSPOSE_SONGLINE_UP_MORE:
+		return g_Song.TransposeSongline(NOTE_OCTAVE);
+
+	case AB_TRANSPOSE_SONGLINE_DOWN_MORE:
+		return g_Song.TransposeSongline(-NOTE_OCTAVE);
+
+	case AB_EDIT_CLEAR:
+		if (g_Song.SetEmptyRowInPattern())
+		{
+			OnPatternDown();
+			return true;
+		}
+		// Something went wrong, do no take a chance here and just return false
+		return false;
+
+	case AB_EDIT_DELETE:
+		return g_Song.DeleteRowInPattern();
+
+	case AB_EDIT_INSERT:
+		return g_Song.InsertRowInPattern();
+
+	case AB_EDIT_DUPLICATE:
+		return g_Song.DuplicatePatternInSongline();
+
+	case AB_EDIT_NEW:
+		return g_Song.SetNewEmptyPatternInSongline();
+	}
+
+	// Note Column
+	if (CC_NOTE(activeCursor))
+	{
+		switch (action)
+		{
+		case AB_EDIT_EMPTY:
+			noteKey = NOTE_EMPTY;
+			break;
+
+		case AB_NOTE_OFF:
+			noteKey = NOTE_OFF;
+			break;
+
+		case AB_NOTE_RELEASE:
+			noteKey = NOTE_RELEASE;
+			break;
+
+		case AB_NOTE_RETRIGGER:
+			noteKey = NOTE_RETRIGGER;
+			break;
+
+		default:
+			if (!keyCtrl && !keyAlt && !keyShift)
+				noteKey = g_Keyboard.GetNoteKey(vk);
+		}
+
+		if (g_Song.SetNoteInPattern(noteKey))
+		{
+			OnPatternDown();
+			return true;
+		}
+	}
+
+	// Instrument Column
+	else if (CC_INSTRUMENT(activeCursor))
+	{
+		switch (action)
+		{
+		case AB_EDIT_EMPTY:
+			// In order to set the Instrument value directly, the Cursor must be out of bounds
+			activeCursor = INVALID;
+			numberKey = INSTRUMENT_EMPTY;
+			break;
+
+		default:
+			if (!keyCtrl && !keyAlt && !keyShift)
+				numberKey = g_Keyboard.GetNumberKey(vk);
+		}
+
+		if (g_Song.SetInstrumentInPattern(numberKey, activeCursor))
+		{
+			OnPatternDown();
+			return true;
+		}
+	}
+
+	// Volume Column
+	else if (CC_VOLUME(activeCursor))
+	{
+		switch (action)
+		{
+		case AB_EDIT_EMPTY:
+			numberKey = VOLUME_EMPTY;
+			break;
+
+		default:
+			if (!keyCtrl && !keyAlt && !keyShift)
+				numberKey = g_Keyboard.GetNumberKey(vk);
+		}
+
+		if (g_Song.SetVolumeInPattern(numberKey))
+		{
+			OnPatternDown();
+			return true;
+		}
+	}
+
+	// Effect Command Columns
+
+	// The Effect Commands Identifier are being processed in priority
+	else if (CC_CMD_IDENTIFIER(activeCursor))
+	{
+		switch (action)
+		{
+		case AB_EDIT_EMPTY:
+			numberKey = PE_EMPTY;
+			break;
+
+		default:
+			if (!keyCtrl && !keyAlt && !keyShift)
+				numberKey = g_Keyboard.GetCommandKey(vk);
+		}
+
+	SetCommandIdentifier:
+		if (g_Song.SetCommandIdentifierInPattern(numberKey))
+		{
+			OnPatternDown();
+			return true;
+		}
+	}
+
+	// The Effect Commands Parameter is the last possible case to be processed
+	else if (CC_CMD_X(activeCursor) || CC_CMD_Y(activeCursor))
+	{
+		switch (action)
+		{
+		case AB_EDIT_EMPTY:
+			// Exception for AB_EDIT_EMPTY: The Effect Command Column will be cleared regardless of the Cursor Column in this case
+			numberKey = PE_EMPTY;
+			goto SetCommandIdentifier;
+
+		default:
+			if (!keyCtrl && !keyAlt && !keyShift)
+				numberKey = g_Keyboard.GetNumberKey(vk);
+		}
+
+		if (g_Song.SetCommandParameterInPattern(numberKey, activeCursor))
+		{
+			OnPatternDown();
+			return true;
+		}
+	}
+
+	// Unknown key combination, or unknown cursor position
+	return false;
+
+
+/*
 	UINT noteKey = INVALID;
 	UINT numbKey = INVALID;
 	UINT activeCursor = g_Song.GetActiveCursor();
@@ -3410,9 +3770,12 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 				noteKey = NOTE_RETRIGGER;
 			break;
 
+//		default:
+//			if (!keyCtrl && !keyAlt && !keyShift)
+//				noteKey = NoteKey(vk);
 		default:
 			if (!keyCtrl && !keyAlt && !keyShift)
-				noteKey = NoteKey(vk);
+				noteKey = g_Keyboard.GetNoteKey(vk);
 		}
 
 		if (g_Song.SetNoteInPattern(noteKey))
@@ -3422,7 +3785,7 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		}
 
 		// Something went wrong, do no take a chance here and just return false
-		//return false;
+		return false;
 	}
 
 	// Instrument Column
@@ -3439,9 +3802,9 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 			}
 			break;
 
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = NumbKey(vk);
+//		default:
+//			if (!keyCtrl && !keyAlt && !keyShift)
+//				numbKey = NumbKey(vk);
 		}
 
 		if (g_Song.SetInstrumentInPattern(numbKey, activeCursor))
@@ -3464,9 +3827,9 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 				numbKey = VOLUME_EMPTY;
 			break;
 
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = NumbKey(vk);
+//		default:
+//			if (!keyCtrl && !keyAlt && !keyShift)
+//				numbKey = NumbKey(vk);
 		}
 
 		if (g_Song.SetVolumeInPattern(numbKey))
@@ -3579,9 +3942,9 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 			}
 			break;
 
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = NumbKey(vk);
+//		default:
+//			if (!keyCtrl && !keyAlt && !keyShift)
+//				numbKey = NumbKey(vk);
 		}
 
 		if (g_Song.SetCommandParameterInPattern(numbKey, activeCursor))
@@ -3596,10 +3959,14 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 
 	// Unknown key combination, or unknown cursor position
 	return false;
+*/
 }
 
 bool CRmtView::SongEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift)
 {
+	return false;
+
+/*
 	UINT numbKey = INVALID;
 
 	switch (vk)
@@ -3712,4 +4079,5 @@ bool CRmtView::SongEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift)
 
 	// Unknown key combination
 	return false;
+*/
 }

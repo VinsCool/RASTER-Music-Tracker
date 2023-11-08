@@ -22,7 +22,7 @@
 
 #include "global.h"
 
-#include "Keyboard2NoteMapping.h"
+//#include "Keyboard2NoteMapping.h"
 #include "ChannelControl.h"
 #include "RmtMidi.h"
 
