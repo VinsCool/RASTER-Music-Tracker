@@ -188,6 +188,14 @@ typedef enum patternCursorColumn_t : BYTE
 	CC_INDEX_MAX,
 } TPatternCursorColumn;
 
+// Nybble Cursor Column Index, for anything that may be edited in half Bytes
+typedef enum nybbleCursorColumn_t : BYTE
+{
+	CC_NYBBLE_X = 0,
+	CC_NYBBLE_Y,
+	CC_NYBBLE_MAX,
+} TNybbleCursorColumn;
+
 // Simplified Column Index macros, useful when the exact Cursor position isn't absolutely necessary
 #define CC_NOTE(x)				(x == CC_NOTE /*|| x == CC_OCTAVE*/)
 
@@ -304,6 +312,7 @@ public:
 	int GetActiveLine() { return m_activeRow; };
 	int GetPlayLine() { return m_playRow; };
 	int GetActiveCursor() { return m_activeCursor; };
+	int GetActiveSonglineColumn() { return m_activeSonglineColumn; };
 	//int GetActiveColumn() { return m_activeColumn; };
 	int GetActiveOctave() { return m_activeOctave; };
 	int GetActiveVolume() { return m_activeVolume; };
@@ -635,26 +644,36 @@ public:
 	void PlaybackRespectBoundaries(TSubtune* pSubtune);
 */
 
-	TRow* GetActiveRow();
+	TRow* GetRow();
+	TChannel* GetChannel();
 
 	bool TransposeNoteInPattern(int semitone);
 	bool TransposePattern(int semitone);
 	bool TransposeSongline(int semitone);
 
-	bool SetNoteInPattern(UINT note) { return SetNoteInPattern(GetActiveRow(), note, m_activeOctave, m_activeInstrument, m_activeVolume); };
+	bool SetNoteInPattern(UINT note) { return SetNoteInPattern(GetRow(), note, m_activeOctave, m_activeInstrument, m_activeVolume); };
 	bool SetNoteInPattern(TRow* pRow, UINT note, UINT octave, UINT instrument, UINT volume);
 
-	bool SetInstrumentInPattern(UINT instrument, UINT cursor);
-	bool SetVolumeInPattern(UINT volume);
-	bool SetCommandIdentifierInPattern(UINT command);
-	bool SetCommandParameterInPattern(UINT parameter, UINT cursor);
+	bool SetInstrumentInPattern(UINT instrument, UINT nybble = INVALID) { return SetInstrumentInPattern(GetRow(), instrument, nybble); };
+	bool SetInstrumentInPattern(TRow* pRow, UINT instrument, UINT nybble = INVALID);
+
+	bool SetVolumeInPattern(UINT volume) { return SetVolumeInPattern(GetRow(), volume); };
+	bool SetVolumeInPattern(TRow* pRow, UINT volume);
+
+	bool SetCommandIdentifierInPattern(UINT command) { return SetCommandIdentifierInPattern(GetRow(), command, CC_TO_CMD_INDEX(m_activeCursor)); };
+	bool SetCommandIdentifierInPattern(TRow* pRow, UINT command, UINT column);
+
+	bool SetCommandParameterInPattern(UINT parameter, UINT nybble = INVALID) { return SetCommandParameterInPattern(GetRow(), parameter, CC_TO_CMD_INDEX(m_activeCursor), nybble); };
+	bool SetCommandParameterInPattern(TRow* pRow, UINT parameter, UINT column, UINT nybble = INVALID);
 
 	bool SetEmptyRowInPattern();
 
 	bool DeleteRowInPattern();
 	bool InsertRowInPattern();
 
-	bool SetPatternInSongline(UINT pattern);
+	bool SetPatternInSongline(UINT pattern, UINT nybble = INVALID) { return SetPatternInSongline(GetChannel(), m_activeSongline, pattern, nybble); };
+	bool SetPatternInSongline(TChannel* pChannel, UINT songline, UINT pattern, UINT nybble = INVALID);
+
 	bool ChangePatternInSongline(int offset);
 	bool DuplicatePatternInSongline();
 	bool SetNewEmptyPatternInSongline();

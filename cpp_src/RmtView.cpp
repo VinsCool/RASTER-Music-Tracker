@@ -3508,14 +3508,17 @@ bool CRmtView::PatternEditorKey(UINT actionId, UINT noteKey, UINT numberKey, UIN
 		switch (actionId)
 		{
 		case AB_EDIT_EMPTY:
-			// In order to set the Instrument value directly, the Cursor must be out of bounds
-			// FIXME: Shit workaround!!!
 			activeCursor = INVALID;
 			numberKey = INSTRUMENT_EMPTY;
 			break;
+
+		default:
+			if (CC_INSTRUMENT_X(activeCursor))
+				activeCursor = CC_NYBBLE_X;
+			else if (CC_INSTRUMENT_Y(activeCursor))
+				activeCursor = CC_NYBBLE_Y;
 		}
 
-		// TODO: Handle the cases where a whole Byte is wanted too
 		if (g_Song.SetInstrumentInPattern(numberKey, activeCursor))
 		{
 			OnPatternDown();
@@ -3569,9 +3572,14 @@ bool CRmtView::PatternEditorKey(UINT actionId, UINT noteKey, UINT numberKey, UIN
 			// Exception for AB_EDIT_EMPTY: The Effect Command Column will be cleared regardless of the Cursor Column in this case
 			commandKey = PE_EMPTY;
 			goto SetCommandIdentifier;
+
+		default:
+			if (CC_CMD_X(activeCursor))
+				activeCursor = CC_NYBBLE_X;
+			else if (CC_CMD_Y(activeCursor))
+				activeCursor = CC_NYBBLE_Y;
 		}
 
-		// TODO: Handle the cases where a whole Byte is wanted too
 		if (g_Song.SetCommandParameterInPattern(numberKey, activeCursor))
 		{
 			OnPatternDown();
@@ -3585,6 +3593,8 @@ bool CRmtView::PatternEditorKey(UINT actionId, UINT noteKey, UINT numberKey, UIN
 
 bool CRmtView::SongEditorKey(UINT actionId, UINT numberKey)
 {
+	UINT activeSonglineColumn = g_Song.GetActiveSonglineColumn();
+
 	// Process all keys with the highest priority in the Songline Editor, anything passing through will be handled further below
 	// The cursor position will then be used to further narrow down which action should be taken in the Songline Editor
 	switch (actionId)
@@ -3647,8 +3657,7 @@ bool CRmtView::SongEditorKey(UINT actionId, UINT numberKey)
 		return g_Song.ChangePatternInSongline(-16);
 	}
 
-	// TODO: Handle the cases where a whole Byte is wanted too
-	if (g_Song.SetPatternInSongline(numberKey))
+	if (g_Song.SetPatternInSongline(numberKey, activeSonglineColumn))
 	{
 		OnSonglineRight();
 		return true;
