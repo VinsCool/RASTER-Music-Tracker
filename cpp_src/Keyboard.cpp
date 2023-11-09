@@ -10,9 +10,6 @@
 CKeyboard::CKeyboard()
 {
 	SetDefaultKeyBinding();
-	//CString layout = "A";
-	//GetKeyboardLayoutName((LPSTR&)layout);
-	//MessageBoxA(g_hwnd, layout, "test", MB_ICONINFORMATION);
 }
 
 CKeyboard::~CKeyboard()
@@ -161,231 +158,104 @@ UINT CKeyboard::GetKeyBindingAction(UINT keyVirtual, bool keyCtrl, bool keyAlt, 
 }
 
 // Return the Note key mapped to the chosen Keyboard layout
-// Surely, there is a much better method I could use here...
-UINT CKeyboard::GetNoteKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift)
+UINT CKeyboard::GetNoteKey(UINT scanCode, bool keyCtrl, bool keyAlt, bool keyShift)
 {
 	// Neither of the Modifier keys are supposed to be held down!
-	if (keyCtrl || keyAlt || keyShift)
-		return INVALID;
-
-	UINT noteKey = INVALID;
-	UINT octave = 0;
-
-	if (g_keyboard_layout == KB_LAYOUT_QWERTY)
+	if (!keyCtrl && !keyAlt && !keyShift)
 	{
-		switch (keyVirtual)
+		switch (scanCode)
 		{
-		case VK_I: octave++;
-		case VK_Q:
-		case VK_OEM_COMMA: octave++;
-		case VK_Z: noteKey = NOTE_C;
-			break;
-
-		case VK_9: octave++;
-		case VK_2:
-		case VK_L: octave++;
-		case VK_S: noteKey = NOTE_C_SHARP;
-			break;
-
-		case VK_O: octave++;
-		case VK_W:
-		case VK_OEM_PERIOD: octave++;
-		case VK_X: noteKey = NOTE_D;
-			break;
-
-		case VK_0: octave++;
-		case VK_3:
-		case VK_OEM_1: octave++;
-		case VK_D: noteKey = NOTE_D_SHARP;
-			break;
-
-		case VK_P: octave++;
-		case VK_E:
-		case VK_OEM_2: octave++;
-		case VK_C: noteKey = NOTE_E;
-			break;
-
-		case VK_R: octave++;
-		case VK_V: noteKey = NOTE_F;
-			break;
-
-		case VK_5: octave++;
-		case VK_G: noteKey = NOTE_F_SHARP;
-			break;
-
-		case VK_T: octave++;
-		case VK_B: noteKey = NOTE_G;
-			break;
-
-		case VK_6: octave++;
-		case VK_H: noteKey = NOTE_G_SHARP;
-			break;
-
-		case VK_Y: octave++;
-		case VK_N: noteKey = NOTE_A;
-			break;
-
-		case VK_7: octave++;
-		case VK_J: noteKey = NOTE_A_SHARP;
-			break;
-
-		case VK_U: octave++;
-		case VK_M: noteKey = NOTE_B;
-			break;
+		case 0x17: return NOTE_C_2;	// 3rd Octave (half of it)
+		case 0x0A: return NOTE_CS2;
+		case 0x18: return NOTE_D_2;
+		case 0x0B: return NOTE_DS2;
+		case 0x19: return NOTE_E_2;
+		case 0x03: return NOTE_CS1;	// 2nd Octave (Black Keys)
+		case 0x04: return NOTE_DS1;
+		case 0x06: return NOTE_FS1;
+		case 0x07: return NOTE_GS1;
+		case 0x08: return NOTE_AS1;
+		case 0x10: return NOTE_C_1;	// 2nd Octave (White Keys)
+		case 0x11: return NOTE_D_1;
+		case 0x12: return NOTE_E_1;
+		case 0x13: return NOTE_F_1;
+		case 0x14: return NOTE_G_1;
+		case 0x15: return NOTE_A_1;
+		case 0x16: return NOTE_B_1;
+		case 0x33: return NOTE_C_1;	// 2nd Octave (half of it)
+		case 0x26: return NOTE_CS1;
+		case 0x34: return NOTE_D_1;
+		case 0x27: return NOTE_DS1;
+		case 0x35: return NOTE_E_1;
+		case 0x1F: return NOTE_CS0;	// 1st Octave (Black Keys)
+		case 0x20: return NOTE_DS0;
+		case 0x22: return NOTE_FS0;
+		case 0x23: return NOTE_GS0;
+		case 0x24: return NOTE_AS0;
+		case 0x2C: return NOTE_C_0;	// 1st Octave (White Keys)
+		case 0x2D: return NOTE_D_0;
+		case 0x2E: return NOTE_E_0;
+		case 0x2F: return NOTE_F_0;
+		case 0x30: return NOTE_G_0;
+		case 0x31: return NOTE_A_0;
+		case 0x32: return NOTE_B_0;
 		}
 	}
 
-	if (noteKey != INVALID)
-		noteKey += (octave * NOTE_OCTAVE);
-
-	return noteKey;
+	return INVALID;
 }
 
 // Return the Number key mapped to the chosen Keyboard layout
 UINT CKeyboard::GetNumberKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift)
 {
 	// Neither of the Modifier keys are supposed to be held down!
-	if (keyCtrl || keyAlt || keyShift)
-		return INVALID;
-
-	UINT numberKey = INVALID;
-
-	switch (keyVirtual)
+	if (!keyCtrl && !keyAlt && !keyShift)
 	{
-	case VK_0:
-	case VK_NUMPAD0:
-		numberKey = 0x0;
-		break;
-
-	case VK_1:
-	case VK_NUMPAD1:
-		numberKey = 0x1;
-		break;
-
-	case VK_2:
-	case VK_NUMPAD2:
-		numberKey = 0x2;
-		break;
-
-	case VK_3:
-	case VK_NUMPAD3:
-		numberKey = 0x3;
-		break;
-
-	case VK_4:
-	case VK_NUMPAD4:
-		numberKey = 0x4;
-		break;
-
-	case VK_5:
-	case VK_NUMPAD5:
-		numberKey = 0x5;
-		break;
-
-	case VK_6:
-	case VK_NUMPAD6:
-		numberKey = 0x6;
-		break;
-
-	case VK_7:
-	case VK_NUMPAD7:
-		numberKey = 0x7;
-		break;
-
-	case VK_8:
-	case VK_NUMPAD8:
-		numberKey = 0x8;
-		break;
-
-	case VK_9:
-	case VK_NUMPAD9:
-		numberKey = 0x9;
-		break;
-
-	case VK_A:
-		numberKey = 0xA;
-		break;
-
-	case VK_B:
-		numberKey = 0xB;
-		break;
-
-	case VK_C:
-		numberKey = 0xC;
-		break;
-
-	case VK_D:
-		numberKey = 0xD;
-		break;
-
-	case VK_E:
-		numberKey = 0xE;
-		break;
-
-	case VK_F:
-		numberKey = 0xF;
-		break;
+		switch (keyVirtual)
+		{
+		case VK_0: case VK_NUMPAD0: return 0x0;
+		case VK_1: case VK_NUMPAD1: return 0x1;
+		case VK_2: case VK_NUMPAD2: return 0x2;
+		case VK_3: case VK_NUMPAD3: return 0x3;
+		case VK_4: case VK_NUMPAD4: return 0x4;
+		case VK_5: case VK_NUMPAD5: return 0x5;
+		case VK_6: case VK_NUMPAD6: return 0x6;
+		case VK_7: case VK_NUMPAD7: return 0x7;
+		case VK_8: case VK_NUMPAD8: return 0x8;
+		case VK_9: case VK_NUMPAD9: return 0x9;
+		case VK_A: return 0xA;
+		case VK_B: return 0xB;
+		case VK_C: return 0xC;
+		case VK_D: return 0xD;
+		case VK_E: return 0xE;
+		case VK_F: return 0xF;
+		}
 	}
 
-	return numberKey;
+	return INVALID;
 }
 
 // Return the Command key mapped to the chosen Keyboard layout
 UINT CKeyboard::GetCommandKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift)
 {
 	// Neither of the Modifier keys are supposed to be held down!
-	if (keyCtrl || keyAlt || keyShift)
-		return INVALID;
-
-	UINT commandKey = INVALID;
-
-	switch (keyVirtual)
+	if (!keyCtrl && !keyAlt && !keyShift)
 	{
-
-	case VK_0:
-		commandKey = PE_ARPEGGIO;
-		break;
-
-	case VK_1:
-		commandKey = PE_PITCH_UP;
-		break;
-
-	case VK_2:
-		commandKey = PE_PITCH_DOWN;
-		break;
-
-	case VK_3:
-		commandKey = PE_PORTAMENTO;
-		break;
-
-	case VK_4:
-		commandKey = PE_VIBRATO;
-		break;
-
-	case VK_A:
-		commandKey = PE_VOLUME_FADE;
-		break;
-
-	case VK_B:
-		commandKey = PE_GOTO_SONGLINE;
-		break;
-
-	case VK_D:
-		commandKey = PE_END_PATTERN;
-		break;
-
-	case VK_F:
-		commandKey = PE_SET_SPEED;
-		break;
-
-	case VK_P:
-		commandKey = PE_SET_FINETUNE;
-		break;
-
-	case VK_G:
-		commandKey = PE_SET_DELAY;
-		break;
+		switch (keyVirtual)
+		{
+		case VK_0: return PE_ARPEGGIO;
+		case VK_1: return PE_PITCH_UP;
+		case VK_2: return PE_PITCH_DOWN;
+		case VK_3: return PE_PORTAMENTO;
+		case VK_4: return PE_VIBRATO;
+		case VK_A: return PE_VOLUME_FADE;
+		case VK_B: return PE_GOTO_SONGLINE;
+		case VK_D: return PE_END_PATTERN;
+		case VK_F: return PE_SET_SPEED;
+		case VK_P: return PE_SET_FINETUNE;
+		case VK_G: return PE_SET_DELAY;
+		}
 	}
 
-	return commandKey;
+	return INVALID;
 }

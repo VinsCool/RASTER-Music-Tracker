@@ -81,6 +81,7 @@ CString g_defaultTracksPath;					// Default path for tracks
 int g_lastImportTypeIndex = -1;
 
 int g_lastKeyPressed = 0;			// For debugging vk input
+int g_lastScanPressed = 0;
 int g_mousebutt = 0;				// Mouse button
 int g_mouseLastPointX = 0;
 int g_mouseLastPointY = 0;

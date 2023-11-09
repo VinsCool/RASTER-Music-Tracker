@@ -1838,9 +1838,10 @@ void CRmtView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
 	// Store the last pressed key in memory for debugging purposes
 	g_lastKeyPressed = nChar;
+	g_lastScanPressed = nFlags;
 
 	// If nothing was pressed, or a key without a function was pressed, nothing will happen
-	if (OnProcessKeyboardInput(nChar))
+	if (OnProcessKeyboardInput(nChar, nRepCnt, nFlags))
 	{
 		// Do something...?
 		g_Song.RespectBoundaries();
@@ -2996,7 +2997,7 @@ void CRmtView::OnPatternRight()
 // Overlapping keys will be handled further below, based on the different Modifier Key combinations
 // The active screen region is the second priority level, multiple key combinations may be used differently between regions
 // The individual subscreen region is the lowest priority level, most keys will be used for very specific purposes there
-bool CRmtView::OnProcessKeyboardInput(UINT vk)
+bool CRmtView::OnProcessKeyboardInput(UINT keyVirtual, UINT repetitionCount, UINT scanCode)
 {
 	// Caching the Modifier Key flags will ensure that no key combination is accidentally dropped or duplicated
 	bool keyCtrl = g_Keyboard.IsPressingCtrl();
@@ -3004,16 +3005,16 @@ bool CRmtView::OnProcessKeyboardInput(UINT vk)
 	bool keyAlt = g_Keyboard.IsPressingAlt();
 
 	// Get the Action to process from a matching Key Combination
-	UINT action = g_Keyboard.GetKeyBindingAction(vk, keyCtrl, keyAlt, keyShift);
+	UINT actionId = g_Keyboard.GetKeyBindingAction(keyVirtual, keyCtrl, keyAlt, keyShift);
 
 	// Get all variables from the Key input, regardless of which ones would be used
-	UINT noteKey = g_Keyboard.GetNoteKey(vk, keyCtrl, keyAlt, keyShift);
-	UINT numberKey = g_Keyboard.GetNumberKey(vk, keyCtrl, keyAlt, keyShift);
-	UINT commandKey = g_Keyboard.GetCommandKey(vk, keyCtrl, keyAlt, keyShift);
+	UINT noteKey = g_Keyboard.GetNoteKey(scanCode, keyCtrl, keyAlt, keyShift);
+	UINT numberKey = g_Keyboard.GetNumberKey(keyVirtual, keyCtrl, keyAlt, keyShift);
+	UINT commandKey = g_Keyboard.GetCommandKey(keyVirtual, keyCtrl, keyAlt, keyShift);
 
 	// Process all keys with the highest priority level first, anything passing through will be handled further below
 	// It is indeed possible to use the same key multiple times, thanks to this priority system
-	switch (action)
+	switch (actionId)
 	{
 	case AB_MOVE_UP:
 	case AB_MOVE_DOWN:
@@ -3260,8 +3261,8 @@ bool CRmtView::OnProcessKeyboardInput(UINT vk)
 		// Something was missed, this should never happen!
 		CString s;
 		s.Format("Warning: Unknown or invalid key combination!\n\n");
-		s.AppendFormat("actionId = 0x%08X\n", action);
-		s.AppendFormat("keyVirtual = 0x%02X\n", vk);
+		s.AppendFormat("actionId = 0x%08X\n", actionId);
+		s.AppendFormat("keyVirtual = 0x%02X\n", keyVirtual);
 		s.AppendFormat("keyCtrl = %s\n", keyCtrl ? "true" : "false");
 		s.AppendFormat("keyAlt = %s\n", keyAlt ? "true" : "false");
 		s.AppendFormat("keyShift = %s\n", keyShift ? "true" : "false");
@@ -3277,13 +3278,13 @@ bool CRmtView::OnProcessKeyboardInput(UINT vk)
 		// return InfoEditorKey(action, numberKey);
 
 	case PART_TRACKS:
-		return PatternEditorKey(action, noteKey, numberKey, commandKey);
+		return PatternEditorKey(actionId, noteKey, numberKey, commandKey);
 
 	// case PART_INSTRUMENTS:
 		//return InstrumentEditorKey(action, numberKey);
 
 	case PART_SONG:
-		return SongEditorKey(action, numberKey);
+		return SongEditorKey(actionId, numberKey);
 	}
 
 	// No action taken, nothing to be done

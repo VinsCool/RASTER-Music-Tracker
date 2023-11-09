@@ -108,6 +108,7 @@ extern int g_mouseLastButton;
 extern int g_mouseLastWheelDelta;
 
 extern int g_lastKeyPressed;		//for debugging vk input
+extern int g_lastScanPressed;
 
 extern CString g_prgpath;					//path to the directory from which the program was started (including a slash at the end)
 

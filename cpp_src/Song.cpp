@@ -4655,6 +4655,7 @@ void CSong::DrawDebugInfos()
 		case 10: s.Format("GTL = %02d", g_tracklines); break;
 		case 11: s.Format("OL = %02d", g_tracklines / 2); break;
 		case 12: s.Format("VK = %02X", g_lastKeyPressed); break;
+		case 13: s.Format("SC = %02X", g_lastScanPressed); break;
 		default: continue;
 		}
 

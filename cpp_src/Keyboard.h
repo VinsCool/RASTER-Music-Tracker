@@ -46,9 +46,10 @@ typedef enum keyboardLayout_t : BYTE
 //
 typedef enum noteKeyStandard_t : BYTE
 {
-	NOTE_C = 0,
-	NOTE_C_SHARP, NOTE_D, NOTE_D_SHARP, NOTE_E, NOTE_F, NOTE_F_SHARP, NOTE_G, NOTE_G_SHARP, NOTE_A, NOTE_A_SHARP, NOTE_B,
-	NOTE_OCTAVE,
+	NOTE_C_0, NOTE_CS0, NOTE_D_0, NOTE_DS0, NOTE_E_0, NOTE_F_0, NOTE_FS0, NOTE_G_0, NOTE_GS0, NOTE_A_0, NOTE_AS0, NOTE_B_0,
+	NOTE_C_1, NOTE_CS1, NOTE_D_1, NOTE_DS1, NOTE_E_1, NOTE_F_1, NOTE_FS1, NOTE_G_1, NOTE_GS1, NOTE_A_1, NOTE_AS1, NOTE_B_1,
+	NOTE_C_2, NOTE_CS2, NOTE_D_2, NOTE_DS2, NOTE_E_2, NOTE_F_2, NOTE_FS2, NOTE_G_2, NOTE_GS2, NOTE_A_2, NOTE_AS2, NOTE_B_2,
+	NOTE_OCTAVE = NOTE_C_2 - NOTE_C_1,
 } TNoteKeyStandard;
 
 
@@ -162,7 +163,7 @@ public:
 	void SetDefaultKeyBinding();
 
 	UINT GetKeyBindingAction(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift);
-	UINT GetNoteKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift);
+	UINT GetNoteKey(UINT scanCode, bool keyCtrl, bool keyAlt, bool keyShift);
 	UINT GetNumberKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift);
 	UINT GetCommandKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift);
 

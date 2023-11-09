@@ -47,7 +47,7 @@ public:
 	void MouseAction(CPoint point, UINT mousebutt, short wheelzDelta = 0);
 
 	// Split functions used for movements and actions executed from keyboard inputs
-	bool OnProcessKeyboardInput(UINT vk);
+	bool OnProcessKeyboardInput(UINT keyVirtual, UINT repetitionCount, UINT scanCode);
 	bool PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT commandKey);
 	bool SongEditorKey(UINT action, UINT numberKey);
 
