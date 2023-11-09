@@ -2999,78 +2999,32 @@ void CRmtView::OnPatternRight()
 bool CRmtView::OnProcessKeyboardInput(UINT vk)
 {
 	// Caching the Modifier Key flags will ensure that no key combination is accidentally dropped or duplicated
-	bool keyCtrl = IsPressingCtrl();
-	bool keyShift = IsPressingShift();
-	bool keyAlt = IsPressingAlt();
+	bool keyCtrl = g_Keyboard.IsPressingCtrl();
+	bool keyShift = g_Keyboard.IsPressingShift();
+	bool keyAlt = g_Keyboard.IsPressingAlt();
 
 	// Get the Action to process from a matching Key Combination
 	UINT action = g_Keyboard.GetKeyBindingAction(vk, keyCtrl, keyAlt, keyShift);
 
+	// Get all variables from the Key input, regardless of which ones would be used
+	UINT noteKey = g_Keyboard.GetNoteKey(vk, keyCtrl, keyAlt, keyShift);
+	UINT numberKey = g_Keyboard.GetNumberKey(vk, keyCtrl, keyAlt, keyShift);
+	UINT commandKey = g_Keyboard.GetCommandKey(vk, keyCtrl, keyAlt, keyShift);
+
+	// Process all keys with the highest priority level first, anything passing through will be handled further below
+	// It is indeed possible to use the same key multiple times, thanks to this priority system
 	switch (action)
 	{
-	case AB_PLAY_STOP:
-		OnPlaystop();
-		return true;
-
-	case AB_PLAY_START:
-		OnPlay(MPLAY_START);
-		return true;
-
-	case AB_PLAY_PATTERN:
-		OnPlay(MPLAY_PATTERN);
-		return true;
-
-	case AB_PLAY_CURSOR:
-		OnPlay(MPLAY_FROM);
-		return true;
-
-	case AB_MOVE_PATTERN_EDITOR:
-		OnEmTracks();
-		return true;
-
-	case AB_MOVE_INSTRUMENT_EDITOR:
-		OnEmInstruments();
-		return true;
-
-	case AB_MOVE_SONGLINE_EDITOR:
-		OnEmSong();
-		return true;
-
-	case AB_MOVE_INFO_EDITOR:
-		OnEmInfo();
-		return true;
-
-	case AB_TOGGLE_REGION:
-		OnRegion();
-		return true;
-
-	case AB_TOGGLE_FOLLOW:
-		OnPlayfollow();
-		return true;
-
-	case AB_ACTIVE_OCTAVE_UP:
-		OnOctaveUp();
-		return true;
-
-	case AB_ACTIVE_OCTAVE_DOWN:
-		OnOctaveDown();
-		return true;
-
-	case AB_ACTIVE_VOLUME_UP:
-		OnVolumeUp();
-		return true;
-
-	case AB_ACTIVE_VOLUME_DOWN:
-		OnVolumeDown();
-		return true;
-		
-	case AB_ACTIVE_INSTRUMENT_LEFT:
-		OnInstrumentLeft();
-		return true;
-
-	case AB_ACTIVE_INSTRUMENT_RIGHT:
-		OnInstrumentRight();
-		return true;
+	case AB_MOVE_UP:
+	case AB_MOVE_DOWN:
+	case AB_MOVE_LEFT:
+	case AB_MOVE_RIGHT:
+	case AB_MOVE_TAB_LEFT:
+	case AB_MOVE_TAB_RIGHT:
+	case AB_MOVE_PAGE_UP:
+	case AB_MOVE_PAGE_DOWN:
+		// Normal Movement Keys, they can pass through immediately
+		break;
 
 	case AB_MOVE_SONGLINE_UP:
 		OnSonglineUp();
@@ -3095,254 +3049,250 @@ bool CRmtView::OnProcessKeyboardInput(UINT vk)
 	case AB_MOVE_SUBTUNE_RIGHT:
 		OnSubtuneRight();
 		return true;
+
+	case AB_MOVE_PATTERN_EDITOR:
+		OnEmTracks();
+		return true;
+
+	case AB_MOVE_INSTRUMENT_EDITOR:
+		OnEmInstruments();
+		return true;
+
+	case AB_MOVE_INFO_EDITOR:
+		OnEmInfo();
+		return true;
+
+	case AB_MOVE_SONGLINE_EDITOR:
+		OnEmSong();
+		return true;
+
+	case AB_FILE_NEW:
+		OnFileNew();
+		return true;
+
+	case AB_FILE_LOAD:
+		OnFileOpen();
+		return true;
+
+	case AB_FILE_RELOAD:
+		OnFileReload();
+		return true;
+
+	case AB_FILE_SAVE:
+		//OnFileSaveAs();	// Ask for overwriting permission before saving...?
+		OnFileSave();
+		return true;
+
+	case AB_FILE_IMPORT:
+		OnFileImport();
+		return true;
+
+	case AB_FILE_EXPORT:
+		OnFileExportAs();
+		return true;
+
+	case AB_CLIPBOARD_COPY:
+	case AB_CLIPBOARD_CUT:
+	case AB_CLIPBOARD_PASTE:
+	case AB_CLIPBOARD_PASTE_MERGE:
+	case AB_CLIPBOARD_SELECT_ALL:
+		// Clipboard functionalities, they can pass through immediately
+		break;
+
+	case AB_UNDO_UNDO:
+		OnUndoUndo();
+		return true;
+
+	case AB_UNDO_REDO:
+		OnUndoRedo();
+		return true;
+
+	case AB_EDIT_CLEAR:
+	case AB_EDIT_EMPTY:
+	case AB_EDIT_DELETE:
+	case AB_EDIT_INSERT:
+	case AB_EDIT_DUPLICATE:
+	case AB_EDIT_NEW:
+	case AB_EDIT_INCREMENT:
+	case AB_EDIT_DECREMENT:
+	case AB_EDIT_INCREMENT_MORE:
+	case AB_EDIT_DECREMENT_MORE:
+		// Editor functionalities, they can pass through immediately
+		break;
+
+	case AB_TRANSPOSE_NOTE_UP:
+	case AB_TRANSPOSE_NOTE_DOWN:
+	case AB_TRANSPOSE_PATTERN_UP:
+	case AB_TRANSPOSE_PATTERN_DOWN:
+	case AB_TRANSPOSE_SONGLINE_UP:
+	case AB_TRANSPOSE_SONGLINE_DOWN:
+	case AB_TRANSPOSE_NOTE_UP_MORE:
+	case AB_TRANSPOSE_NOTE_DOWN_MORE:
+	case AB_TRANSPOSE_PATTERN_UP_MORE:
+	case AB_TRANSPOSE_PATTERN_DOWN_MORE:
+	case AB_TRANSPOSE_SONGLINE_UP_MORE:
+	case AB_TRANSPOSE_SONGLINE_DOWN_MORE:
+		// Editor functionalities, they can pass through immediately
+		break;
+
+	case AB_NOTE_OFF:
+	case AB_NOTE_RELEASE:
+	case AB_NOTE_RETRIGGER:
+		// Editor functionalities, they can pass through immediately
+		break;
+
+	case AB_PLAY_START:
+		OnPlay(MPLAY_START);
+		return true;
+
+	case AB_PLAY_PATTERN:
+		OnPlay(MPLAY_PATTERN);
+		return true;
+
+	case AB_PLAY_CURSOR:
+		OnPlay(MPLAY_FROM);
+		return true;
+
+	case AB_PLAY_BOOKMARK:
+		OnPlay(MPLAY_BOOKMARK);
+		return true;
+
+	case AB_PLAY_STOP:
+		OnPlaystop();
+		return true;
+
+	case AB_ACTIVE_OCTAVE_UP:
+		OnOctaveUp();
+		return true;
+
+	case AB_ACTIVE_OCTAVE_DOWN:
+		OnOctaveDown();
+		return true;
+
+	case AB_ACTIVE_VOLUME_UP:
+		OnVolumeUp();
+		return true;
+
+	case AB_ACTIVE_VOLUME_DOWN:
+		OnVolumeDown();
+		return true;
+
+	case AB_ACTIVE_STEP_UP:
+	case AB_ACTIVE_STEP_DOWN:
+		// TODO: Add code for these
+		return true;
+
+	case AB_ACTIVE_INSTRUMENT_LEFT:
+		OnInstrumentLeft();
+		return true;
+
+	case AB_ACTIVE_INSTRUMENT_RIGHT:
+		OnInstrumentRight();
+		return true;
+
+	case AB_TOGGLE_EDIT_MODE:
+		OnProvemode();
+		return true;
+
+	case AB_TOGGLE_FOLLOW:
+		OnPlayfollow();
+		return true;
+
+	case AB_TOGGLE_REGION:
+		OnRegion();
+		return true;
+
+	case AB_TOGGLE_VOLUME_MASK:
+		//OnRespectVolume();
+	case AB_TOGGLE_INSTRUMENT_MASK:
+		// TODO: Add code for these
+		return true;
+
+	case AB_TOGGLE_CHANNEL_1:
+	case AB_TOGGLE_CHANNEL_2:
+	case AB_TOGGLE_CHANNEL_3:
+	case AB_TOGGLE_CHANNEL_4:
+	case AB_TOGGLE_CHANNEL_5:
+	case AB_TOGGLE_CHANNEL_6:
+	case AB_TOGGLE_CHANNEL_7:
+	case AB_TOGGLE_CHANNEL_8:
+	case AB_TOGGLE_CHANNEL_9:
+	case AB_TOGGLE_CHANNEL_10:
+	case AB_TOGGLE_CHANNEL_11:
+	case AB_TOGGLE_CHANNEL_12:
+	case AB_TOGGLE_CHANNEL_13:
+	case AB_TOGGLE_CHANNEL_14:
+	case AB_TOGGLE_CHANNEL_15:
+	case AB_TOGGLE_CHANNEL_16:
+	case AB_TOGGLE_ACTIVE_CHANNEL:
+	case AB_TOGGLE_ALL_CHANNELS:
+		// TODO: Add code for these
+		return true;
+
+	case AB_BOOKMARK_CREATE:
+	case AB_BOOKMARK_DELETE:
+		// TODO: Add code for these
+		return true;
+
+	case AB_MISC_INCREMENT_COMMAND_COLUMN:
+		return g_Song.ChangeEffectCommandColumnCount(1);
+
+	case AB_MISC_DECREMENT_COMMAND_COLUMN:
+		return g_Song.ChangeEffectCommandColumnCount(-1);
+
+	case AB_MISC_INCREMENT_HIGHLIGHT_PRIMARY:
+	case AB_MISC_DECREMENT_HIGHLIGHT_PRIMARY:
+	case AB_MISC_INCREMENT_HIGHLIGHT_SECONDARY:
+	case AB_MISC_DECREMENT_HIGHLIGHT_SECONDARY:
+		// TODO: Add code for these
+		return true;
+
+	case AB_MISC_SCALE_UP:
+	case AB_MISC_SCALE_DOWN:
+		// TODO: Add code for these
+		return true;
+
+	case INVALID:
+		// Possibly a valid action, this can pass through immediately
+		break;
+
+	default:
+		// Something was missed, this should never happen!
+		CString s;
+		s.Format("Warning: Unknown or invalid key combination!\n\n");
+		s.AppendFormat("actionId = 0x%08X\n", action);
+		s.AppendFormat("keyVirtual = 0x%02X\n", vk);
+		s.AppendFormat("keyCtrl = %s\n", keyCtrl ? "true" : "false");
+		s.AppendFormat("keyAlt = %s\n", keyAlt ? "true" : "false");
+		s.AppendFormat("keyShift = %s\n", keyShift ? "true" : "false");
+		MessageBox(s, "OnProcessKeyboardInput()", MB_ICONWARNING);
+		return false;
 	}
-	
+
 	// The remaining keys are processed within their respective screen region
 	// This is the second priority level to pass through, further subscreen divisions may also be used for specialised keys
 	switch (g_activepart)
 	{
-		//case PART_INFO:
-			// return InfoEditorKey(vk, keyCtrl, keyAlt, keyShift);
+	// case PART_INFO:
+		// return InfoEditorKey(action, numberKey);
 
 	case PART_TRACKS:
-		return PatternEditorKey(vk, keyCtrl, keyAlt, keyShift);
+		return PatternEditorKey(action, noteKey, numberKey, commandKey);
 
-		//case PART_INSTRUMENTS:
-			//return InstrumentEditorKey(vk, keyCtrl, keyAlt, keyShift);
+	// case PART_INSTRUMENTS:
+		//return InstrumentEditorKey(action, numberKey);
 
 	case PART_SONG:
-		return SongEditorKey(vk, keyCtrl, keyAlt, keyShift);
+		return SongEditorKey(action, numberKey);
 	}
 
 	// No action taken, nothing to be done
 	return false;
-
-
-/*
-	// Caching the Modifier Key flags will ensure that no key combination is accidentally dropped or duplicated
-	bool keyCtrl = IsPressingCtrl();
-	bool keyShift = IsPressingShift();
-	bool keyAlt = IsPressingAlt();
-
-	// Process all keys with the highest priority level first, anything passing through will be handled further below
-	// It is indeed possible to use the same key multiple times, thanks to this priority system
-	switch (vk)
-	{
-	case VK_ESCAPE:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPlaystop();
-			return true;
-		}
-		break;
-
-	case VK_F1:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnEmTracks();
-			return true;
-		}
-		break;
-
-	case VK_F2:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnEmInstruments();
-			return true;
-		}
-		break;
-
-	case VK_F3:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnEmInfo();
-			return true;
-		}
-		break;
-
-	case VK_F4:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnEmSong();
-			return true;
-		}
-		break;
-
-	case VK_F5:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPlay(MPLAY_START);
-			return true;
-		}
-		break;
-
-	case VK_F6:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPlay(MPLAY_PATTERN);
-			return true;
-		}
-		break;
-
-	case VK_F7:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPlay(MPLAY_FROM);
-			return true;
-		}
-		break;
-
-	case VK_F10:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnRegion();
-			return true;
-		}
-		break;
-
-	case VK_F11:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnRespectVolume();
-			return true;
-		}
-		break;
-
-	case VK_F12:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPlayfollow();
-			return true;
-		}
-		break;
-
-	case VK_0:
-		// Turn All Channels Off
-		if (keyCtrl && !keyAlt && !keyShift)
-		{
-			SetChannelOnOff(INVALID, FALSE);
-			return true;
-		}
-		break;
-
-	case VK_1:
-	case VK_2:
-	case VK_3:
-	case VK_4:
-	case VK_5:
-	case VK_6:
-	case VK_7:
-	case VK_8:
-		// Turn Channel 1-8 On/Off
-		if (keyCtrl && !keyAlt && !keyShift)
-		{
-			SetChannelOnOff(vk - VK_1, INVALID);
-			return true;
-		}
-		break;
-
-	case VK_9:
-		// Turn All Channels On
-		if (keyCtrl && !keyAlt && !keyShift)
-		{
-			SetChannelOnOff(INVALID, TRUE);
-			return true;
-		}
-		break;
-
-	case VK_SUBTRACT:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnVolumeDown();
-			return true;
-		}
-		break;
-
-	case VK_ADD:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnVolumeUp();
-			return true;
-		}
-		break;
-
-	case VK_DIVIDE:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnOctaveDown();
-			return true;
-		}
-		break;
-
-	case VK_MULTIPLY:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnOctaveUp();
-			return true;
-		}
-		break;
-
-	case VK_LEFT:
-		if (!keyCtrl && !keyAlt && keyShift)
-		{
-			OnInstrumentLeft();
-			return true;
-		}
-		break;
-
-	case VK_RIGHT:
-		if (!keyCtrl && !keyAlt && keyShift)
-		{
-			OnInstrumentRight();
-			return true;
-		}
-		break;
-
-	case VK_PAGE_UP:
-		if (!keyCtrl && keyAlt && !keyShift)
-		{
-			OnSubtuneLeft();
-			return true;
-		}
-		break;
-
-	case VK_PAGE_DOWN:
-		if (!keyCtrl && keyAlt && !keyShift)
-		{
-			OnSubtuneRight();
-			return true;
-		}
-		break;
-	}
-
-	// The remaining keys are processed within their respective screen region
-	// This is the second priority level to pass through, further subscreen divisions may also be used for specialised keys
-	switch (g_activepart)
-	{
-	//case PART_INFO:
-		// return InfoEditorKey(vk, keyCtrl, keyAlt, keyShift);
-
-	case PART_TRACKS:
-		return PatternEditorKey(vk, keyCtrl, keyAlt, keyShift);
-
-	//case PART_INSTRUMENTS:
-		//return InstrumentEditorKey(vk, keyCtrl, keyAlt, keyShift);
-
-	case PART_SONG:
-		return SongEditorKey(vk, keyCtrl, keyAlt, keyShift);
-	}
-
-	// No action taken, nothing to be done
-	return false;
-*/
 }
 
-bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift)
+bool CRmtView::PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT commandKey)
 {
-	UINT noteKey = INVALID;
-	UINT numberKey = INVALID;
 	UINT activeCursor = g_Song.GetActiveCursor();
-	UINT action = g_Keyboard.GetKeyBindingAction(vk, keyCtrl, keyAlt, keyShift);
 
 	// Process all keys with the highest priority in the Pattern Editor, anything passing through will be handled further below
 	// The cursor position will then be used to further narrow down which action should be taken in the Pattern Editor
@@ -3364,31 +3314,21 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		OnPatternRight();
 		return true;
 
-	case AB_MOVE_HIGHLIGHT_PRIMARY_UP:
+	case AB_MOVE_TAB_LEFT:
+		OnChannelLeft();
+		return true;
+
+	case AB_MOVE_TAB_RIGHT:
+		OnChannelRight();
+		return true;
+
+	case AB_MOVE_PAGE_UP:
 		g_Song.PatternUpDownMovement(g_trackLinePrimaryHighlight * -1);
 		return true;
 
-	case AB_MOVE_HIGHLIGHT_PRIMARY_DOWN:
+	case AB_MOVE_PAGE_DOWN:
 		g_Song.PatternUpDownMovement(g_trackLinePrimaryHighlight);
 		return true;
-
-	case AB_EDIT_INCREMENT:
-		return g_Song.ChangePatternInSongline(1);
-
-	case AB_EDIT_DECREMENT:
-		return g_Song.ChangePatternInSongline(-1);
-
-	case AB_EDIT_INCREMENT_MORE:
-		return g_Song.ChangePatternInSongline(16);
-
-	case AB_EDIT_DECREMENT_MORE:
-		return g_Song.ChangePatternInSongline(-16);
-
-	case AB_MISC_INCREMENT_COMMAND_COLUMN:
-		return g_Song.ChangeEffectCommandColumnCount(1);
-
-	case AB_MISC_DECREMENT_COMMAND_COLUMN:
-		return g_Song.ChangeEffectCommandColumnCount(-1);
 
 	case AB_TRANSPOSE_NOTE_UP:
 		return g_Song.TransposeNoteInPattern(1);
@@ -3440,13 +3380,10 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 
 	case AB_EDIT_INSERT:
 		return g_Song.InsertRowInPattern();
-
-	case AB_EDIT_DUPLICATE:
-		return g_Song.DuplicatePatternInSongline();
-
-	case AB_EDIT_NEW:
-		return g_Song.SetNewEmptyPatternInSongline();
 	}
+
+	// The remaining keys are processed within their respective cursor positions
+	// This is the lowest priority level, as far as the Pattern Editor is concerned
 
 	// Note Column
 	if (CC_NOTE(activeCursor))
@@ -3468,10 +3405,6 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		case AB_NOTE_RETRIGGER:
 			noteKey = NOTE_RETRIGGER;
 			break;
-
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				noteKey = g_Keyboard.GetNoteKey(vk);
 		}
 
 		if (g_Song.SetNoteInPattern(noteKey))
@@ -3488,15 +3421,13 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		{
 		case AB_EDIT_EMPTY:
 			// In order to set the Instrument value directly, the Cursor must be out of bounds
+			// FIXME: Shit workaround!!!
 			activeCursor = INVALID;
 			numberKey = INSTRUMENT_EMPTY;
 			break;
-
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numberKey = g_Keyboard.GetNumberKey(vk);
 		}
 
+		// TODO: Handle the cases where a whole Byte is wanted too
 		if (g_Song.SetInstrumentInPattern(numberKey, activeCursor))
 		{
 			OnPatternDown();
@@ -3512,10 +3443,6 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		case AB_EDIT_EMPTY:
 			numberKey = VOLUME_EMPTY;
 			break;
-
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numberKey = g_Keyboard.GetNumberKey(vk);
 		}
 
 		if (g_Song.SetVolumeInPattern(numberKey))
@@ -3533,16 +3460,12 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		switch (action)
 		{
 		case AB_EDIT_EMPTY:
-			numberKey = PE_EMPTY;
+			commandKey = PE_EMPTY;
 			break;
-
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numberKey = g_Keyboard.GetCommandKey(vk);
 		}
 
 	SetCommandIdentifier:
-		if (g_Song.SetCommandIdentifierInPattern(numberKey))
+		if (g_Song.SetCommandIdentifierInPattern(commandKey))
 		{
 			OnPatternDown();
 			return true;
@@ -3556,14 +3479,11 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		{
 		case AB_EDIT_EMPTY:
 			// Exception for AB_EDIT_EMPTY: The Effect Command Column will be cleared regardless of the Cursor Column in this case
-			numberKey = PE_EMPTY;
+			commandKey = PE_EMPTY;
 			goto SetCommandIdentifier;
-
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numberKey = g_Keyboard.GetNumberKey(vk);
 		}
 
+		// TODO: Handle the cases where a whole Byte is wanted too
 		if (g_Song.SetCommandParameterInPattern(numberKey, activeCursor))
 		{
 			OnPatternDown();
@@ -3571,513 +3491,81 @@ bool CRmtView::PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShif
 		}
 	}
 
-	// Unknown key combination, or unknown cursor position
+	// Unknown key combination, or invalid action
 	return false;
-
-
-/*
-	UINT noteKey = INVALID;
-	UINT numbKey = INVALID;
-	UINT activeCursor = g_Song.GetActiveCursor();
-
-	// Process all keys with the highest priority in the Pattern Editor, anything passing through will be handled further below
-	// The cursor position will then be used to further narrow down which action should be taken in the Pattern Editor
-	switch (vk)
-	{
-	case VK_UP:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPatternUp();
-			return true;
-		}
-		else if (!keyCtrl && keyAlt && !keyShift)
-		{
-			OnSonglineUp();
-			return true;
-		}
-		else if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.ChangePatternInSongline(16);
-		break;
-
-	case VK_DOWN:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPatternDown();
-			return true;
-		}
-		else if (!keyCtrl && keyAlt && !keyShift)
-		{
-			OnSonglineDown();
-			return true;
-		}
-		else if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.ChangePatternInSongline(-16);
-		break;
-
-	case VK_LEFT:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPatternLeft();
-			return true;
-		}
-		else if (!keyCtrl && keyAlt && !keyShift)
-		{
-			OnChannelLeft();
-			return true;
-		}
-		else if (!keyCtrl && keyAlt && keyShift)
-			return g_Song.ChangeEffectCommandColumnCount(-1);
-		else if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.ChangePatternInSongline(-1);
-		break;
-
-	case VK_RIGHT:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnPatternRight();
-			return true;
-		}
-		else if (!keyCtrl && keyAlt && !keyShift)
-		{
-			OnChannelRight();
-			return true;
-		}
-		else if (!keyCtrl && keyAlt && keyShift)
-			return g_Song.ChangeEffectCommandColumnCount(1);
-		else if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.ChangePatternInSongline(1);
-		break;
-
-	case VK_PAGE_UP:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			g_Song.PatternUpDownMovement(g_trackLinePrimaryHighlight * -1);
-			return true;
-		}
-		else if (keyCtrl && !keyAlt && !keyShift)
-		{
-			OnSonglineUp();
-			return true;
-		}
-		break;
-
-	case VK_PAGE_DOWN:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			g_Song.PatternUpDownMovement(g_trackLinePrimaryHighlight);
-			return true;
-		}
-		else if (keyCtrl && !keyAlt && !keyShift)
-		{
-			OnSonglineDown();
-			return true;
-		}
-		break;
-
-	case VK_F1:
-		if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.TransposeNoteInPattern(-1);
-		else if (keyCtrl && !keyAlt && keyShift)
-			return g_Song.TransposePattern(-1);
-		else if (keyCtrl && keyAlt && keyShift)
-			return g_Song.TransposeSongline(-1);
-		break;
-
-	case VK_F2:
-		if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.TransposeNoteInPattern(1);
-		else if (keyCtrl && !keyAlt && keyShift)
-			return g_Song.TransposePattern(1);
-		else if (keyCtrl && keyAlt && keyShift)
-			return g_Song.TransposeSongline(1);
-		break;
-
-	case VK_F3:
-		if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.TransposeNoteInPattern(-12);
-		else if (keyCtrl && !keyAlt && keyShift)
-			return g_Song.TransposePattern(-12);
-		else if (keyCtrl && keyAlt && keyShift)
-			return g_Song.TransposeSongline(-12);
-		break;
-
-	case VK_F4:
-		if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.TransposeNoteInPattern(12);
-		else if (keyCtrl && !keyAlt && keyShift)
-			return g_Song.TransposePattern(12);
-		else if (keyCtrl && keyAlt && keyShift)
-			return g_Song.TransposeSongline(12);
-		break;
-
-	case VK_SPACE:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			if (g_Song.SetEmptyRowInPattern())
-			{
-				OnPatternDown();
-				return true;
-			}
-
-			// Something went wrong, do no take a chance here and just return false
-			return false;
-		}
-		break;
-
-	case VK_DELETE:
-		if (!keyCtrl && !keyAlt && !keyShift)
-			return g_Song.DeleteRowInPattern();
-		break;
-
-	case VK_INSERT:
-		if (!keyCtrl && !keyAlt && !keyShift)
-			return g_Song.InsertRowInPattern();
-		break;
-
-	case VK_D:
-		if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.DuplicatePatternInSongline();
-		break;
-
-	case VK_N:
-		if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.SetNewEmptyPatternInSongline();
-		break;
-	}
-	
-	// Note Column
-	if (CC_NOTE(activeCursor))
-	{
-		switch (vk)
-		{
-		case VK_BACKSPACE:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				noteKey = NOTE_EMPTY;
-			break;
-
-		case VK_OEM_MINUS:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				noteKey = NOTE_OFF;
-			break;
-
-		case VK_OEM_PLUS:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				noteKey = NOTE_RELEASE;
-			break;
-
-		case VK_OEM_6:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				noteKey = NOTE_RETRIGGER;
-			break;
-
-//		default:
-//			if (!keyCtrl && !keyAlt && !keyShift)
-//				noteKey = NoteKey(vk);
-		default:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				noteKey = g_Keyboard.GetNoteKey(vk);
-		}
-
-		if (g_Song.SetNoteInPattern(noteKey))
-		{
-			OnPatternDown();
-			return true;
-		}
-
-		// Something went wrong, do no take a chance here and just return false
-		return false;
-	}
-
-	// Instrument Column
-	else if (CC_INSTRUMENT(activeCursor))
-	{
-		switch (vk)
-		{
-		case VK_BACKSPACE:
-			if (!keyCtrl && !keyAlt && !keyShift)
-			{
-				// In order to set the Instrument value directly, the Cursor must be out of bounds
-				activeCursor = INVALID;
-				numbKey = INSTRUMENT_EMPTY;
-			}
-			break;
-
-//		default:
-//			if (!keyCtrl && !keyAlt && !keyShift)
-//				numbKey = NumbKey(vk);
-		}
-
-		if (g_Song.SetInstrumentInPattern(numbKey, activeCursor))
-		{
-			OnPatternDown();
-			return true;
-		}
-
-		// Something went wrong, do no take a chance here and just return false
-		return false;
-	}
-
-	// Volume Column
-	else if (CC_VOLUME(activeCursor))
-	{
-		switch (vk)
-		{
-		case VK_BACKSPACE:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = VOLUME_EMPTY;
-			break;
-
-//		default:
-//			if (!keyCtrl && !keyAlt && !keyShift)
-//				numbKey = NumbKey(vk);
-		}
-
-		if (g_Song.SetVolumeInPattern(numbKey))
-		{
-			OnPatternDown();
-			return true;
-		}
-
-		// Something went wrong, do no take a chance here and just return false
-		return false;
-	}
-
-	// Effect Command Columns
-
-	// The Effect Commands Identifier are being processed in priority
-	else if (CC_CMD_IDENTIFIER(activeCursor))
-	{
-		switch (vk)
-		{
-		case VK_BACKSPACE:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_EMPTY;
-			break;
-
-		case VK_0:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_ARPEGGIO;
-			break;
-
-		case VK_1:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_PITCH_UP;
-			break;
-
-		case VK_2:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_PITCH_DOWN;
-			break;
-
-		case VK_3:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_PORTAMENTO;
-			break;
-
-		case VK_4:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_VIBRATO;
-			break;
-
-		case VK_A:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_VOLUME_FADE;
-			break;
-
-		case VK_B:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_GOTO_SONGLINE;
-			break;
-
-		case VK_D:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_END_PATTERN;
-			break;
-
-		case VK_F:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_SET_SPEED;
-			break;
-
-		case VK_P:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_SET_FINETUNE;
-			break;
-
-		case VK_G:
-			if (!keyCtrl && !keyAlt && !keyShift)
-				numbKey = PE_SET_DELAY;
-			break;
-		}
-
-		if (g_Song.SetCommandIdentifierInPattern(numbKey))
-		{
-			OnPatternDown();
-			return true;
-		}
-
-		// Something went wrong, do no take a chance here and just return false
-		return false;
-	}
-
-	// The Effect Commands Parameter is the last possible case to be processed
-	else if (CC_CMD_X(activeCursor) || CC_CMD_Y(activeCursor))
-	{
-		switch (vk)
-		{
-		case VK_BACKSPACE:
-			// Exception for BACKSPACE, the Effect Command Column will be cleared regardless of the Cursor Column in this case
-			if (!keyCtrl && !keyAlt && !keyShift)
-			{
-				numbKey = PE_EMPTY;
-
-				if (g_Song.SetCommandIdentifierInPattern(numbKey))
-				{
-					OnPatternDown();
-					return true;
-				}
-
-				// Something went wrong, do no take a chance here and just return false
-				return false;
-			}
-			break;
-
-//		default:
-//			if (!keyCtrl && !keyAlt && !keyShift)
-//				numbKey = NumbKey(vk);
-		}
-
-		if (g_Song.SetCommandParameterInPattern(numbKey, activeCursor))
-		{
-			OnPatternDown();
-			return true;
-		}
-
-		// Something went wrong, do no take a chance here and just return false
-		return false;
-	}
-
-	// Unknown key combination, or unknown cursor position
-	return false;
-*/
 }
 
-bool CRmtView::SongEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift)
+bool CRmtView::SongEditorKey(UINT action, UINT numberKey)
 {
-	return false;
-
-/*
-	UINT numbKey = INVALID;
-
-	switch (vk)
+	// Process all keys with the highest priority in the Songline Editor, anything passing through will be handled further below
+	// The cursor position will then be used to further narrow down which action should be taken in the Songline Editor
+	switch (action)
 	{
-	case VK_UP:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnSonglineUp();
-			return true;
-		}
-		else if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.ChangePatternInSongline(16);
-		break;
+	case AB_MOVE_UP:
+		OnSonglineUp();
+		return true;
 
-	case VK_DOWN:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnSonglineDown();
-			return true;
-		}
-		else if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.ChangePatternInSongline(-16);
-		break;
+	case AB_MOVE_DOWN:
+		OnSonglineDown();
+		return true;
 
-	case VK_LEFT:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnSonglineLeft();
-			return true;
-		}
-		else if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.ChangePatternInSongline(-1);
-		break;
+	case AB_MOVE_LEFT:
+		OnSonglineLeft();
+		return true;
 
-	case VK_RIGHT:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnSonglineRight();
-			return true;
-		}
-		else if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.ChangePatternInSongline(1);
-		break;
+	case AB_MOVE_RIGHT:
+		OnSonglineRight();
+		return true;
 
-	case VK_PAGE_UP:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnSonglineUp();
-			return true;
-		}
-		break;
+	case AB_MOVE_TAB_LEFT:
+		OnChannelLeft();
+		return true;
 
-	case VK_PAGE_DOWN:
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			OnSonglineDown();
-			return true;
-		}
-		break;
+	case AB_MOVE_TAB_RIGHT:
+		OnChannelRight();
+		return true;
 
-	case VK_0:
-	case VK_1:
-	case VK_2:
-	case VK_3:
-	case VK_4:
-	case VK_5:
-	case VK_6:
-	case VK_7:
-	case VK_8:
-	case VK_9:
-	case VK_A:
-	case VK_B:
-	case VK_C:
-		goto KeyIsValidNumbKey;
+	case AB_MOVE_PAGE_UP:
+		g_Song.SonglineUpDownMovement(-8);
+		return true;
 
-	case VK_D:
-		if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.DuplicatePatternInSongline();
-		goto KeyIsValidNumbKey;
+	case AB_MOVE_PAGE_DOWN:
+		g_Song.SonglineUpDownMovement(8);
+		return true;
 
-	case VK_E:
-	case VK_F:
-		goto KeyIsValidNumbKey;
+	case AB_EDIT_CLEAR:
+	case AB_EDIT_EMPTY:
+	case AB_EDIT_DELETE:
+	case AB_EDIT_INSERT:
+		// TODO: Add code for these
+		return true;
 
-	case VK_N:
-		if (keyCtrl && !keyAlt && !keyShift)
-			return g_Song.SetNewEmptyPatternInSongline();
-		break;
+	case AB_EDIT_DUPLICATE:
+		return g_Song.DuplicatePatternInSongline();
 
-	KeyIsValidNumbKey:
-		// Label to case default for anything that may also be valid numbKeys
-		// Assuming no Modifier Key is also held down, this might be a good enough compromise to prevent accidental inputs
+	case AB_EDIT_NEW:
+		return g_Song.SetNewEmptyPatternInSongline();
 
-	default:
-		numbKey = NumbKey(vk);
+	case AB_EDIT_INCREMENT:
+		return g_Song.ChangePatternInSongline(1);
 
-		// Input the Pattern Index values in Songline only when none of the Special keys are held down
-		if (!keyCtrl && !keyAlt && !keyShift)
-		{
-			if (g_Song.SetPatternInSongline(numbKey))
-			{
-				OnSonglineRight();
-				return true;
-			}
+	case AB_EDIT_DECREMENT:
+		return g_Song.ChangePatternInSongline(-1);
 
-			// Something went wrong, do no take a chance here and just return false
-			return false;
-		}
+	case AB_EDIT_INCREMENT_MORE:
+		return g_Song.ChangePatternInSongline(16);
+
+	case AB_EDIT_DECREMENT_MORE:
+		return g_Song.ChangePatternInSongline(-16);
 	}
 
-	// Unknown key combination
+	// TODO: Handle the cases where a whole Byte is wanted too
+	if (g_Song.SetPatternInSongline(numberKey))
+	{
+		OnSonglineRight();
+		return true;
+	}
+
+	// Unknown key combination, or invalid action
 	return false;
-*/
 }

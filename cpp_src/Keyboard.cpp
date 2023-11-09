@@ -10,9 +10,9 @@
 CKeyboard::CKeyboard()
 {
 	SetDefaultKeyBinding();
-	CString layout = "A";
-	GetKeyboardLayoutName((LPSTR&)layout);
-	MessageBoxA(g_hwnd, layout, "test", MB_ICONINFORMATION);
+	//CString layout = "A";
+	//GetKeyboardLayoutName((LPSTR&)layout);
+	//MessageBoxA(g_hwnd, layout, "test", MB_ICONINFORMATION);
 }
 
 CKeyboard::~CKeyboard()
@@ -20,14 +20,15 @@ CKeyboard::~CKeyboard()
 	// Destructor
 }
 
+// Set all Action Key Bindings to the default parameters
+// Unused or Optional combinations may be left blank on purpose
 void CKeyboard::SetDefaultKeyBinding()
 {
 	// Clear all existing combinations
 	memset(&m_keyBinding, 0x00, sizeof(m_keyBinding));
 
-	// Assign Virtual Key code and Modifier Key flags
-	// Values are set in this order:		VK		CTRL	ALT		SHIFT
-	//
+	// Assign the default parameters for all Virtual Key code and Modifier Key flags
+	// Values are set in this order:		VK		CTRL		ALT		SHIFT
 	m_keyBinding.keyCombo[AB_MOVE_UP] = { VK_UP, false, false, false };
 	m_keyBinding.keyCombo[AB_MOVE_DOWN] = { VK_DOWN, false, false, false };
 	m_keyBinding.keyCombo[AB_MOVE_LEFT] = { VK_LEFT, false, false, false };
@@ -44,19 +45,19 @@ void CKeyboard::SetDefaultKeyBinding()
 	m_keyBinding.keyCombo[AB_MOVE_SONGLINE_EDITOR] = { VK_F4, false, false, false };
 	m_keyBinding.keyCombo[AB_MOVE_TAB_LEFT] = { VK_TAB, false, false, true };
 	m_keyBinding.keyCombo[AB_MOVE_TAB_RIGHT] = { VK_TAB, false, false, false };
-	m_keyBinding.keyCombo[AB_MOVE_HIGHLIGHT_PRIMARY_UP] = { VK_PAGE_UP, false, false, false };
-	m_keyBinding.keyCombo[AB_MOVE_HIGHLIGHT_PRIMARY_DOWN] = { VK_PAGE_DOWN, false, false, false };
+	m_keyBinding.keyCombo[AB_MOVE_PAGE_UP] = { VK_PAGE_UP, false, false, false };
+	m_keyBinding.keyCombo[AB_MOVE_PAGE_DOWN] = { VK_PAGE_DOWN, false, false, false };
 	m_keyBinding.keyCombo[AB_FILE_NEW] = { VK_W, true, false, false };
 	m_keyBinding.keyCombo[AB_FILE_LOAD] = { VK_O, true, false, false };
 	m_keyBinding.keyCombo[AB_FILE_RELOAD] = { VK_R, true, false, false };
 	m_keyBinding.keyCombo[AB_FILE_SAVE] = { VK_S, true, false, false };
-	// AB_FILE_IMPORT, AB_FILE_EXPORT,
+	m_keyBinding.keyCombo[AB_FILE_IMPORT] = { VK_I, true, false, false };
+	m_keyBinding.keyCombo[AB_FILE_EXPORT] = { VK_E, true, false, false };
 	m_keyBinding.keyCombo[AB_CLIPBOARD_COPY] = { VK_C, true, false, false };
 	m_keyBinding.keyCombo[AB_CLIPBOARD_CUT] = { VK_X, true, false, false };
 	m_keyBinding.keyCombo[AB_CLIPBOARD_PASTE] = { VK_V, true, false, false };
 	m_keyBinding.keyCombo[AB_CLIPBOARD_PASTE_MERGE] = { VK_M, true, false, false };
 	m_keyBinding.keyCombo[AB_CLIPBOARD_SELECT_ALL] = { VK_A, true, false, false };
-	// AB_CLIPBOARD_DESELECT,
 	m_keyBinding.keyCombo[AB_UNDO_UNDO] = { VK_Z, true, false, false };
 	m_keyBinding.keyCombo[AB_UNDO_REDO] = { VK_Y, true, false, false };
 	m_keyBinding.keyCombo[AB_EDIT_CLEAR] = { VK_SPACEBAR, false, false, false };
@@ -95,22 +96,48 @@ void CKeyboard::SetDefaultKeyBinding()
 	m_keyBinding.keyCombo[AB_ACTIVE_VOLUME_DOWN] = { VK_SUBTRACT, false, false, false };
 	m_keyBinding.keyCombo[AB_ACTIVE_STEP_UP] = { VK_MULTIPLY, false, false, true };
 	m_keyBinding.keyCombo[AB_ACTIVE_STEP_DOWN] = { VK_DIVIDE, false, false, true };
-	m_keyBinding.keyCombo[AB_ACTIVE_INSTRUMENT_LEFT] = { VK_LEFT, false, false, true };
-	m_keyBinding.keyCombo[AB_ACTIVE_INSTRUMENT_RIGHT] = { VK_RIGHT, false, false, true };
+	m_keyBinding.keyCombo[AB_ACTIVE_INSTRUMENT_LEFT] = { VK_SUBTRACT, false, false, true };
+	m_keyBinding.keyCombo[AB_ACTIVE_INSTRUMENT_RIGHT] = { VK_ADD, false, false, true };
 	m_keyBinding.keyCombo[AB_TOGGLE_EDIT_MODE] = { VK_SPACEBAR, true, false, false };
 	m_keyBinding.keyCombo[AB_TOGGLE_FOLLOW] = { VK_F12, false, false, false };
 	m_keyBinding.keyCombo[AB_TOGGLE_REGION] = { VK_F10, false, false, false };
-	// AB_TOGGLE_VOLUME_MASK, AB_TOGGLE_INSTRUMENT_MASK,
-	// AB_TOGGLE_CHANNEL_1, AB_TOGGLE_CHANNEL_2, AB_TOGGLE_CHANNEL_3, AB_TOGGLE_CHANNEL_4, AB_TOGGLE_CHANNEL_5, AB_TOGGLE_CHANNEL_6, AB_TOGGLE_CHANNEL_7, AB_TOGGLE_CHANNEL_8,
-	// AB_TOGGLE_CHANNEL_9, AB_TOGGLE_CHANNEL_10, AB_TOGGLE_CHANNEL_11, AB_TOGGLE_CHANNEL_12, AB_TOGGLE_CHANNEL_13, AB_TOGGLE_CHANNEL_14, AB_TOGGLE_CHANNEL_15, AB_TOGGLE_CHANNEL_16,
-	// AB_TOGGLE_ACTIVE_CHANNEL, AB_TOGGLE_ALL_CHANNELS,
-	// AB_BOOKMARK_CREATE, AB_BOOKMARK_DELETE,
+
+	// Unmapped combinations
+	m_keyBinding.keyCombo[AB_TOGGLE_VOLUME_MASK] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_INSTRUMENT_MASK] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_1] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_2] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_3] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_4] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_5] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_6] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_7] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_8] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_9] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_10] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_11] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_12] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_13] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_14] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_15] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_CHANNEL_16] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_ACTIVE_CHANNEL] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_TOGGLE_ALL_CHANNELS] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_BOOKMARK_CREATE] = { EMPTY, false, false, false };
+	m_keyBinding.keyCombo[AB_BOOKMARK_DELETE] = { EMPTY, false, false, false };
+
+	// Mapped combinations
 	m_keyBinding.keyCombo[AB_MISC_INCREMENT_COMMAND_COLUMN] = { VK_RIGHT, false, true, true };
 	m_keyBinding.keyCombo[AB_MISC_DECREMENT_COMMAND_COLUMN] = { VK_LEFT, false, true, true };
-	// AB_MISC_INCREMENT_HIGHLIGHT_PRIMARY, AB_MISC_DECREMENT_HIGHLIGHT_PRIMARY,
-	// AB_MISC_INCREMENT_HIGHLIGHT_SECONDARY, AB_MISC_DECREMENT_HIGHLIGHT_SECONDARY,
-	// AB_MISC_SCALE_UP, AB_MISC_SCALE_DOWN,
-	//
+	m_keyBinding.keyCombo[AB_MISC_INCREMENT_HIGHLIGHT_PRIMARY] = { VK_ADD, false, true, true };
+	m_keyBinding.keyCombo[AB_MISC_DECREMENT_HIGHLIGHT_PRIMARY] = { VK_SUBTRACT, false, true, true };
+	m_keyBinding.keyCombo[AB_MISC_INCREMENT_HIGHLIGHT_SECONDARY] = { VK_MULTIPLY, false, true, true };
+	m_keyBinding.keyCombo[AB_MISC_DECREMENT_HIGHLIGHT_SECONDARY] = { VK_DIVIDE, false, true, true };
+	m_keyBinding.keyCombo[AB_MISC_SCALE_UP] = { VK_ADD, true, true, true };
+	m_keyBinding.keyCombo[AB_MISC_SCALE_DOWN] = { VK_SUBTRACT, true, true, true };
+
+	// Test combination, do not use!
+	m_keyBinding.keyCombo[AB_TEST_COMBO] = { VK_ENTER, true, false, true };
 }
 
 // Return the Action to execute from a Key Combination
@@ -135,8 +162,12 @@ UINT CKeyboard::GetKeyBindingAction(UINT keyVirtual, bool keyCtrl, bool keyAlt, 
 
 // Return the Note key mapped to the chosen Keyboard layout
 // Surely, there is a much better method I could use here...
-UINT CKeyboard::GetNoteKey(UINT keyVirtual)
+UINT CKeyboard::GetNoteKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift)
 {
+	// Neither of the Modifier keys are supposed to be held down!
+	if (keyCtrl || keyAlt || keyShift)
+		return INVALID;
+
 	UINT noteKey = INVALID;
 	UINT octave = 0;
 
@@ -211,8 +242,12 @@ UINT CKeyboard::GetNoteKey(UINT keyVirtual)
 }
 
 // Return the Number key mapped to the chosen Keyboard layout
-UINT CKeyboard::GetNumberKey(UINT keyVirtual)
+UINT CKeyboard::GetNumberKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift)
 {
+	// Neither of the Modifier keys are supposed to be held down!
+	if (keyCtrl || keyAlt || keyShift)
+		return INVALID;
+
 	UINT numberKey = INVALID;
 
 	switch (keyVirtual)
@@ -295,9 +330,13 @@ UINT CKeyboard::GetNumberKey(UINT keyVirtual)
 	return numberKey;
 }
 
-// Return the Number key mapped to the chosen Keyboard layout
-UINT CKeyboard::GetCommandKey(UINT keyVirtual)
+// Return the Command key mapped to the chosen Keyboard layout
+UINT CKeyboard::GetCommandKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift)
 {
+	// Neither of the Modifier keys are supposed to be held down!
+	if (keyCtrl || keyAlt || keyShift)
+		return INVALID;
+
 	UINT commandKey = INVALID;
 
 	switch (keyVirtual)
@@ -350,121 +389,3 @@ UINT CKeyboard::GetCommandKey(UINT keyVirtual)
 
 	return commandKey;
 }
-
-/*
-// QWERTY Keyboard layout 
-const unsigned char keynotes_QWERTY[256] = 
-{
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0x1B, 0xFF, 0x0D, 0x0F, 0xFF, 0x12, 0x14, 0x16, 0xFF, 0x19, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0x07, 0x04, 0x03, 0x10, 0xFF, 0x06, 0x08, 0x18, 0x0A, 0xFF, 0x0D, 0x0B, 0x09, 0x1A,
-	0x1C, 0x0C, 0x11, 0x01, 0x13, 0x17, 0x05, 0x0E, 0x02, 0x15, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x1E, 0x0C, 0xFF, 0x0E, 0x10, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1D, 0xFF, 0x1F, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-};
-
-// AZERTY Keyboard layout 
-const unsigned char keynotes_AZERTY[256] =
-{
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0x1B, 0xFF, 0x0D, 0x0F, 0xFF, 0x12, 0x14, 0x16, 0xFF, 0x19, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0x0C, 0x07, 0x04, 0x03, 0x10, 0xFF, 0x06, 0x08, 0x18, 0x0A, 0xFF, 0x0D, 0x0F, 0x09, 0x1A,
-	0x1C, 0xFF, 0x11, 0x01, 0x13, 0x17, 0x05, 0x00, 0x02, 0x15, 0x0E, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F, 0x1E, 0x0B, 0xFF, 0x0C, 0x0E,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x1D, 0xFF, 0x10,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-};
-
-const char keynumbs[256] =
-{
-	//0
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-	//64
-	-1, 10, 11, 12, 13, 14, 15, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//128
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//192
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-};
-
-const char keynumblock09[256] =
-{
-	//0
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//64
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//128
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	//192
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
-};
-
-// TODO: Replace with a different system, there are many issues with accidental values being input!
-char NoteKey(int vk)
-{
-	switch (g_keyboard_layout)
-	{
-	case KEYBOARD_QWERTY:
-		return keynotes_QWERTY[vk];
-
-	case KEYBOARD_AZERTY:
-		return keynotes_AZERTY[vk];
-
-	default:
-		return -1;	// return INVALID;
-	}
-}
-
-char NumbKey(int vk)
-{
-	return keynumbs[vk];
-}
-
-char Numblock09Key(int vk)
-{
-	return keynumblock09[vk];
-}
-*/

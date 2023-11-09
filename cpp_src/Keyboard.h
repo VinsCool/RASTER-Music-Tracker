@@ -64,14 +64,14 @@ typedef enum keyBindingAction_t
 	AB_MOVE_SUBTUNE_LEFT, AB_MOVE_SUBTUNE_RIGHT,
 	AB_MOVE_PATTERN_EDITOR, AB_MOVE_INSTRUMENT_EDITOR, AB_MOVE_INFO_EDITOR, AB_MOVE_SONGLINE_EDITOR,
 	AB_MOVE_TAB_LEFT, AB_MOVE_TAB_RIGHT,
-	AB_MOVE_HIGHLIGHT_PRIMARY_UP, AB_MOVE_HIGHLIGHT_PRIMARY_DOWN,
+	AB_MOVE_PAGE_UP, AB_MOVE_PAGE_DOWN,
 
 	// File I/O actions
 	AB_FILE_NEW, AB_FILE_LOAD, AB_FILE_RELOAD, AB_FILE_SAVE, AB_FILE_IMPORT, AB_FILE_EXPORT,
 
 	// Clipboard actions
 	AB_CLIPBOARD_COPY, AB_CLIPBOARD_CUT, AB_CLIPBOARD_PASTE, AB_CLIPBOARD_PASTE_MERGE,
-	AB_CLIPBOARD_SELECT_ALL, AB_CLIPBOARD_DESELECT,
+	AB_CLIPBOARD_SELECT_ALL,
 
 	// Undo/Redo actions
 	AB_UNDO_UNDO, AB_UNDO_REDO,
@@ -117,6 +117,9 @@ typedef enum keyBindingAction_t
 	AB_MISC_INCREMENT_HIGHLIGHT_SECONDARY, AB_MISC_DECREMENT_HIGHLIGHT_SECONDARY,
 	AB_MISC_SCALE_UP, AB_MISC_SCALE_DOWN,
 
+	// Used for testing the Keyboard Input Handler functionalities, useless otherwise
+	AB_TEST_COMBO,
+
 	// Insert additional actions here
 	AB_COUNT,
 } TKeyBindingAction;
@@ -157,10 +160,20 @@ public:
 
 public:
 	void SetDefaultKeyBinding();
+
 	UINT GetKeyBindingAction(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift);
-	UINT GetNoteKey(UINT keyVirtual);
-	UINT GetNumberKey(UINT keyVirtual);
-	UINT GetCommandKey(UINT keyVirtual);
+	UINT GetNoteKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift);
+	UINT GetNumberKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift);
+	UINT GetCommandKey(UINT keyVirtual, bool keyCtrl, bool keyAlt, bool keyShift);
+
+	// Return the last known state for held Modifier keys
+	// The Left Modifier keys are assumed by default, unless it is specified otherwise
+	const bool IsPressingAlt(bool isRightModifierKey = false) { return isRightModifierKey ? (GetKeyState(VK_RMENU) & 0x8000) : (GetKeyState(VK_LMENU) & 0x8000); };
+	const bool IsPressingCtrl(bool isRightModifierKey = false) { return isRightModifierKey ? (GetKeyState(VK_RCONTROL) & 0x80) : (GetKeyState(VK_LCONTROL) & 0x80); };
+	const bool IsPressingShift(bool isRightModifierKey = false) { return isRightModifierKey ? (GetKeyState(VK_RSHIFT) & 0x80) : (GetKeyState(VK_LSHIFT) & 0x80); };
+
+	// Unused, but technically functional if I really wanted to use it for some reason...
+	const bool IsPressingAnyKey(UINT keyVirtual) { return (GetKeyState(keyVirtual) & 0x80); };
 
 private:
 	TKeyBindingIndex m_keyBinding;

@@ -46,16 +46,10 @@ public:
 	// Input handlers for testing RMTE functions, hijacking everything at once will only make things worse later, so this is the best possible compromise for now
 	void MouseAction(CPoint point, UINT mousebutt, short wheelzDelta = 0);
 
-	// Return the last know state for held keys
-	const bool IsPressingAlt(bool right = false) { return right ? (GetKeyState(VK_RMENU) & 0x8000) : (GetKeyState(VK_LMENU) & 0x8000); };
-	const bool IsPressingCtrl(bool right = false) { return right ? (GetKeyState(VK_RCONTROL) & 0x80) : (GetKeyState(VK_LCONTROL) & 0x80); };
-	const bool IsPressingShift(bool right = false) { return right ? (GetKeyState(VK_RSHIFT) & 0x80) : (GetKeyState(VK_LSHIFT) & 0x80); };
-	const bool IsPressedAnyKey(UINT vk) { return (GetKeyState(vk) & 0x80); };
-
 	// Split functions used for movements and actions executed from keyboard inputs
 	bool OnProcessKeyboardInput(UINT vk);
-	bool PatternEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift);
-	bool SongEditorKey(UINT vk, bool keyCtrl, bool keyAlt, bool keyShift);
+	bool PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT commandKey);
+	bool SongEditorKey(UINT action, UINT numberKey);
 
 	// New functions that might also be used for future afx_msg calls if there is a good use for them
 	void OnRegion();
