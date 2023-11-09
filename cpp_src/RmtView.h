@@ -48,12 +48,22 @@ public:
 
 	// Split functions used for movements and actions executed from keyboard inputs
 	bool OnProcessKeyboardInput(UINT keyVirtual, UINT repetitionCount, UINT scanCode);
-	bool PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT commandKey);
-	bool SongEditorKey(UINT action, UINT numberKey);
+	bool PatternEditorKey(UINT actionId, UINT noteKey, UINT numberKey, UINT commandKey);
+	bool SongEditorKey(UINT actionId, UINT numberKey);
 
 	// New functions that might also be used for future afx_msg calls if there is a good use for them
 	void OnRegion();
 	void OnRespectVolume();
+	void OnScaleUp();
+	void OnScaleDown();
+	void OnUpdateScaling();
+	void OnEditStepUp();
+	void OnEditStepDown();
+	void OnUpdateEditStep();
+	void OnHighlightPrimaryUp();
+	void OnHighlightPrimaryDown();
+	void OnHighlightSecondaryUp();
+	void OnHighlightSecondaryDown();
 	void OnOctaveUp();
 	void OnOctaveDown();
 	void OnVolumeUp();

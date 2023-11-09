@@ -333,6 +333,7 @@ void CRmtView::OnDraw(CDC* pDC)
 	{
 		Resize();
 		DrawAll();
+		pDC->SetStretchBltMode(STRETCH_HALFTONE);
 		pDC->StretchBlt(0, 0, m_width, m_height, &m_mem_dc, 0, 0, g_width, g_height, SRCCOPY);
 		NO_SCREENUPDATE;
 	}
@@ -2893,6 +2894,77 @@ void CRmtView::OnRespectVolume()
 	g_respectvolume ^= 1;
 }
 
+void CRmtView::OnScaleUp()
+{
+	if (++g_scaling_percentage > 300)
+		g_scaling_percentage = 300;
+
+	OnUpdateScaling();
+}
+
+void CRmtView::OnScaleDown()
+{
+	if (--g_scaling_percentage < 100)
+		g_scaling_percentage = 100;
+
+	OnUpdateScaling();
+}
+
+void CRmtView::OnUpdateScaling()
+{
+	m_width = m_height = 0;
+	Resize();
+}
+
+void CRmtView::OnEditStepUp()
+{
+	if (++g_linesafter > 128)
+		g_linesafter = 128;
+
+	OnUpdateEditStep();
+}
+
+void CRmtView::OnEditStepDown()
+{
+	if (--g_linesafter < 0)
+		g_linesafter = 0;
+
+	OnUpdateEditStep();
+}
+
+void CRmtView::OnUpdateEditStep()
+{
+	// Honestly I don't comprehend why it is set up this way, but I am too sleep deprived to know better so I just copypasted what Raster did 20 years ago
+	CMainFrame* pMainFrame = (CMainFrame*)AfxGetMainWnd();
+
+	if (pMainFrame)
+		pMainFrame->m_comboSkipLinesAfterNoteInsert.SetCurSel(g_linesafter);
+}
+
+void CRmtView::OnHighlightPrimaryUp()
+{
+	if (++g_trackLinePrimaryHighlight > 128)
+		g_trackLinePrimaryHighlight = 128;
+}
+
+void CRmtView::OnHighlightPrimaryDown()
+{
+	if (--g_trackLinePrimaryHighlight < 1)
+		g_trackLinePrimaryHighlight = 1;
+}
+
+void CRmtView::OnHighlightSecondaryUp()
+{
+	if (++g_trackLineSecondaryHighlight > 128)
+		g_trackLineSecondaryHighlight = 128;
+}
+
+void CRmtView::OnHighlightSecondaryDown()
+{
+	if (--g_trackLineSecondaryHighlight < 1)
+		g_trackLineSecondaryHighlight = 1;
+}
+
 void CRmtView::OnOctaveUp()
 {
 	g_Song.OctaveUp();
@@ -3179,8 +3251,11 @@ bool CRmtView::OnProcessKeyboardInput(UINT keyVirtual, UINT repetitionCount, UIN
 		return true;
 
 	case AB_ACTIVE_STEP_UP:
+		OnEditStepUp();
+		return true;
+
 	case AB_ACTIVE_STEP_DOWN:
-		// TODO: Add code for these
+		OnEditStepDown();
 		return true;
 
 	case AB_ACTIVE_INSTRUMENT_LEFT:
@@ -3242,15 +3317,27 @@ bool CRmtView::OnProcessKeyboardInput(UINT keyVirtual, UINT repetitionCount, UIN
 		return g_Song.ChangeEffectCommandColumnCount(-1);
 
 	case AB_MISC_INCREMENT_HIGHLIGHT_PRIMARY:
+		OnHighlightPrimaryUp();
+		return true;
+
 	case AB_MISC_DECREMENT_HIGHLIGHT_PRIMARY:
+		OnHighlightPrimaryDown();
+		return true;
+
 	case AB_MISC_INCREMENT_HIGHLIGHT_SECONDARY:
+		OnHighlightSecondaryUp();
+		return true;
+
 	case AB_MISC_DECREMENT_HIGHLIGHT_SECONDARY:
-		// TODO: Add code for these
+		OnHighlightSecondaryDown();
 		return true;
 
 	case AB_MISC_SCALE_UP:
+		OnScaleUp();
+		return true;
+
 	case AB_MISC_SCALE_DOWN:
-		// TODO: Add code for these
+		OnScaleDown();
 		return true;
 
 	case INVALID:
@@ -3291,13 +3378,13 @@ bool CRmtView::OnProcessKeyboardInput(UINT keyVirtual, UINT repetitionCount, UIN
 	return false;
 }
 
-bool CRmtView::PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT commandKey)
+bool CRmtView::PatternEditorKey(UINT actionId, UINT noteKey, UINT numberKey, UINT commandKey)
 {
 	UINT activeCursor = g_Song.GetActiveCursor();
 
 	// Process all keys with the highest priority in the Pattern Editor, anything passing through will be handled further below
 	// The cursor position will then be used to further narrow down which action should be taken in the Pattern Editor
-	switch (action)
+	switch (actionId)
 	{
 	case AB_MOVE_UP:
 		OnPatternUp();
@@ -3389,7 +3476,7 @@ bool CRmtView::PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT 
 	// Note Column
 	if (CC_NOTE(activeCursor))
 	{
-		switch (action)
+		switch (actionId)
 		{
 		case AB_EDIT_EMPTY:
 			noteKey = NOTE_EMPTY;
@@ -3418,7 +3505,7 @@ bool CRmtView::PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT 
 	// Instrument Column
 	else if (CC_INSTRUMENT(activeCursor))
 	{
-		switch (action)
+		switch (actionId)
 		{
 		case AB_EDIT_EMPTY:
 			// In order to set the Instrument value directly, the Cursor must be out of bounds
@@ -3439,7 +3526,7 @@ bool CRmtView::PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT 
 	// Volume Column
 	else if (CC_VOLUME(activeCursor))
 	{
-		switch (action)
+		switch (actionId)
 		{
 		case AB_EDIT_EMPTY:
 			numberKey = VOLUME_EMPTY;
@@ -3458,7 +3545,7 @@ bool CRmtView::PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT 
 	// The Effect Commands Identifier are being processed in priority
 	else if (CC_CMD_IDENTIFIER(activeCursor))
 	{
-		switch (action)
+		switch (actionId)
 		{
 		case AB_EDIT_EMPTY:
 			commandKey = PE_EMPTY;
@@ -3476,7 +3563,7 @@ bool CRmtView::PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT 
 	// The Effect Commands Parameter is the last possible case to be processed
 	else if (CC_CMD_X(activeCursor) || CC_CMD_Y(activeCursor))
 	{
-		switch (action)
+		switch (actionId)
 		{
 		case AB_EDIT_EMPTY:
 			// Exception for AB_EDIT_EMPTY: The Effect Command Column will be cleared regardless of the Cursor Column in this case
@@ -3496,11 +3583,11 @@ bool CRmtView::PatternEditorKey(UINT action, UINT noteKey, UINT numberKey, UINT 
 	return false;
 }
 
-bool CRmtView::SongEditorKey(UINT action, UINT numberKey)
+bool CRmtView::SongEditorKey(UINT actionId, UINT numberKey)
 {
 	// Process all keys with the highest priority in the Songline Editor, anything passing through will be handled further below
 	// The cursor position will then be used to further narrow down which action should be taken in the Songline Editor
-	switch (action)
+	switch (actionId)
 	{
 	case AB_MOVE_UP:
 		OnSonglineUp();
