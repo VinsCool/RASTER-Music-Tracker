@@ -5663,8 +5663,8 @@ bool CSong::SetCommandParameterInPattern(TRow* pRow, UINT parameter, UINT column
 
 bool CSong::SetEmptyRowInPattern()
 {
-	TRow* pRow = g_Module.GetRow(g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline), m_activeRow);
-	
+	TRow* pRow = GetRow();
+
 	return g_Module.InitialiseRow(pRow);
 }
 
