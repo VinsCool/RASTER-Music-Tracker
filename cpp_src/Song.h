@@ -649,6 +649,10 @@ public:
 	TPattern* GetPattern() { return g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline); };
 	TRow* GetRow() { return g_Module.GetRow(GetPattern(), m_activeRow); };
 
+	UINT GetShortestPatternLength() { return g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline); };
+	UINT GetChannelCount() { return g_Module.GetChannelCount(m_activeSubtune); };
+	UINT GetSongLength() { return g_Module.GetSongLength(m_activeSubtune); };
+
 	UINT GetEffectCommandCount() { return g_Module.GetEffectCommandCount(GetChannel()); };
 	bool SetEffectCommandCount(UINT column) { return g_Module.SetEffectCommandCount(GetChannel(), column); };
 

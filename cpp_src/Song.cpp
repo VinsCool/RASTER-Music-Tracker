@@ -1095,7 +1095,7 @@ BOOL CSong::TrackRight(BOOL column)
 void CSong::PatternUpDownMovement(int rows)
 {
 	UINT offset = m_activeRow + rows;
-	UINT patternLength = g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline);
+	UINT patternLength = GetShortestPatternLength();
 
 	// If moving between Songlines from Pattern boundaries is enabled...
 	if (g_keyboard_updowncontinue)
@@ -1108,14 +1108,14 @@ void CSong::PatternUpDownMovement(int rows)
 			{
 				offset -= patternLength;
 				SonglineUpDownMovement(1);
-				patternLength = g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline);
+				patternLength = GetShortestPatternLength();
 			}
 
 			// ...and the number of rows added is negative...
 			else
 			{
 				SonglineUpDownMovement(-1);
-				patternLength = g_Module.GetShortestPatternLength(m_activeSubtune, m_activeSongline);
+				patternLength = GetShortestPatternLength();
 				offset += patternLength;
 			}
 		}
@@ -1144,7 +1144,7 @@ void CSong::PatternLeftRightMovement(int columns)
 	// Total: 19 Columns
 
 	UINT offset = m_activeCursor + columns;
-	UINT columnCount = (g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) * 3) + 1 + 2 + 1;
+	UINT columnCount = CMD_TO_CC_INDEX(GetEffectCommandCount());
 
 	// If the offset is out of bounds...
 	while (offset >= columnCount)
@@ -1154,14 +1154,14 @@ void CSong::PatternLeftRightMovement(int columns)
 		{
 			offset -= columnCount;
 			ChannelLeftRightMovement(1);
-			columnCount = (g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) * 3) + 1 + 2 + 1;
+			columnCount = CMD_TO_CC_INDEX(GetEffectCommandCount());
 		}
 
 		// ...and the number of rows added is negative...
 		else
 		{
 			ChannelLeftRightMovement(-1);
-			columnCount = (g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel) * 3) + 1 + 2 + 1;
+			columnCount = CMD_TO_CC_INDEX(GetEffectCommandCount());
 			offset += columnCount;
 		}
 	}
@@ -1176,7 +1176,7 @@ void CSong::PatternLeftRightMovement(int columns)
 void CSong::ChannelLeftRightMovement(int channels)
 {
 	UINT offset = m_activeChannel + channels;
-	UINT channelCount = g_Module.GetChannelCount(m_activeSubtune);
+	UINT channelCount = GetChannelCount();
 
 	// If the offset is out of bounds...
 	while (offset >= channelCount)
@@ -1200,7 +1200,7 @@ void CSong::ChannelLeftRightMovement(int channels)
 void CSong::SonglineUpDownMovement(int songlines)
 {
 	UINT offset = m_activeSongline + songlines;
-	UINT songLength = g_Module.GetSongLength(m_activeSubtune);
+	UINT songLength = GetSongLength();
 
 	// If the offset is out of bounds, add the Song Length back to it first
 	if (offset >= songLength)
@@ -1225,25 +1225,25 @@ void CSong::SonglineLeftRightMovement(int columns)
 	UINT offset = m_activeSonglineColumn + columns;
 
 	// If the offset is out of bounds...
-	while (offset >= 2)
+	while (offset >= CC_NYBBLE_MAX)
 	{
 		// ...and the number of columns added is positive...
 		if (columns >= 0)
 		{
 			ChannelLeftRightMovement(1);
-			offset -= 2;
+			offset -= CC_NYBBLE_MAX;
 		}
 
 		// ...and the number of columns added is negative...
 		else
 		{
 			ChannelLeftRightMovement(-1);
-			offset += 2;
+			offset += CC_NYBBLE_MAX;
 		}
 	}
 
 	// Update the offset with the Modulo of the Songline Nybble Cursor
-	offset %= 2;
+	offset %= CC_NYBBLE_MAX;
 
 	// Update the Active Songline Column cursor position
 	m_activeSonglineColumn = offset;
@@ -5584,12 +5584,12 @@ bool CSong::SetCommandParameterInPatternByNumberKey(UINT numberKey)
 	UINT activeParameter = GetCommandParameterInPattern();
 	UINT activeCommand = GetCommandIdentifierInPattern();
 
-	// Special case for Empty Commands: No data would actually be edited, but movements would still be applied in the Pattern Editor
-	if (activeCommand == PE_EMPTY)
-		return true;
-
 	if (numberKey != INVALID && activeParameter != INVALID)
 	{
+		// Special case for Empty Commands: No data would actually be edited, but movements would still be applied in the Pattern Editor
+		if (activeCommand == PE_EMPTY)
+			return true;
+
 		switch (m_activeCursor)
 		{
 		case CC_CMD1_X: case CC_CMD2_X: case CC_CMD3_X: case CC_CMD4_X:
