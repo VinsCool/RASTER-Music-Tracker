@@ -644,35 +644,43 @@ public:
 	void PlaybackRespectBoundaries(TSubtune* pSubtune);
 */
 
-	TRow* GetRow();
-	TChannel* GetChannel();
+	TSubtune* GetSubtune() { return g_Module.GetSubtune(m_activeSubtune); };
+	TChannel* GetChannel() { return g_Module.GetChannel(m_activeSubtune, m_activeChannel); };
+	TPattern* GetPattern() { return g_Module.GetIndexedPattern(m_activeSubtune, m_activeChannel, m_activeSongline); };
+	TRow* GetRow() { return g_Module.GetRow(GetPattern(), m_activeRow); };
+
+	UINT GetEffectCommandCount() { return g_Module.GetEffectCommandCount(GetChannel()); };
+	bool SetEffectCommandCount(UINT column) { return g_Module.SetEffectCommandCount(GetChannel(), column); };
+
+	UINT GetPatternInSongline() { return g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline); };
+	UINT GetNoteInPattern() { return g_Module.GetPatternRowNote(GetRow()); };
+	UINT GetInstrumentInPattern() { return g_Module.GetPatternRowInstrument(GetRow()); };
+	UINT GetVolumeInPattern() { return g_Module.GetPatternRowVolume(GetRow()); };
+	UINT GetCommandIdentifierInPattern() { return g_Module.GetPatternRowEffectCommand(GetRow(), CC_TO_CMD_INDEX(m_activeCursor)); };
+	UINT GetCommandParameterInPattern() { return g_Module.GetPatternRowEffectParameter(GetRow(), CC_TO_CMD_INDEX(m_activeCursor)); };
+
+	bool SetPatternInSongline(UINT pattern) { return g_Module.SetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline, pattern); };
+	bool SetNoteInPattern(UINT note) { return g_Module.SetPatternRowNote(GetRow(), note); };
+	bool SetInstrumentInPattern(UINT instrument) { return g_Module.SetPatternRowInstrument(GetRow(), instrument); };
+	bool SetVolumeInPattern(UINT volume) { return g_Module.SetPatternRowVolume(GetRow(), volume); };
+	bool SetCommandIdentifierInPattern(UINT command) { return g_Module.SetPatternRowEffectCommand(GetRow(), CC_TO_CMD_INDEX(m_activeCursor), command); };
+	bool SetCommandParameterInPattern(UINT parameter) { return g_Module.SetPatternRowEffectParameter(GetRow(), CC_TO_CMD_INDEX(m_activeCursor), parameter); };
+
+	bool SetPatternInSonglineByNumberKey(UINT numberKey);
+	bool SetNoteInPatternByNoteKey(UINT noteKey);
+	bool SetInstrumentInPatternByNumberKey(UINT numberKey);
+	bool SetCommandParameterInPatternByNumberKey(UINT numberKey);
+
+	bool SetRowInPattern(UINT note, UINT instrument, UINT volume, UINT command, UINT parameter);
 
 	bool TransposeNoteInPattern(int semitone);
 	bool TransposePattern(int semitone);
 	bool TransposeSongline(int semitone);
 
-	bool SetNoteInPattern(UINT note) { return SetNoteInPattern(GetRow(), note, m_activeOctave, m_activeInstrument, m_activeVolume); };
-	bool SetNoteInPattern(TRow* pRow, UINT note, UINT octave, UINT instrument, UINT volume);
-
-	bool SetInstrumentInPattern(UINT instrument, UINT nybble = INVALID) { return SetInstrumentInPattern(GetRow(), instrument, nybble); };
-	bool SetInstrumentInPattern(TRow* pRow, UINT instrument, UINT nybble = INVALID);
-
-	bool SetVolumeInPattern(UINT volume) { return SetVolumeInPattern(GetRow(), volume); };
-	bool SetVolumeInPattern(TRow* pRow, UINT volume);
-
-	bool SetCommandIdentifierInPattern(UINT command) { return SetCommandIdentifierInPattern(GetRow(), command, CC_TO_CMD_INDEX(m_activeCursor)); };
-	bool SetCommandIdentifierInPattern(TRow* pRow, UINT command, UINT column);
-
-	bool SetCommandParameterInPattern(UINT parameter, UINT nybble = INVALID) { return SetCommandParameterInPattern(GetRow(), parameter, CC_TO_CMD_INDEX(m_activeCursor), nybble); };
-	bool SetCommandParameterInPattern(TRow* pRow, UINT parameter, UINT column, UINT nybble = INVALID);
-
 	bool SetEmptyRowInPattern();
 
 	bool DeleteRowInPattern();
 	bool InsertRowInPattern();
-
-	bool SetPatternInSongline(UINT pattern, UINT nybble = INVALID) { return SetPatternInSongline(GetChannel(), m_activeSongline, pattern, nybble); };
-	bool SetPatternInSongline(TChannel* pChannel, UINT songline, UINT pattern, UINT nybble = INVALID);
 
 	bool ChangePatternInSongline(int offset);
 	bool DuplicatePatternInSongline();

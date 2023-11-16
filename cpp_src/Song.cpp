@@ -5493,29 +5493,168 @@ void CSong::PlaybackRespectBoundaries(TSubtune* pSubtune)
 
 //-- Editor Functions (TODO(?): Move elsewhere later) --//
 
-TRow* CSong::GetRow()
+bool CSong::SetPatternInSonglineByNumberKey(UINT numberKey)
 {
-	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
-	TRow* pRow = g_Module.GetRow(m_activeSubtune, m_activeChannel, pattern, m_activeRow);
+	UINT activePattern = GetPatternInSongline();
+	
+	if (numberKey != INVALID && activePattern != INVALID)
+	{
+		switch (m_activeSonglineColumn)
+		{
+		case CC_NYBBLE_X:
+			// High Nybble Column -> Pattern 0x?F, where '?' is the value being edited
+			return SetPatternInSongline(((numberKey & 0x0F) << 4) | (activePattern & 0x0F));
 
-	return pRow;
+		case CC_NYBBLE_Y:
+			// Low Nybble Column -> Pattern 0xF?, where '?' is the value being edited
+			return SetPatternInSongline((activePattern & 0xF0) | (numberKey & 0x0F));
+		}
+	}
+
+	// Nothing was edited
+	return false;
 }
 
-TChannel* CSong::GetChannel()
+bool CSong::SetNoteInPatternByNoteKey(UINT noteKey)
 {
-	TChannel* pChannel = g_Module.GetChannel(m_activeSubtune, m_activeChannel);
+	// Calculate the Note Index with the Octave parameter
+	UINT semitone = noteKey + (m_activeOctave * 12);
 
-	return pChannel;
+	if (noteKey != INVALID)
+	{
+		switch (noteKey)
+		{
+		case NOTE_OFF:
+		case NOTE_RELEASE:
+		case NOTE_RETRIGGER:
+			// Overwrite the Instrument and Volume columns with Empty values alongside any of these Note Commands
+			return SetNoteInPattern(noteKey) && SetInstrumentInPattern(INSTRUMENT_EMPTY) && SetVolumeInPattern(VOLUME_EMPTY);
+
+		case NOTE_EMPTY:
+			// Set the Note Command without Instrument or Volume
+			return SetNoteInPattern(noteKey);
+
+		default:
+			// The resulting Semitone must be within the Valid Notes range, in order to not set a Note Command by accident!
+			if (g_Module.IsValidNote(semitone))
+				return SetNoteInPattern(semitone) && SetInstrumentInPattern(m_activeInstrument) && SetVolumeInPattern(m_activeVolume);
+		}
+	}
+
+	// Nothing was edited
+	return false;
+}
+
+bool CSong::SetInstrumentInPatternByNumberKey(UINT numberKey)
+{
+	UINT activeInstrument = GetInstrumentInPattern();
+
+	if (numberKey != INVALID && activeInstrument != INVALID)
+	{
+		switch (m_activeCursor)
+		{
+		case CC_INSTRUMENT_X:
+			// High Nybble Column -> Instrument 0x?F, where '?' is the value being edited
+			activeInstrument = ((numberKey & 0x0F) << 4) | (activeInstrument & 0x0F);
+
+			// If the Instrument Index is beyond the maximum range, set the highest possible value directly
+			if (!g_Module.IsValidInstrument(activeInstrument))
+				activeInstrument = INSTRUMENT_COUNT - 1;
+
+			return SetInstrumentInPattern(activeInstrument);
+
+		case CC_INSTRUMENT_Y:
+			// Low Nybble Column -> Instrument 0xF?, where '?' is the value being edited
+			activeInstrument = (activeInstrument & 0xF0) | (numberKey & 0x0F);
+
+			// If the Instrument Index is beyond the maximum range, only keep the Low Nybble value
+			if (!g_Module.IsValidInstrument(activeInstrument))
+				activeInstrument &= 0x0F;
+
+			return SetInstrumentInPattern(activeInstrument);
+		}
+	}
+
+	// Nothing was edited
+	return false;
+}
+
+bool CSong::SetCommandParameterInPatternByNumberKey(UINT numberKey)
+{
+	UINT activeParameter = GetCommandParameterInPattern();
+	UINT activeCommand = GetCommandIdentifierInPattern();
+
+	// Special case for Empty Commands: No data would actually be edited, but movements would still be applied in the Pattern Editor
+	if (activeCommand == PE_EMPTY)
+		return true;
+
+	if (numberKey != INVALID && activeParameter != INVALID)
+	{
+		switch (m_activeCursor)
+		{
+		case CC_CMD1_X: case CC_CMD2_X: case CC_CMD3_X: case CC_CMD4_X:
+			// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
+			return SetCommandParameterInPattern(((numberKey & 0x0F) << 4) | (activeParameter & 0x0F));
+
+		case CC_CMD1_Y: case CC_CMD2_Y: case CC_CMD3_Y: case CC_CMD4_Y:
+			// Effect Command Parameter, Low Nybble -> Command 0xFF?, where '?' is the value being edited
+			return SetCommandParameterInPattern((activeParameter & 0xF0) | (numberKey & 0x0F));
+		}
+	}
+
+	// Nothing was edited
+	return false;
+}
+
+bool CSong::SetRowInPattern(UINT note, UINT instrument, UINT volume, UINT command, UINT parameter)
+{
+	switch (m_activeCursor)
+	{
+	case CC_NOTE:
+		// All Valid Note values may be set using the Note Keys, including Note Commands and Empty
+		return SetNoteInPatternByNoteKey(note);
+
+	case CC_INSTRUMENT_X: case CC_INSTRUMENT_Y:
+		// Empty Instruments may be set regardless of the Active Column
+		if (instrument == INSTRUMENT_EMPTY)
+			return SetInstrumentInPattern(instrument);
+		// All Valid Instrument values may be set using the Number Keys, otherwise
+		else
+			return SetInstrumentInPatternByNumberKey(instrument);
+
+	case CC_VOLUME:
+		// All Valid Volume values may be set using the Number Keys, including Empty
+		return SetVolumeInPattern(volume);
+
+	case CC_CMD1_IDENTIFIER: case CC_CMD2_IDENTIFIER: case CC_CMD3_IDENTIFIER: case CC_CMD4_IDENTIFIER:
+		// Empty Commands could be set regardless of the Active Column, always clearing the Parameters in the process
+		if (command == PE_EMPTY)
+			return SetCommandIdentifierInPattern(command) && SetCommandParameterInPattern(EFFECT_PARAMETER_MIN);
+		// All Valid Command Identifier values may be set using the Command Keys, otherwise
+		else
+			return SetCommandIdentifierInPattern(command);
+
+	case CC_CMD1_X: case CC_CMD2_X: case CC_CMD3_X: case CC_CMD4_X:
+	case CC_CMD1_Y: case CC_CMD2_Y: case CC_CMD3_Y: case CC_CMD4_Y:
+		// Empty Commands could be set regardless of the Active Column, always clearing the Parameters in the process
+		if (command == PE_EMPTY)
+			return SetCommandIdentifierInPattern(command) && SetCommandParameterInPattern(EFFECT_PARAMETER_MIN);
+		// All Valid Command Parameter values may be set using the Number Keys, otherwise
+		else
+			return SetCommandParameterInPatternByNumberKey(parameter);
+	}
+
+	// Nothing was edited
+	return false;
 }
 
 bool CSong::TransposeNoteInPattern(int semitone)
 {
-	TRow* pRow = GetRow();
-	UINT note = g_Module.GetPatternRowNote(pRow);
+	UINT note = GetNoteInPattern();
 
 	// Only allow editing valid Note Index values, ignore Note Commands
 	if (g_Module.IsValidNote(note))
-		return g_Module.SetPatternRowNote(pRow, (note + semitone + NOTE_COUNT) % NOTE_COUNT);
+		return SetNoteInPattern((note + semitone + NOTE_COUNT) % NOTE_COUNT);
 
 	return false;
 }
@@ -5558,107 +5697,6 @@ bool CSong::TransposeSongline(int semitone)
 
 	// At least 1 successful transposition will return True
 	return count;
-}
-
-bool CSong::SetNoteInPattern(TRow* pRow, UINT note, UINT octave, UINT instrument, UINT volume)
-{
-	switch (note)
-	{
-	case NOTE_OFF:
-	case NOTE_RELEASE:
-	case NOTE_RETRIGGER:
-		// Overwrite the Instrument and Volume columns with Empty values alongside any of these Note Commands
-		return g_Module.SetPatternRowNote(pRow, note) && g_Module.SetPatternRowInstrument(pRow, INSTRUMENT_EMPTY) && g_Module.SetPatternRowVolume(pRow, VOLUME_EMPTY);
-
-	case NOTE_EMPTY:
-		// Set the Note Command without Instrument or Volume
-		return g_Module.SetPatternRowNote(pRow, note);
-
-	default:
-		// Invalid Note Index should be ignored
-		if (!g_Module.IsValidNote(note))
-			break;
-
-		// Calculate the Note Index with the Octave parameter, and set it alongside the Instrument and Volume parameters
-		note += octave * 12;
-
-		// The resulting Semitone must be within the Valid Notes range, in order to not set a Note Command by accident!
-		if (g_Module.IsValidNote(note))
-			return g_Module.SetPatternRowNote(pRow, note) && g_Module.SetPatternRowInstrument(pRow, instrument) && g_Module.SetPatternRowVolume(pRow, volume);
-	}
-
-	// Nothing was edited
-	return false;
-}
-
-bool CSong::SetInstrumentInPattern(TRow* pRow, UINT instrument, UINT nybble)
-{
-	// Get the Instrument currently in memory
-	UINT lastInstrument = g_Module.GetPatternRowInstrument(pRow);
-
-	// If the Instrument is invalid, do not process further
-	if (!g_Module.IsValidInstrumentIndex(instrument) || !g_Module.IsValidInstrumentIndex(lastInstrument))
-		return false;
-
-	switch (nybble)
-	{
-	case CC_NYBBLE_X:
-		// High Nybble Column -> Instrument 0x?F, where '?' is the value being edited
-		instrument = ((instrument & 0x0F) << 4) | (lastInstrument & 0x0F);
-
-		// If the Instrument Index is beyond the maximum range, set the highest possible value directly
-		if (!g_Module.IsValidInstrument(instrument))
-			instrument = INSTRUMENT_COUNT - 1;
-		break;
-
-	case CC_NYBBLE_Y:
-		// Low Nybble Column -> Instrument 0xF?, where '?' is the value being edited
-		instrument = (lastInstrument & 0xF0) | (instrument & 0x0F);
-
-		// If the Instrument Index is beyond the maximum range, only keep the Low Nybble value
-		if (!g_Module.IsValidInstrument(instrument))
-			instrument &= 0x0F;
-		break;
-	}
-
-	// The Instrument value will be overwritten with the combined value from each Nybble
-	return g_Module.SetPatternRowInstrument(pRow, instrument);
-}
-
-bool CSong::SetVolumeInPattern(TRow* pRow, UINT volume)
-{
-	return g_Module.SetPatternRowVolume(pRow, volume);
-}
-
-bool CSong::SetCommandIdentifierInPattern(TRow* pRow, UINT command, UINT column)
-{
-	return g_Module.SetPatternRowEffectCommand(pRow, column, command);
-}
-
-bool CSong::SetCommandParameterInPattern(TRow* pRow, UINT parameter, UINT column, UINT nybble)
-{
-	// Get the Effect Command Parameter currently in memory
-	UINT lastParameter = g_Module.GetPatternRowEffectParameter(pRow, column);
-
-	// If the Effect Parameter is invalid, do not process further
-	if (!g_Module.IsValidEffectParameter(parameter) || !g_Module.IsValidEffectParameter(lastParameter))
-		return false;
-
-	switch (nybble)
-	{
-	case CC_NYBBLE_X:
-		// Effect Command Parameter, High Nybble -> Command 0xF?F, where '?' is the value being edited
-		parameter = ((parameter & 0x0F) << 4) | (lastParameter & 0x0F);
-		break;
-
-	case CC_NYBBLE_Y:
-		// Effect Command Parameter, Low Nybble -> Command 0xFF?, where '?' is the value being edited
-		parameter = (lastParameter & 0xF0) | (parameter & 0x0F);
-		break;
-	}
-
-	// The Command Parameter will be overwritten with the combined value from each Nybble
-	return g_Module.SetPatternRowEffectParameter(pRow, column, parameter);
 }
 
 bool CSong::SetEmptyRowInPattern()
@@ -5708,44 +5746,19 @@ bool CSong::InsertRowInPattern()
 	return count;
 }
 
-bool CSong::SetPatternInSongline(TChannel* pChannel, UINT songline, UINT pattern, UINT nybble)
-{
-	// Get the Pattern currently in memory
-	UINT lastPattern = g_Module.GetPatternInSongline(pChannel, songline);
-
-	// If the Pattern is invalid, do not process further
-	if (!g_Module.IsValidPattern(pattern) || !g_Module.IsValidPattern(lastPattern))
-		return false;
-
-	switch (nybble)
-	{
-	case CC_NYBBLE_X:
-		// High Nybble Column -> Pattern 0x?F, where '?' is the value being edited
-		pattern = ((pattern & 0x0F) << 4) | (lastPattern & 0x0F);
-		break;
-
-	case CC_NYBBLE_Y:
-		// Low Nybble Column -> Pattern 0xF?, where '?' is the value being edited
-		pattern = (lastPattern & 0xF0) | (pattern & 0x0F);
-		break;
-	}
-
-	// The Pattern will be overwritten with the combined value from each Nybble
-	return g_Module.SetPatternInSongline(pChannel, songline, pattern);
-}
-
 bool CSong::ChangePatternInSongline(int offset)
 {
-	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
+	UINT pattern = GetPatternInSongline();
 
-	return g_Module.SetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline, pattern + offset);
+	if (pattern != INVALID)
+		return SetPatternInSongline(pattern + offset);
+
+	return false;
 }
 
 bool CSong::DuplicatePatternInSongline()
 {
-	UINT pattern = g_Module.GetPatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline);
-
-	return g_Module.DuplicatePatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline, pattern);
+	return g_Module.DuplicatePatternInSongline(m_activeSubtune, m_activeChannel, m_activeSongline, GetPatternInSongline());
 }
 
 bool CSong::SetNewEmptyPatternInSongline()
@@ -5755,7 +5768,10 @@ bool CSong::SetNewEmptyPatternInSongline()
 
 bool CSong::ChangeEffectCommandColumnCount(int offset)
 {
-	UINT columnCount = g_Module.GetEffectCommandCount(m_activeSubtune, m_activeChannel);
+	UINT columnCount = GetEffectCommandCount();
 
-	return g_Module.SetEffectCommandCount(m_activeSubtune, m_activeChannel, columnCount + offset);
+	if (columnCount != 0)
+		return SetEffectCommandCount(columnCount + offset);
+
+	return false;
 }

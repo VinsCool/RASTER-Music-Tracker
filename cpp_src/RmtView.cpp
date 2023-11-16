@@ -3380,7 +3380,10 @@ bool CRmtView::OnProcessKeyboardInput(UINT keyVirtual, UINT repetitionCount, UIN
 
 bool CRmtView::PatternEditorKey(UINT actionId, UINT noteKey, UINT numberKey, UINT commandKey)
 {
-	UINT activeCursor = g_Song.GetActiveCursor();
+	// Assign the value of numberKey to Instrument and Volume, since they could be used slightly differently
+	// Keep numberKey as is for the Command Parameter
+	UINT instrumentKey = numberKey;
+	UINT volumeKey = numberKey;
 
 	// Process all keys with the highest priority in the Pattern Editor, anything passing through will be handled further below
 	// The cursor position will then be used to further narrow down which action should be taken in the Pattern Editor
@@ -3463,128 +3466,39 @@ bool CRmtView::PatternEditorKey(UINT actionId, UINT noteKey, UINT numberKey, UIN
 		// Something went wrong, do no take a chance here and just return false
 		return false;
 
+	case AB_EDIT_EMPTY:
+		// Set everything to Empty values, only the Active Column would be edited, so it doesn't matter at this point
+		noteKey = NOTE_EMPTY;
+		instrumentKey = INSTRUMENT_EMPTY;
+		volumeKey = VOLUME_EMPTY;
+		commandKey = PE_EMPTY;
+		break;
+
 	case AB_EDIT_DELETE:
 		return g_Song.DeleteRowInPattern();
 
 	case AB_EDIT_INSERT:
 		return g_Song.InsertRowInPattern();
+
+	case AB_NOTE_OFF:
+		noteKey = NOTE_OFF;
+		break;
+
+	case AB_NOTE_RELEASE:
+		noteKey = NOTE_RELEASE;
+		break;
+
+	case AB_NOTE_RETRIGGER:
+		noteKey = NOTE_RETRIGGER;
+		break;
 	}
 
 	// The remaining keys are processed within their respective cursor positions
 	// This is the lowest priority level, as far as the Pattern Editor is concerned
-
-	// Note Column
-	if (CC_NOTE(activeCursor))
+	if (g_Song.SetRowInPattern(noteKey, instrumentKey, volumeKey, commandKey, numberKey))
 	{
-		switch (actionId)
-		{
-		case AB_EDIT_EMPTY:
-			noteKey = NOTE_EMPTY;
-			break;
-
-		case AB_NOTE_OFF:
-			noteKey = NOTE_OFF;
-			break;
-
-		case AB_NOTE_RELEASE:
-			noteKey = NOTE_RELEASE;
-			break;
-
-		case AB_NOTE_RETRIGGER:
-			noteKey = NOTE_RETRIGGER;
-			break;
-		}
-
-		if (g_Song.SetNoteInPattern(noteKey))
-		{
-			OnPatternDown();
-			return true;
-		}
-	}
-
-	// Instrument Column
-	else if (CC_INSTRUMENT(activeCursor))
-	{
-		switch (actionId)
-		{
-		case AB_EDIT_EMPTY:
-			activeCursor = INVALID;
-			numberKey = INSTRUMENT_EMPTY;
-			break;
-
-		default:
-			if (CC_INSTRUMENT_X(activeCursor))
-				activeCursor = CC_NYBBLE_X;
-			else if (CC_INSTRUMENT_Y(activeCursor))
-				activeCursor = CC_NYBBLE_Y;
-		}
-
-		if (g_Song.SetInstrumentInPattern(numberKey, activeCursor))
-		{
-			OnPatternDown();
-			return true;
-		}
-	}
-
-	// Volume Column
-	else if (CC_VOLUME(activeCursor))
-	{
-		switch (actionId)
-		{
-		case AB_EDIT_EMPTY:
-			numberKey = VOLUME_EMPTY;
-			break;
-		}
-
-		if (g_Song.SetVolumeInPattern(numberKey))
-		{
-			OnPatternDown();
-			return true;
-		}
-	}
-
-	// Effect Command Columns
-
-	// The Effect Commands Identifier are being processed in priority
-	else if (CC_CMD_IDENTIFIER(activeCursor))
-	{
-		switch (actionId)
-		{
-		case AB_EDIT_EMPTY:
-			commandKey = PE_EMPTY;
-			break;
-		}
-
-	SetCommandIdentifier:
-		if (g_Song.SetCommandIdentifierInPattern(commandKey))
-		{
-			OnPatternDown();
-			return true;
-		}
-	}
-
-	// The Effect Commands Parameter is the last possible case to be processed
-	else if (CC_CMD_X(activeCursor) || CC_CMD_Y(activeCursor))
-	{
-		switch (actionId)
-		{
-		case AB_EDIT_EMPTY:
-			// Exception for AB_EDIT_EMPTY: The Effect Command Column will be cleared regardless of the Cursor Column in this case
-			commandKey = PE_EMPTY;
-			goto SetCommandIdentifier;
-
-		default:
-			if (CC_CMD_X(activeCursor))
-				activeCursor = CC_NYBBLE_X;
-			else if (CC_CMD_Y(activeCursor))
-				activeCursor = CC_NYBBLE_Y;
-		}
-
-		if (g_Song.SetCommandParameterInPattern(numberKey, activeCursor))
-		{
-			OnPatternDown();
-			return true;
-		}
+		OnPatternDown();
+		return true;
 	}
 
 	// Unknown key combination, or invalid action
@@ -3593,8 +3507,6 @@ bool CRmtView::PatternEditorKey(UINT actionId, UINT noteKey, UINT numberKey, UIN
 
 bool CRmtView::SongEditorKey(UINT actionId, UINT numberKey)
 {
-	UINT activeSonglineColumn = g_Song.GetActiveSonglineColumn();
-
 	// Process all keys with the highest priority in the Songline Editor, anything passing through will be handled further below
 	// The cursor position will then be used to further narrow down which action should be taken in the Songline Editor
 	switch (actionId)
@@ -3657,7 +3569,8 @@ bool CRmtView::SongEditorKey(UINT actionId, UINT numberKey)
 		return g_Song.ChangePatternInSongline(-16);
 	}
 
-	if (g_Song.SetPatternInSongline(numberKey, activeSonglineColumn))
+	// Set the Pattern Index using the value of numberKey, relative to the Active Songline Column
+	if (g_Song.SetPatternInSonglineByNumberKey(numberKey))
 	{
 		OnSonglineRight();
 		return true;
