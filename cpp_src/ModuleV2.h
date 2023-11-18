@@ -132,7 +132,7 @@ typedef enum patternVolume_t : BYTE
 	VOLUME_INDEX_MAX,
 } TPatternVolume;
 
-// Effect Commands, there is no definitive count so it's structured slightly differently
+// Pattern Effect Commands, there is no definitive count so it's structured slightly differently
 // Additional entries must be inserted at the end before PE_INDEX_MAX
 typedef enum patternEffectCommand_t : BYTE
 {
@@ -150,6 +150,22 @@ typedef enum patternEffectCommand_t : BYTE
 	PE_SET_DELAY,
 	PE_INDEX_MAX,
 } TPatternEffectCommand;
+
+// Instrument Effect Commands, there is no definitive count so it's structured slightly differently
+// Additional entries must be inserted at the end before IE_INDEX_MAX
+typedef enum instrumentEffectCommand_t : BYTE
+{
+	IE_EMPTY = EMPTY,
+	IE_TRANSPOSE,			// Technically speaking, this is an Arpeggio Command that is both Relative and Volatile
+	IE_PITCH_UP,			// Override Freq Shift Parameter and Freq Shift Delay
+	IE_PITCH_DOWN,			// Override Freq Shift Parameter and Freq Shift Delay
+	IE_PORTAMENTO,			// Override Portamento Parameter
+	IE_VIBRATO,				// Override Vibrato Parameter and Vibrato Delay
+	IE_VOLUME_FADE,			// Override Volume Fade Parameter and Volume Fade Delay
+	IE_SET_FINETUNE,		// Technically speaking, this is a Finetune Command that is both Relative and Volatile
+	IE_SET_AUTOFILTER,		// Override AutoFilter Parameter, which may be either Absolute or Additive
+	IE_INDEX_MAX,
+} TInstrumentEffectCommand;
 
 // Effect Command Parameter preset values
 typedef enum effectParameter_t : BYTE
@@ -261,7 +277,9 @@ struct TInstrumentV2
 	BYTE vibrato;							// Vibrato parameter, taking priority over EFFECT_VIBRATO for Legacy RMT Instrument compatibility
 	BYTE vibratoDelay;						// Vibrato Delay parameter, used when Vibrato is a non-zero parameter, a delay of 0x00 is immediate
 	BYTE freqShift;							// Freq Shift parameter, taking priority EFFECT_PITCH_UP and EFFECT_PITCH_DOWN for Legacy RMT Instrument compatibility
-	BYTE freqShiftDelay;					// FreqShift Delay parameter, used when FreqShift is a non-zero parameter, a delay of 0x00 is immediate
+	BYTE freqShiftDelay;					// Freq Shift Delay parameter, used when FreqShift is a non-zero parameter, a delay of 0x00 is immediate
+	BYTE autoFilter;						// AutoFilter parameter, taking priority over EFFECT_AUTOFILTER for Legacy RMT Instrument compatibility
+	bool autoFilterMode;					// AutoFilter Mode parameter, Additive Mode if True, otherwise it is Absolute
 	TEnvelopeMacro envelope;				// Envelope Macros associated to the Instrument, taking priority over certain Pattern Effect Commands
 };
 

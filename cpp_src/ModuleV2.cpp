@@ -262,6 +262,8 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	pInstrument->vibratoDelay = 0x00;
 	pInstrument->freqShift = 0x00;
 	pInstrument->freqShiftDelay = 0x00;
+	pInstrument->autoFilter = 0x00;
+	pInstrument->autoFilterMode = false;
 
 	// Set the default Envelope Macro parameters, always disabled for newly created Instruments
 	TMacro macro{ 0x00, false, false };
