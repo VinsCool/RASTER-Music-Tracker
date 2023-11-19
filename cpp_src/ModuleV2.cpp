@@ -2399,7 +2399,7 @@ bool CModule::IsUnusedPattern(TChannel* pChannel, UINT pattern)
 	if (pChannel && IsValidPattern(pattern))
 	{
 		// All Songlines in the Channel Index will be processed
-		for (int i = 0; i < SONGLINE_COUNT; i++)
+		for (UINT i = 0; i < SONGLINE_COUNT; i++)
 		{
 			// As soon as a match is found, we know for sure the Pattern is used at least once
 			if (pChannel->songline[i] == pattern)

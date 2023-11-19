@@ -1921,6 +1921,143 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 // Create a RMTE Module file
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
+	UINT moduleSize = EMPTY;
+
+	BYTE* moduleOffset = NULL;
+	BYTE* moduleData = NULL;
+
+	TModuleHeader moduleHeader{};
+	//TRowEncoding rowEncoding{};
+
+	// Create High Header, Low Header is constructed using the Module data offsets
+	strncpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER, 4);
+	moduleHeader.hiHeader.version = MODULE_VERSION;
+	moduleHeader.hiHeader.region = MODULE_REGION;
+	moduleHeader.hiHeader.highlightPrimary = MODULE_PRIMARY_HIGHLIGHT;
+	moduleHeader.hiHeader.highlightSecondary = MODULE_SECONDARY_HIGHLIGHT;
+	moduleHeader.hiHeader.baseTuning = MODULE_BASE_TUNING;
+	moduleHeader.hiHeader.baseNote = MODULE_BASE_NOTE;
+	moduleHeader.hiHeader.baseOctave = MODULE_BASE_OCTAVE;
+
+	// Create Module Metadata, which is part of the Low Header
+	strncpy(moduleHeader.name, g_Module.GetModuleName(), MODULE_SONG_NAME_MAX);
+	strncpy(moduleHeader.author, g_Module.GetModuleAuthor(), MODULE_AUTHOR_NAME_MAX);
+	strncpy(moduleHeader.copyright, g_Module.GetModuleCopyright(), MODULE_COPYRIGHT_INFO_MAX);
+
+	// Initial Module size is constant, beginning with the Header itself
+	moduleSize += sizeof(moduleHeader);
+
+	// Analyse Subtune data
+	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+	{
+		TSubtune* pSubtune = g_Module.GetSubtune(i);
+
+		// Empty Subtune, write NULL, no Size increment
+		if (!pSubtune)
+		{
+			moduleHeader.loHeader.subtuneIndex[i] = NULL;
+			continue;
+		}
+
+		// Offset to Subtune is derived from the Module Size
+		moduleHeader.loHeader.subtuneIndex[i] = moduleSize;
+
+		// Get the maximum data variables, nothing beyond that point would be saved
+		UINT songLength = g_Module.GetSongLength(pSubtune);
+		UINT patternLength = g_Module.GetPatternLength(pSubtune);
+		UINT channelCount = g_Module.GetChannelCount(pSubtune);
+
+		// Increment Size based on the Subtune Metadata
+		moduleSize += sizeof(TSubtune) - sizeof(pSubtune->name) - sizeof(pSubtune->channel);
+
+		// Increment Size based on the Subtune Name
+		for (UINT j = 0; j < sizeof(pSubtune->name); j++)
+		{
+			moduleSize += sizeof(char);
+
+			if (pSubtune->name[j] == NULL)
+				break;
+		}
+
+		// Increment Size based on the Channel data
+		for (UINT j = 0; j < channelCount; j++)
+		{
+			TChannel* pChannel = &pSubtune->channel[j];
+			UINT commandCount = g_Module.GetEffectCommandCount(pChannel);
+
+			// Increment Size based on the Channel Metadata
+			moduleSize += sizeof(TChannel) - sizeof(pChannel->songline) - sizeof(pChannel->pattern);
+
+			// Increment Size with the Songline Count
+			moduleSize += sizeof(BYTE) * songLength;
+
+			// Increment Size with the Pattern Data
+			for (UINT k = 0; k < PATTERN_COUNT; k++)
+			{
+				// Unused Patterns won't be saved
+				if (g_Module.IsUnusedPattern(pChannel, k))
+					continue;
+
+				// Increment Size with the Row data
+				for (UINT l = 0; l < patternLength; l++)
+				{
+					TRow* pRow = &pChannel->pattern[k].row[l];
+
+					// Row encoding byte is written first
+					moduleSize += sizeof(TRowEncoding);
+
+					if (pRow->note != NOTE_EMPTY)
+						moduleSize += sizeof(BYTE);
+
+					if (pRow->instrument != INSTRUMENT_EMPTY)
+						moduleSize += sizeof(BYTE);
+
+					if (pRow->volume != VOLUME_EMPTY)
+						moduleSize += sizeof(BYTE);
+
+					for (UINT m = 0; m < commandCount; m++)
+					{
+						if (pRow->effect[m].command != PE_EMPTY)
+							moduleSize += sizeof(TEffect);
+					}
+				}
+			}
+		}
+	}
+
+	// Analyse Instrument data
+	// TODO: Kill me
+
+	// Create Encoded Module data in 1 block using the calculated size
+	moduleData = new BYTE[moduleSize];
+	memset(moduleData, EMPTY, moduleSize);
+
+	// Copy the Module Header
+	memcpy(moduleData, &moduleHeader, sizeof(moduleHeader));
+
+	// Construct all the encoded Subtune data
+	// TODO: Kill me again if previous kill was unsuccessful
+
+	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+	{
+		UINT offset = moduleHeader.loHeader.subtuneIndex[i];
+
+		if (!offset)
+			continue;
+
+		moduleOffset = moduleData + offset;
+
+		// TODO: Revive and encode the fucking Module data
+	}
+
+	// Write the fully constructed Module data to file once it is ready
+	ou.seekp(std::ios_base::beg);
+	ou.write((char*)moduleData, moduleSize);
+
+	// Delete the temporary data once it is written
+	delete moduleData;
+
+
 /*
 	TModuleHeader moduleHeader{};
 
