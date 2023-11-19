@@ -465,7 +465,7 @@ bool CModule::InitialiseEffectEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope parameters
 	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TEffectEnvelope effect{ /*TODO*/ };
+	TEffectEnvelope effect{ false, false, false, false, false, false, false, false, IE_EMPTY, IE_EMPTY, 0x00, 0x00 };
 
 	pEnvelope->parameter = parameter;
 
@@ -1068,7 +1068,7 @@ bool CModule::ImportLegacyPatterns(TSubtune* pSubtune, BYTE* sourceMemory, WORD 
 				break;
 
 			default:	// Note, Instrument and Volume data on this Row
-				SetPatternRowNote(pSubtune, CH1, pattern, row, data);
+				SetPatternRowNote(pSubtune, CH1, pattern, row, data + 12);	// Transpose up by 1 octave, almost everything needs at least 1 octave higher
 				SetPatternRowInstrument(pSubtune, CH1, pattern, row, ((memPattern[src + 1] & 0xfc) >> 2));
 				SetPatternRowVolume(pSubtune, CH1, pattern, row, ((memPattern[src + 1] & 0x03) << 2) | ((memPattern[src] & 0xc0) >> 6));
 				src += 2;	// 2 bytes were processed
@@ -1341,7 +1341,8 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 					isVolumeOnly = true;
 
 				// The CMD7 is unused once these paramaters are converted, so set both the Command and Parameter to 0
-				envelopeParameter = envelopeEffectCommand = 0x00;
+				envelopeEffectCommand = IE_EMPTY;
+				envelopeParameter = 0x00;
 				break;
 
 			case 0x06:
@@ -1349,8 +1350,35 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 				if (distortion == 0x06)
 				{
 					initialTimbre = envelopeParameter & 0x0E;
-					envelopeParameter = envelopeEffectCommand = 0x00;
+					envelopeEffectCommand = IE_EMPTY;
+					envelopeParameter = 0x00;
 				}
+				else
+					envelopeEffectCommand = IE_AUTOFILTER;
+				break;
+
+			case 0x05:
+				envelopeEffectCommand = IE_PORTAMENTO;
+				break;
+
+			case 0x04:
+				envelopeEffectCommand = IE_FREQ_SHIFT;
+				break;
+
+			case 0x03:
+				envelopeEffectCommand = IE_NOTE_SHIFT;
+				break;
+
+			case 0x02:
+				envelopeEffectCommand = IE_FINETUNE;
+				break;
+
+			case 0x01:
+				envelopeEffectCommand = IE_SET_FREQ_LSB;
+				break;
+
+			case 0x00:
+				envelopeEffectCommand = IE_TRANSPOSE;
 				break;
 			}
 
@@ -1420,15 +1448,18 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			pEffectEnvelope->effect[j].autoTwoTone = initialSkctl;
 
 			// Portamento a Pattern Effect Command could be set where the Portamento is expected as a compromise
-			pEffectEnvelope->effect[j].autoPortamento = autoPortamento;
+			//pEffectEnvelope->effect[j].autoPortamento = autoPortamento;
 
 			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
-			pEffectEnvelope->effect[j].effectCommandLo = envelopeEffectCommand;
-			pEffectEnvelope->effect[j].effectCommandHi = 0x00;
-			pEffectEnvelope->effect[j].is16BitCommand = false;
-			pEffectEnvelope->effect[j].isEffectEnabled = true;
-			pEffectEnvelope->effect[j].effectParameterLo = envelopeParameter;
-			pEffectEnvelope->effect[j].effectParameterHi = 0x00;
+			pEffectEnvelope->effect[j].command_1 = envelopeEffectCommand;
+			pEffectEnvelope->effect[j].parameter_1 = envelopeParameter;
+			
+			//pEffectEnvelope->effect[j].effectCommandLo = envelopeEffectCommand;
+			//pEffectEnvelope->effect[j].effectCommandHi = 0x00;
+			//pEffectEnvelope->effect[j].is16BitCommand = false;
+			//pEffectEnvelope->effect[j].isEffectEnabled = true;
+			//pEffectEnvelope->effect[j].effectParameterLo = envelopeParameter;
+			//pEffectEnvelope->effect[j].effectParameterHi = 0x00;
 		}
 
 		// Instrument was loaded

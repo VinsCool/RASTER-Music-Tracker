@@ -155,15 +155,19 @@ typedef enum patternEffectCommand_t : BYTE
 // Additional entries must be inserted at the end before IE_INDEX_MAX
 typedef enum instrumentEffectCommand_t : BYTE
 {
-	IE_EMPTY = EMPTY,
-	IE_TRANSPOSE,			// Technically speaking, this is an Arpeggio Command that is both Relative and Volatile
+	IE_EMPTY = EMPTY,		// Not actually needed, using Transpose set to 0x00 would do the same, and save 1 CMD slot, but let's just use this for simplicity
+	IE_TRANSPOSE,			// Technically speaking, this is an Arpeggio Command that is both Relative and Volatile, equivalent to the Legacy RMT CMD0
 	IE_PITCH_UP,			// Override Freq Shift Parameter and Freq Shift Delay
 	IE_PITCH_DOWN,			// Override Freq Shift Parameter and Freq Shift Delay
-	IE_PORTAMENTO,			// Override Portamento Parameter
+	IE_PORTAMENTO,			// Override Portamento Parameter, equivalent to the Legacy RMT CMD5
 	IE_VIBRATO,				// Override Vibrato Parameter and Vibrato Delay
 	IE_VOLUME_FADE,			// Override Volume Fade Parameter and Volume Fade Delay
-	IE_SET_FINETUNE,		// Technically speaking, this is a Finetune Command that is both Relative and Volatile
-	IE_SET_AUTOFILTER,		// Override AutoFilter Parameter, which may be either Absolute or Additive
+	IE_FINETUNE,			// Technically speaking, this is a Finetune Command that is both Relative and Volatile, equivalent to the Legacy RMT CMD2
+	IE_AUTOFILTER,			// Override AutoFilter Parameter, which may be either Absolute or Additive, equivalent to the Legacy RMT CMD6
+	IE_SET_FREQ_MSB,		// Set Freq MSB, Absolute and Volatile, 16-bit mode only, ignored otherwise, equivalent to the Legacy RMT CMD1
+	IE_SET_FREQ_LSB,		// Set Freq LSB, Absolute and Volatile, equivalent to the Legacy RMT CMD1
+	IE_FREQ_SHIFT,			// Freq Shift, Additive, equivalent to the Legacy RMT CMD4
+	IE_NOTE_SHIFT,			// Note Shift, Additive, equivalent to the Legacy RMT CMD3
 	IE_INDEX_MAX,
 } TInstrumentEffectCommand;
 
@@ -342,7 +346,7 @@ struct TEffectEnvelope
 	// CMD1 -> Set Freq (Absolute, 8-bit Parameter only)
 	// CMD2 -> Finetune (Relative)
 	// CMD3 -> Set Note (Additive)
-	// CMD4 -> Set FreqShift (Relative)
+	// CMD4 -> Set FreqShift (Additive)
 	// CMD5 -> Set Portamento Parameter (Active with Portamento Bit)
 	// CMD6 -> Set Autofilter Offset (1.28), Set Auto16bit Distortion and Set Sawtooth Direction (1.34 only)
 	// CMD7 -> Set Volume Only (1.28), Set Basenote (also 1.28... never used???), Set AUDCTL and Toggle Two-Tone Filter (1.34 only)
@@ -364,44 +368,23 @@ struct TEffectEnvelope
 	// Byte 4 -> Else, Byte 3 and 4 will be distinct 8-bit parameters, both assigned to their respective 8-bit Commands
 	// 
 
-	union
-	{
-		BYTE autoParameter;
-		struct
-		{
-			bool autoFilter : 1;			// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
-			bool auto16Bit : 1;				// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
-			bool autoReverse16 : 1;			// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
-			bool auto179Mhz : 1;			// 1.79Mhz mode, triggered from Channel 1 and/or 3
-			bool auto15Khz : 1;				// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
-			bool autoPoly9 : 1;				// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
-			bool autoTwoTone : 1;			// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-			bool autoPortamento : 1;		// Automatic Portamento, triggered in any Channel, initialised using the CMD5 when encountered
-		};
-	};
+	// Byte 1: Automatic Triggers
+	bool autoFilter : 1;			// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
+	bool auto16Bit : 1;				// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
+	bool autoReverse16 : 1;			// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
+	bool auto179Mhz : 1;			// 1.79Mhz mode, triggered from Channel 1 and/or 3
+	bool auto15Khz : 1;				// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
+	bool autoPoly9 : 1;				// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
+	bool autoTwoTone : 1;			// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
+	bool unused : 1;				// Reserved
 
-	union
-	{
-		BYTE effectCommand;					// Could be either 2 8-Bit Effect Commands, or 1 16-bit Effect Command
-		struct
-		{
-			BYTE effectCommandLo : 3;		// Instrument Command 1, also the default offset when the 16-bit Command is used
-			BYTE effectCommandHi : 3;		// Instrument Command 2, ignored when the 16-bit Command is used
-			bool is16BitCommand : 1;		// The 16-bit Command is used if True, otherwise 2 8-bit Commands will be used
-			bool isEffectEnabled : 1;		// No Effect Command will be used if True, even if there is pre-existing data
-		};
-	};
+	// Byte 2: Effect Command Identifiers
+	BYTE command_1 : 4;
+	BYTE command_2 : 4;
 
-	union
-	{
-		WORD effectParameter;
-		struct
-		{
-			BYTE effectParameterLo;			// Instrument Command 1 parameter, or LSB byte when the 16-bit Command is used
-			BYTE effectParameterHi;			// Instrument Command 2 parameter, or MSB byte when the 16-bit Command is used
-		};
-	};
-
+	// Byte 3 and 4: Effect Command Parameters
+	BYTE parameter_1;
+	BYTE parameter_2;
 };
 
 // Instrument Note Table Envelope
