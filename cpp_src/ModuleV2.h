@@ -187,16 +187,20 @@ typedef enum effectParameter_t : BYTE
 // Effect Command Data, 1 byte for the Identifier, and 1 byte for the Parameter, nothing too complicated
 struct TEffect
 {
-	BYTE command;
+	//BYTE command;
+	BYTE command : 4;
 	BYTE parameter;
 };
 
 // Row Data, used within the Pattern data, designed to be easy to manage, following a Row by Row approach
 struct TRow
 {
-	BYTE note;								// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
-	BYTE instrument;						// Instrument Index
-	BYTE volume;							// Volume Index
+	//BYTE note;								// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
+	//BYTE instrument;						// Instrument Index
+	//BYTE volume;							// Volume Index
+	BYTE note : 7;							// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
+	BYTE instrument : 7;					// Instrument Index
+	BYTE volume : 5;						// Volume Index
 	TEffect effect[PATTERN_EFFECT_COUNT];	// Effect Command, toggled from the Active Effect Columns in Track Channels
 };
 
@@ -233,6 +237,19 @@ struct TSubtune
 struct TSubtuneIndex
 {
 	TSubtune* subtune[SUBTUNE_COUNT];
+};
+
+// Row data encoding, a bit set would mean there is non-empty data for an element
+struct TRowEncoding
+{
+	bool isEmptyRow : 1;					// Empty Row? skip everything, costing only 1 byte for a full Row
+	bool isEmptyNote : 1;					// Empty Note? Skip next byte
+	bool isEmptyInstrument : 1;				// Empty Instrument? Skip next byte
+	bool isEmptyVolume : 1;					// Empty Volume? Skip next byte
+	bool isEmptyCmd1 : 1;					// Empty CMD1? Skip next 2 bytes
+	bool isEmptyCmd2 : 1;					// Empty CMD2? Skip next 2 bytes
+	bool isEmptyCmd3 : 1;					// Empty CMD3? Skip next 2 bytes
+	bool isEmptyCmd4 : 1;					// Empty CMD4? Skip next 2 bytes
 };
 
 // ----------------------------------------------------------------------------
