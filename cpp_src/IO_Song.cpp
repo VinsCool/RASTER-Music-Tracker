@@ -1927,7 +1927,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	BYTE* moduleData = NULL;
 
 	TModuleHeader moduleHeader{};
-	//TRowEncoding rowEncoding{};
+	TRowEncoding rowEncoding{};
 
 	// Create High Header, Low Header is constructed using the Module data offsets
 	strncpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER, 4);
@@ -1968,16 +1968,9 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		UINT channelCount = g_Module.GetChannelCount(pSubtune);
 
 		// Increment Size based on the Subtune Metadata
-		moduleSize += sizeof(TSubtune) - sizeof(pSubtune->name) - sizeof(pSubtune->channel);
-
-		// Increment Size based on the Subtune Name
-		for (UINT j = 0; j < sizeof(pSubtune->name); j++)
-		{
-			moduleSize += sizeof(char);
-
-			if (pSubtune->name[j] == NULL)
-				break;
-		}
+		//moduleSize += sizeof(TSubtune) - sizeof(pSubtune->channel) - 1;
+		moduleSize += sizeof(pSubtune->parameters);
+		moduleSize += SUBTUNE_NAME_MAX;
 
 		// Increment Size based on the Channel data
 		for (UINT j = 0; j < channelCount; j++)
@@ -1986,40 +1979,120 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			UINT commandCount = g_Module.GetEffectCommandCount(pChannel);
 
 			// Increment Size based on the Channel Metadata
-			moduleSize += sizeof(TChannel) - sizeof(pChannel->songline) - sizeof(pChannel->pattern);
+			//moduleSize += sizeof(TChannel) - sizeof(pChannel->songline) - sizeof(pChannel->pattern);
+			moduleSize += sizeof(pChannel->parameters);
 
 			// Increment Size with the Songline Count
-			moduleSize += sizeof(BYTE) * songLength;
+			moduleSize += songLength;
 
 			// Increment Size with the Pattern Data
 			for (UINT k = 0; k < PATTERN_COUNT; k++)
 			{
 				// Unused Patterns won't be saved
-				if (g_Module.IsUnusedPattern(pChannel, k))
-					continue;
+				//if (g_Module.IsUnusedPattern(pChannel, k))
+				//	continue;
+
+				// Turns out, the old RMT format did preserve unused Patterns, so we'll do the same
+				// However, we need to specifically filter Empty Patterns out of the process
+				// A good enough solution would be to just check out the first Row Encoding byte
+				// That would shrink the size down considerably, even if that wouldn't be optimal
+				// As long as we could get the file size below a megabyte, it would be good enough
+				memset(&rowEncoding, EMPTY, sizeof(rowEncoding));
+
+				// Spit out a Single Empty Row with a Pause of 0xFF if the Pattern is Totally Empty
+				// That way, it would be reduced to just 2 Bytes per Pattern, which is reasonable
+				//if (g_Module.IsEmptyPattern(pChannel, k))
+				//{
+				//	rowEncoding.isEmptyRow = true;
+				//	rowEncoding.pauseLength = 0xFF;
+				//	moduleSize += sizeof(TRowEncoding);
+				//	continue;
+				//}
+
+				// We need a way to also count empty sequences of Rows to save even more space
+				// However, this is not too much of a big deal for the Version 0 of the RMTE format
+				// A naïve approach would be to simply count the Empty Rows coming, and encode data accordingly
+				// We can add better optimisations with each format revisions, as long as we keep things compatible
 
 				// Increment Size with the Row data
 				for (UINT l = 0; l < patternLength; l++)
 				{
+					//TRow* pRow = &pChannel->pattern[k].row[l];
+
+					// TODO: Test Rows ahead of time
+					// Keeping track of the Pause Length before writing anything is crucial!
+					//memset(&rowEncoding, EMPTY, sizeof(rowEncoding));
+
+					if (rowEncoding.pauseLength > 0)
+					{
+						rowEncoding.pauseLength -= 1;
+						continue;
+					}
+
+					// Set all bits on by default, so we assume something is empty unless it is not
+					memset(&rowEncoding, INVALID, sizeof(rowEncoding));
+					rowEncoding.pauseLength = 0;
+
+					// We need to identify the number of empty Rows ahead of the current position
+					for (UINT m = l + 1; m < patternLength; m++)
+					{
+						TRow* pRow = &pChannel->pattern[k].row[m];
+
+						// Incrementing the Pause Length first would ensure it wraps around to 0
+						//rowEncoding.pauseLength += 1;
+
+						if (!g_Module.IsEmptyRow(pRow))
+							break;
+
+						rowEncoding.pauseLength += 1;
+					}
+
 					TRow* pRow = &pChannel->pattern[k].row[l];
 
-					// Row encoding byte is written first
-					moduleSize += sizeof(TRowEncoding);
+					rowEncoding.isEmptyNote = pRow->note == NOTE_EMPTY;
+					rowEncoding.isEmptyInstrument = pRow->instrument == INSTRUMENT_EMPTY;
+					rowEncoding.isEmptyVolume = pRow->volume == VOLUME_EMPTY;
 
-					if (pRow->note != NOTE_EMPTY)
-						moduleSize += sizeof(BYTE);
-
-					if (pRow->instrument != INSTRUMENT_EMPTY)
-						moduleSize += sizeof(BYTE);
-
-					if (pRow->volume != VOLUME_EMPTY)
-						moduleSize += sizeof(BYTE);
-
-					for (UINT m = 0; m < commandCount; m++)
+					switch (commandCount)
 					{
-						if (pRow->effect[m].command != PE_EMPTY)
-							moduleSize += sizeof(TEffect);
+					case 4:
+						rowEncoding.isEmptyCmd4 = pRow->effect[CMD4].command == PE_EMPTY;
+					case 3:
+						rowEncoding.isEmptyCmd3 = pRow->effect[CMD3].command == PE_EMPTY;
+					case 2:
+						rowEncoding.isEmptyCmd2 = pRow->effect[CMD2].command == PE_EMPTY;
+					case 1:
+						rowEncoding.isEmptyCmd1 = pRow->effect[CMD1].command == PE_EMPTY;
+						break;
 					}
+
+					// Row encoding data is written first
+					moduleSize += sizeof(rowEncoding);
+
+					// Check if there is a Non-Empty Note
+					if (!rowEncoding.isEmptyNote)
+						moduleSize += sizeof(BYTE);
+
+					// Check if there is a Non-Empty Instrument
+					if (!rowEncoding.isEmptyInstrument)
+						moduleSize += sizeof(BYTE);
+
+					// Check if there is a Non-Empty Volume
+					if (!rowEncoding.isEmptyVolume)
+						moduleSize += sizeof(BYTE);
+
+					// Check if there are Non-Empty Effect Commands
+					if (!rowEncoding.isEmptyCmd1)
+						moduleSize += sizeof(TEffect);
+
+					if (!rowEncoding.isEmptyCmd2)
+						moduleSize += sizeof(TEffect);
+
+					if (!rowEncoding.isEmptyCmd3)
+						moduleSize += sizeof(TEffect);
+
+					if (!rowEncoding.isEmptyCmd4)
+						moduleSize += sizeof(TEffect);
 				}
 			}
 		}
@@ -2048,6 +2121,157 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		moduleOffset = moduleData + offset;
 
 		// TODO: Revive and encode the fucking Module data
+		TSubtune* pSubtune = g_Module.GetSubtune(i);
+
+		UINT songLength = g_Module.GetSongLength(pSubtune);
+		UINT patternLength = g_Module.GetPatternLength(pSubtune);
+		UINT channelCount = g_Module.GetChannelCount(pSubtune);
+
+		strncpy((char*)moduleOffset, pSubtune->name, SUBTUNE_NAME_MAX);
+		moduleOffset += SUBTUNE_NAME_MAX;
+
+		//moduleOffset[0] = pSubtune->songLength;
+		//moduleOffset[1] = pSubtune->patternLength;
+		//moduleOffset[2] = pSubtune->songSpeed;
+		//moduleOffset[3] = pSubtune->instrumentSpeed | (pSubtune->channelCount << 4);
+		(UINT&)moduleOffset[0] = pSubtune->parameters;
+		//moduleOffset += 4;
+		moduleOffset += sizeof(pSubtune->parameters);
+
+		// Increment Size based on the Channel data
+		for (UINT j = 0; j < channelCount; j++)
+		{
+			TChannel* pChannel = &pSubtune->channel[j];
+			UINT commandCount = g_Module.GetEffectCommandCount(pChannel);
+
+			//moduleOffset[0] = (BYTE)pChannel->isMuted | ((BYTE)pChannel->isEffectEnabled << 1) | (pChannel->effectCount << 2) | (pChannel->channelVolume << 4);
+			moduleOffset[0] = pChannel->parameters;
+			//moduleOffset += 1;
+			moduleOffset += sizeof(pChannel->parameters);
+
+			for (UINT k = 0; k < songLength; k++)
+			{
+				moduleOffset[0] = pChannel->songline[k];
+				moduleOffset += 1;
+			}
+
+			for (UINT k = 0; k < PATTERN_COUNT; k++)
+			{
+				memset(&rowEncoding, EMPTY, sizeof(rowEncoding));
+
+				for (UINT l = 0; l < patternLength; l++)
+				{
+					if (rowEncoding.pauseLength > 0)
+					{
+						rowEncoding.pauseLength -= 1;
+						continue;
+					}
+
+					// Set all bits on by default, so we assume something is empty unless it is not
+					memset(&rowEncoding, INVALID, sizeof(rowEncoding));
+					rowEncoding.pauseLength = 0;
+					rowEncoding.isEmptyRow = false;
+
+					// We need to identify the number of empty Rows ahead of the current position
+					for (UINT m = l + 1; m < patternLength; m++)
+					{
+						TRow* pRow = &pChannel->pattern[k].row[m];
+
+						// Incrementing the Pause Length first would ensure it wraps around to 0
+						//rowEncoding.pauseLength += 1;
+
+						if (!g_Module.IsEmptyRow(pRow))
+							break;
+
+						rowEncoding.pauseLength += 1;
+					}
+
+					TRow* pRow = &pChannel->pattern[k].row[l];
+
+					rowEncoding.isEmptyNote = pRow->note == NOTE_EMPTY;
+					rowEncoding.isEmptyInstrument = pRow->instrument == INSTRUMENT_EMPTY;
+					rowEncoding.isEmptyVolume = pRow->volume == VOLUME_EMPTY;
+
+					switch (commandCount)
+					{
+					case 4:
+						rowEncoding.isEmptyCmd4 = pRow->effect[CMD4].command == PE_EMPTY;
+					case 3:
+						rowEncoding.isEmptyCmd3 = pRow->effect[CMD3].command == PE_EMPTY;
+					case 2:
+						rowEncoding.isEmptyCmd2 = pRow->effect[CMD2].command == PE_EMPTY;
+					case 1:
+						rowEncoding.isEmptyCmd1 = pRow->effect[CMD1].command == PE_EMPTY;
+						break;
+					}
+
+					//moduleOffset[0] = rowEncoding.isEmptyRow;
+					//moduleOffset[0] |= rowEncoding.isEmptyNote << 1;
+					//moduleOffset[0] |= rowEncoding.isEmptyInstrument << 2;
+					//moduleOffset[0] |= rowEncoding.isEmptyVolume << 3;
+					//moduleOffset[0] |= rowEncoding.isEmptyCmd1 << 4;
+					//moduleOffset[0] |= rowEncoding.isEmptyCmd2 << 5;
+					//moduleOffset[0] |= rowEncoding.isEmptyCmd3 << 6;
+					//moduleOffset[0] |= rowEncoding.isEmptyCmd4 << 7;
+					moduleOffset[0] = rowEncoding.parameters;
+					moduleOffset[1] = rowEncoding.pauseLength;
+					moduleOffset += 2;
+
+					// Check if there is a Non-Empty Note
+					if (!rowEncoding.isEmptyNote)
+					{
+						moduleOffset[0] = pRow->note;
+						moduleOffset += 1;
+					}
+
+					// Check if there is a Non-Empty Instrument
+					if (!rowEncoding.isEmptyInstrument)
+					{
+						moduleOffset[0] = pRow->instrument;
+						moduleOffset += 1;
+					}
+
+					// Check if there is a Non-Empty Volume
+					if (!rowEncoding.isEmptyVolume)
+					{
+						moduleOffset[0] = pRow->volume;
+						moduleOffset += 1;
+					}
+
+					// Check if there are Non-Empty Effect Commands
+					if (!rowEncoding.isEmptyCmd1)
+					{
+						moduleOffset[0] = pRow->effect[CMD1].command;
+						moduleOffset[1] = pRow->effect[CMD1].parameter;
+						moduleOffset += 2;
+					}
+
+					if (!rowEncoding.isEmptyCmd2)
+					{
+						moduleOffset[0] = pRow->effect[CMD2].command;
+						moduleOffset[1] = pRow->effect[CMD2].parameter;
+						moduleOffset += 2;
+					}
+
+					if (!rowEncoding.isEmptyCmd3)
+					{
+						moduleOffset[0] = pRow->effect[CMD3].command;
+						moduleOffset[1] = pRow->effect[CMD3].parameter;
+						moduleOffset += 2;
+					}
+
+					if (!rowEncoding.isEmptyCmd4)
+					{
+						moduleOffset[0] = pRow->effect[CMD4].command;
+						moduleOffset[1] = pRow->effect[CMD4].parameter;
+						moduleOffset += 2;
+					}
+
+				}
+			}
+
+		}
+
 	}
 
 	// Write the fully constructed Module data to file once it is ready

@@ -187,17 +187,13 @@ typedef enum effectParameter_t : BYTE
 // Effect Command Data, 1 byte for the Identifier, and 1 byte for the Parameter, nothing too complicated
 struct TEffect
 {
-	//BYTE command;
-	BYTE command : 4;
+	BYTE command : 5;
 	BYTE parameter;
 };
 
 // Row Data, used within the Pattern data, designed to be easy to manage, following a Row by Row approach
 struct TRow
 {
-	//BYTE note;								// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
-	//BYTE instrument;						// Instrument Index
-	//BYTE volume;							// Volume Index
 	BYTE note : 7;							// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
 	BYTE instrument : 7;					// Instrument Index
 	BYTE volume : 5;						// Volume Index
@@ -213,10 +209,17 @@ struct TPattern
 // Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
 struct TChannel
 {
-	bool isMuted : 1;
-	bool isEffectEnabled : 1;
-	BYTE effectCount : 2;					// Number of Effect Commands enabled per Track Channel
-	BYTE channelVolume : 4;
+	union
+	{
+		struct
+		{
+			bool isMuted : 1;
+			bool isEffectEnabled : 1;
+			BYTE effectCount : 2;			// Number of Effect Commands enabled per Track Channel
+			BYTE channelVolume : 4;
+		};
+		BYTE parameters;
+	};
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
 	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
 };
@@ -225,11 +228,18 @@ struct TChannel
 struct TSubtune
 {
 	char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
-	BYTE songLength;						// Song Length, in Songlines
-	BYTE patternLength;						// Pattern Length, in Rows
-	BYTE songSpeed;							// Song Speed, in Frames per Row
-	BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
-	BYTE channelCount : 4;					// Number of Channels used in Subtune
+	union
+	{
+		struct
+		{
+			BYTE songLength;				// Song Length, in Songlines
+			BYTE patternLength;				// Pattern Length, in Rows
+			BYTE songSpeed;					// Song Speed, in Frames per Row
+			BYTE instrumentSpeed : 4;		// Instrument Speed, in Frames per VBI
+			BYTE channelCount : 4;			// Number of Channels used in Subtune
+		};
+		UINT parameters;
+	};
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
 
@@ -239,17 +249,27 @@ struct TSubtuneIndex
 	TSubtune* subtune[SUBTUNE_COUNT];
 };
 
-// Row data encoding, a bit set would mean there is non-empty data for an element
+// Row data encoding, a bit set would mean there is empty data for an element
+// This is a very rough implementation of the DUMB Music Driver Module format encoding
+// That format is very barebone, but it might do a good enough job, hopefully
 struct TRowEncoding
 {
-	bool isEmptyRow : 1;					// Empty Row? skip everything, costing only 1 byte for a full Row
-	bool isEmptyNote : 1;					// Empty Note? Skip next byte
-	bool isEmptyInstrument : 1;				// Empty Instrument? Skip next byte
-	bool isEmptyVolume : 1;					// Empty Volume? Skip next byte
-	bool isEmptyCmd1 : 1;					// Empty CMD1? Skip next 2 bytes
-	bool isEmptyCmd2 : 1;					// Empty CMD2? Skip next 2 bytes
-	bool isEmptyCmd3 : 1;					// Empty CMD3? Skip next 2 bytes
-	bool isEmptyCmd4 : 1;					// Empty CMD4? Skip next 2 bytes
+	union
+	{
+		struct
+		{
+			bool isEmptyRow : 1;			// Empty Row? skip everything, costing only 1 byte for a full Row
+			bool isEmptyNote : 1;			// Empty Note? Skip next byte
+			bool isEmptyInstrument : 1;		// Empty Instrument? Skip next byte
+			bool isEmptyVolume : 1;			// Empty Volume? Skip next byte
+			bool isEmptyCmd1 : 1;			// Empty CMD1? Skip next 2 bytes
+			bool isEmptyCmd2 : 1;			// Empty CMD2? Skip next 2 bytes
+			bool isEmptyCmd3 : 1;			// Empty CMD3? Skip next 2 bytes
+			bool isEmptyCmd4 : 1;			// Empty CMD4? Skip next 2 bytes
+		};
+		BYTE parameters;
+	};
+	BYTE pauseLength;						// How many Empty Rows coming next?
 };
 
 // ----------------------------------------------------------------------------
@@ -259,9 +279,16 @@ struct TRowEncoding
 // Instrument Envelope Macro, used to specify which Envelope Index is associated to the Instrument and how it is used
 struct TMacro
 {
-	BYTE index : 6;							// Unique Envelopes may be shared between all Instruments, useful for using identical Volume, Timbre, Audctl, etc
-	bool isEnabled : 1;						// Envelope is used if True, otherwise it will be skipped, but still displayed on screen for reference
-	bool isReversed : 1;					// Envelope is played backwards if True, otherwise it will be played in the correct order
+	union
+	{
+		struct
+		{
+			BYTE index : 6;					// Unique Envelopes may be shared between all Instruments, useful for using identical Volume, Timbre, Audctl, etc
+			bool isEnabled : 1;				// Envelope is used if True, otherwise it will be skipped, but still displayed on screen for reference
+			bool isReversed : 1;			// Envelope is played backwards if True, otherwise it will be played in the correct order
+		};
+		BYTE parameters;
+	};
 };
 
 // A Macro of Instrument Envelope Macros, what else? This should be pretty self-explanatory :D
@@ -278,14 +305,21 @@ struct TEnvelopeMacro
 // Instrument Envelope parameters, used to define things such as the Envelope Length, Loop Point, Speed, etc
 struct TEnvelopeParameter
 {
-	BYTE length;							// Envelope Length, in frames
-	BYTE loop;								// Envelope Loop point
-	BYTE release;							// Envelope Release point
-	BYTE speed : 4;							// Envelope Speed, in ticks per frames
-	bool isLooped : 1;						// Loop point is used if True, otherwise the Envelope will end after the last Frame was processed
-	bool isReleased : 1;					// Release point is used if True, could also be combined to Loop Point, useful for sustaining a Note Release
-	bool isAbsolute : 1;					// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
-	bool isAdditive : 1;					// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
+	union
+	{
+		struct
+		{
+			BYTE length;					// Envelope Length, in frames
+			BYTE loop;						// Envelope Loop point
+			BYTE release;					// Envelope Release point
+			BYTE speed : 4;					// Envelope Speed, in ticks per frames
+			bool isLooped : 1;				// Loop point is used if True, otherwise the Envelope will end after the last Frame was processed
+			bool isReleased : 1;			// Release point is used if True, could also be combined to Loop Point, useful for sustaining a Note Release
+			bool isAbsolute : 1;			// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
+			bool isAdditive : 1;			// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
+		};
+		UINT parameters;
+	};
 };
 
 // Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
@@ -309,13 +343,13 @@ struct TVolumeEnvelope
 {
 	union
 	{
-		BYTE volumeEnvelope;
 		struct
 		{
 			BYTE volumeLeft : 4;			// Left POKEY Volume, for Legacy RMT Instrument Compatibility
 			BYTE volumeRight : 4;			// Right POKEY Volume, for Legacy RMT Instrument Compatibility
 			//bool isVolumeOnly : 1;		// TODO: Move to Timbre(?) or Effect Envelope...
 		};
+		BYTE volumeEnvelope;
 	};
 };
 
@@ -324,13 +358,13 @@ struct TTimbreEnvelope
 {
 	union
 	{
-		BYTE timbreEnvelope;
 		struct
 		{
 			BYTE waveForm : 4;				// eg: Buzzy, Gritty, etc
 			BYTE distortion : 3;			// eg: Pure (0xA0), Poly4 (0xC0), etc
 			//bool isOptimalTuning : 1;		// Use a combination of all possible Waveforms, and output the most in-tune pitch for a given Distortion
 		};
+		BYTE timbreEnvelope;
 	};
 };
 
@@ -339,7 +373,6 @@ struct TAudctlEnvelope
 {
 	union
 	{
-		BYTE audctlEnvelope;
 		struct
 		{
 			bool is15KhzMode : 1;
@@ -351,6 +384,7 @@ struct TAudctlEnvelope
 			bool is179MhzCh1 : 1;
 			bool isPoly9Noise : 1;
 		};
+		BYTE audctlEnvelope;
 	};
 };
 
