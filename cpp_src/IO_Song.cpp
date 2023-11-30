@@ -2236,6 +2236,209 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 // Load a RMTE Module file
 bool CSong::LoadRMTE(std::ifstream& in)
 {
+	CString s = "";
+	bool isRmteLoaded = true;
+	BYTE* moduleOffset = NULL;
+
+	// Get the file size to load in memory
+	in.seekg(0, std::ios_base::end);
+	UINT moduleSize = (UINT)in.tellg();
+
+	// Create a temporary buffer the same size of the file
+	BYTE* moduleData = new BYTE[moduleSize];
+	memset(moduleData, EMPTY, moduleSize);
+
+	// Load the Module data directly into the buffer
+	in.seekg(0, std::ios_base::beg);
+	in.read((char*)moduleData, moduleSize);
+
+	// Close the file once it is loaded in memory
+	in.close();
+
+	// Get the pointer to the Module Header, located at the beginning of the file
+	TModuleHeader* moduleHeader = (TModuleHeader*)moduleData;
+
+	// Compare the file format identifier from with "RMTE", any mismatch will flag the entire file as invalid, regardless of its contents
+	if (strncmp(moduleHeader->hiHeader.identifier, MODULE_IDENTIFIER, 4) != 0)
+	{
+		s.AppendFormat("Invalid identifier from file header.\nExpected \"%s\", but found \"%s\" instead.\n", MODULE_IDENTIFIER, moduleHeader->hiHeader.identifier);
+		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
+		isRmteLoaded = false;
+	}
+
+	// Check the Module version number, if it is higher than current, it will not be loaded since it might be decoded incorrectly
+	if (moduleHeader->hiHeader.version > MODULE_VERSION)
+	{
+		s.AppendFormat("Module version is higher than expected.\nExpected \"%i\" or lower, but found \"%i\" instead.\n", MODULE_VERSION, moduleHeader->hiHeader.version);
+		s.AppendFormat("Maybe the file was created using a newer RMT version?\n\n");
+		isRmteLoaded = false;
+	}
+
+	// If something went wrong, immediately abort the procedure
+	if (!isRmteLoaded)
+		goto RmteModuleWasLoaded;
+
+	// Read the Module Parameters from the High Header
+	MODULE_REGION = moduleHeader->hiHeader.region;
+	MODULE_PRIMARY_HIGHLIGHT = moduleHeader->hiHeader.highlightPrimary;
+	MODULE_SECONDARY_HIGHLIGHT = moduleHeader->hiHeader.highlightSecondary;
+	MODULE_BASE_TUNING = moduleHeader->hiHeader.baseTuning;
+	MODULE_BASE_NOTE = moduleHeader->hiHeader.baseNote;
+	MODULE_BASE_OCTAVE = moduleHeader->hiHeader.baseOctave;
+
+	// Read the Module Metadata from the Low Header
+	g_Module.SetModuleName(moduleHeader->name);
+	g_Module.SetModuleAuthor(moduleHeader->author);
+	g_Module.SetModuleCopyright(moduleHeader->copyright);
+
+	// Do something here...
+	//
+	
+	// Decode the Subtune data from the Module file
+	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+	{
+		UINT offset = moduleHeader->loHeader.subtuneIndex[i];
+
+		// A NULL offset means there is no Subtune data, skip it
+		if (!offset)
+			continue;
+
+		// Get the pointer to current Module data offset
+		moduleOffset = moduleData + offset;
+
+		// Create a new Subtune if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateSubtune(i);
+		TSubtune* pSubtune = g_Module.GetSubtune(i);
+
+		// Read the Subtune Metadata
+		g_Module.SetSubtuneName(pSubtune, (char*)moduleOffset);
+		moduleOffset += SUBTUNE_NAME_MAX;
+
+		// Read the Subtune Parameters
+		pSubtune->parameters[0] = moduleOffset[0];
+		pSubtune->parameters[1] = moduleOffset[1];
+		pSubtune->parameters[2] = moduleOffset[2];
+		pSubtune->parameters[3] = moduleOffset[3];
+		moduleOffset += sizeof(pSubtune->parameters);
+
+		// Get the maximum data variables from the Getter Functions once the values were copied over to make things easier to handle
+		UINT songLength = g_Module.GetSongLength(pSubtune);
+		UINT channelCount = g_Module.GetChannelCount(pSubtune);
+
+		// Read the Channel data
+		for (UINT j = 0; j < channelCount; j++)
+		{
+			// Get the pointer to Channel data
+			TChannel* pChannel = &pSubtune->channel[j];
+
+			// Read the Channel Parameters
+			pChannel->parameters = moduleOffset[0];
+			moduleOffset += sizeof(pChannel->parameters);
+			
+			// Read the Songline data and fill the entire Song Length with it
+			for (UINT k = 0; k < songLength; k++)
+			{
+				pChannel->songline[k] = moduleOffset[0];
+				moduleOffset += 1;
+			}
+
+			// Read the Pattern data, for all indexed Patterns
+			for (UINT k = 0; k < PATTERN_COUNT; k++)
+			{
+				// Decode the Row data, for all Rows that may be used in a Pattern
+				for (UINT l = 0; l < ROW_COUNT; l++)
+				{
+					// Get the pointer to the current Row position
+					TRow* pRow = &pChannel->pattern[k].row[l];
+
+					// Create the Row encoding data
+					TRowEncoding rowEncoding{};
+
+					// Get bitwise decoding parameters first
+					rowEncoding.parameters = moduleOffset[0];
+					moduleOffset += 1;
+
+					// Get the Pause Length if the Pattern Terminator bit is not set
+					if (!rowEncoding.isEndOfPattern)
+					{
+						rowEncoding.pauseLength = moduleOffset[0];
+						moduleOffset += 1;
+					}
+
+					// Check if there is a Non-Empty Note
+					if (!rowEncoding.isEmptyNote)
+					{
+						pRow->note = moduleOffset[0];
+						moduleOffset += 1;
+					}
+
+					// Check if there is a Non-Empty Instrument
+					if (!rowEncoding.isEmptyInstrument)
+					{
+						pRow->instrument = moduleOffset[0];
+						moduleOffset += 1;
+					}
+
+					// Check if there is a Non-Empty Volume
+					if (!rowEncoding.isEmptyVolume)
+					{
+						pRow->volume = moduleOffset[0];
+						moduleOffset += 1;
+					}
+
+					// Check if there are Non-Empty Effect Commands
+					if (!rowEncoding.isEmptyCmd1)
+					{
+						pRow->effect[CMD1].command = moduleOffset[0];
+						pRow->effect[CMD1].parameter = moduleOffset[1];
+						moduleOffset += 2;
+					}
+
+					if (!rowEncoding.isEmptyCmd2)
+					{
+						pRow->effect[CMD2].command = moduleOffset[0];
+						pRow->effect[CMD2].parameter = moduleOffset[1];
+						moduleOffset += 2;
+					}
+
+					if (!rowEncoding.isEmptyCmd3)
+					{
+						pRow->effect[CMD3].command = moduleOffset[0];
+						pRow->effect[CMD3].parameter = moduleOffset[1];
+						moduleOffset += 2;
+					}
+
+					if (!rowEncoding.isEmptyCmd4)
+					{
+						pRow->effect[CMD4].command = moduleOffset[0];
+						pRow->effect[CMD4].parameter = moduleOffset[1];
+						moduleOffset += 2;
+					}
+
+					// If the Pattern Terminator Bit is set, there is no more Row data to process
+					if (rowEncoding.isEndOfPattern)
+						break;
+
+					// Otherwise, add the Pause Length to l, and skip the same number of Rows doing so
+					l += rowEncoding.pauseLength;
+				}
+			}
+		}
+	}
+	
+	// Do something here...
+	//
+
+	// Jumping to this label will immediately unload any data left in memory before returning
+RmteModuleWasLoaded:
+
+	// Delete the temporary data once it is processed
+	delete moduleData;
+
+	// If an error occured, display a Message box to show what went wrong in the process
+	if (!isRmteLoaded)
+		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
+
 	// Module file should have been successfully loaded
-	return true;
+	return isRmteLoaded;
 }
