@@ -238,7 +238,8 @@ struct TSubtune
 			BYTE instrumentSpeed : 4;		// Instrument Speed, in Frames per VBI
 			BYTE channelCount : 4;			// Number of Channels used in Subtune
 		};
-		UINT parameters;
+		//UINT parameters;
+		BYTE parameters[4];
 	};
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
@@ -252,24 +253,28 @@ struct TSubtuneIndex
 // Row data encoding, a bit set would mean there is empty data for an element
 // This is a very rough implementation of the DUMB Music Driver Module format encoding
 // That format is very barebone, but it might do a good enough job, hopefully
+// 
+// Reminder: Bitwise order goes from 0 to 7, the leftmost bits are the last entries added in the Struct!
+// If I wanted to specifically check Bit 7 for a parameter, I must remember that it will be at the bottom, not the top!
+//
 struct TRowEncoding
 {
 	union
 	{
 		struct
 		{
-			bool isEmptyRow : 1;			// Empty Row? skip everything, costing only 1 byte for a full Row
-			bool isEmptyNote : 1;			// Empty Note? Skip next byte
-			bool isEmptyInstrument : 1;		// Empty Instrument? Skip next byte
-			bool isEmptyVolume : 1;			// Empty Volume? Skip next byte
-			bool isEmptyCmd1 : 1;			// Empty CMD1? Skip next 2 bytes
-			bool isEmptyCmd2 : 1;			// Empty CMD2? Skip next 2 bytes
-			bool isEmptyCmd3 : 1;			// Empty CMD3? Skip next 2 bytes
 			bool isEmptyCmd4 : 1;			// Empty CMD4? Skip next 2 bytes
+			bool isEmptyCmd3 : 1;			// Empty CMD3? Skip next 2 bytes
+			bool isEmptyCmd2 : 1;			// Empty CMD2? Skip next 2 bytes
+			bool isEmptyCmd1 : 1;			// Empty CMD1? Skip next 2 bytes
+			bool isEmptyVolume : 1;			// Empty Volume? Skip next byte
+			bool isEmptyInstrument : 1;		// Empty Instrument? Skip next byte
+			bool isEmptyNote : 1;			// Empty Note? Skip next byte
+			bool isEndOfPattern : 1;		// Pattern Terminator?, Skip next byte and set Infinite Pause Length
 		};
-		BYTE parameters;
+		BYTE parameters;					// Bitwise parameters union
 	};
-	BYTE pauseLength;						// How many Empty Rows coming next?
+	BYTE pauseLength;						// Skip next 0-255 Rows, overridden by the Pattern Terminator Bit
 };
 
 // ----------------------------------------------------------------------------

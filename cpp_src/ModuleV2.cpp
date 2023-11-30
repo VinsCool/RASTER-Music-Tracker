@@ -742,6 +742,11 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 				}
 			}
 
+			// HACK: Clear all unused Patterns referenced past the Song Length so they actually get cleared later, they were missed due to a silly oversight
+			for (UINT j = GetSongLength(i); j < SONGLINE_COUNT; j++)
+				for (UINT k = 0; k < GetChannelCount(i); k++)
+					SetPatternInSongline(i, k, j, 0);
+
 			// Set the final count of Active Effect Command Columns for each channels once they're all processed
 			for (UINT j = 0; j < GetChannelCount(i); j++)
 				SetEffectCommandCount(i, j, j == CH1 ? 2 : 1);
