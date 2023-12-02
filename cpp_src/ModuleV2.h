@@ -45,6 +45,7 @@
 #define MODULE_SONG_NAME_MAX			64											// Maximum length of Song Title
 #define MODULE_AUTHOR_NAME_MAX			64											// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info
+#define MODULE_PADDING					32											// Padding bytes for the Module file format specifications
 
 
 // ----------------------------------------------------------------------------
@@ -187,16 +188,16 @@ typedef enum effectParameter_t : BYTE
 // Effect Command Data, 1 byte for the Identifier, and 1 byte for the Parameter, nothing too complicated
 struct TEffect
 {
-	BYTE command : 5;
-	BYTE parameter;
+	BYTE command : 5;						// Command Identifier, bits are not representative of anything, yet
+	BYTE parameter;							// Command Parameter, values ranging from 0 to 255 may be used
 };
 
 // Row Data, used within the Pattern data, designed to be easy to manage, following a Row by Row approach
 struct TRow
 {
 	BYTE note : 7;							// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
-	BYTE instrument : 7;					// Instrument Index
-	BYTE volume : 5;						// Volume Index
+	BYTE instrument : 7;					// Instrument Index, bits are not representative of anything, yet
+	BYTE volume : 5;						// Volume Index, bits are not representative of anything, yet
 	TEffect effect[PATTERN_EFFECT_COUNT];	// Effect Command, toggled from the Active Effect Columns in Track Channels
 };
 
@@ -213,12 +214,12 @@ struct TChannel
 	{
 		struct
 		{
-			bool isMuted : 1;
-			bool isEffectEnabled : 1;
-			BYTE effectCount : 2;			// Number of Effect Commands enabled per Track Channel
-			BYTE channelVolume : 4;
+			BYTE channelVolume : 4;			// Channel Volume, currently placeholder bits, not sure how that would work out...
+			BYTE effectCount : 2;			// Number of Effect Commands enabled per Track Channel, overriden by the next bit possibly...?
+			bool isEffectEnabled : 1;		// Channel is using Effect Commands? Placeholder bit for now
+			bool isMuted : 1;				// Channel is muted? Placeholder bit for now
 		};
-		BYTE parameters;
+		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
 	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
@@ -238,8 +239,7 @@ struct TSubtune
 			BYTE instrumentSpeed : 4;		// Instrument Speed, in Frames per VBI
 			BYTE channelCount : 4;			// Number of Channels used in Subtune
 		};
-		//UINT parameters;
-		BYTE parameters[4];
+		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
@@ -289,10 +289,10 @@ struct TMacro
 		struct
 		{
 			BYTE index : 6;					// Unique Envelopes may be shared between all Instruments, useful for using identical Volume, Timbre, Audctl, etc
+			bool isReversed : 1;			// Envelope is played backwards if True, otherwise it will be played in the correct order, placeholder bit for now
 			bool isEnabled : 1;				// Envelope is used if True, otherwise it will be skipped, but still displayed on screen for reference
-			bool isReversed : 1;			// Envelope is played backwards if True, otherwise it will be played in the correct order
 		};
-		BYTE parameters;
+		BYTE parameters;					// Bitwise parameters union
 	};
 };
 
@@ -323,7 +323,7 @@ struct TEnvelopeParameter
 			bool isAbsolute : 1;			// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
 			bool isAdditive : 1;			// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
 		};
-		UINT parameters;
+		BYTE parameters[4];					// Bitwise parameters union, 4 bytes seem to be just enough, I doubt more parameters will be needed for now...
 	};
 };
 
@@ -331,16 +331,23 @@ struct TEnvelopeParameter
 struct TInstrumentV2
 {
 	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
-	BYTE volumeFade;						// Volume Fadeout parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
-	BYTE volumeSustain;						// Volume Sustain parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
-	BYTE volumeDelay;						// Volume Delay parameter, used when VolumeFade is a non-zero parameter, a delay of 0x00 is immediate
-	BYTE vibrato;							// Vibrato parameter, taking priority over EFFECT_VIBRATO for Legacy RMT Instrument compatibility
-	BYTE vibratoDelay;						// Vibrato Delay parameter, used when Vibrato is a non-zero parameter, a delay of 0x00 is immediate
-	BYTE freqShift;							// Freq Shift parameter, taking priority EFFECT_PITCH_UP and EFFECT_PITCH_DOWN for Legacy RMT Instrument compatibility
-	BYTE freqShiftDelay;					// Freq Shift Delay parameter, used when FreqShift is a non-zero parameter, a delay of 0x00 is immediate
-	BYTE autoFilter;						// AutoFilter parameter, taking priority over EFFECT_AUTOFILTER for Legacy RMT Instrument compatibility
-	bool autoFilterMode;					// AutoFilter Mode parameter, Additive Mode if True, otherwise it is Absolute
-	TEnvelopeMacro envelope;				// Envelope Macros associated to the Instrument, taking priority over certain Pattern Effect Commands
+	union
+	{
+		struct
+		{
+			TEnvelopeMacro envelope;		// Envelope Macros associated to the Instrument, taking priority over certain Pattern Effect Commands
+			BYTE volumeFade;				// Volume Fadeout parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
+			BYTE volumeSustain;				// Volume Sustain parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
+			BYTE volumeDelay;				// Volume Delay parameter, used when VolumeFade is a non-zero parameter, a delay of 0x00 is immediate
+			BYTE vibrato;					// Vibrato parameter, taking priority over EFFECT_VIBRATO for Legacy RMT Instrument compatibility
+			BYTE vibratoDelay;				// Vibrato Delay parameter, used when Vibrato is a non-zero parameter, a delay of 0x00 is immediate
+			BYTE freqShift;					// Freq Shift parameter, taking priority EFFECT_PITCH_UP and EFFECT_PITCH_DOWN for Legacy RMT Instrument compatibility
+			BYTE freqShiftDelay;			// Freq Shift Delay parameter, used when FreqShift is a non-zero parameter, a delay of 0x00 is immediate
+			BYTE autoFilter;				// AutoFilter parameter, taking priority over EFFECT_AUTOFILTER for Legacy RMT Instrument compatibility
+			bool autoFilterMode : 1;		// AutoFilter Mode parameter, Additive Mode if True, otherwise it is Absolute
+		};
+		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
+	};
 };
 
 // Instrument Volume Envelope

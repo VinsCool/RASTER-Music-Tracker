@@ -1922,10 +1922,7 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
 	UINT moduleSize = EMPTY;
-
-	BYTE* moduleOffset = NULL;
 	BYTE* moduleData = NULL;
-
 	TModuleHeader moduleHeader{};
 
 	// Create High Header, Low Header is constructed using the Module data offsets
@@ -1966,16 +1963,15 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		UINT channelCount = g_Module.GetChannelCount(pSubtune);
 
 		// Increment Size based on the Subtune Metadata
-		moduleSize += sizeof(pSubtune->parameters);
-		moduleSize += SUBTUNE_NAME_MAX;
+		moduleSize += MODULE_PADDING + SUBTUNE_NAME_MAX;
 
 		// Increment Size based on the Channel data
 		for (UINT j = 0; j < channelCount; j++)
 		{
 			TChannel* pChannel = &pSubtune->channel[j];
 
-			// Increment Size based on the Channel Metadata
-			moduleSize += sizeof(pChannel->parameters);
+			// Increment Size based on the Channel Parameters
+			moduleSize += MODULE_PADDING;
 
 			// Increment Size with the Songline Count, unreferenced Songline data will be lost
 			moduleSize += songLength;
@@ -2061,14 +2057,12 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	// Construct all the encoded Subtune data based on the analysis done a bit earlier
 	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
 	{
-		UINT offset = moduleHeader.loHeader.subtuneIndex[i];
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.subtuneIndex[i];
 
 		// A NULL offset means there is no Subtune data, skip it
-		if (!offset)
+		if (moduleOffset == moduleData)
 			continue;
-
-		// Get the pointer to current Module data offset
-		moduleOffset = moduleData + offset;
 
 		// Get the pointer to the actual Subtune data to process
 		TSubtune* pSubtune = g_Module.GetSubtune(i);
@@ -2078,16 +2072,13 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		UINT channelCount = g_Module.GetChannelCount(pSubtune);
 
 		// Write the Subtune Metadata
-		strncpy((char*)moduleOffset, pSubtune->name, SUBTUNE_NAME_MAX);
-		moduleOffset += SUBTUNE_NAME_MAX;
-
+		for (UINT j = 0; j < SUBTUNE_NAME_MAX; j++)
+			*moduleOffset++ = pSubtune->name[j];
+		
 		// Write the Subtune Parameters
-		moduleOffset[0] = pSubtune->parameters[0];
-		moduleOffset[1] = pSubtune->parameters[1];
-		moduleOffset[2] = pSubtune->parameters[2];
-		moduleOffset[3] = pSubtune->parameters[3];
-		moduleOffset += sizeof(pSubtune->parameters);
-
+		for (UINT j = 0; j < MODULE_PADDING; j++)
+			*moduleOffset++ = pSubtune->parameters[j];
+		
 		// Write the Channel data
 		for (UINT j = 0; j < channelCount; j++)
 		{
@@ -2095,15 +2086,12 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			TChannel* pChannel = &pSubtune->channel[j];
 			
 			// Write the Channel Parameters
-			moduleOffset[0] = pChannel->parameters;
-			moduleOffset += sizeof(pChannel->parameters);
-
+			for (UINT k = 0; k < MODULE_PADDING; k++)
+				*moduleOffset++ = pChannel->parameters[k];
+			
 			// Write the Songline data, only the values referenced within the Song Length will be saved
 			for (UINT k = 0; k < songLength; k++)
-			{
-				moduleOffset[0] = pChannel->songline[k];
-				moduleOffset += 1;
-			}
+				*moduleOffset++ = pChannel->songline[k];
 
 			// Write the Pattern data, including unrefereced Pattern entries this time
 			for (UINT k = 0; k < PATTERN_COUNT; k++)
@@ -2151,64 +2139,47 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					rowEncoding.isEmptyCmd4 = pRowFrom->effect[CMD4].command == PE_EMPTY;
 
 					// Row encoding data is written first
-					moduleOffset[0] = rowEncoding.parameters;
-					moduleOffset += 1;
+					*moduleOffset++ = rowEncoding.parameters;
 
 					// The Pause Length is written only when the Pattern Terminator bit is not set
 					if (!rowEncoding.isEndOfPattern)
-					{
-						moduleOffset[0] = rowEncoding.pauseLength;
-						moduleOffset += 1;
-					}
+						*moduleOffset++ = rowEncoding.pauseLength;
 
 					// Check if there is a Non-Empty Note
 					if (!rowEncoding.isEmptyNote)
-					{
-						moduleOffset[0] = pRowFrom->note;
-						moduleOffset += 1;
-					}
+						*moduleOffset++ = pRowFrom->note;
 
 					// Check if there is a Non-Empty Instrument
 					if (!rowEncoding.isEmptyInstrument)
-					{
-						moduleOffset[0] = pRowFrom->instrument;
-						moduleOffset += 1;
-					}
+						*moduleOffset++ = pRowFrom->instrument;
 
 					// Check if there is a Non-Empty Volume
 					if (!rowEncoding.isEmptyVolume)
-					{
-						moduleOffset[0] = pRowFrom->volume;
-						moduleOffset += 1;
-					}
+						*moduleOffset++ = pRowFrom->volume;
 
 					// Check if there are Non-Empty Effect Commands
 					if (!rowEncoding.isEmptyCmd1)
 					{
-						moduleOffset[0] = pRowFrom->effect[CMD1].command;
-						moduleOffset[1] = pRowFrom->effect[CMD1].parameter;
-						moduleOffset += 2;
+						*moduleOffset++ = pRowFrom->effect[CMD1].command;
+						*moduleOffset++ = pRowFrom->effect[CMD1].parameter;
 					}
 
 					if (!rowEncoding.isEmptyCmd2)
 					{
-						moduleOffset[0] = pRowFrom->effect[CMD2].command;
-						moduleOffset[1] = pRowFrom->effect[CMD2].parameter;
-						moduleOffset += 2;
+						*moduleOffset++ = pRowFrom->effect[CMD2].command;
+						*moduleOffset++ = pRowFrom->effect[CMD2].parameter;
 					}
 
 					if (!rowEncoding.isEmptyCmd3)
 					{
-						moduleOffset[0] = pRowFrom->effect[CMD3].command;
-						moduleOffset[1] = pRowFrom->effect[CMD3].parameter;
-						moduleOffset += 2;
+						*moduleOffset++ = pRowFrom->effect[CMD3].command;
+						*moduleOffset++ = pRowFrom->effect[CMD3].parameter;
 					}
 
 					if (!rowEncoding.isEmptyCmd4)
 					{
-						moduleOffset[0] = pRowFrom->effect[CMD4].command;
-						moduleOffset[1] = pRowFrom->effect[CMD4].parameter;
-						moduleOffset += 2;
+						*moduleOffset++ = pRowFrom->effect[CMD4].command;
+						*moduleOffset++ = pRowFrom->effect[CMD4].parameter;
 					}
 
 					// If the Pattern Terminator Bit is set, there is no more Row data to process
@@ -2237,8 +2208,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 bool CSong::LoadRMTE(std::ifstream& in)
 {
 	CString s = "";
-	bool isRmteLoaded = true;
-	BYTE* moduleOffset = NULL;
+	bool isRmteLoaded = false;
 
 	// Get the file size to load in memory
 	in.seekg(0, std::ios_base::end);
@@ -2263,20 +2233,16 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	{
 		s.AppendFormat("Invalid identifier from file header.\nExpected \"%s\", but found \"%s\" instead.\n", MODULE_IDENTIFIER, moduleHeader->hiHeader.identifier);
 		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
-		isRmteLoaded = false;
+		goto RmteModuleWasNotLoaded;
 	}
 
 	// Check the Module version number, if it is higher than current, it will not be loaded since it might be decoded incorrectly
-	if (moduleHeader->hiHeader.version > MODULE_VERSION)
+	else if (moduleHeader->hiHeader.version > MODULE_VERSION)
 	{
 		s.AppendFormat("Module version is higher than expected.\nExpected \"%i\" or lower, but found \"%i\" instead.\n", MODULE_VERSION, moduleHeader->hiHeader.version);
 		s.AppendFormat("Maybe the file was created using a newer RMT version?\n\n");
-		isRmteLoaded = false;
+		goto RmteModuleWasNotLoaded;
 	}
-
-	// If something went wrong, immediately abort the procedure
-	if (!isRmteLoaded)
-		goto RmteModuleWasLoaded;
 
 	// Read the Module Parameters from the High Header
 	MODULE_REGION = moduleHeader->hiHeader.region;
@@ -2297,29 +2263,24 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	// Decode the Subtune data from the Module file
 	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
 	{
-		UINT offset = moduleHeader->loHeader.subtuneIndex[i];
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.subtuneIndex[i];
 
 		// A NULL offset means there is no Subtune data, skip it
-		if (!offset)
+		if (moduleOffset == moduleData)
 			continue;
-
-		// Get the pointer to current Module data offset
-		moduleOffset = moduleData + offset;
 
 		// Create a new Subtune if it doesn't already exist in memory, and get its pointer once it's initialised
 		g_Module.CreateSubtune(i);
 		TSubtune* pSubtune = g_Module.GetSubtune(i);
 
 		// Read the Subtune Metadata
-		g_Module.SetSubtuneName(pSubtune, (char*)moduleOffset);
-		moduleOffset += SUBTUNE_NAME_MAX;
-
+		for (UINT j = 0; j < SUBTUNE_NAME_MAX; j++)
+			pSubtune->name[j] = *moduleOffset++;
+		
 		// Read the Subtune Parameters
-		pSubtune->parameters[0] = moduleOffset[0];
-		pSubtune->parameters[1] = moduleOffset[1];
-		pSubtune->parameters[2] = moduleOffset[2];
-		pSubtune->parameters[3] = moduleOffset[3];
-		moduleOffset += sizeof(pSubtune->parameters);
+		for (UINT j = 0; j < MODULE_PADDING; j++)
+			pSubtune->parameters[j] = *moduleOffset++;
 
 		// Get the maximum data variables from the Getter Functions once the values were copied over to make things easier to handle
 		UINT songLength = g_Module.GetSongLength(pSubtune);
@@ -2332,15 +2293,12 @@ bool CSong::LoadRMTE(std::ifstream& in)
 			TChannel* pChannel = &pSubtune->channel[j];
 
 			// Read the Channel Parameters
-			pChannel->parameters = moduleOffset[0];
-			moduleOffset += sizeof(pChannel->parameters);
-			
+			for (UINT k = 0; k < MODULE_PADDING; k++)
+				pChannel->parameters[k] = *moduleOffset++;
+
 			// Read the Songline data and fill the entire Song Length with it
 			for (UINT k = 0; k < songLength; k++)
-			{
-				pChannel->songline[k] = moduleOffset[0];
-				moduleOffset += 1;
-			}
+				pChannel->songline[k] = *moduleOffset++;
 
 			// Read the Pattern data, for all indexed Patterns
 			for (UINT k = 0; k < PATTERN_COUNT; k++)
@@ -2355,64 +2313,47 @@ bool CSong::LoadRMTE(std::ifstream& in)
 					TRowEncoding rowEncoding{};
 
 					// Get bitwise decoding parameters first
-					rowEncoding.parameters = moduleOffset[0];
-					moduleOffset += 1;
+					rowEncoding.parameters = *moduleOffset++;
 
 					// Get the Pause Length if the Pattern Terminator bit is not set
 					if (!rowEncoding.isEndOfPattern)
-					{
-						rowEncoding.pauseLength = moduleOffset[0];
-						moduleOffset += 1;
-					}
+						rowEncoding.pauseLength = *moduleOffset++;
 
 					// Check if there is a Non-Empty Note
 					if (!rowEncoding.isEmptyNote)
-					{
-						pRow->note = moduleOffset[0];
-						moduleOffset += 1;
-					}
+						pRow->note = *moduleOffset++;
 
 					// Check if there is a Non-Empty Instrument
 					if (!rowEncoding.isEmptyInstrument)
-					{
-						pRow->instrument = moduleOffset[0];
-						moduleOffset += 1;
-					}
+						pRow->instrument = *moduleOffset++;
 
 					// Check if there is a Non-Empty Volume
 					if (!rowEncoding.isEmptyVolume)
-					{
-						pRow->volume = moduleOffset[0];
-						moduleOffset += 1;
-					}
+						pRow->volume = *moduleOffset++;
 
 					// Check if there are Non-Empty Effect Commands
 					if (!rowEncoding.isEmptyCmd1)
 					{
-						pRow->effect[CMD1].command = moduleOffset[0];
-						pRow->effect[CMD1].parameter = moduleOffset[1];
-						moduleOffset += 2;
+						pRow->effect[CMD1].command = *moduleOffset++;
+						pRow->effect[CMD1].parameter = *moduleOffset++;
 					}
 
 					if (!rowEncoding.isEmptyCmd2)
 					{
-						pRow->effect[CMD2].command = moduleOffset[0];
-						pRow->effect[CMD2].parameter = moduleOffset[1];
-						moduleOffset += 2;
+						pRow->effect[CMD2].command = *moduleOffset++;
+						pRow->effect[CMD2].parameter = *moduleOffset++;
 					}
 
 					if (!rowEncoding.isEmptyCmd3)
 					{
-						pRow->effect[CMD3].command = moduleOffset[0];
-						pRow->effect[CMD3].parameter = moduleOffset[1];
-						moduleOffset += 2;
+						pRow->effect[CMD3].command = *moduleOffset++;
+						pRow->effect[CMD3].parameter = *moduleOffset++;
 					}
 
 					if (!rowEncoding.isEmptyCmd4)
 					{
-						pRow->effect[CMD4].command = moduleOffset[0];
-						pRow->effect[CMD4].parameter = moduleOffset[1];
-						moduleOffset += 2;
+						pRow->effect[CMD4].command = *moduleOffset++;
+						pRow->effect[CMD4].parameter = *moduleOffset++;
 					}
 
 					// If the Pattern Terminator Bit is set, there is no more Row data to process
@@ -2429,11 +2370,15 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	// Do something here...
 	//
 
+	// If everything went well, the full Module data should have been loaded and decoded in memory, ready to be used
+	isRmteLoaded = true;
+
 	// Jumping to this label will immediately unload any data left in memory before returning
-RmteModuleWasLoaded:
+RmteModuleWasNotLoaded:
 
 	// Delete the temporary data once it is processed
-	delete moduleData;
+	if (moduleData)
+		delete moduleData;
 
 	// If an error occured, display a Message box to show what went wrong in the process
 	if (!isRmteLoaded)
