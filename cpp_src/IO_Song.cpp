@@ -2044,8 +2044,187 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		}
 	}
 
-	// Analyse Instrument data (TODO)
+	// Analyse Instrument data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
+
+		// Empty Instrument, write NULL, no Size increment
+		if (!pInstrument)
+		{
+			moduleHeader.loHeader.instrumentIndex[i] = NULL;
+			continue;
+		}
+
+		// Offset to Instrument is derived from the current Module Size
+		moduleHeader.loHeader.instrumentIndex[i] = moduleSize;
+
+		// Increment Size based on the Instrument Metadata
+		moduleSize += MODULE_PADDING + INSTRUMENT_NAME_MAX;
+	}
+
+	// Analyse Envelope data, for all Instrument Envelopes
 	//
+
+	// Analyse Volume Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TEnvelope* pEnvelope = g_Module.GetVolumeEnvelope(i);
+
+		// Empty Envelope, write NULL, no Size increment
+		if (!pEnvelope)
+		{
+			moduleHeader.loHeader.volumeEnvelope[i] = NULL;
+			continue;
+		}
+
+		// Offset to Envelope is derived from the current Module Size
+		moduleHeader.loHeader.volumeEnvelope[i] = moduleSize;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pEnvelope->parameter.length;
+
+		// Wrap around for maximum, will be moved to a proper getter function later...
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+		
+		// Increment Size based on the Envelope Metadata
+		moduleSize += ENVELOPE_PADDING + envelopeLength;
+	}
+
+	// Analyse Timbre Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TEnvelope* pEnvelope = g_Module.GetTimbreEnvelope(i);
+
+		// Empty Envelope, write NULL, no Size increment
+		if (!pEnvelope)
+		{
+			moduleHeader.loHeader.timbreEnvelope[i] = NULL;
+			continue;
+		}
+
+		// Offset to Envelope is derived from the current Module Size
+		moduleHeader.loHeader.timbreEnvelope[i] = moduleSize;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pEnvelope->parameter.length;
+
+		// Wrap around for maximum, will be moved to a proper getter function later...
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Increment Size based on the Envelope Metadata
+		moduleSize += ENVELOPE_PADDING + envelopeLength;
+	}
+
+	// Analyse AUDCTL Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TEnvelope* pEnvelope = g_Module.GetAudctlEnvelope(i);
+
+		// Empty Envelope, write NULL, no Size increment
+		if (!pEnvelope)
+		{
+			moduleHeader.loHeader.audctlEnvelope[i] = NULL;
+			continue;
+		}
+
+		// Offset to Envelope is derived from the current Module Size
+		moduleHeader.loHeader.audctlEnvelope[i] = moduleSize;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pEnvelope->parameter.length;
+
+		// Wrap around for maximum, will be moved to a proper getter function later...
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Increment Size based on the Envelope Metadata
+		moduleSize += ENVELOPE_PADDING + envelopeLength;
+	}
+
+	// Analyse Effect Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TEnvelope* pEnvelope = g_Module.GetEffectEnvelope(i);
+
+		// Empty Envelope, write NULL, no Size increment
+		if (!pEnvelope)
+		{
+			moduleHeader.loHeader.effectEnvelope[i] = NULL;
+			continue;
+		}
+
+		// Offset to Envelope is derived from the current Module Size
+		moduleHeader.loHeader.effectEnvelope[i] = moduleSize;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pEnvelope->parameter.length;
+
+		// Wrap around for maximum, will be moved to a proper getter function later...
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT / 4;
+
+		envelopeLength *= 4;
+
+		// Increment Size based on the Envelope Metadata
+		moduleSize += ENVELOPE_PADDING + envelopeLength;
+	}
+
+	// Analyse Note Table Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TEnvelope* pEnvelope = g_Module.GetNoteTableEnvelope(i);
+
+		// Empty Envelope, write NULL, no Size increment
+		if (!pEnvelope)
+		{
+			moduleHeader.loHeader.noteTableEnvelope[i] = NULL;
+			continue;
+		}
+
+		// Offset to Envelope is derived from the current Module Size
+		moduleHeader.loHeader.noteTableEnvelope[i] = moduleSize;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pEnvelope->parameter.length;
+
+		// Wrap around for maximum, will be moved to a proper getter function later...
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Increment Size based on the Envelope Metadata
+		moduleSize += ENVELOPE_PADDING + envelopeLength;
+	}
+
+	// Analyse Freq Table Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TEnvelope* pEnvelope = g_Module.GetFreqTableEnvelope(i);
+
+		// Empty Envelope, write NULL, no Size increment
+		if (!pEnvelope)
+		{
+			moduleHeader.loHeader.freqTableEnvelope[i] = NULL;
+			continue;
+		}
+
+		// Offset to Envelope is derived from the current Module Size
+		moduleHeader.loHeader.freqTableEnvelope[i] = moduleSize;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pEnvelope->parameter.length;
+
+		// Wrap around for maximum, will be moved to a proper getter function later...
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT / 2;
+
+		envelopeLength *= 2;
+
+		// Increment Size based on the Envelope Metadata
+		moduleSize += ENVELOPE_PADDING + envelopeLength;
+	}
 
 	// Create Encoded Module data in 1 block using the calculated size
 	moduleData = new BYTE[moduleSize];
@@ -2072,8 +2251,8 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		UINT channelCount = g_Module.GetChannelCount(pSubtune);
 
 		// Write the Subtune Metadata
-		for (UINT j = 0; j < SUBTUNE_NAME_MAX; j++)
-			*moduleOffset++ = pSubtune->name[j];
+		strncpy((char*)moduleOffset, pSubtune->name, SUBTUNE_NAME_MAX);
+		moduleOffset += SUBTUNE_NAME_MAX;
 		
 		// Write the Subtune Parameters
 		for (UINT j = 0; j < MODULE_PADDING; j++)
@@ -2190,8 +2369,214 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		}
 	}
 
-	// Construct all the encoded Instrument data (TODO)
+	// Construct all the encoded Instrument data based on the analysis done a bit earlier
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.instrumentIndex[i];
+
+		// A NULL offset means there is no Instrument data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Get the pointer to the actual Instrument data to process
+		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
+
+		// Write the Instrument Metadata
+		strncpy((char*)moduleOffset, pInstrument->name, INSTRUMENT_NAME_MAX);
+		moduleOffset += INSTRUMENT_NAME_MAX;
+
+		// Write the Instrument Parameters
+		for (UINT j = 0; j < MODULE_PADDING; j++)
+			*moduleOffset++ = pInstrument->parameters[j];
+	}
+
+	// Construct all the encoded Envelope data based on the analysis done a bit earlier
 	//
+
+	// Construct the encoded Volume Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.volumeEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Get the pointer to the actual Envelope data to process
+		TEnvelope* pEnvelope = g_Module.GetVolumeEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Write the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			*moduleOffset++ = pParameter->parameters[j];
+
+		// Write the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			*moduleOffset++ = pEnvelope->rawData[j];
+	}
+
+	// Construct the encoded Timbre Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.timbreEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Get the pointer to the actual Envelope data to process
+		TEnvelope* pEnvelope = g_Module.GetTimbreEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Write the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			*moduleOffset++ = pParameter->parameters[j];
+
+		// Write the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			*moduleOffset++ = pEnvelope->rawData[j];
+	}
+
+	// Construct the encoded AUDCTL Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.audctlEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Get the pointer to the actual Envelope data to process
+		TEnvelope* pEnvelope = g_Module.GetAudctlEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Write the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			*moduleOffset++ = pParameter->parameters[j];
+
+		// Write the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			*moduleOffset++ = pEnvelope->rawData[j];
+	}
+
+	// Construct the encoded Effect Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.effectEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Get the pointer to the actual Envelope data to process
+		TEnvelope* pEnvelope = g_Module.GetEffectEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT / 4;
+
+		envelopeLength *= 4;
+
+		// Write the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			*moduleOffset++ = pParameter->parameters[j];
+
+		// Write the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			*moduleOffset++ = pEnvelope->rawData[j];
+	}
+
+	// Construct the encoded Note Table Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.noteTableEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Get the pointer to the actual Envelope data to process
+		TEnvelope* pEnvelope = g_Module.GetNoteTableEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Write the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			*moduleOffset++ = pParameter->parameters[j];
+
+		// Write the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			*moduleOffset++ = pEnvelope->rawData[j];
+	}
+
+	// Construct the encoded Freq Table Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.freqTableEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Get the pointer to the actual Envelope data to process
+		TEnvelope* pEnvelope = g_Module.GetFreqTableEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT / 2;
+
+		envelopeLength *= 2;
+
+		// Write the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			*moduleOffset++ = pParameter->parameters[j];
+
+		// Write the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			*moduleOffset++ = pEnvelope->rawData[j];
+	}
 
 	// Write the fully constructed Module data to file once it is ready
 	ou.seekp(std::ios_base::beg);
@@ -2257,9 +2642,6 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	g_Module.SetModuleAuthor(moduleHeader->author);
 	g_Module.SetModuleCopyright(moduleHeader->copyright);
 
-	// Do something here...
-	//
-	
 	// Decode the Subtune data from the Module file
 	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
 	{
@@ -2275,9 +2657,9 @@ bool CSong::LoadRMTE(std::ifstream& in)
 		TSubtune* pSubtune = g_Module.GetSubtune(i);
 
 		// Read the Subtune Metadata
-		for (UINT j = 0; j < SUBTUNE_NAME_MAX; j++)
-			pSubtune->name[j] = *moduleOffset++;
-		
+		g_Module.SetSubtuneName(pSubtune, (char*)moduleOffset);
+		moduleOffset += SUBTUNE_NAME_MAX;
+				
 		// Read the Subtune Parameters
 		for (UINT j = 0; j < MODULE_PADDING; j++)
 			pSubtune->parameters[j] = *moduleOffset++;
@@ -2367,8 +2749,221 @@ bool CSong::LoadRMTE(std::ifstream& in)
 		}
 	}
 	
-	// Do something here...
+	// Decode the Instrument data from the Module file
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.instrumentIndex[i];
+
+		// A NULL offset means there is no Instrument data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Create a new Instrument if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateInstrument(i);
+		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
+
+		// Read the Instrument Metadata
+		g_Module.SetInstrumentName(pInstrument, (char*)moduleOffset);
+		moduleOffset += INSTRUMENT_NAME_MAX;
+		
+		// Read the Instrument Parameters
+		for (UINT j = 0; j < MODULE_PADDING; j++)
+			pInstrument->parameters[j] = *moduleOffset++;
+	}
+
+	// Decode the Envelope data from the Module file
 	//
+
+	// Decode the Volume Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.volumeEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateVolumeEnvelope(i);
+		TEnvelope* pEnvelope = g_Module.GetVolumeEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Read the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			pParameter->parameters[j] = *moduleOffset++;
+
+		// Get the maximum data variables once the parameters were copied over
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Read the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			pEnvelope->rawData[j] = *moduleOffset++;
+	}
+
+	// Decode the Timbre Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.timbreEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateTimbreEnvelope(i);
+		TEnvelope* pEnvelope = g_Module.GetTimbreEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Read the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			pParameter->parameters[j] = *moduleOffset++;
+
+		// Get the maximum data variables once the parameters were copied over
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Read the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			pEnvelope->rawData[j] = *moduleOffset++;
+	}
+
+	// Decode the AUDCTL Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.audctlEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateAudctlEnvelope(i);
+		TEnvelope* pEnvelope = g_Module.GetAudctlEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Read the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			pParameter->parameters[j] = *moduleOffset++;
+
+		// Get the maximum data variables once the parameters were copied over
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Read the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			pEnvelope->rawData[j] = *moduleOffset++;
+	}
+
+	// Decode the Effect Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.effectEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateEffectEnvelope(i);
+		TEnvelope* pEnvelope = g_Module.GetEffectEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Read the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			pParameter->parameters[j] = *moduleOffset++;
+
+		// Get the maximum data variables once the parameters were copied over
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT / 4;
+
+		envelopeLength *= 4;
+
+		// Read the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			pEnvelope->rawData[j] = *moduleOffset++;
+	}
+
+	// Decode the Note Table Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.noteTableEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateNoteTableEnvelope(i);
+		TEnvelope* pEnvelope = g_Module.GetNoteTableEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Read the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			pParameter->parameters[j] = *moduleOffset++;
+
+		// Get the maximum data variables once the parameters were copied over
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		// Read the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			pEnvelope->rawData[j] = *moduleOffset++;
+	}
+
+	// Decode the Freq Table Envelope data
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		// Get the pointer to current Module data offset
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.freqTableEnvelope[i];
+
+		// A NULL offset means there is no Envelope data, skip it
+		if (moduleOffset == moduleData)
+			continue;
+
+		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateFreqTableEnvelope(i);
+		TEnvelope* pEnvelope = g_Module.GetFreqTableEnvelope(i);
+		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
+
+		// Read the Envelope Parameters
+		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
+			pParameter->parameters[j] = *moduleOffset++;
+
+		// Get the maximum data variables once the parameters were copied over
+		UINT envelopeLength = pParameter->length;
+
+		// Wrap around for maximum, TODO: Move to a proper getter function later
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT / 2;
+
+		envelopeLength *= 2;
+
+		// Read the Envelope Data
+		for (UINT j = 0; j < envelopeLength; j++)
+			pEnvelope->rawData[j] = *moduleOffset++;
+	}
 
 	// If everything went well, the full Module data should have been loaded and decoded in memory, ready to be used
 	isRmteLoaded = true;

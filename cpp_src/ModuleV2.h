@@ -46,6 +46,7 @@
 #define MODULE_AUTHOR_NAME_MAX			64											// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info
 #define MODULE_PADDING					32											// Padding bytes for the Module file format specifications
+#define ENVELOPE_PADDING				4											// Padding bytes for the Envelope parameters used in Instruments
 
 
 // ----------------------------------------------------------------------------
@@ -323,7 +324,7 @@ struct TEnvelopeParameter
 			bool isAbsolute : 1;			// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
 			bool isAdditive : 1;			// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
 		};
-		BYTE parameters[4];					// Bitwise parameters union, 4 bytes seem to be just enough, I doubt more parameters will be needed for now...
+		BYTE parameters[ENVELOPE_PADDING];	// Bitwise parameters union, there is probably nothing else to add here but we never know...
 	};
 };
 
@@ -372,7 +373,7 @@ struct TTimbreEnvelope
 	{
 		struct
 		{
-			BYTE waveForm : 4;				// eg: Buzzy, Gritty, etc
+			BYTE waveForm : 5;				// eg: Buzzy, Gritty, etc
 			BYTE distortion : 3;			// eg: Pure (0xA0), Poly4 (0xC0), etc
 			//bool isOptimalTuning : 1;		// Use a combination of all possible Waveforms, and output the most in-tune pitch for a given Distortion
 		};
@@ -498,6 +499,7 @@ struct TEnvelope
 		TEffectEnvelope effect[ENVELOPE_STEP_COUNT / 4];	// Due to Legacy Effect commands, and a lot of new parameters
 		TNoteTableEnvelope note[ENVELOPE_STEP_COUNT];
 		TFreqTableEnvelope freq[ENVELOPE_STEP_COUNT / 2];	// Due to 16-bit Freq values
+		BYTE rawData[ENVELOPE_STEP_COUNT];					// Literal byte data
 	};
 };
 
@@ -531,6 +533,7 @@ typedef struct HiHeader_t
 } THiHeader;
 
 // Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists
+// TODO: Using 24bit addressing might be plenty for this now that the data could be compressed somewhat...
 typedef struct LoHeader_t
 {
 	UINT subtuneIndex[SUBTUNE_COUNT];			// Offset to Subtune
@@ -592,6 +595,8 @@ public:
 	bool CreateInstrument(UINT instrument);
 	bool DeleteInstrument(UINT instrument);
 	bool InitialiseInstrument(TInstrumentV2* pInstrument);
+
+	bool InitialiseEnvelopeParameter(TEnvelopeParameter* pEnvelopeParameter);
 
 	bool CreateVolumeEnvelope(UINT instrument);
 	bool DeleteVolumeEnvelope(UINT instrument);

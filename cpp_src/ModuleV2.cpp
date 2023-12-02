@@ -266,10 +266,41 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	pInstrument->autoFilterMode = false;
 
 	// Set the default Envelope Macro parameters, always disabled for newly created Instruments
-	TMacro macro{ 0x00, false, false };
-	pInstrument->envelope = { macro, macro, macro, macro, macro, macro };
+	TMacro macro{};
+	macro.index = 0x00;
+	macro.isEnabled = false;
+	macro.isReversed = false;
 
+	pInstrument->envelope.volume = macro;
+	pInstrument->envelope.timbre = macro;
+	pInstrument->envelope.audctl = macro;
+	pInstrument->envelope.effect = macro;
+	pInstrument->envelope.note = macro;
+	pInstrument->envelope.freq = macro;
+	
 	// Instrument was initialised
+	return true;
+}
+
+
+//--
+
+bool CModule::InitialiseEnvelopeParameter(TEnvelopeParameter* pEnvelopeParameter)
+{
+	if (!pEnvelopeParameter)
+		return false;
+
+	// Set the default Envelope parameters
+	pEnvelopeParameter->length = 0x01;
+	pEnvelopeParameter->loop = 0x00;
+	pEnvelopeParameter->release = 0x01;
+	pEnvelopeParameter->speed = 0x01;
+	pEnvelopeParameter->isLooped = false;
+	pEnvelopeParameter->isReleased = false;
+	pEnvelopeParameter->isAbsolute = false;
+	pEnvelopeParameter->isAdditive = false;
+
+	// Envelope Parameter was initialised
 	return true;
 }
 
@@ -311,14 +342,14 @@ bool CModule::InitialiseVolumeEnvelope(TEnvelope* pEnvelope)
 		return false;
 
 	// Set the default Envelope parameters
-	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TVolumeEnvelope volume{ 0x00 };
-
-	pEnvelope->parameter = parameter;
+	InitialiseEnvelopeParameter(&pEnvelope->parameter);
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->volume[i] = volume;
+	{
+		pEnvelope->volume[i].volumeLeft = 0x0F;
+		pEnvelope->volume[i].volumeRight = 0x0F;
+	}
 
 	// Volume Envelope was initialised
 	return true;
@@ -362,14 +393,11 @@ bool CModule::InitialiseTimbreEnvelope(TEnvelope* pEnvelope)
 		return false;
 
 	// Set the default Envelope parameters
-	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TTimbreEnvelope timbre{ TIMBRE_PURE };
-
-	pEnvelope->parameter = parameter;
+	InitialiseEnvelopeParameter(&pEnvelope->parameter);
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->timbre[i] = timbre;
+		pEnvelope->timbre[i].timbreEnvelope = TIMBRE_PURE;
 
 	// Timbre Envelope was initialised
 	return true;
@@ -413,14 +441,11 @@ bool CModule::InitialiseAudctlEnvelope(TEnvelope* pEnvelope)
 		return false;
 
 	// Set the default Envelope parameters
-	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TAudctlEnvelope audctl{ 0x00 };
-
-	pEnvelope->parameter = parameter;
+	InitialiseEnvelopeParameter(&pEnvelope->parameter);
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->audctl[i] = audctl;
+		pEnvelope->audctl[i].audctlEnvelope = 0x00;
 
 	// Audctl Envelope was initialised
 	return true;
@@ -464,14 +489,24 @@ bool CModule::InitialiseEffectEnvelope(TEnvelope* pEnvelope)
 		return false;
 
 	// Set the default Envelope parameters
-	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TEffectEnvelope effect{ false, false, false, false, false, false, false, false, IE_EMPTY, IE_EMPTY, 0x00, 0x00 };
-
-	pEnvelope->parameter = parameter;
+	InitialiseEnvelopeParameter(&pEnvelope->parameter);
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT / 4; i++)
-		pEnvelope->effect[i] = effect;
+	{
+		pEnvelope->effect[i].auto15Khz = false;
+		pEnvelope->effect[i].autoFilter = false;
+		pEnvelope->effect[i].auto16Bit = false;
+		pEnvelope->effect[i].autoReverse16= false;
+		pEnvelope->effect[i].auto179Mhz = false;
+		pEnvelope->effect[i].auto15Khz = false;
+		pEnvelope->effect[i].autoPoly9 = false;
+		pEnvelope->effect[i].autoTwoTone = false;
+		pEnvelope->effect[i].command_1 = IE_EMPTY;
+		pEnvelope->effect[i].command_2 = IE_EMPTY;
+		pEnvelope->effect[i].parameter_1 = 0x00;
+		pEnvelope->effect[i].parameter_2 = 0x00;
+	}
 
 	// Effect Envelope was initialised
 	return true;
@@ -515,14 +550,11 @@ bool CModule::InitialiseNoteTableEnvelope(TEnvelope* pEnvelope)
 		return false;
 
 	// Set the default Envelope parameters
-	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TNoteTableEnvelope noteTable{ 0x00 };
-
-	pEnvelope->parameter = parameter;
+	InitialiseEnvelopeParameter(&pEnvelope->parameter);
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->note[i] = noteTable;
+		pEnvelope->note[i].noteAbsolute = 0x00;
 
 	// Note Table Envelope was initialised
 	return true;
@@ -566,14 +598,11 @@ bool CModule::InitialiseFreqTableEnvelope(TEnvelope* pEnvelope)
 		return false;
 
 	// Set the default Envelope parameters
-	TEnvelopeParameter parameter{ 0x01, 0x00, 0x01, 0x01, false, false, false, false };
-	TFreqTableEnvelope freqTable{ 0x0000 };
-
-	pEnvelope->parameter = parameter;
+	InitialiseEnvelopeParameter(&pEnvelope->parameter);
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT / 2; i++)
-		pEnvelope->freq[i] = freqTable;
+		pEnvelope->freq[i].freqAbsolute = 0x0000;
 
 	// Freq Table Envelope was initialised
 	return true;
@@ -1211,8 +1240,17 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		TEnvelope* pFreqTableEnvelope = GetFreqTableEnvelope(i);
 
 		// Assign everything in the Instrument Index once the data was initialised
-		TMacro macro{ (BYTE)i, true, false };
-		pInstrument->envelope = { macro, macro, macro, macro, macro, macro };	//, macro };
+		TMacro macro{};
+		macro.index = i;
+		macro.isEnabled = true;
+		macro.isReversed = false;
+
+		pInstrument->envelope.volume = macro;
+		pInstrument->envelope.timbre = macro;
+		pInstrument->envelope.audctl = macro;
+		pInstrument->envelope.effect = macro;
+		pInstrument->envelope.note = macro;
+		pInstrument->envelope.freq = macro;
 
 		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
 		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
@@ -1282,9 +1320,26 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		pInstrument->freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
 
 		// Create the Envelope and Table Parameters
-		TEnvelopeParameter envelopeParameter = { envelopeLength, envelopeLoop, envelopeLength, envelopeSpeed, true, false, false, false };
-		TEnvelopeParameter tableParameter = { tableLength, tableLoop, tableLength, tableSpeed, true, false, false, tableMode };
+		TEnvelopeParameter envelopeParameter{};
+		envelopeParameter.length = envelopeLength;
+		envelopeParameter.loop = envelopeLoop;
+		envelopeParameter.release = envelopeLength;
+		envelopeParameter.speed = envelopeSpeed;
+		envelopeParameter.isLooped = true;
+		envelopeParameter.isReleased = false;
+		envelopeParameter.isAbsolute = false;
+		envelopeParameter.isAdditive = false;
 
+		TEnvelopeParameter tableParameter{};
+		tableParameter.length = tableLength;
+		tableParameter.loop = tableLoop;
+		tableParameter.release = tableLength;
+		tableParameter.speed = tableSpeed;
+		tableParameter.isLooped = true;
+		tableParameter.isReleased = false;
+		tableParameter.isAbsolute = false;
+		tableParameter.isAdditive = tableMode;
+		
 		// Apply to the respective Envelopes and Tables
 		pVolumeEnvelope->parameter = envelopeParameter;
 		pTimbreEnvelope->parameter = envelopeParameter;
