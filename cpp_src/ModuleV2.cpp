@@ -397,7 +397,7 @@ bool CModule::InitialiseTimbreEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->timbre[i].timbreEnvelope = TIMBRE_PURE;
+		pEnvelope->timbre[i].parameters = TIMBRE_PURE;
 
 	// Timbre Envelope was initialised
 	return true;
@@ -445,7 +445,7 @@ bool CModule::InitialiseAudctlEnvelope(TEnvelope* pEnvelope)
 
 	// Set the default Envelope values
 	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->audctl[i].audctlEnvelope = 0x00;
+		pEnvelope->audctl[i].parameters = 0x00;
 
 	// Audctl Envelope was initialised
 	return true;
@@ -1486,7 +1486,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			}
 
 			// Envelope Timbre, based on the Distortion parameter
-			pTimbreEnvelope->timbre[j].timbreEnvelope = distortion;
+			pTimbreEnvelope->timbre[j].parameters = distortion;
 
 			// Envelope Volume
 			pVolumeEnvelope->volume[j].volumeLeft = envelopeVolume & 0x0F;
@@ -1496,7 +1496,7 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			//pVolumeEnvelope->volume[j].isVolumeOnly = isVolumeOnly;
 
 			// Envelope AUDCTL
-			pAudctlEnvelope->audctl[j].audctlEnvelope = initialAudctl;
+			pAudctlEnvelope->audctl[j].parameters = initialAudctl;
 
 			// AutoFilter Trigger
 			pEffectEnvelope->effect[j].autoFilter = autoFilter;

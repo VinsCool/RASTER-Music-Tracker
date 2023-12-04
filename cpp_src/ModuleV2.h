@@ -358,11 +358,10 @@ struct TVolumeEnvelope
 	{
 		struct
 		{
-			BYTE volumeLeft : 4;			// Left POKEY Volume, for Legacy RMT Instrument Compatibility
+			BYTE volumeLeft : 4;			// Left POKEY Volume, for Legacy RMT Instrument Compatibility, used by default for everything otherwise
 			BYTE volumeRight : 4;			// Right POKEY Volume, for Legacy RMT Instrument Compatibility
-			//bool isVolumeOnly : 1;		// TODO: Move to Timbre(?) or Effect Envelope...
 		};
-		BYTE volumeEnvelope;
+		BYTE parameters;
 	};
 };
 
@@ -373,11 +372,11 @@ struct TTimbreEnvelope
 	{
 		struct
 		{
-			BYTE waveForm : 5;				// eg: Buzzy, Gritty, etc
+			BYTE waveForm : 4;				// eg: Buzzy, Gritty, etc
 			BYTE distortion : 3;			// eg: Pure (0xA0), Poly4 (0xC0), etc
-			//bool isOptimalTuning : 1;		// Use a combination of all possible Waveforms, and output the most in-tune pitch for a given Distortion
+			bool isVolumeOnly : 1;			// Volume Only Mode, an override is plannned for sample/wavetable playback support in the future...
 		};
-		BYTE timbreEnvelope;
+		BYTE parameters;
 	};
 };
 
@@ -397,7 +396,7 @@ struct TAudctlEnvelope
 			bool is179MhzCh1 : 1;
 			bool isPoly9Noise : 1;
 		};
-		BYTE audctlEnvelope;
+		BYTE parameters;
 	};
 };
 
@@ -431,24 +430,30 @@ struct TEffectEnvelope
 	// Byte 3 -> If it is a 16-bit Command, Byte 3 and 4 will be combined and used as the Effect Command Parameter
 	// Byte 4 -> Else, Byte 3 and 4 will be distinct 8-bit parameters, both assigned to their respective 8-bit Commands
 	// 
+	union
+	{
+		struct
+		{
+			// Byte 1: Automatic Triggers
+			bool autoFilter : 1;			// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
+			bool auto16Bit : 1;				// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
+			bool autoReverse16 : 1;			// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
+			bool auto179Mhz : 1;			// 1.79Mhz mode, triggered from Channel 1 and/or 3
+			bool auto15Khz : 1;				// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
+			bool autoPoly9 : 1;				// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
+			bool autoTwoTone : 1;			// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
+			bool unused : 1;				// Reserved
 
-	// Byte 1: Automatic Triggers
-	bool autoFilter : 1;			// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
-	bool auto16Bit : 1;				// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
-	bool autoReverse16 : 1;			// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
-	bool auto179Mhz : 1;			// 1.79Mhz mode, triggered from Channel 1 and/or 3
-	bool auto15Khz : 1;				// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
-	bool autoPoly9 : 1;				// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
-	bool autoTwoTone : 1;			// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-	bool unused : 1;				// Reserved
+			// Byte 2: Effect Command Identifiers
+			BYTE command_1 : 4;
+			BYTE command_2 : 4;
 
-	// Byte 2: Effect Command Identifiers
-	BYTE command_1 : 4;
-	BYTE command_2 : 4;
-
-	// Byte 3 and 4: Effect Command Parameters
-	BYTE parameter_1;
-	BYTE parameter_2;
+			// Byte 3 and 4: Effect Command Parameters
+			BYTE parameter_1;
+			BYTE parameter_2;
+		};
+		BYTE parameters[4];
+	};
 };
 
 // Instrument Note Table Envelope
@@ -456,14 +461,15 @@ struct TNoteTableEnvelope
 {
 	union
 	{
-		BYTE noteAbsolute;					// Set Note Index 0-255 (Absolute/Additive), capped to NOTE_COUNT
 		struct
 		{
-			SBYTE noteRelativeXY : 6;		// Transpose by +- 32 semitones (Relative/Additive), capped to NOTE_COUNT
-			bool isNoteY : 1;				// Add X or Y semitones to noteXY (Relative only), capped to NOTE_COUNT
-			bool isArpeggioScheme : 1;		// Arpeggio Scheme is paired to the Pattern Command 0xy if it is active, taking priority over it
+			SBYTE noteXY : 6;				// Transpose by +- 32 semitones (Relative/Additive), capped to NOTE_COUNT
+			bool isNoteY : 1;				// Add X or Y semitones to noteXY (Relative, only in Note Scheme Mode), capped to NOTE_COUNT
+			bool isNoteScheme : 1;			// Note Scheme is paired to PE_ARPEGGIO's XY Parameters, only when it is active in a Channel
 		};
 		SBYTE noteRelative : 7;				// Transpose by +- 64 semitones (Relative/Additive), capped to NOTE_COUNT
+		BYTE noteAbsolute;					// Set Note Index 0-255 (Absolute/Additive), capped to NOTE_COUNT
+		BYTE parameters;
 	};
 };
 
@@ -472,18 +478,19 @@ struct TFreqTableEnvelope
 {
 	union
 	{
-		WORD freqAbsolute;					// Set Freq Index 0-65535 (Absolute/Additive), capped to FREQ_COUNT_16
 		struct
 		{
 			BYTE freqAbsoluteLo;			// Set Freq LSB Index 0-255 (Absolute/Additive), capped to FREQ_COUNT
 			BYTE freqAbsoluteHi;			// Set Freq MSB Index 0-255 (Absolute/Additive), capped to FREQ_COUNT
 		};
-		SWORD freqRelative;					// Transpose by +- 32768 Freq units (Relative/Additive), capped to FREQ_COUNT_16
 		struct
 		{
 			SBYTE freqRelativeLo;			// Transpose by +- 128 Freq LSB units (Relative/Additive), capped to FREQ_COUNT
 			SBYTE freqRelativeHi;			// Transpose by +- 128 Freq MSB units (Relative/Additive), capped to FREQ_COUNT
 		};
+		WORD freqAbsolute;					// Set Freq Index 0-65535 (Absolute/Additive), capped to FREQ_COUNT_16
+		SWORD freqRelative;					// Transpose by +- 32768 Freq units (Relative/Additive), capped to FREQ_COUNT_16
+		BYTE parameters[2];
 	};
 };
 
@@ -499,7 +506,6 @@ struct TEnvelope
 		TEffectEnvelope effect[ENVELOPE_STEP_COUNT / 4];	// Due to Legacy Effect commands, and a lot of new parameters
 		TNoteTableEnvelope note[ENVELOPE_STEP_COUNT];
 		TFreqTableEnvelope freq[ENVELOPE_STEP_COUNT / 2];	// Due to 16-bit Freq values
-		BYTE rawData[ENVELOPE_STEP_COUNT];					// Literal byte data
 	};
 };
 

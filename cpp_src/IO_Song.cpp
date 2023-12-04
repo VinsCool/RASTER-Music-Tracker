@@ -2421,7 +2421,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 		// Write the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			*moduleOffset++ = pEnvelope->rawData[j];
+			*moduleOffset++ = pEnvelope->volume[j].parameters;
 	}
 
 	// Construct the encoded Timbre Envelope data
@@ -2451,7 +2451,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 		// Write the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			*moduleOffset++ = pEnvelope->rawData[j];
+			*moduleOffset++ = pEnvelope->timbre[j].parameters;
 	}
 
 	// Construct the encoded AUDCTL Envelope data
@@ -2481,7 +2481,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 		// Write the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			*moduleOffset++ = pEnvelope->rawData[j];
+			*moduleOffset++ = pEnvelope->audctl[j].parameters;
 	}
 
 	// Construct the encoded Effect Envelope data
@@ -2505,15 +2505,14 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		if (envelopeLength == 0)
 			envelopeLength = ENVELOPE_STEP_COUNT / 4;
 
-		envelopeLength *= 4;
-
 		// Write the Envelope Parameters
 		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
 			*moduleOffset++ = pParameter->parameters[j];
 
 		// Write the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			*moduleOffset++ = pEnvelope->rawData[j];
+			for (UINT k = 0; k < 4; k++)
+				*moduleOffset++ = pEnvelope->effect[j].parameters[k];
 	}
 
 	// Construct the encoded Note Table Envelope data
@@ -2543,7 +2542,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 		// Write the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			*moduleOffset++ = pEnvelope->rawData[j];
+			*moduleOffset++ = pEnvelope->note[j].parameters;
 	}
 
 	// Construct the encoded Freq Table Envelope data
@@ -2567,19 +2566,18 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		if (envelopeLength == 0)
 			envelopeLength = ENVELOPE_STEP_COUNT / 2;
 
-		envelopeLength *= 2;
-
 		// Write the Envelope Parameters
 		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
 			*moduleOffset++ = pParameter->parameters[j];
 
 		// Write the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			*moduleOffset++ = pEnvelope->rawData[j];
+			for (UINT k = 0; k < 2; k++)
+				*moduleOffset++ = pEnvelope->freq[j].parameters[k];
 	}
 
 	// Write the fully constructed Module data to file once it is ready
-	ou.seekp(std::ios_base::beg);
+	ou.seekp(0, std::ios_base::beg);
 	ou.write((char*)moduleData, moduleSize);
 
 	// Delete the temporary data once it is written
@@ -2803,7 +2801,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 
 		// Read the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->rawData[j] = *moduleOffset++;
+			pEnvelope->volume[j].parameters = *moduleOffset++;
 	}
 
 	// Decode the Timbre Envelope data
@@ -2834,7 +2832,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 
 		// Read the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->rawData[j] = *moduleOffset++;
+			pEnvelope->timbre[j].parameters = *moduleOffset++;
 	}
 
 	// Decode the AUDCTL Envelope data
@@ -2865,7 +2863,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 
 		// Read the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->rawData[j] = *moduleOffset++;
+			pEnvelope->audctl[j].parameters = *moduleOffset++;
 	}
 
 	// Decode the Effect Envelope data
@@ -2894,11 +2892,10 @@ bool CSong::LoadRMTE(std::ifstream& in)
 		if (envelopeLength == 0)
 			envelopeLength = ENVELOPE_STEP_COUNT / 4;
 
-		envelopeLength *= 4;
-
 		// Read the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->rawData[j] = *moduleOffset++;
+			for (UINT k = 0; k < 4; k++)
+				pEnvelope->effect[j].parameters[k] = *moduleOffset++;
 	}
 
 	// Decode the Note Table Envelope data
@@ -2929,7 +2926,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 
 		// Read the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->rawData[j] = *moduleOffset++;
+			pEnvelope->note[j].parameters = *moduleOffset++;
 	}
 
 	// Decode the Freq Table Envelope data
@@ -2958,11 +2955,10 @@ bool CSong::LoadRMTE(std::ifstream& in)
 		if (envelopeLength == 0)
 			envelopeLength = ENVELOPE_STEP_COUNT / 2;
 
-		envelopeLength *= 2;
-
 		// Read the Envelope Data
 		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->rawData[j] = *moduleOffset++;
+			for (UINT k = 0; k < 2; k++)
+				pEnvelope->freq[j].parameters[k] = *moduleOffset++;
 	}
 
 	// If everything went well, the full Module data should have been loaded and decoded in memory, ready to be used
