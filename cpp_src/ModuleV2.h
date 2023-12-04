@@ -48,8 +48,9 @@
 #define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info
 #define MODULE_PADDING					32											// Padding bytes for the Module file format specifications
 #define ENVELOPE_PADDING				4											// Padding bytes for the Envelope parameters used in Instruments
-#define LOHEADER_PADDING				1728										// Padding bytes for the Low Module Header, used for the Module Pointer Tables
-#define HIHEADER_PADDING				128											// Padding bytes for the High Module Header, used for the Module parameters
+#define LOHEADER_PADDING				2560										// Padding bytes for the Low Module Header, used for the Module Pointer Tables
+#define HIHEADER_PADDING				256											// Padding bytes for the High Module Header, used for the Module parameters
+#define METADATA_PADDING				64											// Padding bytes for the Module Metadata
 
 
 // ----------------------------------------------------------------------------
@@ -553,6 +554,9 @@ typedef struct HiHeader_t
 } THiHeader;
 
 // 24-Bit Module Header Pointer, which is essentially the same as UINT truncated to 3 bytes in size
+// BUG: This is actually not enough if we're filling everything to the maximal capacity!
+// Unfortunately, we must rely on 32-bit addressing, that's a small sacrifice for properly handling huge Module files!
+// Under normal circumstances, this should never become a problem, but stress testing this shit by hand proved otherwise, very upsetting...
 typedef struct HeaderPointer_t
 {
 	BYTE parameters[3];
@@ -565,14 +569,14 @@ typedef struct LoHeader_t
 	{
 		struct
 		{
-			THeaderPointer subtuneIndex[SUBTUNE_COUNT];			// Offset to Subtune
-			THeaderPointer instrumentIndex[INSTRUMENT_COUNT];	// Offset to Instrument
-			THeaderPointer volumeEnvelope[INSTRUMENT_COUNT];	// Offset to Volume Envelope
-			THeaderPointer timbreEnvelope[INSTRUMENT_COUNT];	// Offset to Timbre Envelope
-			THeaderPointer audctlEnvelope[INSTRUMENT_COUNT];	// Offset to AUDCTL Envelope
-			THeaderPointer effectEnvelope[INSTRUMENT_COUNT];	// Offset to Effect Envelope
-			THeaderPointer noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
-			THeaderPointer freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope
+			UINT subtuneIndex[SUBTUNE_COUNT];			// Offset to Subtune
+			UINT instrumentIndex[INSTRUMENT_COUNT];		// Offset to Instrument
+			UINT volumeEnvelope[INSTRUMENT_COUNT];		// Offset to Volume Envelope
+			UINT timbreEnvelope[INSTRUMENT_COUNT];		// Offset to Timbre Envelope
+			UINT audctlEnvelope[INSTRUMENT_COUNT];		// Offset to AUDCTL Envelope
+			UINT effectEnvelope[INSTRUMENT_COUNT];		// Offset to Effect Envelope
+			UINT noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
+			UINT freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope
 		};
 		BYTE parameters[LOHEADER_PADDING];
 	};
@@ -586,8 +590,8 @@ typedef struct ModuleHeader_t
 	char name[MODULE_SONG_NAME_MAX];
 	char author[MODULE_AUTHOR_NAME_MAX];
 	char copyright[MODULE_COPYRIGHT_INFO_MAX];
+	BYTE padding[METADATA_PADDING];
 } TModuleHeader;
-
 
 // ----------------------------------------------------------------------------
 // RMTE Module Class

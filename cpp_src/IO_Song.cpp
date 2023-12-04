@@ -1954,7 +1954,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Offset to Subtune is derived from the current Module Size
-		(UINT&)moduleHeader.loHeader.subtuneIndex[i] = moduleSize & 0xFFFFFF;
+		moduleHeader.loHeader.subtuneIndex[i] = moduleSize;
 
 		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
 		UINT songLength = g_Module.GetSongLength(pSubtune);
@@ -2052,7 +2052,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Offset to Instrument is derived from the current Module Size
-		(UINT&)moduleHeader.loHeader.instrumentIndex[i] = moduleSize & 0xFFFFFF;
+		moduleHeader.loHeader.instrumentIndex[i] = moduleSize;
 
 		// Increment Size based on the Instrument Metadata
 		moduleSize += MODULE_PADDING + INSTRUMENT_NAME_MAX;
@@ -2071,7 +2071,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Offset to Envelope is derived from the current Module Size
-		(UINT&)moduleHeader.loHeader.volumeEnvelope[i] = moduleSize & 0xFFFFFF;
+		moduleHeader.loHeader.volumeEnvelope[i] = moduleSize;
 
 		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
 		UINT envelopeLength = pEnvelope->parameter.length;
@@ -2094,7 +2094,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Offset to Envelope is derived from the current Module Size
-		(UINT&)moduleHeader.loHeader.timbreEnvelope[i] = moduleSize & 0xFFFFFF;
+		moduleHeader.loHeader.timbreEnvelope[i] = moduleSize;
 
 		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
 		UINT envelopeLength = pEnvelope->parameter.length;
@@ -2117,7 +2117,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Offset to Envelope is derived from the current Module Size
-		(UINT&)moduleHeader.loHeader.audctlEnvelope[i] = moduleSize & 0xFFFFFF;
+		moduleHeader.loHeader.audctlEnvelope[i] = moduleSize;
 
 		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
 		UINT envelopeLength = pEnvelope->parameter.length;
@@ -2140,7 +2140,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Offset to Envelope is derived from the current Module Size
-		(UINT&)moduleHeader.loHeader.effectEnvelope[i] = moduleSize & 0xFFFFFF;
+		moduleHeader.loHeader.effectEnvelope[i] = moduleSize;
 
 		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
 		UINT envelopeLength = pEnvelope->parameter.length;
@@ -2163,7 +2163,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Offset to Envelope is derived from the current Module Size
-		(UINT&)moduleHeader.loHeader.noteTableEnvelope[i] = moduleSize & 0xFFFFFF;
+		moduleHeader.loHeader.noteTableEnvelope[i] = moduleSize;
 
 		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
 		UINT envelopeLength = pEnvelope->parameter.length;
@@ -2186,7 +2186,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Offset to Envelope is derived from the current Module Size
-		(UINT&)moduleHeader.loHeader.freqTableEnvelope[i] = moduleSize & 0xFFFFFF;
+		moduleHeader.loHeader.freqTableEnvelope[i] = moduleSize;
 
 		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
 		UINT envelopeLength = pEnvelope->parameter.length;
@@ -2210,7 +2210,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader.loHeader.subtuneIndex[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.subtuneIndex[i];
 
 		// A NULL offset means there is no Subtune data, skip it
 		if (moduleOffset == moduleData)
@@ -2346,7 +2346,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader.loHeader.instrumentIndex[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.instrumentIndex[i];
 
 		// A NULL offset means there is no Instrument data, skip it
 		if (moduleOffset == moduleData)
@@ -2371,7 +2371,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader.loHeader.volumeEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.volumeEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2401,7 +2401,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader.loHeader.timbreEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.timbreEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2431,7 +2431,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader.loHeader.audctlEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.audctlEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2461,7 +2461,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader.loHeader.effectEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.effectEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2492,7 +2492,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader.loHeader.noteTableEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.noteTableEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2522,7 +2522,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader.loHeader.freqTableEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.freqTableEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2617,7 +2617,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader->loHeader.subtuneIndex[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.subtuneIndex[i];
 
 		// A NULL offset means there is no Subtune data, skip it
 		if (moduleOffset == moduleData)
@@ -2724,7 +2724,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader->loHeader.instrumentIndex[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.instrumentIndex[i];
 
 		// A NULL offset means there is no Instrument data, skip it
 		if (moduleOffset == moduleData)
@@ -2750,7 +2750,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader->loHeader.volumeEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.volumeEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2781,7 +2781,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader->loHeader.timbreEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.timbreEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2812,7 +2812,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader->loHeader.audctlEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.audctlEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2843,7 +2843,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader->loHeader.effectEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.effectEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2875,7 +2875,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader->loHeader.noteTableEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.noteTableEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
@@ -2906,7 +2906,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
 	{
 		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + ((UINT&)moduleHeader->loHeader.freqTableEnvelope[i] & 0xFFFFFF);
+		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.freqTableEnvelope[i];
 
 		// A NULL offset means there is no Envelope data, skip it
 		if (moduleOffset == moduleData)
