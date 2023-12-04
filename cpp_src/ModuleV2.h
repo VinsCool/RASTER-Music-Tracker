@@ -17,6 +17,7 @@
 
 #define MODULE_VERSION					0											// Module Version number, the highest value is always assumed to be the most recent
 #define MODULE_IDENTIFIER				"RMTE"										// "Raster Music Tracker Extended" Module Identifier
+#define MODULE_IDENTIFIER_MAX			4
 #define MODULE_REGION					g_ntsc										// 0 for PAL, 1 for NTSC, anything else is also assumed to be NTSC
 #define MODULE_CHANNEL_COUNT			g_tracks4_8									// 4 for Mono, 8 for Stereo, add more for whatever setup that could be used
 #define MODULE_BASE_TUNING				g_baseTuning								// Default A-4 Tuning
@@ -47,6 +48,8 @@
 #define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info
 #define MODULE_PADDING					32											// Padding bytes for the Module file format specifications
 #define ENVELOPE_PADDING				4											// Padding bytes for the Envelope parameters used in Instruments
+#define LOHEADER_PADDING				1728										// Padding bytes for the Low Module Header, used for the Module Pointer Tables
+#define HIHEADER_PADDING				128											// Padding bytes for the High Module Header, used for the Module parameters
 
 
 // ----------------------------------------------------------------------------
@@ -71,6 +74,10 @@
 #define EFFECT_PARAMETER_COUNT		256												// Maximum Effect Parameter $XY Index
 #define INSTRUMENT_NAME_MAX			64												// Maximum length of Instrument name
 #define ENVELOPE_STEP_COUNT			256												// Maximum Envelope Index
+#define EFFECT_BYTE_COUNT			4
+#define ENVELOPE_EFFECT_STEP_COUNT	(ENVELOPE_STEP_COUNT / EFFECT_BYTE_COUNT)
+#define FREQ_BYTE_COUNT				2
+#define ENVELOPE_FREQ_STEP_COUNT	(ENVELOPE_STEP_COUNT / FREQ_BYTE_COUNT)
 
 
 // ----------------------------------------------------------------------------
@@ -442,7 +449,7 @@ struct TEffectEnvelope
 			bool auto15Khz : 1;				// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
 			bool autoPoly9 : 1;				// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
 			bool autoTwoTone : 1;			// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-			bool unused : 1;				// Reserved
+			bool unused : 1;				// Reserved, but unused as it currently is
 
 			// Byte 2: Effect Command Identifiers
 			BYTE command_1 : 4;
@@ -452,7 +459,7 @@ struct TEffectEnvelope
 			BYTE parameter_1;
 			BYTE parameter_2;
 		};
-		BYTE parameters[4];
+		BYTE parameters[EFFECT_BYTE_COUNT];
 	};
 };
 
@@ -490,7 +497,7 @@ struct TFreqTableEnvelope
 		};
 		WORD freqAbsolute;					// Set Freq Index 0-65535 (Absolute/Additive), capped to FREQ_COUNT_16
 		SWORD freqRelative;					// Transpose by +- 32768 Freq units (Relative/Additive), capped to FREQ_COUNT_16
-		BYTE parameters[2];
+		BYTE parameters[FREQ_BYTE_COUNT];
 	};
 };
 
@@ -503,9 +510,9 @@ struct TEnvelope
 		TVolumeEnvelope volume[ENVELOPE_STEP_COUNT];
 		TTimbreEnvelope timbre[ENVELOPE_STEP_COUNT];
 		TAudctlEnvelope audctl[ENVELOPE_STEP_COUNT];
-		TEffectEnvelope effect[ENVELOPE_STEP_COUNT / 4];	// Due to Legacy Effect commands, and a lot of new parameters
+		TEffectEnvelope effect[ENVELOPE_EFFECT_STEP_COUNT];	// Due to Legacy Effect commands, and a lot of new parameters
 		TNoteTableEnvelope note[ENVELOPE_STEP_COUNT];
-		TFreqTableEnvelope freq[ENVELOPE_STEP_COUNT / 2];	// Due to 16-bit Freq values
+		TFreqTableEnvelope freq[ENVELOPE_FREQ_STEP_COUNT];	// Due to 16-bit Freq values
 	};
 };
 
@@ -528,28 +535,47 @@ struct TInstrumentIndex
 // High Header, used to identify the Module Version and Parameters
 typedef struct HiHeader_t
 {
-	char identifier[4];						// RMTE
-	BYTE version;							// 0 = Prototype, 1+ = Release
-	BYTE region;							// 0 = PAL, 1 = NTSC
-	BYTE highlightPrimary;
-	BYTE highlightSecondary;
-	double baseTuning;						// A-4 Tuning in Hz, eg: 440, 432, etc
-	BYTE baseNote;							// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
-	BYTE baseOctave;						// Base Octave used for Transposition, eg: 4 for no transposition
+	union
+	{
+		struct
+		{
+			char identifier[MODULE_IDENTIFIER_MAX];	// RMTE
+			BYTE version;							// 0 = Prototype, 1+ = Release
+			BYTE region;							// 0 = PAL, 1 = NTSC
+			BYTE highlightPrimary;					// 1st Row Highlight, TODO(?): Move to Subtune Struct
+			BYTE highlightSecondary;				// 2nd Row Highlight, TODO(?): Move to Subtune Struct
+			double baseTuning;						// A-4 Tuning in Hz, eg: 440, 432, etc
+			BYTE baseNote;							// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
+			BYTE baseOctave;						// Base Octave used for Transposition, eg: 4 for no transposition
+		};
+		BYTE parameters[HIHEADER_PADDING];
+	};
 } THiHeader;
 
+// 24-Bit Module Header Pointer, which is essentially the same as UINT truncated to 3 bytes in size
+typedef struct HeaderPointer_t
+{
+	BYTE parameters[3];
+} THeaderPointer;
+
 // Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists
-// TODO: Using 24bit addressing might be plenty for this now that the data could be compressed somewhat...
 typedef struct LoHeader_t
 {
-	UINT subtuneIndex[SUBTUNE_COUNT];			// Offset to Subtune
-	UINT instrumentIndex[INSTRUMENT_COUNT];		// Offset to Instrument
-	UINT volumeEnvelope[INSTRUMENT_COUNT];		// Offset to Volume Envelope
-	UINT timbreEnvelope[INSTRUMENT_COUNT];		// Offset to Timbre Envelope
-	UINT audctlEnvelope[INSTRUMENT_COUNT];		// Offset to AUDCTL Envelope
-	UINT effectEnvelope[INSTRUMENT_COUNT];		// Offset to Effect Envelope
-	UINT noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
-	UINT freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope
+	union
+	{
+		struct
+		{
+			THeaderPointer subtuneIndex[SUBTUNE_COUNT];			// Offset to Subtune
+			THeaderPointer instrumentIndex[INSTRUMENT_COUNT];	// Offset to Instrument
+			THeaderPointer volumeEnvelope[INSTRUMENT_COUNT];	// Offset to Volume Envelope
+			THeaderPointer timbreEnvelope[INSTRUMENT_COUNT];	// Offset to Timbre Envelope
+			THeaderPointer audctlEnvelope[INSTRUMENT_COUNT];	// Offset to AUDCTL Envelope
+			THeaderPointer effectEnvelope[INSTRUMENT_COUNT];	// Offset to Effect Envelope
+			THeaderPointer noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
+			THeaderPointer freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope
+		};
+		BYTE parameters[LOHEADER_PADDING];
+	};
 } TLoHeader;
 
 // RMTE Module Header
@@ -557,10 +583,17 @@ typedef struct ModuleHeader_t
 {
 	THiHeader hiHeader;
 	TLoHeader loHeader;
-	char name[64];
-	char author[64];
-	char copyright[64];
+	char name[MODULE_SONG_NAME_MAX];
+	char author[MODULE_AUTHOR_NAME_MAX];
+	char copyright[MODULE_COPYRIGHT_INFO_MAX];
 } TModuleHeader;
+
+//UINT test0 = sizeof(TModuleHeader);
+//UINT test1 = sizeof(THiHeader);
+//UINT test2 = sizeof(TLoHeader);
+//UINT test3 = sizeof(THeaderPointer);
+//UINT test4 = sizeof(THeaderPointer[SUBTUNE_COUNT]);
+//UINT test5 = sizeof(double);
 
 
 // ----------------------------------------------------------------------------

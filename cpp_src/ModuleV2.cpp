@@ -492,7 +492,7 @@ bool CModule::InitialiseEffectEnvelope(TEnvelope* pEnvelope)
 	InitialiseEnvelopeParameter(&pEnvelope->parameter);
 
 	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT / 4; i++)
+	for (int i = 0; i < ENVELOPE_EFFECT_STEP_COUNT; i++)
 	{
 		pEnvelope->effect[i].auto15Khz = false;
 		pEnvelope->effect[i].autoFilter = false;
@@ -601,7 +601,7 @@ bool CModule::InitialiseFreqTableEnvelope(TEnvelope* pEnvelope)
 	InitialiseEnvelopeParameter(&pEnvelope->parameter);
 
 	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT / 2; i++)
+	for (int i = 0; i < ENVELOPE_FREQ_STEP_COUNT; i++)
 		pEnvelope->freq[i].freqAbsolute = 0x0000;
 
 	// Freq Table Envelope was initialised
