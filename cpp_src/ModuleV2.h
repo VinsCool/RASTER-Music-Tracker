@@ -17,7 +17,7 @@
 
 #define MODULE_VERSION					0											// Module Version number, the highest value is always assumed to be the most recent
 #define MODULE_IDENTIFIER				"RMTE"										// "Raster Music Tracker Extended" Module Identifier
-#define MODULE_IDENTIFIER_MAX			4
+//#define MODULE_IDENTIFIER_MAX			4
 #define MODULE_REGION					g_ntsc										// 0 for PAL, 1 for NTSC, anything else is also assumed to be NTSC
 #define MODULE_CHANNEL_COUNT			g_tracks4_8									// 4 for Mono, 8 for Stereo, add more for whatever setup that could be used
 #define MODULE_BASE_TUNING				g_baseTuning								// Default A-4 Tuning
@@ -46,11 +46,11 @@
 #define MODULE_SONG_NAME_MAX			64											// Maximum length of Song Title
 #define MODULE_AUTHOR_NAME_MAX			64											// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info
-#define MODULE_PADDING					32											// Padding bytes for the Module file format specifications
-#define ENVELOPE_PADDING				4											// Padding bytes for the Envelope parameters used in Instruments
-#define LOHEADER_PADDING				2560										// Padding bytes for the Low Module Header, used for the Module Pointer Tables
-#define HIHEADER_PADDING				256											// Padding bytes for the High Module Header, used for the Module parameters
-#define METADATA_PADDING				64											// Padding bytes for the Module Metadata
+//#define MODULE_PADDING					32											// Padding bytes for the Module file format specifications
+//#define ENVELOPE_PADDING				4											// Padding bytes for the Envelope parameters used in Instruments
+//#define LOHEADER_PADDING				2560										// Padding bytes for the Low Module Header, used for the Module Pointer Tables
+//#define HIHEADER_PADDING				256											// Padding bytes for the High Module Header, used for the Module parameters
+//#define METADATA_PADDING				64											// Padding bytes for the Module Metadata
 
 
 // ----------------------------------------------------------------------------
@@ -228,7 +228,7 @@ struct TChannel
 			bool isEffectEnabled : 1;		// Channel is using Effect Commands? Placeholder bit for now
 			bool isMuted : 1;				// Channel is muted? Placeholder bit for now
 		};
-		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
+		//BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
 	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
@@ -248,7 +248,7 @@ struct TSubtune
 			BYTE instrumentSpeed : 4;		// Instrument Speed, in Frames per VBI
 			BYTE channelCount : 4;			// Number of Channels used in Subtune
 		};
-		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
+		//BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
@@ -332,7 +332,7 @@ struct TEnvelopeParameter
 			bool isAbsolute : 1;			// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
 			bool isAdditive : 1;			// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
 		};
-		BYTE parameters[ENVELOPE_PADDING];	// Bitwise parameters union, there is probably nothing else to add here but we never know...
+		//BYTE parameters[ENVELOPE_PADDING];	// Bitwise parameters union, there is probably nothing else to add here but we never know...
 	};
 };
 
@@ -355,7 +355,7 @@ struct TInstrumentV2
 			BYTE autoFilter;				// AutoFilter parameter, taking priority over EFFECT_AUTOFILTER for Legacy RMT Instrument compatibility
 			bool autoFilterMode : 1;		// AutoFilter Mode parameter, Additive Mode if True, otherwise it is Absolute
 		};
-		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
+		//BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 };
 
@@ -460,7 +460,7 @@ struct TEffectEnvelope
 			BYTE parameter_1;
 			BYTE parameter_2;
 		};
-		BYTE parameters[EFFECT_BYTE_COUNT];
+		//BYTE parameters[EFFECT_BYTE_COUNT];
 	};
 };
 
@@ -540,7 +540,8 @@ typedef struct HiHeader_t
 	{
 		struct
 		{
-			char identifier[MODULE_IDENTIFIER_MAX];	// RMTE
+			//char identifier[MODULE_IDENTIFIER_MAX];	// RMTE
+			char identifier[4];						// RMTE
 			BYTE version;							// 0 = Prototype, 1+ = Release
 			BYTE region;							// 0 = PAL, 1 = NTSC
 			BYTE highlightPrimary;					// 1st Row Highlight, TODO(?): Move to Subtune Struct
@@ -549,7 +550,7 @@ typedef struct HiHeader_t
 			BYTE baseNote;							// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
 			BYTE baseOctave;						// Base Octave used for Transposition, eg: 4 for no transposition
 		};
-		BYTE parameters[HIHEADER_PADDING];
+		//BYTE parameters[HIHEADER_PADDING];
 	};
 } THiHeader;
 
@@ -578,7 +579,7 @@ typedef struct LoHeader_t
 			UINT noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
 			UINT freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope
 		};
-		BYTE parameters[LOHEADER_PADDING];
+		//BYTE parameters[LOHEADER_PADDING];
 	};
 } TLoHeader;
 
@@ -590,7 +591,7 @@ typedef struct ModuleHeader_t
 	char name[MODULE_SONG_NAME_MAX];
 	char author[MODULE_AUTHOR_NAME_MAX];
 	char copyright[MODULE_COPYRIGHT_INFO_MAX];
-	BYTE padding[METADATA_PADDING];
+	//BYTE padding[METADATA_PADDING];
 } TModuleHeader;
 
 // ----------------------------------------------------------------------------

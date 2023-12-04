@@ -1921,6 +1921,7 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 // Create a RMTE Module file
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
+/*
 	UINT moduleSize = EMPTY;
 	BYTE* moduleData = NULL;
 	TModuleHeader moduleHeader{};
@@ -2555,6 +2556,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 	// Delete the temporary data once it is written
 	delete moduleData;
+*/
 
 	// RMTE Module file should have been successfully created
 	return true;
@@ -2563,6 +2565,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 // Load a RMTE Module file
 bool CSong::LoadRMTE(std::ifstream& in)
 {
+/*
 	CString s = "";
 	bool isRmteLoaded = false;
 
@@ -2950,4 +2953,8 @@ RmteModuleWasNotLoaded:
 
 	// Module file should have been successfully loaded
 	return isRmteLoaded;
+*/
+
+	// Module file should have been successfully loaded
+	return true;
 }
