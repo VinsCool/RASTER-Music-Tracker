@@ -160,6 +160,9 @@ UINT CKeyboard::GetKeyBindingAction(UINT keyVirtual, bool keyCtrl, bool keyAlt, 
 // Return the Note key mapped to the chosen Keyboard layout
 UINT CKeyboard::GetNoteKey(UINT scanCode, bool keyCtrl, bool keyAlt, bool keyShift)
 {
+	// First, make sure to isolate the Scan Code from the provided value since there may be additional flags set to it
+	scanCode &= 0xFF;
+
 	// Neither of the Modifier keys are supposed to be held down!
 	if (!keyCtrl && !keyAlt && !keyShift)
 	{

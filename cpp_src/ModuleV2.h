@@ -588,13 +588,6 @@ typedef struct ModuleHeader_t
 	char copyright[MODULE_COPYRIGHT_INFO_MAX];
 } TModuleHeader;
 
-//UINT test0 = sizeof(TModuleHeader);
-//UINT test1 = sizeof(THiHeader);
-//UINT test2 = sizeof(TLoHeader);
-//UINT test3 = sizeof(THeaderPointer);
-//UINT test4 = sizeof(THeaderPointer[SUBTUNE_COUNT]);
-//UINT test5 = sizeof(double);
-
 
 // ----------------------------------------------------------------------------
 // RMTE Module Class

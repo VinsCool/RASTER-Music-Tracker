@@ -1488,12 +1488,12 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			// Envelope Timbre, based on the Distortion parameter
 			pTimbreEnvelope->timbre[j].parameters = distortion;
 
-			// Envelope Volume
+			// Envelope Volume, technically only the Left POKEY Volume is needed but that's just for compatibility's sake
 			pVolumeEnvelope->volume[j].volumeLeft = envelopeVolume & 0x0F;
 			pVolumeEnvelope->volume[j].volumeRight = envelopeVolume & 0xF0;
 
 			// Set the Volume Only Mode as well if needed
-			//pVolumeEnvelope->volume[j].isVolumeOnly = isVolumeOnly;
+			pVolumeEnvelope->timbre[j].isVolumeOnly = isVolumeOnly;
 
 			// Envelope AUDCTL
 			pAudctlEnvelope->audctl[j].parameters = initialAudctl;
@@ -1513,13 +1513,6 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			// Extended RMT Command Envelope, with compatibility tweaks as a compromise
 			pEffectEnvelope->effect[j].command_1 = envelopeEffectCommand;
 			pEffectEnvelope->effect[j].parameter_1 = envelopeParameter;
-			
-			//pEffectEnvelope->effect[j].effectCommandLo = envelopeEffectCommand;
-			//pEffectEnvelope->effect[j].effectCommandHi = 0x00;
-			//pEffectEnvelope->effect[j].is16BitCommand = false;
-			//pEffectEnvelope->effect[j].isEffectEnabled = true;
-			//pEffectEnvelope->effect[j].effectParameterLo = envelopeParameter;
-			//pEffectEnvelope->effect[j].effectParameterHi = 0x00;
 		}
 
 		// Instrument was loaded

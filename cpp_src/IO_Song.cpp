@@ -2585,7 +2585,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	TModuleHeader* moduleHeader = (TModuleHeader*)moduleData;
 
 	// Compare the file format identifier from with "RMTE", any mismatch will flag the entire file as invalid, regardless of its contents
-	if (strncmp(moduleHeader->hiHeader.identifier, MODULE_IDENTIFIER, 4) != 0)
+	if (strncmp(moduleHeader->hiHeader.identifier, MODULE_IDENTIFIER, MODULE_IDENTIFIER_MAX) != 0)
 	{
 		s.AppendFormat("Invalid identifier from file header.\nExpected \"%s\", but found \"%s\" instead.\n", MODULE_IDENTIFIER, moduleHeader->hiHeader.identifier);
 		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
