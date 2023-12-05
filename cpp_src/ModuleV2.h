@@ -46,6 +46,9 @@
 #define MODULE_SONG_NAME_MAX			64											// Maximum length of Song Title
 #define MODULE_AUTHOR_NAME_MAX			64											// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info
+
+#define MODULE_PADDING					32
+
 //#define MODULE_PADDING					32											// Padding bytes for the Module file format specifications
 //#define ENVELOPE_PADDING				4											// Padding bytes for the Envelope parameters used in Instruments
 //#define LOHEADER_PADDING				2560										// Padding bytes for the Low Module Header, used for the Module Pointer Tables
@@ -228,7 +231,7 @@ struct TChannel
 			bool isEffectEnabled : 1;		// Channel is using Effect Commands? Placeholder bit for now
 			bool isMuted : 1;				// Channel is muted? Placeholder bit for now
 		};
-		//BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
+		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
 	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
@@ -248,7 +251,7 @@ struct TSubtune
 			BYTE instrumentSpeed : 4;		// Instrument Speed, in Frames per VBI
 			BYTE channelCount : 4;			// Number of Channels used in Subtune
 		};
-		//BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
+		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
@@ -332,7 +335,7 @@ struct TEnvelopeParameter
 			bool isAbsolute : 1;			// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
 			bool isAdditive : 1;			// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
 		};
-		//BYTE parameters[ENVELOPE_PADDING];	// Bitwise parameters union, there is probably nothing else to add here but we never know...
+		BYTE parameters[4];					// Bitwise parameters union, there is probably nothing else to add here but we never know...
 	};
 };
 
@@ -355,7 +358,7 @@ struct TInstrumentV2
 			BYTE autoFilter;				// AutoFilter parameter, taking priority over EFFECT_AUTOFILTER for Legacy RMT Instrument compatibility
 			bool autoFilterMode : 1;		// AutoFilter Mode parameter, Additive Mode if True, otherwise it is Absolute
 		};
-		//BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
+		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 };
 
@@ -460,7 +463,7 @@ struct TEffectEnvelope
 			BYTE parameter_1;
 			BYTE parameter_2;
 		};
-		//BYTE parameters[EFFECT_BYTE_COUNT];
+		BYTE parameters[EFFECT_BYTE_COUNT];
 	};
 };
 
@@ -540,28 +543,18 @@ typedef struct HiHeader_t
 	{
 		struct
 		{
-			//char identifier[MODULE_IDENTIFIER_MAX];	// RMTE
 			char identifier[4];						// RMTE
 			BYTE version;							// 0 = Prototype, 1+ = Release
 			BYTE region;							// 0 = PAL, 1 = NTSC
-			BYTE highlightPrimary;					// 1st Row Highlight, TODO(?): Move to Subtune Struct
-			BYTE highlightSecondary;				// 2nd Row Highlight, TODO(?): Move to Subtune Struct
+			BYTE highlightPrimary;					// 1st Row Highlight
+			BYTE highlightSecondary;				// 2nd Row Highlight
 			double baseTuning;						// A-4 Tuning in Hz, eg: 440, 432, etc
 			BYTE baseNote;							// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
 			BYTE baseOctave;						// Base Octave used for Transposition, eg: 4 for no transposition
 		};
-		//BYTE parameters[HIHEADER_PADDING];
+		BYTE parameters[MODULE_PADDING];			// Reserved bytes
 	};
 } THiHeader;
-
-// 24-Bit Module Header Pointer, which is essentially the same as UINT truncated to 3 bytes in size
-// BUG: This is actually not enough if we're filling everything to the maximal capacity!
-// Unfortunately, we must rely on 32-bit addressing, that's a small sacrifice for properly handling huge Module files!
-// Under normal circumstances, this should never become a problem, but stress testing this shit by hand proved otherwise, very upsetting...
-typedef struct HeaderPointer_t
-{
-	BYTE parameters[3];
-} THeaderPointer;
 
 // Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists
 typedef struct LoHeader_t
@@ -570,16 +563,11 @@ typedef struct LoHeader_t
 	{
 		struct
 		{
-			UINT subtuneIndex[SUBTUNE_COUNT];			// Offset to Subtune
-			UINT instrumentIndex[INSTRUMENT_COUNT];		// Offset to Instrument
-			UINT volumeEnvelope[INSTRUMENT_COUNT];		// Offset to Volume Envelope
-			UINT timbreEnvelope[INSTRUMENT_COUNT];		// Offset to Timbre Envelope
-			UINT audctlEnvelope[INSTRUMENT_COUNT];		// Offset to AUDCTL Envelope
-			UINT effectEnvelope[INSTRUMENT_COUNT];		// Offset to Effect Envelope
-			UINT noteTableEnvelope[INSTRUMENT_COUNT];	// Offset to Note Table Envelope
-			UINT freqTableEnvelope[INSTRUMENT_COUNT];	// Offset to Freq Table Envelope
+			UINT subtuneIndex;						// Offset to Subtune data
+			UINT instrumentIndex;					// Offset to Instrument data
+			UINT envelopeIndex;						// Offset to Envelope data
 		};
-		//BYTE parameters[LOHEADER_PADDING];
+		BYTE parameters[MODULE_PADDING];			// Reserved bytes
 	};
 } TLoHeader;
 
@@ -591,8 +579,11 @@ typedef struct ModuleHeader_t
 	char name[MODULE_SONG_NAME_MAX];
 	char author[MODULE_AUTHOR_NAME_MAX];
 	char copyright[MODULE_COPYRIGHT_INFO_MAX];
-	//BYTE padding[METADATA_PADDING];
+	// Reserved bytes are not defined, but still implied here for future format revisions
+	// Most data could be shifted further down upon file creation, if new parameters are then created later
+	// The actual Module data is indexed in the Low Header, and may be offset anywhere else very easily too
 } TModuleHeader;
+
 
 // ----------------------------------------------------------------------------
 // RMTE Module Class

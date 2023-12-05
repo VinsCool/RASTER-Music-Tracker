@@ -1921,6 +1921,297 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 // Create a RMTE Module file
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
+	UINT moduleSize = EMPTY;
+	BYTE* moduleData = NULL;
+	TModuleHeader moduleHeader{};
+	memset(&moduleHeader, EMPTY, sizeof(TModuleHeader));
+
+	// Create High Header, Low Header is constructed using the Module data offsets
+	strncpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER, 4);
+	moduleHeader.hiHeader.version = MODULE_VERSION;
+	moduleHeader.hiHeader.region = MODULE_REGION;
+	moduleHeader.hiHeader.highlightPrimary = MODULE_PRIMARY_HIGHLIGHT;
+	moduleHeader.hiHeader.highlightSecondary = MODULE_SECONDARY_HIGHLIGHT;
+	moduleHeader.hiHeader.baseTuning = MODULE_BASE_TUNING;
+	moduleHeader.hiHeader.baseNote = MODULE_BASE_NOTE;
+	moduleHeader.hiHeader.baseOctave = MODULE_BASE_OCTAVE;
+
+	// Create Module Metadata
+	strncpy(moduleHeader.name, g_Module.GetModuleName(), MODULE_SONG_NAME_MAX);
+	strncpy(moduleHeader.author, g_Module.GetModuleAuthor(), MODULE_AUTHOR_NAME_MAX);
+	strncpy(moduleHeader.copyright, g_Module.GetModuleCopyright(), MODULE_COPYRIGHT_INFO_MAX);
+
+	// Initial Module size is constant, beginning with the Header itself
+	moduleSize += sizeof(TModuleHeader);
+
+	// Get the Subtune count
+	UINT subtuneCount = g_Module.GetSubtuneCount();
+
+	// If the subtune count isn't empty, the offset to Subtune data will be written to the Low Header
+	if (subtuneCount != EMPTY)
+		moduleHeader.loHeader.subtuneIndex = moduleSize;
+
+	// Analyse Subtune data
+	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+	{
+		TSubtune* pSubtune = g_Module.GetSubtune(i);
+
+		// The first byte written will be the Subtune Index Number, in order to know where it should be loaded back
+		moduleSize += 1;
+
+		// If it is an Empty Subtune, the byte written will indicate it is Empty, then skipped entirely
+		if (!pSubtune)
+			continue;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT songLength = g_Module.GetSongLength(pSubtune);
+		UINT channelCount = g_Module.GetChannelCount(pSubtune);
+
+		// Increment Size based on the Subtune Metadata
+		moduleSize += MODULE_PADDING + SUBTUNE_NAME_MAX;
+
+		// Increment Size based on the Channel data
+		for (UINT j = 0; j < channelCount; j++)
+		{
+			TChannel* pChannel = &pSubtune->channel[j];
+
+			// Increment Size based on the Channel Parameters
+			moduleSize += MODULE_PADDING;
+
+			// Increment Size with the Songline Count, unreferenced Songline data will be lost
+			moduleSize += songLength;
+
+			// Increment Size with the Pattern data, unreferenced Pattern data will be saved
+			for (UINT k = 0; k < PATTERN_COUNT; k++)
+			{
+				// Increment Size with the Row data
+				for (UINT l = 0; l < ROW_COUNT; l++)
+				{
+					// Get the pointer to the current Row position
+					TRow* pRowFrom = &pChannel->pattern[k].row[l];
+
+					// For data encoding, assume it is the End of Pattern unless it is not
+					bool isEndOfPattern = true;
+
+					// We need to identify the number of empty Rows ahead of the current position
+					for (UINT m = l + 1; m < ROW_COUNT; m++)
+					{
+						// Get the pointer to the target Row position
+						TRow* pRowTo = &pChannel->pattern[k].row[m];
+
+						// If the Row is not Empty, there is more data to process
+						if (!g_Module.IsEmptyRow(pRowTo))
+						{
+							// Empty Rows between l and m will be skipped with the Pause Length
+							l = m - 1;
+							isEndOfPattern = false;
+							break;
+						}
+					}
+
+					// Row encoding data is written first
+					moduleSize += sizeof(BYTE);
+
+					// The Pause Length is written only when the Pattern Terminator bit is not set
+					if (!isEndOfPattern)
+						moduleSize += sizeof(BYTE);
+
+					// Check if there is a Non-Empty Note
+					if (pRowFrom->note != NOTE_EMPTY)
+						moduleSize += sizeof(BYTE);
+
+					// Check if there is a Non-Empty Instrument
+					if (pRowFrom->instrument != INSTRUMENT_EMPTY)
+						moduleSize += sizeof(BYTE);
+
+					// Check if there is a Non-Empty Volume
+					if (pRowFrom->volume != VOLUME_EMPTY)
+						moduleSize += sizeof(BYTE);
+
+					// Check if there are Non-Empty Effect Commands
+					if (pRowFrom->effect[CMD1].command != PE_EMPTY)
+						moduleSize += sizeof(TEffect);
+
+					if (pRowFrom->effect[CMD2].command != PE_EMPTY)
+						moduleSize += sizeof(TEffect);
+
+					if (pRowFrom->effect[CMD3].command != PE_EMPTY)
+						moduleSize += sizeof(TEffect);
+
+					if (pRowFrom->effect[CMD4].command != PE_EMPTY)
+						moduleSize += sizeof(TEffect);
+
+					// If the Pattern Terminator Bit is set, there is no more Row data to process
+					if (isEndOfPattern)
+						break;
+				}
+			}
+		}
+	}
+
+	// Create Encoded Module data in 1 block using the calculated size
+	moduleData = new BYTE[moduleSize];
+	memset(moduleData, EMPTY, moduleSize);
+
+	// Copy the Module Header
+	memcpy(moduleData, &moduleHeader, sizeof(moduleHeader));
+
+	// Get the pointer to current Module data offset
+	BYTE* moduleOffset = moduleData + moduleHeader.loHeader.subtuneIndex;
+
+	// Construct all the encoded Subtune data based on the analysis done a bit earlier
+	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+	{
+		// A NULL offset means there is no Subtune data, skip it entirely
+		if (moduleOffset == moduleData)
+			break;
+
+		// Get the pointer to the actual Subtune data to process
+		TSubtune* pSubtune = g_Module.GetSubtune(i);
+
+		// If it is an Empty Subtune, the byte written will indicate it is Empty, then skipped entirely
+		if (!pSubtune)
+		{
+			*moduleOffset++ = INVALID;
+			continue;
+		}
+
+		// The first byte written will be the Subtune Index Number, in order to know where it should be loaded back
+		*moduleOffset++ = i;
+
+		// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
+		UINT songLength = g_Module.GetSongLength(pSubtune);
+		UINT channelCount = g_Module.GetChannelCount(pSubtune);
+
+		// Write the Subtune Metadata
+		strncpy((char*)moduleOffset, pSubtune->name, SUBTUNE_NAME_MAX);
+		moduleOffset += SUBTUNE_NAME_MAX;
+
+		// Write the Subtune Parameters
+		for (UINT j = 0; j < MODULE_PADDING; j++)
+			*moduleOffset++ = pSubtune->parameters[j];
+
+		// Write the Channel data
+		for (UINT j = 0; j < channelCount; j++)
+		{
+			// Get the pointer to Channel data
+			TChannel* pChannel = &pSubtune->channel[j];
+
+			// Write the Channel Parameters
+			for (UINT k = 0; k < MODULE_PADDING; k++)
+				*moduleOffset++ = pChannel->parameters[k];
+
+			// Write the Songline data, only the values referenced within the Song Length will be saved
+			for (UINT k = 0; k < songLength; k++)
+				*moduleOffset++ = pChannel->songline[k];
+
+			// Write the Pattern data, including unrefereced Pattern entries this time
+			for (UINT k = 0; k < PATTERN_COUNT; k++)
+			{
+				// Write the encoded Row data, for all Rows that may be used in a Pattern
+				for (UINT l = 0; l < ROW_COUNT; l++)
+				{
+					// Get the pointer to the current Row position
+					TRow* pRowFrom = &pChannel->pattern[k].row[l];
+
+					// Create the Row encoding data
+					TRowEncoding rowEncoding{};
+					rowEncoding.parameters = EMPTY;
+					rowEncoding.pauseLength = EMPTY;
+
+					// Assume it is the End of Pattern unless it is not
+					rowEncoding.isEndOfPattern = true;
+
+					// We need to identify the number of empty Rows ahead of the current position
+					for (UINT m = l + 1; m < ROW_COUNT; m++)
+					{
+						// Get the pointer to the target Row position
+						TRow* pRowTo = &pChannel->pattern[k].row[m];
+
+						// If the Row is not Empty, there is more data to process
+						if (!g_Module.IsEmptyRow(pRowTo))
+						{
+							// Empty Rows between l and m will be skipped with the Pause Length
+							l = m - 1;
+							rowEncoding.isEndOfPattern = false;
+							break;
+						}
+
+						// Increment the Pause Length by 1
+						rowEncoding.pauseLength += 1;
+					}
+
+					// Set the Row encoding bits based on the Empty data itself
+					rowEncoding.isEmptyNote = pRowFrom->note == NOTE_EMPTY;
+					rowEncoding.isEmptyInstrument = pRowFrom->instrument == INSTRUMENT_EMPTY;
+					rowEncoding.isEmptyVolume = pRowFrom->volume == VOLUME_EMPTY;
+					rowEncoding.isEmptyCmd1 = pRowFrom->effect[CMD1].command == PE_EMPTY;
+					rowEncoding.isEmptyCmd2 = pRowFrom->effect[CMD2].command == PE_EMPTY;
+					rowEncoding.isEmptyCmd3 = pRowFrom->effect[CMD3].command == PE_EMPTY;
+					rowEncoding.isEmptyCmd4 = pRowFrom->effect[CMD4].command == PE_EMPTY;
+
+					// Row encoding data is written first
+					*moduleOffset++ = rowEncoding.parameters;
+
+					// The Pause Length is written only when the Pattern Terminator bit is not set
+					if (!rowEncoding.isEndOfPattern)
+						*moduleOffset++ = rowEncoding.pauseLength;
+
+					// Check if there is a Non-Empty Note
+					if (!rowEncoding.isEmptyNote)
+						*moduleOffset++ = pRowFrom->note;
+
+					// Check if there is a Non-Empty Instrument
+					if (!rowEncoding.isEmptyInstrument)
+						*moduleOffset++ = pRowFrom->instrument;
+
+					// Check if there is a Non-Empty Volume
+					if (!rowEncoding.isEmptyVolume)
+						*moduleOffset++ = pRowFrom->volume;
+
+					// Check if there are Non-Empty Effect Commands
+					if (!rowEncoding.isEmptyCmd1)
+					{
+						*moduleOffset++ = pRowFrom->effect[CMD1].command;
+						*moduleOffset++ = pRowFrom->effect[CMD1].parameter;
+					}
+
+					if (!rowEncoding.isEmptyCmd2)
+					{
+						*moduleOffset++ = pRowFrom->effect[CMD2].command;
+						*moduleOffset++ = pRowFrom->effect[CMD2].parameter;
+					}
+
+					if (!rowEncoding.isEmptyCmd3)
+					{
+						*moduleOffset++ = pRowFrom->effect[CMD3].command;
+						*moduleOffset++ = pRowFrom->effect[CMD3].parameter;
+					}
+
+					if (!rowEncoding.isEmptyCmd4)
+					{
+						*moduleOffset++ = pRowFrom->effect[CMD4].command;
+						*moduleOffset++ = pRowFrom->effect[CMD4].parameter;
+					}
+
+					// If the Pattern Terminator Bit is set, there is no more Row data to process
+					if (rowEncoding.isEndOfPattern)
+						break;
+				}
+			}
+		}
+	}
+
+	// Write the fully constructed Module data to file once it is ready
+	ou.seekp(0, std::ios_base::beg);
+	ou.write((char*)moduleData, moduleSize);
+
+	// Delete the temporary data once it is written
+	delete moduleData;
+
+	// RMTE Module file should have been successfully created
+	return true;
+
 /*
 	UINT moduleSize = EMPTY;
 	BYTE* moduleData = NULL;
@@ -2556,10 +2847,10 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 	// Delete the temporary data once it is written
 	delete moduleData;
-*/
 
 	// RMTE Module file should have been successfully created
 	return true;
+*/
 }
 
 // Load a RMTE Module file
