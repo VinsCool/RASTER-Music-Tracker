@@ -133,11 +133,11 @@ bool CModule::InitialiseSubtune(TSubtune* pSubtune)
 	SetSubtuneName(pSubtune, "");
 
 	// Set the default parameters to all the Subtune variables
-	pSubtune->songLength = MODULE_DEFAULT_SONG_LENGTH;
-	pSubtune->patternLength = MODULE_DEFAULT_PATTERN_LENGTH;
-	pSubtune->channelCount = MODULE_DEFAULT_CHANNEL_COUNT;
-	pSubtune->songSpeed = MODULE_DEFAULT_SONG_SPEED;
-	pSubtune->instrumentSpeed = MODULE_DEFAULT_INSTRUMENT_SPEED;
+	pSubtune->parameter.songLength = MODULE_DEFAULT_SONG_LENGTH;
+	pSubtune->parameter.patternLength = MODULE_DEFAULT_PATTERN_LENGTH;
+	pSubtune->parameter.channelCount = MODULE_DEFAULT_CHANNEL_COUNT;
+	pSubtune->parameter.songSpeed = MODULE_DEFAULT_SONG_SPEED;
+	pSubtune->parameter.instrumentSpeed = MODULE_DEFAULT_INSTRUMENT_SPEED;
 
 	// Delete all Channels with leftover data
 	DeleteAllChannels(pSubtune);
@@ -157,10 +157,10 @@ bool CModule::InitialiseChannel(TChannel* pChannel)
 		return false;
 
 	// By default, only 1 Effect Command is enabled in all Track Channels
-	pChannel->isMuted = false;
-	pChannel->isEffectEnabled = true;
-	pChannel->effectCount = 0x01;
-	pChannel->channelVolume = 0x0F;
+	pChannel->parameter.isMuted = false;
+	pChannel->parameter.isEffectEnabled = true;
+	pChannel->parameter.effectCount = 0x01;
+	pChannel->parameter.channelVolume = 0x0F;
 
 	// Set all indexed Patterns to 0
 	for (int i = 0; i < SONGLINE_COUNT; i++)
@@ -255,15 +255,15 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	// Set the default Instrument name
 	SetInstrumentName(pInstrument, "New Instrument");
 
-	pInstrument->volumeFade = 0x00;
-	pInstrument->volumeSustain = 0x00;
-	pInstrument->volumeDelay = 0x00;
-	pInstrument->vibrato = 0x00;
-	pInstrument->vibratoDelay = 0x00;
-	pInstrument->freqShift = 0x00;
-	pInstrument->freqShiftDelay = 0x00;
-	pInstrument->autoFilter = 0x00;
-	pInstrument->autoFilterMode = false;
+	pInstrument->parameter.volumeFade = 0x00;
+	pInstrument->parameter.volumeSustain = 0x00;
+	pInstrument->parameter.volumeDelay = 0x00;
+	pInstrument->parameter.vibrato = 0x00;
+	pInstrument->parameter.vibratoDelay = 0x00;
+	pInstrument->parameter.freqShift = 0x00;
+	pInstrument->parameter.freqShiftDelay = 0x00;
+	pInstrument->parameter.autoFilter = 0x00;
+	pInstrument->parameter.autoFilterMode = false;
 
 	// Set the default Envelope Macro parameters, always disabled for newly created Instruments
 	TMacro macro{};
@@ -271,12 +271,12 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	macro.isEnabled = false;
 	macro.isReversed = false;
 
-	pInstrument->envelope.volume = macro;
-	pInstrument->envelope.timbre = macro;
-	pInstrument->envelope.audctl = macro;
-	pInstrument->envelope.effect = macro;
-	pInstrument->envelope.note = macro;
-	pInstrument->envelope.freq = macro;
+	pInstrument->parameter.envelope.volume = macro;
+	pInstrument->parameter.envelope.timbre = macro;
+	pInstrument->parameter.envelope.audctl = macro;
+	pInstrument->parameter.envelope.effect = macro;
+	pInstrument->parameter.envelope.note = macro;
+	pInstrument->parameter.envelope.freq = macro;
 	
 	// Instrument was initialised
 	return true;
@@ -1245,12 +1245,12 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		macro.isEnabled = true;
 		macro.isReversed = false;
 
-		pInstrument->envelope.volume = macro;
-		pInstrument->envelope.timbre = macro;
-		pInstrument->envelope.audctl = macro;
-		pInstrument->envelope.effect = macro;
-		pInstrument->envelope.note = macro;
-		pInstrument->envelope.freq = macro;
+		pInstrument->parameter.envelope.volume = macro;
+		pInstrument->parameter.envelope.timbre = macro;
+		pInstrument->parameter.envelope.audctl = macro;
+		pInstrument->parameter.envelope.effect = macro;
+		pInstrument->parameter.envelope.note = macro;
+		pInstrument->parameter.envelope.freq = macro;
 
 		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
 		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
@@ -1292,9 +1292,9 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		BYTE vibrato = memInstrument[9] & 0x03;							// Vibrato
 		BYTE freqShift = memInstrument[10];								// Freq Shift
 
-		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
-		pInstrument->volumeSustain = memInstrument[7] >> 4;				// Volume Minimum
-		pInstrument->volumeDelay = envelopeLength;						// Volume Slide delay, RMT originally processed this at Envelope Loop point
+		pInstrument->parameter.volumeFade = memInstrument[6];			// Volume Slide
+		pInstrument->parameter.volumeSustain = memInstrument[7] >> 4;	// Volume Minimum
+		pInstrument->parameter.volumeDelay = envelopeLength;			// Volume Slide delay, RMT originally processed this at Envelope Loop point
 
 		// Import the Vibrato with adjustments to make sound similar to the original implementation
 		// FIXME: Not a proper Vibrato Command conversion, this is a SineVibrato hack, the Pitch itself was used for calculations
@@ -1314,10 +1314,10 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		}
 
 		// Overwrite the Delay, Vibrato and Freqshift parameters with updated values if changes were needed
-		pInstrument->vibrato = delay && vibrato ? vibrato : 0x00;
-		pInstrument->vibratoDelay = delay && vibrato ? delay - 1 : 0x00;
-		pInstrument->freqShift = delay && freqShift ? freqShift : 0x00;
-		pInstrument->freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
+		pInstrument->parameter.vibrato = delay && vibrato ? vibrato : 0x00;
+		pInstrument->parameter.vibratoDelay = delay && vibrato ? delay - 1 : 0x00;
+		pInstrument->parameter.freqShift = delay && freqShift ? freqShift : 0x00;
+		pInstrument->parameter.freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
 
 		// Create the Envelope and Table Parameters
 		TEnvelopeParameter envelopeParameter{};
@@ -1971,7 +1971,7 @@ const UINT CModule::GetSongLength(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT songLength = pSubtune->songLength;
+		UINT songLength = pSubtune->parameter.songLength;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (songLength == 0)
@@ -1992,7 +1992,7 @@ const UINT CModule::GetPatternLength(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT patternLength = pSubtune->patternLength;
+		UINT patternLength = pSubtune->parameter.patternLength;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (patternLength == 0)
@@ -2013,7 +2013,7 @@ const UINT CModule::GetChannelCount(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT channelCount = pSubtune->channelCount;
+		UINT channelCount = pSubtune->parameter.channelCount;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (channelCount == 0)
@@ -2034,7 +2034,7 @@ const UINT CModule::GetSongSpeed(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT songSpeed = pSubtune->songSpeed;
+		UINT songSpeed = pSubtune->parameter.songSpeed;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (songSpeed == 0)
@@ -2055,7 +2055,7 @@ const UINT CModule::GetInstrumentSpeed(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT instrumentSpeed = pSubtune->instrumentSpeed;
+		UINT instrumentSpeed = pSubtune->parameter.instrumentSpeed;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (instrumentSpeed == 0)
@@ -2081,7 +2081,7 @@ const UINT CModule::GetEffectCommandCount(TChannel* pChannel)
 {
 	if (pChannel)
 	{
-		UINT effectCount = pChannel->effectCount;
+		UINT effectCount = pChannel->parameter.effectCount;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (effectCount == 0)
@@ -2125,7 +2125,7 @@ bool CModule::SetSongLength(TSubtune* pSubtune, UINT length)
 		if (length >= SONGLINE_COUNT)
 			length = 0;
 
-		pSubtune->songLength = length;
+		pSubtune->parameter.songLength = length;
 		return true;
 	}
 
@@ -2145,7 +2145,7 @@ bool CModule::SetPatternLength(TSubtune* pSubtune, UINT length)
 		if (length >= ROW_COUNT)
 			length = 0;
 
-		pSubtune->patternLength = length;
+		pSubtune->parameter.patternLength = length;
 		return true;
 	}
 
@@ -2165,7 +2165,7 @@ bool CModule::SetChannelCount(TSubtune* pSubtune, UINT count)
 		if (count >= CHANNEL_COUNT)
 			count = 0;
 
-		pSubtune->channelCount = count;
+		pSubtune->parameter.channelCount = count;
 		return true;
 	}
 
@@ -2185,7 +2185,7 @@ bool CModule::SetSongSpeed(TSubtune* pSubtune, UINT speed)
 		if (speed >= SONG_SPEED_MAX)
 			speed = 0;
 
-		pSubtune->songSpeed = speed;
+		pSubtune->parameter.songSpeed = speed;
 		return true;
 	}
 
@@ -2205,7 +2205,7 @@ bool CModule::SetInstrumentSpeed(TSubtune* pSubtune, UINT speed)
 		if (speed >= INSTRUMENT_SPEED_MAX)
 			speed = 0;
 
-		pSubtune->instrumentSpeed = speed;
+		pSubtune->parameter.instrumentSpeed = speed;
 		return true;
 	}
 
@@ -2234,7 +2234,7 @@ bool CModule::SetEffectCommandCount(TChannel* pChannel, UINT column)
 		else if (column == 0)
 			column++;
 
-		pChannel->effectCount = column;
+		pChannel->parameter.effectCount = column;
 		return true;
 	}
 
@@ -2731,10 +2731,10 @@ bool CModule::CopyChannel(TChannel* pFromChannel, TChannel* pToChannel)
 	if (!pFromChannel || !pToChannel)
 		return false;
 
-	pToChannel->isMuted = pFromChannel->isMuted;
-	pToChannel->isEffectEnabled = pFromChannel->isEffectEnabled;
-	pToChannel->effectCount = pFromChannel->effectCount;
-	pToChannel->channelVolume = pFromChannel->channelVolume;
+	pToChannel->parameter.isMuted = pFromChannel->parameter.isMuted;
+	pToChannel->parameter.isEffectEnabled = pFromChannel->parameter.isEffectEnabled;
+	pToChannel->parameter.effectCount = pFromChannel->parameter.effectCount;
+	pToChannel->parameter.channelVolume = pFromChannel->parameter.channelVolume;
 
 	for (int i = 0; i < SONGLINE_COUNT; i++)
 		pToChannel->songline[i] = pFromChannel->songline[i];
@@ -2765,11 +2765,11 @@ bool CModule::CopySubtune(TSubtune* pFromSubtune, TSubtune* pToSubtune)
 
 	SetSubtuneName(pToSubtune, pFromSubtune->name);
 
-	pToSubtune->songLength = pFromSubtune->songLength;
-	pToSubtune->patternLength = pFromSubtune->patternLength;
-	pToSubtune->songSpeed = pFromSubtune->songSpeed;
-	pToSubtune->instrumentSpeed = pFromSubtune->instrumentSpeed;
-	pToSubtune->channelCount = pFromSubtune->channelCount;
+	pToSubtune->parameter.songLength = pFromSubtune->parameter.songLength;
+	pToSubtune->parameter.patternLength = pFromSubtune->parameter.patternLength;
+	pToSubtune->parameter.songSpeed = pFromSubtune->parameter.songSpeed;
+	pToSubtune->parameter.instrumentSpeed = pFromSubtune->parameter.instrumentSpeed;
+	pToSubtune->parameter.channelCount = pFromSubtune->parameter.channelCount;
 
 	for (int i = 0; i < CHANNEL_COUNT; i++)
 	{

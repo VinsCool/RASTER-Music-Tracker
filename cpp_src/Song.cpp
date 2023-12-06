@@ -4491,22 +4491,22 @@ void CSong::DrawInstrumentEditor()
 		TextXY(s, x, y);
 
 		TextMiniXY("PARAMETERS", x, y + z * ++++m);
-		s.Format(" VOLUMEFADE:     %02X", pInstrument->volumeFade);
+		s.Format(" VOLUMEFADE:     %02X", pInstrument->parameter.volumeFade);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VOLUMESUSTAIN:  %02X", pInstrument->volumeSustain);
+		s.Format(" VOLUMESUSTAIN:  %02X", pInstrument->parameter.volumeSustain);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VOLUMEDELAY:    %02X", pInstrument->volumeDelay);
+		s.Format(" VOLUMEDELAY:    %02X", pInstrument->parameter.volumeDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VIBRATO:        %02X", pInstrument->vibrato);
+		s.Format(" VIBRATO:        %02X", pInstrument->parameter.vibrato);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VIBRATODELAY:   %02X", pInstrument->vibratoDelay);
+		s.Format(" VIBRATODELAY:   %02X", pInstrument->parameter.vibratoDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" FREQSHIFT:      %02X", pInstrument->freqShift);
+		s.Format(" FREQSHIFT:      %02X", pInstrument->parameter.freqShift);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" FREQSHIFTDELAY: %02X", pInstrument->freqShiftDelay);
+		s.Format(" FREQSHIFTDELAY: %02X", pInstrument->parameter.freqShiftDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
 
-		pMacro = &pInstrument->envelope.volume;
+		pMacro = &pInstrument->parameter.envelope.volume;
 		pEnvelope = g_Module.GetVolumeEnvelope(pMacro->index);
 		c = TEXT_MINI_COLOR_WHITE;
 

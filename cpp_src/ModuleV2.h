@@ -6,6 +6,7 @@
 // TODO: Create an enum for the majority of the things defined below, it might make future revisions a lot easier...
 
 #pragma once
+#pragma pack(1)
 
 #include "General.h"
 #include "global.h"
@@ -213,19 +214,30 @@ struct TRow
 	TEffect effect[PATTERN_EFFECT_COUNT];	// Effect Command, toggled from the Active Effect Columns in Track Channels
 };
 
+// Pattern parameters, used to define all of the main functionalities associated to it
+struct TPatternParameter
+{
+	BYTE subtuneIndex : 6;					// Subtune Index Number, referenced during File I/O operation, meaningless otherwise
+	BYTE channelIndex : 4;					// Channel Index Number, referenced during File I/O operation, meaningless otherwise
+	BYTE patternIndex;						// Pattern Index Number, referenced during File I/O operation, meaningless otherwise
+};
+
 // Pattern Data, indexed by the TRow Struct
 struct TPattern
 {
+	TPatternParameter parameter;			// Pattern Parameters
 	TRow row[ROW_COUNT];					// Row data is contained withn its associated Pattern index
 };
 
-// Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
-struct TChannel
+// Channel parameters, used to define all of the main functionalities associated to it
+struct TChannelParameter
 {
 	union
 	{
 		struct
 		{
+			BYTE subtuneIndex : 6;			// Subtune Index Number, referenced during File I/O operation, meaningless otherwise
+			BYTE channelIndex : 4;			// Channel Index Number, referenced during File I/O operation, meaningless otherwise
 			BYTE channelVolume : 4;			// Channel Volume, currently placeholder bits, not sure how that would work out...
 			BYTE effectCount : 2;			// Number of Effect Commands enabled per Track Channel, overriden by the next bit possibly...?
 			bool isEffectEnabled : 1;		// Channel is using Effect Commands? Placeholder bit for now
@@ -233,18 +245,24 @@ struct TChannel
 		};
 		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
+};
+
+// Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
+struct TChannel
+{
+	TChannelParameter parameter;			// Channel Parameters
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
 	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
 };
 
-// Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
-struct TSubtune
+// Instrument parameters, used to define all of the main functionalities associated to it
+struct TSubtuneParameter
 {
-	char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
 	union
 	{
 		struct
 		{
+			BYTE subtuneIndex : 6;			// Subtune Index Number, referenced during File I/O operation, meaningless otherwise
 			BYTE songLength;				// Song Length, in Songlines
 			BYTE patternLength;				// Pattern Length, in Rows
 			BYTE songSpeed;					// Song Speed, in Frames per Row
@@ -253,6 +271,13 @@ struct TSubtune
 		};
 		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
+};
+
+// Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
+struct TSubtune
+{
+	TSubtuneParameter parameter;			// Subtune Parameters
+	char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 };
 
@@ -335,14 +360,13 @@ struct TEnvelopeParameter
 			bool isAbsolute : 1;			// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
 			bool isAdditive : 1;			// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
 		};
-		BYTE parameters[4];					// Bitwise parameters union, there is probably nothing else to add here but we never know...
+		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
 };
 
-// Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
-struct TInstrumentV2
+// Instrument parameters, used to define all of the main functionalities associated to it
+struct TInstrumentParameter
 {
-	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
 	union
 	{
 		struct
@@ -360,6 +384,14 @@ struct TInstrumentV2
 		};
 		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
 	};
+};
+
+// Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
+struct TInstrumentV2
+{
+	BYTE instrumentIndex : 6;				// Instrument Index Number, referenced during File I/O operation, meaningless otherwise
+	TInstrumentParameter parameter;			// Instrument Parameters
+	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
 };
 
 // Instrument Volume Envelope
@@ -508,6 +540,8 @@ struct TFreqTableEnvelope
 // Instrument Envelope data, with all the data structures unified, making virtually any Envelope compatible between each others
 struct TEnvelope
 {
+	BYTE envelopeIndex : 6;					// Envelope Index Number, referenced during File I/O operation, meaningless otherwise
+	BYTE envelopeType : 3;					// Envelope Type, referenced during File I/O operation, meaningless otherwise
 	TEnvelopeParameter parameter;
 	union
 	{
@@ -521,6 +555,7 @@ struct TEnvelope
 };
 
 // Also sort of redundant...? This is justified for the Envelopes alone, at least...
+// TODO(?): Move Envelopes to their own Index since they're not bound to Instruments
 struct TInstrumentIndex
 {
 	TInstrumentV2* instrument[INSTRUMENT_COUNT];
@@ -545,12 +580,11 @@ typedef struct HiHeader_t
 		{
 			char identifier[4];						// RMTE
 			BYTE version;							// 0 = Prototype, 1+ = Release
-			BYTE region;							// 0 = PAL, 1 = NTSC
-			BYTE highlightPrimary;					// 1st Row Highlight
-			BYTE highlightSecondary;				// 2nd Row Highlight
-			double baseTuning;						// A-4 Tuning in Hz, eg: 440, 432, etc
-			BYTE baseNote;							// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
-			BYTE baseOctave;						// Base Octave used for Transposition, eg: 4 for no transposition
+			BYTE subtuneCount;						// Total number of Subtunes
+			WORD channelCount;						// Total number of Channels
+			UINT patternCount;						// Total number of Patterns
+			BYTE instrumentCount;					// Total number of Instruments
+			WORD envelopeCount;						// Total number of Envelopes
 		};
 		BYTE parameters[MODULE_PADDING];			// Reserved bytes
 	};
@@ -564,6 +598,8 @@ typedef struct LoHeader_t
 		struct
 		{
 			UINT subtuneIndex;						// Offset to Subtune data
+			UINT channelIndex;						// Offset to Channel data
+			UINT patternIndex;						// Offset to Pattern data
 			UINT instrumentIndex;					// Offset to Instrument data
 			UINT envelopeIndex;						// Offset to Envelope data
 		};
@@ -579,11 +615,25 @@ typedef struct ModuleHeader_t
 	char name[MODULE_SONG_NAME_MAX];
 	char author[MODULE_AUTHOR_NAME_MAX];
 	char copyright[MODULE_COPYRIGHT_INFO_MAX];
+	bool region;									// 0 = PAL, 1 = NTSC
+	BYTE highlightPrimary;							// 1st Row Highlight
+	BYTE highlightSecondary;						// 2nd Row Highlight
+	double baseTuning;								// A-4 Tuning in Hz, eg: 440, 432, etc
+	BYTE baseNote;									// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
+	BYTE baseOctave;								// Base Octave used for Transposition, eg: 4 for no transposition
+	//
 	// Reserved bytes are not defined, but still implied here for future format revisions
 	// Most data could be shifted further down upon file creation, if new parameters are then created later
 	// The actual Module data is indexed in the Low Header, and may be offset anywhere else very easily too
+	//
 } TModuleHeader;
 
+//UINT test0 = sizeof(TModuleHeader);
+//UINT test1 = sizeof(THiHeader);
+//UINT test2 = sizeof(TLoHeader);
+//UINT test3 = sizeof(double);
+//UINT test3 = sizeof(TRow);
+//UINT test3 = sizeof(TChannelParameter);
 
 // ----------------------------------------------------------------------------
 // RMTE Module Class
