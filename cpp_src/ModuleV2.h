@@ -16,9 +16,8 @@
 // Module Header definition
 //
 
-#define MODULE_VERSION					0											// Module Version number, the highest value is always assumed to be the most recent
 #define MODULE_IDENTIFIER				"RMTE"										// "Raster Music Tracker Extended" Module Identifier
-//#define MODULE_IDENTIFIER_MAX			4
+#define MODULE_VERSION					0											// Module Version number, the highest value is always assumed to be the most recent
 #define MODULE_REGION					g_ntsc										// 0 for PAL, 1 for NTSC, anything else is also assumed to be NTSC
 #define MODULE_CHANNEL_COUNT			g_tracks4_8									// 4 for Mono, 8 for Stereo, add more for whatever setup that could be used
 #define MODULE_BASE_TUNING				g_baseTuning								// Default A-4 Tuning
@@ -38,6 +37,7 @@
 #define MODULE_DEFAULT_SUBTUNE_NAME		"Noname Subtune"
 #define MODULE_DEFAULT_SUBTUNE			0											// Default Active Subtune
 #define MODULE_DEFAULT_INSTRUMENT		0											// Default Active Instrument
+#define MODULE_DEFAULT_ENVELOPE			0											// Default Active Envelope
 #define MODULE_DEFAULT_PATTERN_LENGTH	64											// Default Pattern Length
 #define MODULE_DEFAULT_SONG_LENGTH		1											// Default Song Length
 #define MODULE_DEFAULT_SONG_SPEED		6											// Default Song Speed
@@ -47,14 +47,6 @@
 #define MODULE_SONG_NAME_MAX			64											// Maximum length of Song Title
 #define MODULE_AUTHOR_NAME_MAX			64											// Maximum length of Author name
 #define MODULE_COPYRIGHT_INFO_MAX		64											// Maximum length of Copyright info
-
-#define MODULE_PADDING					32
-
-//#define MODULE_PADDING					32											// Padding bytes for the Module file format specifications
-//#define ENVELOPE_PADDING				4											// Padding bytes for the Envelope parameters used in Instruments
-//#define LOHEADER_PADDING				2560										// Padding bytes for the Low Module Header, used for the Module Pointer Tables
-//#define HIHEADER_PADDING				256											// Padding bytes for the High Module Header, used for the Module parameters
-//#define METADATA_PADDING				64											// Padding bytes for the Module Metadata
 
 
 // ----------------------------------------------------------------------------
@@ -78,11 +70,8 @@
 #define VOLUME_COUNT				16												// Maximum Volume Index
 #define EFFECT_PARAMETER_COUNT		256												// Maximum Effect Parameter $XY Index
 #define INSTRUMENT_NAME_MAX			64												// Maximum length of Instrument name
-#define ENVELOPE_STEP_COUNT			256												// Maximum Envelope Index
-#define EFFECT_BYTE_COUNT			4
-#define ENVELOPE_EFFECT_STEP_COUNT	(ENVELOPE_STEP_COUNT / EFFECT_BYTE_COUNT)
-#define FREQ_BYTE_COUNT				2
-#define ENVELOPE_FREQ_STEP_COUNT	(ENVELOPE_STEP_COUNT / FREQ_BYTE_COUNT)
+#define ENVELOPE_STEP_COUNT			256												// Maximum Envelope Length
+#define ENVELOPE_COUNT				INSTRUMENT_COUNT								// Maximum Envelope Index
 
 
 // ----------------------------------------------------------------------------
@@ -188,10 +177,22 @@ typedef enum instrumentEffectCommand_t : BYTE
 // Effect Command Parameter preset values
 typedef enum effectParameter_t : BYTE
 {
-	EFFECT_PARAMETER_MIN = 0x00,
-	EFFECT_PARAMETER_MED = 0x80,
-	EFFECT_PARAMETER_MAX = 0xFF,
+	EP_MIN = 0x00,
+	EP_MED = 0x80,
+	EP_MAX = 0xFF,
 } TEffectParameter;
+
+// Envelope Types that could be used by Instruments
+typedef enum envelopeType_t : BYTE
+{
+	ET_VOLUME = 0,
+	ET_TIMBRE,
+	ET_AUDCTL,
+	ET_EFFECT,
+	ET_NOTE_TABLE,
+	ET_FREQ_TABLE,
+	ET_COUNT,
+} TEnvelopeType;
 
 
 // ----------------------------------------------------------------------------
@@ -199,252 +200,109 @@ typedef enum effectParameter_t : BYTE
 //
 
 // Effect Command Data, 1 byte for the Identifier, and 1 byte for the Parameter, nothing too complicated
-struct TEffect
+typedef struct effect_t
 {
 	BYTE command : 5;						// Command Identifier, bits are not representative of anything, yet
 	BYTE parameter;							// Command Parameter, values ranging from 0 to 255 may be used
-};
+} TEffect;
 
 // Row Data, used within the Pattern data, designed to be easy to manage, following a Row by Row approach
-struct TRow
+typedef struct row_t
 {
 	BYTE note : 7;							// Note Index, as well as Pattern Commands such as Stop, Release, Retrigger, etc
 	BYTE instrument : 7;					// Instrument Index, bits are not representative of anything, yet
 	BYTE volume : 5;						// Volume Index, bits are not representative of anything, yet
 	TEffect effect[PATTERN_EFFECT_COUNT];	// Effect Command, toggled from the Active Effect Columns in Track Channels
-};
-
-// Pattern parameters, used to define all of the main functionalities associated to it
-struct TPatternParameter
-{
-	BYTE subtuneIndex : 6;					// Subtune Index Number, referenced during File I/O operation, meaningless otherwise
-	BYTE channelIndex : 4;					// Channel Index Number, referenced during File I/O operation, meaningless otherwise
-	BYTE patternIndex;						// Pattern Index Number, referenced during File I/O operation, meaningless otherwise
-};
+} TRow;
 
 // Pattern Data, indexed by the TRow Struct
-struct TPattern
+typedef struct pattern_t
 {
-	TPatternParameter parameter;			// Pattern Parameters
 	TRow row[ROW_COUNT];					// Row data is contained withn its associated Pattern index
-};
-
-// Channel parameters, used to define all of the main functionalities associated to it
-struct TChannelParameter
-{
-	union
-	{
-		struct
-		{
-			BYTE subtuneIndex : 6;			// Subtune Index Number, referenced during File I/O operation, meaningless otherwise
-			BYTE channelIndex : 4;			// Channel Index Number, referenced during File I/O operation, meaningless otherwise
-			BYTE channelVolume : 4;			// Channel Volume, currently placeholder bits, not sure how that would work out...
-			BYTE effectCount : 2;			// Number of Effect Commands enabled per Track Channel, overriden by the next bit possibly...?
-			bool isEffectEnabled : 1;		// Channel is using Effect Commands? Placeholder bit for now
-			bool isMuted : 1;				// Channel is muted? Placeholder bit for now
-		};
-		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
-	};
-};
+} TPattern;
 
 // Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
-struct TChannel
+typedef struct channel_t
 {
-	TChannelParameter parameter;			// Channel Parameters
+	BYTE channelVolume : 4;					// Channel Volume, currently placeholder bits, not sure how that would work out...
+	BYTE effectCount : 2;					// Number of Effect Commands enabled per Track Channel, overriden by the next bit possibly...?
+	bool isEffectEnabled : 1;				// Channel is using Effect Commands? Placeholder bit for now
+	bool isMuted : 1;						// Channel is muted? Placeholder bit for now
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
 	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
-};
-
-// Instrument parameters, used to define all of the main functionalities associated to it
-struct TSubtuneParameter
-{
-	union
-	{
-		struct
-		{
-			BYTE subtuneIndex : 6;			// Subtune Index Number, referenced during File I/O operation, meaningless otherwise
-			BYTE songLength;				// Song Length, in Songlines
-			BYTE patternLength;				// Pattern Length, in Rows
-			BYTE songSpeed;					// Song Speed, in Frames per Row
-			BYTE instrumentSpeed : 4;		// Instrument Speed, in Frames per VBI
-			BYTE channelCount : 4;			// Number of Channels used in Subtune
-		};
-		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
-	};
-};
+} TChannel;
 
 // Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
-struct TSubtune
+typedef struct subtune_t
 {
-	TSubtuneParameter parameter;			// Subtune Parameters
 	char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
+	BYTE songLength;						// Song Length, in Songlines
+	BYTE patternLength;						// Pattern Length, in Rows
+	BYTE songSpeed;							// Song Speed, in Frames per Row
+	BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
+	BYTE channelCount : 4;					// Number of Channels used in Subtune
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
-};
+} TSubtune;
 
-// Redundant...?
-struct TSubtuneIndex
-{
-	TSubtune* subtune[SUBTUNE_COUNT];
-};
-
-// Row data encoding, a bit set would mean there is empty data for an element
-// This is a very rough implementation of the DUMB Music Driver Module format encoding
-// That format is very barebone, but it might do a good enough job, hopefully
-// 
-// Reminder: Bitwise order goes from 0 to 7, the leftmost bits are the last entries added in the Struct!
-// If I wanted to specifically check Bit 7 for a parameter, I must remember that it will be at the bottom, not the top!
-//
-struct TRowEncoding
-{
-	union
-	{
-		struct
-		{
-			bool isEmptyCmd4 : 1;			// Empty CMD4? Skip next 2 bytes
-			bool isEmptyCmd3 : 1;			// Empty CMD3? Skip next 2 bytes
-			bool isEmptyCmd2 : 1;			// Empty CMD2? Skip next 2 bytes
-			bool isEmptyCmd1 : 1;			// Empty CMD1? Skip next 2 bytes
-			bool isEmptyVolume : 1;			// Empty Volume? Skip next byte
-			bool isEmptyInstrument : 1;		// Empty Instrument? Skip next byte
-			bool isEmptyNote : 1;			// Empty Note? Skip next byte
-			bool isEndOfPattern : 1;		// Pattern Terminator?, Skip next byte and set Infinite Pause Length
-		};
-		BYTE parameters;					// Bitwise parameters union
-	};
-	BYTE pauseLength;						// Skip next 0-255 Rows, overridden by the Pattern Terminator Bit
-};
 
 // ----------------------------------------------------------------------------
 // RMTE Module Structs for Instrument, Envelope, Table, etc
 //
 
 // Instrument Envelope Macro, used to specify which Envelope Index is associated to the Instrument and how it is used
-struct TMacro
+typedef struct envelopeMacro_t
 {
-	union
-	{
-		struct
-		{
-			BYTE index : 6;					// Unique Envelopes may be shared between all Instruments, useful for using identical Volume, Timbre, Audctl, etc
-			bool isReversed : 1;			// Envelope is played backwards if True, otherwise it will be played in the correct order, placeholder bit for now
-			bool isEnabled : 1;				// Envelope is used if True, otherwise it will be skipped, but still displayed on screen for reference
-		};
-		BYTE parameters;					// Bitwise parameters union
-	};
-};
-
-// A Macro of Instrument Envelope Macros, what else? This should be pretty self-explanatory :D
-struct TEnvelopeMacro
-{
-	TMacro volume;
-	TMacro timbre;
-	TMacro audctl;
-	TMacro effect;
-	TMacro note;
-	TMacro freq;
-};
-
-// Instrument Envelope parameters, used to define things such as the Envelope Length, Loop Point, Speed, etc
-struct TEnvelopeParameter
-{
-	union
-	{
-		struct
-		{
-			BYTE length;					// Envelope Length, in frames
-			BYTE loop;						// Envelope Loop point
-			BYTE release;					// Envelope Release point
-			BYTE speed : 4;					// Envelope Speed, in ticks per frames
-			bool isLooped : 1;				// Loop point is used if True, otherwise the Envelope will end after the last Frame was processed
-			bool isReleased : 1;			// Release point is used if True, could also be combined to Loop Point, useful for sustaining a Note Release
-			bool isAbsolute : 1;			// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
-			bool isAdditive : 1;			// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
-		};
-		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
-	};
-};
-
-// Instrument parameters, used to define all of the main functionalities associated to it
-struct TInstrumentParameter
-{
-	union
-	{
-		struct
-		{
-			TEnvelopeMacro envelope;		// Envelope Macros associated to the Instrument, taking priority over certain Pattern Effect Commands
-			BYTE volumeFade;				// Volume Fadeout parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
-			BYTE volumeSustain;				// Volume Sustain parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
-			BYTE volumeDelay;				// Volume Delay parameter, used when VolumeFade is a non-zero parameter, a delay of 0x00 is immediate
-			BYTE vibrato;					// Vibrato parameter, taking priority over EFFECT_VIBRATO for Legacy RMT Instrument compatibility
-			BYTE vibratoDelay;				// Vibrato Delay parameter, used when Vibrato is a non-zero parameter, a delay of 0x00 is immediate
-			BYTE freqShift;					// Freq Shift parameter, taking priority EFFECT_PITCH_UP and EFFECT_PITCH_DOWN for Legacy RMT Instrument compatibility
-			BYTE freqShiftDelay;			// Freq Shift Delay parameter, used when FreqShift is a non-zero parameter, a delay of 0x00 is immediate
-			BYTE autoFilter;				// AutoFilter parameter, taking priority over EFFECT_AUTOFILTER for Legacy RMT Instrument compatibility
-			bool autoFilterMode : 1;		// AutoFilter Mode parameter, Additive Mode if True, otherwise it is Absolute
-		};
-		BYTE parameters[MODULE_PADDING];	// Parameter bytes, with padding reserved for future format revisions, mainly for backwards compatibility
-	};
-};
+	BYTE index : 6;							// Unique Envelopes may be shared between all Instruments, useful for using identical Volume, Timbre, Audctl, etc
+	bool isReversed : 1;					// Envelope is played backwards if True, otherwise it will be played in the correct order, placeholder bit for now
+	bool isEnabled : 1;						// Envelope is used if True, otherwise it will be skipped, but still displayed on screen for reference
+} TEnvelopeMacro;
 
 // Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
-struct TInstrumentV2
+typedef struct instrument_t
 {
-	BYTE instrumentIndex : 6;				// Instrument Index Number, referenced during File I/O operation, meaningless otherwise
-	TInstrumentParameter parameter;			// Instrument Parameters
 	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
-};
+	BYTE volumeFade;						// Volume Fadeout parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
+	BYTE volumeSustain;						// Volume Sustain parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
+	BYTE volumeDelay;						// Volume Delay parameter, used when VolumeFade is a non-zero parameter, a delay of 0x00 is immediate
+	BYTE vibrato;							// Vibrato parameter, taking priority over EFFECT_VIBRATO for Legacy RMT Instrument compatibility
+	BYTE vibratoDelay;						// Vibrato Delay parameter, used when Vibrato is a non-zero parameter, a delay of 0x00 is immediate
+	BYTE freqShift;							// Freq Shift parameter, taking priority EFFECT_PITCH_UP and EFFECT_PITCH_DOWN for Legacy RMT Instrument compatibility
+	BYTE freqShiftDelay;					// Freq Shift Delay parameter, used when FreqShift is a non-zero parameter, a delay of 0x00 is immediate
+	BYTE autoFilter;						// AutoFilter parameter, taking priority over EFFECT_AUTOFILTER for Legacy RMT Instrument compatibility
+	bool autoFilterMode : 1;				// AutoFilter Mode parameter, Additive Mode if True, otherwise it is Absolute
+	TEnvelopeMacro envelope[ET_COUNT];		// Envelope Macros associated to the Instrument, taking priority over certain Pattern Effect Commands
+} TInstrumentV2;
 
 // Instrument Volume Envelope
-struct TVolumeEnvelope
+typedef struct volumeEnvelope_t
 {
-	union
-	{
-		struct
-		{
-			BYTE volumeLeft : 4;			// Left POKEY Volume, for Legacy RMT Instrument Compatibility, used by default for everything otherwise
-			BYTE volumeRight : 4;			// Right POKEY Volume, for Legacy RMT Instrument Compatibility
-		};
-		BYTE parameters;
-	};
-};
+	BYTE volumeLeft : 4;					// Left POKEY Volume, for Legacy RMT Instrument Compatibility, used by default for everything otherwise
+	BYTE volumeRight : 4;					// Right POKEY Volume, for Legacy RMT Instrument Compatibility
+} TVolumeEnvelope;
 
 // Instrument Timbre Envelope
-struct TTimbreEnvelope
+typedef struct timbreEnvelope_t
 {
-	union
-	{
-		struct
-		{
-			BYTE waveForm : 4;				// eg: Buzzy, Gritty, etc
-			BYTE distortion : 3;			// eg: Pure (0xA0), Poly4 (0xC0), etc
-			bool isVolumeOnly : 1;			// Volume Only Mode, an override is plannned for sample/wavetable playback support in the future...
-		};
-		BYTE parameters;
-	};
-};
+	BYTE waveForm : 4;						// eg: Buzzy, Gritty, etc
+	bool isVolumeOnly : 1;					// Volume Only Mode, an override is plannned for sample/wavetable playback support in the future...
+	BYTE distortion : 3;					// eg: Pure (0xA0), Poly4 (0xC0), etc
+} TTimbreEnvelope;
 
 // Instrument AUDCTL Envelope
-struct TAudctlEnvelope
+typedef struct audctlEnvelope_t
 {
-	union
-	{
-		struct
-		{
-			bool is15KhzMode : 1;
-			bool isHighPassCh24 : 1;
-			bool isHighPassCh13 : 1;
-			bool isJoinedCh34 : 1;
-			bool isJoinedCh12 : 1;
-			bool is179MhzCh3 : 1;
-			bool is179MhzCh1 : 1;
-			bool isPoly9Noise : 1;
-		};
-		BYTE parameters;
-	};
-};
+	bool is15KhzMode : 1;
+	bool isHighPassCh24 : 1;
+	bool isHighPassCh13 : 1;
+	bool isJoinedCh34 : 1;
+	bool isJoinedCh12 : 1;
+	bool is179MhzCh3 : 1;
+	bool is179MhzCh1 : 1;
+	bool isPoly9Noise : 1;
+} TAudctlEnvelope;
 
 // Instrument Effect(s) Envelope
-struct TEffectEnvelope
+typedef struct effectEnvelope_t
 {
 	// Legacy RMT (1.28 and 1.34) have the following Effect Commands:
 	// 
@@ -473,34 +331,27 @@ struct TEffectEnvelope
 	// Byte 3 -> If it is a 16-bit Command, Byte 3 and 4 will be combined and used as the Effect Command Parameter
 	// Byte 4 -> Else, Byte 3 and 4 will be distinct 8-bit parameters, both assigned to their respective 8-bit Commands
 	// 
-	union
-	{
-		struct
-		{
-			// Byte 1: Automatic Triggers
-			bool autoFilter : 1;			// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
-			bool auto16Bit : 1;				// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
-			bool autoReverse16 : 1;			// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
-			bool auto179Mhz : 1;			// 1.79Mhz mode, triggered from Channel 1 and/or 3
-			bool auto15Khz : 1;				// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
-			bool autoPoly9 : 1;				// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
-			bool autoTwoTone : 1;			// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
-			bool unused : 1;				// Reserved, but unused as it currently is
 
-			// Byte 2: Effect Command Identifiers
-			BYTE command_1 : 4;
-			BYTE command_2 : 4;
+	// Byte 1: Automatic Triggers
+	bool autoFilter : 1;					// High Pass Filter, triggered from Channel 1 and/or 2, hijacking Channel 3 and/or 4
+	bool auto16Bit : 1;						// 16-bit mode, triggered from Channel 2 and/or 4, hijacking Channel 1 and/or 3
+	bool autoReverse16 : 1;					// Reverse 16-bit mode, triggered from Channel 1 and/or 3, hijacking Channel 2 and/or 4
+	bool auto179Mhz : 1;					// 1.79Mhz mode, triggered from Channel 1 and/or 3
+	bool auto15Khz : 1;						// 15Khz mode, triggered from any Channel, hijacking all Channels not affected by 1.79Mhz mode (16-bit included)
+	bool autoPoly9 : 1;						// Poly9 Noise mode, triggered from any Channel, hijacking all Channels using Distortion 0 and 8
+	bool autoTwoTone : 1;					// Automatic Two-Tone Filter, triggered from Channel 1, hijacking Channel 2
 
-			// Byte 3 and 4: Effect Command Parameters
-			BYTE parameter_1;
-			BYTE parameter_2;
-		};
-		BYTE parameters[EFFECT_BYTE_COUNT];
-	};
-};
+	// Byte 2: Effect Command Identifiers
+	BYTE command_1 : 4;
+	BYTE command_2 : 4;
+
+	// Byte 3 and 4: Effect Command Parameters
+	BYTE parameter_1;
+	BYTE parameter_2;
+} TEffectEnvelope;
 
 // Instrument Note Table Envelope
-struct TNoteTableEnvelope
+typedef struct noteTableEnvelope_t
 {
 	union
 	{
@@ -512,128 +363,156 @@ struct TNoteTableEnvelope
 		};
 		SBYTE noteRelative : 7;				// Transpose by +- 64 semitones (Relative/Additive), capped to NOTE_COUNT
 		BYTE noteAbsolute;					// Set Note Index 0-255 (Absolute/Additive), capped to NOTE_COUNT
-		BYTE parameters;
 	};
-};
+} TNoteTableEnvelope;
 
 // Instrument Freq Table Envelope, 2 bytes are used per Envelope step, in order to form the corresponding 8-bit/16-bit Freq values when needed
-struct TFreqTableEnvelope
+typedef struct freqTableEnvelope_t
 {
 	union
 	{
-		struct
-		{
-			BYTE freqAbsoluteLo;			// Set Freq LSB Index 0-255 (Absolute/Additive), capped to FREQ_COUNT
-			BYTE freqAbsoluteHi;			// Set Freq MSB Index 0-255 (Absolute/Additive), capped to FREQ_COUNT
-		};
-		struct
-		{
-			SBYTE freqRelativeLo;			// Transpose by +- 128 Freq LSB units (Relative/Additive), capped to FREQ_COUNT
-			SBYTE freqRelativeHi;			// Transpose by +- 128 Freq MSB units (Relative/Additive), capped to FREQ_COUNT
-		};
-		WORD freqAbsolute;					// Set Freq Index 0-65535 (Absolute/Additive), capped to FREQ_COUNT_16
-		SWORD freqRelative;					// Transpose by +- 32768 Freq units (Relative/Additive), capped to FREQ_COUNT_16
-		BYTE parameters[FREQ_BYTE_COUNT];
+		WORD freqAbsolute;					// Set Freq Index 0-65535 (Absolute/Additive), capped to FREQ_COUNT or FREQ_COUNT_16 if 16-bit Mode is active
+		SWORD freqRelative;					// Transpose by +- 32768 Freq units (Relative/Additive), capped to FREQ_COUNT or FREQ_COUNT_16 if 16-bit Mode is active
 	};
-};
+} TFreqTableEnvelope;
 
 // Instrument Envelope data, with all the data structures unified, making virtually any Envelope compatible between each others
-struct TEnvelope
+typedef struct envelope_t
 {
-	BYTE envelopeIndex : 6;					// Envelope Index Number, referenced during File I/O operation, meaningless otherwise
-	BYTE envelopeType : 3;					// Envelope Type, referenced during File I/O operation, meaningless otherwise
-	TEnvelopeParameter parameter;
+	BYTE length;							// Envelope Length, in frames
+	BYTE loop;								// Envelope Loop point
+	BYTE release;							// Envelope Release point
+	BYTE speed : 4;							// Envelope Speed, in ticks per frames
+	bool isLooped : 1;						// Loop point is used if True, otherwise the Envelope will end after the last Frame was processed
+	bool isReleased : 1;					// Release point is used if True, could also be combined to Loop Point, useful for sustaining a Note Release
+	bool isAbsolute : 1;					// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
+	bool isAdditive : 1;					// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
 	union
 	{
 		TVolumeEnvelope volume[ENVELOPE_STEP_COUNT];
 		TTimbreEnvelope timbre[ENVELOPE_STEP_COUNT];
 		TAudctlEnvelope audctl[ENVELOPE_STEP_COUNT];
-		TEffectEnvelope effect[ENVELOPE_EFFECT_STEP_COUNT];	// Due to Legacy Effect commands, and a lot of new parameters
+		TEffectEnvelope effect[ENVELOPE_STEP_COUNT];
 		TNoteTableEnvelope note[ENVELOPE_STEP_COUNT];
-		TFreqTableEnvelope freq[ENVELOPE_FREQ_STEP_COUNT];	// Due to 16-bit Freq values
+		TFreqTableEnvelope freq[ENVELOPE_STEP_COUNT];
+		UINT rawData[ENVELOPE_STEP_COUNT];
 	};
-};
+} TEnvelope;
 
-// Also sort of redundant...? This is justified for the Envelopes alone, at least...
-// TODO(?): Move Envelopes to their own Index since they're not bound to Instruments
-struct TInstrumentIndex
-{
-	TInstrumentV2* instrument[INSTRUMENT_COUNT];
-	TEnvelope* volume[INSTRUMENT_COUNT];
-	TEnvelope* timbre[INSTRUMENT_COUNT];
-	TEnvelope* audctl[INSTRUMENT_COUNT];
-	TEnvelope* effect[INSTRUMENT_COUNT];
-	TEnvelope* note[INSTRUMENT_COUNT];
-	TEnvelope* freq[INSTRUMENT_COUNT];
-};
 
 // ----------------------------------------------------------------------------
-// RMTE Module Header
+// RMTE Module Data Index Structs
 //
 
-// High Header, used to identify the Module Version and Parameters
+// Subtune Data Index
+typedef struct subtuneIndex_t
+{
+	TSubtune* subtune[SUBTUNE_COUNT];
+} TSubtuneIndex;
+
+// Instrument Data Index
+typedef struct instrumentIndex_t
+{
+	TInstrumentV2* instrument[INSTRUMENT_COUNT];
+} TInstrumentIndex;
+
+// Envelope Data Index
+typedef struct envelopeIndex_t
+{
+	TEnvelope* envelope[ET_COUNT][ENVELOPE_COUNT];
+} TEnvelopeIndex;
+
+
+// ----------------------------------------------------------------------------
+// RMTE Module Header encoding Structs
+//
+
+// High Header, used to identify the Module File Format, Version and Region, as well as the Data Integrity
 typedef struct HiHeader_t
 {
-	union
-	{
-		struct
-		{
-			char identifier[4];						// RMTE
-			BYTE version;							// 0 = Prototype, 1+ = Release
-			BYTE subtuneCount;						// Total number of Subtunes
-			WORD channelCount;						// Total number of Channels
-			UINT patternCount;						// Total number of Patterns
-			BYTE instrumentCount;					// Total number of Instruments
-			WORD envelopeCount;						// Total number of Envelopes
-		};
-		BYTE parameters[MODULE_PADDING];			// Reserved bytes
-	};
+	char identifier[4];						// RMTE Module Identifier
+	BYTE version : 7;						// 0 = Prototype, 1+ = Release, up to 127 revisions
+	bool region : 1;						// 0 = PAL, 1 = NTSC
+	// TODO: Add a Checksum, or something that could test for Data Integrity...
 } THiHeader;
 
-// Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists
+// Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists for a specific entry
 typedef struct LoHeader_t
 {
-	union
-	{
-		struct
-		{
-			UINT subtuneIndex;						// Offset to Subtune data
-			UINT channelIndex;						// Offset to Channel data
-			UINT patternIndex;						// Offset to Pattern data
-			UINT instrumentIndex;					// Offset to Instrument data
-			UINT envelopeIndex;						// Offset to Envelope data
-		};
-		BYTE parameters[MODULE_PADDING];			// Reserved bytes
-	};
+	UINT subtuneIndex;						// Offset to Subtune data
+	UINT patternIndex;						// Offset to Pattern data
+	UINT instrumentIndex;					// Offset to Instrument data
+	UINT envelopeIndex;						// Offset to Envelope data
 } TLoHeader;
 
-// RMTE Module Header
+// RMTE Module Header, used to define the RMTE Module File Format as easily as possible
+// Most of the Module Parameters, Metadata and other properties will be located in the Header
+// The padding bytes are reserved for future format revisions, and should not be used otherwise
+// None of the defined data should be moved or edited either, unless it is absolutely necessary for a format revision!
 typedef struct ModuleHeader_t
 {
-	THiHeader hiHeader;
-	TLoHeader loHeader;
-	char name[MODULE_SONG_NAME_MAX];
-	char author[MODULE_AUTHOR_NAME_MAX];
-	char copyright[MODULE_COPYRIGHT_INFO_MAX];
-	bool region;									// 0 = PAL, 1 = NTSC
+	// Module Header
+	THiHeader hiHeader;								// High Header
+	TLoHeader loHeader;								// Low Header
+
+	// Module Parameters
+	UINT subtuneCount : 7;							// Total number of Subtunes
+	UINT instrumentCount : 7;						// Total number of Instruments
+	UINT patternCount : 19;							// Total number of Patterns
+	UINT envelopeCount : 10;						// Total number of Envelopes
+
+	// Row Highlight
 	BYTE highlightPrimary;							// 1st Row Highlight
 	BYTE highlightSecondary;						// 2nd Row Highlight
+
+	// Tuning
 	double baseTuning;								// A-4 Tuning in Hz, eg: 440, 432, etc
-	BYTE baseNote;									// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
-	BYTE baseOctave;								// Base Octave used for Transposition, eg: 4 for no transposition
-	//
-	// Reserved bytes are not defined, but still implied here for future format revisions
+	BYTE baseNote : 4;								// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
+	SBYTE baseOctave : 4;							// Base Octave used for Transposition, eg: 4 for no transposition
+
+	// Reserved bytes are not defined further below, but still implied here for future format revisions
 	// Most data could be shifted further down upon file creation, if new parameters are then created later
 	// The actual Module data is indexed in the Low Header, and may be offset anywhere else very easily too
-	//
+	// As long as nothing is scrambled around later, forward and backward compatibility will be the priority
+
+	// Module Metadata, Null terminated
+	char* name;
+	char* author;
+	char* copyright;
+
+	// End of Module Header
+	// 
+	// The Data Section is assumed to begin immediately after this point, unless specified otherwise
+	// Any changes and/or additions to the Module Format should automatically increment the Module Format Version
+	// The risk of breaking previous format versions should be greatly reduced this way!
+	// If a parameter checks for specific format revision, it will be much easier to skip it or process it correctly
 } TModuleHeader;
 
-//UINT test0 = sizeof(TModuleHeader);
-//UINT test1 = sizeof(THiHeader);
-//UINT test2 = sizeof(TLoHeader);
-//UINT test3 = sizeof(double);
-//UINT test3 = sizeof(TRow);
-//UINT test3 = sizeof(TChannelParameter);
+
+// ----------------------------------------------------------------------------
+// RMTE Module Data encoding Structs
+//
+
+// Row data encoding, a bit set would mean there is empty data for an element
+// This is a very rough implementation of the DUMB Music Driver Module format encoding
+// That format is very barebone, but it might do a good enough job, hopefully
+// 
+// Reminder: Bitwise order goes from 0 to 7, the leftmost bits are the last entries added in the Struct!
+// If I wanted to specifically check Bit 7 for a parameter, I must remember that it will be at the bottom, not the top!
+//
+struct TRowEncoding
+{
+	bool isEmptyCmd4 : 1;			// Empty CMD4? Skip next 2 bytes
+	bool isEmptyCmd3 : 1;			// Empty CMD3? Skip next 2 bytes
+	bool isEmptyCmd2 : 1;			// Empty CMD2? Skip next 2 bytes
+	bool isEmptyCmd1 : 1;			// Empty CMD1? Skip next 2 bytes
+	bool isEmptyVolume : 1;			// Empty Volume? Skip next byte
+	bool isEmptyInstrument : 1;		// Empty Instrument? Skip next byte
+	bool isEmptyNote : 1;			// Empty Note? Skip next byte
+	bool isEndOfPattern : 1;		// Pattern Terminator?, Skip next byte and set Infinite Pause Length
+	BYTE pauseLength;				// Skip next 0-255 Rows, overridden by the Pattern Terminator Bit
+};
+
 
 // ----------------------------------------------------------------------------
 // RMTE Module Class
@@ -647,6 +526,8 @@ public:
 	
 	//-- Module Initialisation Functions --//
 
+	void CreateModule();
+	void DeleteModule();
 	void InitialiseModule();
 	void ClearModule();
 
@@ -656,6 +537,8 @@ public:
 	void DeleteAllRows(TPattern* pPattern);
 
 	void DeleteAllInstruments();
+
+	void DeleteAllEnvelopes();
 
 	bool CreateSubtune(UINT subtune);
 	bool DeleteSubtune(UINT subtune);
@@ -674,31 +557,9 @@ public:
 	bool DeleteInstrument(UINT instrument);
 	bool InitialiseInstrument(TInstrumentV2* pInstrument);
 
-	bool InitialiseEnvelopeParameter(TEnvelopeParameter* pEnvelopeParameter);
-
-	bool CreateVolumeEnvelope(UINT instrument);
-	bool DeleteVolumeEnvelope(UINT instrument);
-	bool InitialiseVolumeEnvelope(TEnvelope* pEnvelope);
-
-	bool CreateTimbreEnvelope(UINT instrument);
-	bool DeleteTimbreEnvelope(UINT instrument);
-	bool InitialiseTimbreEnvelope(TEnvelope* pEnvelope);
-
-	bool CreateAudctlEnvelope(UINT instrument);
-	bool DeleteAudctlEnvelope(UINT instrument);
-	bool InitialiseAudctlEnvelope(TEnvelope* pEnvelope);
-
-	bool CreateEffectEnvelope(UINT instrument);
-	bool DeleteEffectEnvelope(UINT instrument);
-	bool InitialiseEffectEnvelope(TEnvelope* pEnvelope);
-
-	bool CreateNoteTableEnvelope(UINT instrument);
-	bool DeleteNoteTableEnvelope(UINT instrument);
-	bool InitialiseNoteTableEnvelope(TEnvelope* pEnvelope);
-
-	bool CreateFreqTableEnvelope(UINT instrument);
-	bool DeleteFreqTableEnvelope(UINT instrument);
-	bool InitialiseFreqTableEnvelope(TEnvelope* pEnvelope);
+	bool CreateEnvelope(UINT envelope, UINT type);
+	bool DeleteEnvelope(UINT envelope, UINT type);
+	bool InitialiseEnvelope(TEnvelope* pEnvelope, UINT type);
 
 	//-- Legacy RMT Module Import Functions --//
 
@@ -724,6 +585,8 @@ public:
 	const bool IsValidEffectCommandIndex(UINT command) { return command < PE_INDEX_MAX; };
 	const bool IsValidEffectParameter(UINT parameter) { return parameter < EFFECT_PARAMETER_COUNT; };
 	const bool IsValidCommandColumn(UINT column) { return column < PATTERN_EFFECT_COUNT; };
+	const bool IsValidEnvelope(UINT envelope) { return envelope < ENVELOPE_COUNT; };
+	const bool IsValidEnvelopeType(UINT type) { return type < ET_COUNT; };
 
 	//-- Pointers to Module Data --//
 
@@ -873,6 +736,9 @@ public:
 	//-- RMTE Editor Functions --//
 
 	const UINT GetSubtuneCount();
+	const UINT GetPatternCount();
+	const UINT GetInstrumentCount();
+	const UINT GetEnvelopeCount();
 
 	const UINT GetShortestPatternLength(UINT subtune, UINT songline);
 	const UINT GetShortestPatternLength(TSubtune* pSubtune, UINT songline);
@@ -941,12 +807,7 @@ public:
 	const char* GetInstrumentName(UINT instrument);
 	const char* GetInstrumentName(TInstrumentV2* pInstrument);
 
-	TEnvelope* GetVolumeEnvelope(UINT instrument);
-	TEnvelope* GetTimbreEnvelope(UINT instrument);
-	TEnvelope* GetAudctlEnvelope(UINT instrument);
-	TEnvelope* GetEffectEnvelope(UINT instrument);
-	TEnvelope* GetNoteTableEnvelope(UINT instrument);
-	TEnvelope* GetFreqTableEnvelope(UINT instrument);
+	TEnvelope* GetEnvelope(UINT envelope, UINT type);
 
 	bool SetInstrumentName(UINT instrument, const char* name);
 	bool SetInstrumentName(TInstrumentV2* instrument, const char* name);
@@ -969,4 +830,5 @@ private:
 	char m_moduleCopyright[MODULE_COPYRIGHT_INFO_MAX + 1];
 	TSubtuneIndex* m_subtuneIndex;
 	TInstrumentIndex* m_instrumentIndex;
+	TEnvelopeIndex* m_envelopeIndex;
 };

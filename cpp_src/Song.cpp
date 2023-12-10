@@ -4466,8 +4466,7 @@ void CSong::DrawInstrumentEditor()
 
 	TInstrumentV2* pInstrument = g_Module.GetInstrument(m_activeInstrument);
 	TEnvelope* pEnvelope;
-	TEnvelopeParameter* pParameter;
-	TMacro* pMacro;
+	TEnvelopeMacro* pMacro;
 
 	// Actual dimensions used by the Instrument Editor Block
 	RECT instrumentBlock
@@ -4491,23 +4490,24 @@ void CSong::DrawInstrumentEditor()
 		TextXY(s, x, y);
 
 		TextMiniXY("PARAMETERS", x, y + z * ++++m);
-		s.Format(" VOLUMEFADE:     %02X", pInstrument->parameter.volumeFade);
+		s.Format(" VOLUMEFADE:     %02X", pInstrument->volumeFade);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VOLUMESUSTAIN:  %02X", pInstrument->parameter.volumeSustain);
+		s.Format(" VOLUMESUSTAIN:  %02X", pInstrument->volumeSustain);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VOLUMEDELAY:    %02X", pInstrument->parameter.volumeDelay);
+		s.Format(" VOLUMEDELAY:    %02X", pInstrument->volumeDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VIBRATO:        %02X", pInstrument->parameter.vibrato);
+		s.Format(" VIBRATO:        %02X", pInstrument->vibrato);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VIBRATODELAY:   %02X", pInstrument->parameter.vibratoDelay);
+		s.Format(" VIBRATODELAY:   %02X", pInstrument->vibratoDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" FREQSHIFT:      %02X", pInstrument->parameter.freqShift);
+		s.Format(" FREQSHIFT:      %02X", pInstrument->freqShift);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" FREQSHIFTDELAY: %02X", pInstrument->parameter.freqShiftDelay);
+		s.Format(" FREQSHIFTDELAY: %02X", pInstrument->freqShiftDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
 
-		pMacro = &pInstrument->parameter.envelope.volume;
-		pEnvelope = g_Module.GetVolumeEnvelope(pMacro->index);
+		// Volume Envelope
+		pMacro = &pInstrument->envelope[ET_VOLUME];
+		pEnvelope = g_Module.GetEnvelope(pMacro->index, ET_VOLUME);
 		c = TEXT_MINI_COLOR_WHITE;
 
 		TextMiniXY("VOLUME ENVELOPE", x, y + z * ++++m);
@@ -4520,59 +4520,60 @@ void CSong::DrawInstrumentEditor()
 
 		if (pEnvelope)
 		{
-			pParameter = &pEnvelope->parameter;
 			c = pMacro->isEnabled ? TEXT_MINI_COLOR_WHITE : TEXT_MINI_COLOR_GRAY;
-
-			s.Format(" LENGTH:     %02X", pParameter->length);
+			s.Format(" LENGTH:     %02X", pEnvelope->length);
+			TextMiniXY(s, x, y + z * ++++m, c);
+			s.Format(" LOOP:       %02X", pEnvelope->loop);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" LOOP:       %02X", pParameter->loop);
+			s.Format(" RELEASE:    %02X", pEnvelope->release);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" RELEASE:    %02X", pParameter->release);
+			s.Format(" SPEED:      %02X", pEnvelope->speed);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" SPEED:      %02X", pParameter->speed);
+			s.Format(" ISLOOPED:    %1X", pEnvelope->isLooped);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" ISLOOPED:    %1X", pParameter->isLooped);
+			s.Format(" ISRELEASED:  %1X", pEnvelope->isReleased);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" ISRELEASED:  %1X", pParameter->isReleased);
+			s.Format(" ISABSOLUTE:  %1X", pEnvelope->isAbsolute);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" ISABSOLUTE:  %1X", pParameter->isAbsolute);
-			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" ISADDITIVE:  %1X", pParameter->isAdditive);
+			s.Format(" ISADDITIVE:  %1X", pEnvelope->isAdditive);
 			TextMiniXY(s, x, y + z * ++m, c);
 
 			px = x + 18 * z;
-			py = y + z * (m - 1);
+			py = y + z * (m - 3);
 
 			// Delimitation of the Volume Envelope
 			g_mem_dc->MoveTo(px - 1, py - 2);
-			g_mem_dc->LineTo(px + pParameter->length * 8, py - 2);
+			g_mem_dc->LineTo(px + pEnvelope->length * 8, py - 2);
 
 			// Volume Envelope markers
 			TextDownXY("\x0E\x0E\x0E\x0E", px - 8 - 1, py - 4 * 16 - 1, TEXT_COLOR_GRAY);
 
-			for (UINT i = 0; i < pParameter->length; i++)
+			for (UINT i = 0; i < pEnvelope->length; i++)
 			{
 				vx = px - 1 + i * z;
 				vy = py - 4 * 16 + 1;
+				c = pMacro->isEnabled ? TEXT_COLOR_WHITE : TEXT_COLOR_GRAY;
 
 				//int channel = GetActiveColumn();
-				bool isActiveInstrument = false;// m_activeInstrument == m_channelVariables[channel]->channelInstrument;
-				bool isPlayingFrame = false;// i == m_channelVariables[channel]->instrumentEnvelopeOffset;
+				//bool isActiveInstrument = false;// m_activeInstrument == m_channelVariables[channel]->channelInstrument;
+				//bool isPlayingFrame = false;// i == m_channelVariables[channel]->instrumentEnvelopeOffset;
 
-				bool isLoopPoint = i == pParameter->loop;
-				bool isReleasePoint = i == pParameter->release;
-				bool isEndPoint = i + 1 == pParameter->length;
+				bool isLoopPoint = i == pEnvelope->loop;
+				bool isReleasePoint = i == pEnvelope->release;
+				bool isEndPoint = i + 1 == pEnvelope->length;
 
-				COLORREF fillColour = RGB(255, 255, 255);
-				COLORREF playColour = RGB(253, 236, 117);
+				COLORREF fillColour = pMacro->isEnabled ? RGB_NORMAL : RGB_DISABLED;
+				//COLORREF playColour = RGB(253, 236, 117);
 
 				BYTE volume = pEnvelope->volume[i].volumeLeft;
 
-				g_mem_dc->FillSolidRect(vx, vy + 4 * (15 - volume) + 1, 8, volume * 4, isActiveInstrument && isPlayingFrame ? playColour : fillColour);
+				//g_mem_dc->FillSolidRect(vx, vy + 4 * (15 - volume) + 1, 8, volume * 4, isActiveInstrument && isPlayingFrame ? playColour : fillColour);
+				g_mem_dc->FillSolidRect(vx, vy + 4 * (15 - volume) + 1, 8, volume * 4, fillColour);
 
 				s.Format("%1X", volume);
 
-				TextDownXY(s, vx, py, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+				//TextDownXY(s, vx, py, isActiveInstrument && isPlayingFrame ? TEXT_COLOR_YELLOW : TEXT_COLOR_WHITE);
+				TextDownXY(s, vx, py, c);
 
 				if (isLoopPoint && isEndPoint)
 					s.Format("\x16");
@@ -4583,7 +4584,7 @@ void CSong::DrawInstrumentEditor()
 				else
 					s.Format(" ");
 
-				TextXY(s, vx, py + 16);
+				TextXY(s, vx, py + 16, c);
 
 				// Delimitation of the Envelope Loop Point
 				if (isLoopPoint)
@@ -5629,7 +5630,7 @@ bool CSong::SetRowInPattern(UINT note, UINT instrument, UINT volume, UINT comman
 	case CC_CMD1_IDENTIFIER: case CC_CMD2_IDENTIFIER: case CC_CMD3_IDENTIFIER: case CC_CMD4_IDENTIFIER:
 		// Empty Commands could be set regardless of the Active Column, always clearing the Parameters in the process
 		if (command == PE_EMPTY)
-			return SetCommandIdentifierInPattern(command) && SetCommandParameterInPattern(EFFECT_PARAMETER_MIN);
+			return SetCommandIdentifierInPattern(command) && SetCommandParameterInPattern(EP_MIN);
 		// All Valid Command Identifier values may be set using the Command Keys, otherwise
 		else
 			return SetCommandIdentifierInPattern(command);
@@ -5638,7 +5639,7 @@ bool CSong::SetRowInPattern(UINT note, UINT instrument, UINT volume, UINT comman
 	case CC_CMD1_Y: case CC_CMD2_Y: case CC_CMD3_Y: case CC_CMD4_Y:
 		// Empty Commands could be set regardless of the Active Column, always clearing the Parameters in the process
 		if (command == PE_EMPTY)
-			return SetCommandIdentifierInPattern(command) && SetCommandParameterInPattern(EFFECT_PARAMETER_MIN);
+			return SetCommandIdentifierInPattern(command) && SetCommandParameterInPattern(EP_MIN);
 		// All Valid Command Parameter values may be set using the Number Keys, otherwise
 		else
 			return SetCommandParameterInPatternByNumberKey(parameter);

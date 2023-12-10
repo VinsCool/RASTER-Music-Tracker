@@ -8,44 +8,77 @@
 // Temporary workaround to avoid including whole header shit
 extern const char* notesandscales[5][40];
 
+
+// RMTE Module Constructor, always executed when a CModule object is created
 CModule::CModule()
 {
-	m_subtuneIndex = new TSubtuneIndex();
-	m_instrumentIndex = new TInstrumentIndex();
+	m_subtuneIndex = NULL;
+	m_instrumentIndex = NULL;
+	m_envelopeIndex = NULL;
+	CreateModule();
+}
+
+// RMTE Module Destructor, always executed when a CModule object is destroyed
+CModule::~CModule()
+{
+	DeleteModule();
+}
+
+// Create Module Data
+void CModule::CreateModule()
+{
+	if (!m_subtuneIndex)
+		m_subtuneIndex = new TSubtuneIndex();
+
+	if (!m_instrumentIndex)
+		m_instrumentIndex = new TInstrumentIndex();
+
+	if (!m_envelopeIndex)
+		m_envelopeIndex = new TEnvelopeIndex();
+
 	InitialiseModule();
 }
 
-CModule::~CModule()
+// Delete Module Data
+void CModule::DeleteModule()
 {
 	ClearModule();
-	delete m_subtuneIndex;
-	delete m_instrumentIndex;
+
+	if (m_subtuneIndex)
+		delete m_subtuneIndex;
+
+	m_subtuneIndex = NULL;
+
+	if (m_instrumentIndex)
+		delete m_instrumentIndex;
+
+	m_instrumentIndex = NULL;
+
+	if (m_envelopeIndex)
+		delete m_envelopeIndex;
+
+	m_envelopeIndex = NULL;
 }
 
+// Set Default Module Parameters
 void CModule::InitialiseModule()
 {
-	// Set the default Module parameters
 	ClearModule();
-
-	// Create 1 empty Subtune, which will be used by default
 	CreateSubtune(MODULE_DEFAULT_SUBTUNE);
-
-	// Same thing for the Instrument
 	CreateInstrument(MODULE_DEFAULT_INSTRUMENT);
+	for (UINT i = 0; i < ET_COUNT; i++)
+		CreateEnvelope(MODULE_DEFAULT_ENVELOPE, i);
 }
 
+// Set Empty Module Parameters
 void CModule::ClearModule()
 {
-	// Set the empty Module parameters
 	SetModuleName("");
 	SetModuleAuthor("");
 	SetModuleCopyright("");
-
-	// Delete all Module data and set the associated pointers to NULL
 	DeleteAllSubtunes();
-
-	// Delete all Instrument data, including Envelopes and Tables
 	DeleteAllInstruments();
+	DeleteAllEnvelopes();
 }
 
 
@@ -75,21 +108,17 @@ void CModule::DeleteAllRows(TPattern* pPattern)
 		DeleteRow(pPattern, i);
 }
 
-
-//--
-
 void CModule::DeleteAllInstruments()
 {
 	for (int i = 0; i < INSTRUMENT_COUNT; i++)
-	{
 		DeleteInstrument(i);
-		DeleteVolumeEnvelope(i);
-		DeleteTimbreEnvelope(i);
-		DeleteAudctlEnvelope(i);
-		DeleteEffectEnvelope(i);
-		DeleteNoteTableEnvelope(i);
-		DeleteFreqTableEnvelope(i);
-	}
+}
+
+void CModule::DeleteAllEnvelopes()
+{
+	for (int i = 0; i < ET_COUNT; i++)
+		for (int j = 0; j < ENVELOPE_COUNT; j++)
+			DeleteEnvelope(j, i);
 }
 
 
@@ -102,7 +131,7 @@ bool CModule::CreateSubtune(UINT subtune)
 		// If there is no Subtune here, create it now and update the Subtune Index accordingly
 		if (!m_subtuneIndex->subtune[subtune])
 			m_subtuneIndex->subtune[subtune] = new TSubtune();
-		
+
 		return InitialiseSubtune(m_subtuneIndex->subtune[subtune]);
 	}
 
@@ -133,11 +162,11 @@ bool CModule::InitialiseSubtune(TSubtune* pSubtune)
 	SetSubtuneName(pSubtune, "");
 
 	// Set the default parameters to all the Subtune variables
-	pSubtune->parameter.songLength = MODULE_DEFAULT_SONG_LENGTH;
-	pSubtune->parameter.patternLength = MODULE_DEFAULT_PATTERN_LENGTH;
-	pSubtune->parameter.channelCount = MODULE_DEFAULT_CHANNEL_COUNT;
-	pSubtune->parameter.songSpeed = MODULE_DEFAULT_SONG_SPEED;
-	pSubtune->parameter.instrumentSpeed = MODULE_DEFAULT_INSTRUMENT_SPEED;
+	pSubtune->songLength = MODULE_DEFAULT_SONG_LENGTH;
+	pSubtune->patternLength = MODULE_DEFAULT_PATTERN_LENGTH;
+	pSubtune->channelCount = MODULE_DEFAULT_CHANNEL_COUNT;
+	pSubtune->songSpeed = MODULE_DEFAULT_SONG_SPEED;
+	pSubtune->instrumentSpeed = MODULE_DEFAULT_INSTRUMENT_SPEED;
 
 	// Delete all Channels with leftover data
 	DeleteAllChannels(pSubtune);
@@ -157,10 +186,10 @@ bool CModule::InitialiseChannel(TChannel* pChannel)
 		return false;
 
 	// By default, only 1 Effect Command is enabled in all Track Channels
-	pChannel->parameter.isMuted = false;
-	pChannel->parameter.isEffectEnabled = true;
-	pChannel->parameter.effectCount = 0x01;
-	pChannel->parameter.channelVolume = 0x0F;
+	pChannel->isMuted = false;
+	pChannel->isEffectEnabled = true;
+	pChannel->effectCount = 0x01;
+	pChannel->channelVolume = 0x0F;
 
 	// Set all indexed Patterns to 0
 	for (int i = 0; i < SONGLINE_COUNT; i++)
@@ -207,7 +236,7 @@ bool CModule::InitialiseRow(TRow* pRow)
 	for (int i = 0; i < PATTERN_EFFECT_COUNT; i++)
 	{
 		pRow->effect[i].command = PE_EMPTY;
-		pRow->effect[i].parameter = EFFECT_PARAMETER_MIN;
+		pRow->effect[i].parameter = EP_MIN;
 	}
 
 	// Row was initialised
@@ -255,29 +284,24 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	// Set the default Instrument name
 	SetInstrumentName(pInstrument, "New Instrument");
 
-	pInstrument->parameter.volumeFade = 0x00;
-	pInstrument->parameter.volumeSustain = 0x00;
-	pInstrument->parameter.volumeDelay = 0x00;
-	pInstrument->parameter.vibrato = 0x00;
-	pInstrument->parameter.vibratoDelay = 0x00;
-	pInstrument->parameter.freqShift = 0x00;
-	pInstrument->parameter.freqShiftDelay = 0x00;
-	pInstrument->parameter.autoFilter = 0x00;
-	pInstrument->parameter.autoFilterMode = false;
+	pInstrument->volumeFade = 0x00;
+	pInstrument->volumeSustain = 0x00;
+	pInstrument->volumeDelay = 0x00;
+	pInstrument->vibrato = 0x00;
+	pInstrument->vibratoDelay = 0x00;
+	pInstrument->freqShift = 0x00;
+	pInstrument->freqShiftDelay = 0x00;
+	pInstrument->autoFilter = 0x00;
+	pInstrument->autoFilterMode = false;
 
 	// Set the default Envelope Macro parameters, always disabled for newly created Instruments
-	TMacro macro{};
-	macro.index = 0x00;
-	macro.isEnabled = false;
-	macro.isReversed = false;
+	for (UINT i = 0; i < ET_COUNT; i++)
+	{
+		pInstrument->envelope[i].index = 0x00;
+		pInstrument->envelope[i].isEnabled = false;
+		pInstrument->envelope[i].isReversed = false;
+	}
 
-	pInstrument->parameter.envelope.volume = macro;
-	pInstrument->parameter.envelope.timbre = macro;
-	pInstrument->parameter.envelope.audctl = macro;
-	pInstrument->parameter.envelope.effect = macro;
-	pInstrument->parameter.envelope.note = macro;
-	pInstrument->parameter.envelope.freq = macro;
-	
 	// Instrument was initialised
 	return true;
 }
@@ -285,326 +309,108 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 
 //--
 
-bool CModule::InitialiseEnvelopeParameter(TEnvelopeParameter* pEnvelopeParameter)
+bool CModule::CreateEnvelope(UINT envelope, UINT type)
 {
-	if (!pEnvelopeParameter)
-		return false;
-
-	// Set the default Envelope parameters
-	pEnvelopeParameter->length = 0x01;
-	pEnvelopeParameter->loop = 0x00;
-	pEnvelopeParameter->release = 0x01;
-	pEnvelopeParameter->speed = 0x01;
-	pEnvelopeParameter->isLooped = false;
-	pEnvelopeParameter->isReleased = false;
-	pEnvelopeParameter->isAbsolute = false;
-	pEnvelopeParameter->isAdditive = false;
-
-	// Envelope Parameter was initialised
-	return true;
-}
-
-
-//--
-
-bool CModule::CreateVolumeEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
+	if (m_envelopeIndex && IsValidEnvelope(envelope) && IsValidEnvelopeType(type))
 	{
-		// If there is no Envelope here, create it now and update the Instrument Index accordingly
-		if (!m_instrumentIndex->volume[instrument])
-			m_instrumentIndex->volume[instrument] = new TEnvelope();
+		// If there is no Envelope here, create it now and update the Envelope Index accordingly
+		if (!m_envelopeIndex->envelope[type][envelope])
+			m_envelopeIndex->envelope[type][envelope] = new TEnvelope();
 
-		return InitialiseVolumeEnvelope(m_instrumentIndex->volume[instrument]);
+		return InitialiseEnvelope(m_envelopeIndex->envelope[type][envelope], type);
 	}
 
 	return false;
 }
 
-bool CModule::DeleteVolumeEnvelope(UINT instrument)
+bool CModule::DeleteEnvelope(UINT envelope, UINT type)
 {
-	if (m_instrumentIndex && IsValidInstrument(instrument))
+	if (m_envelopeIndex && IsValidEnvelope(envelope) && IsValidEnvelopeType(type))
 	{
 		// If there is an Envelope here, don't waste any time and delete it without further ado
-		if (m_instrumentIndex->volume[instrument])
-			delete m_instrumentIndex->volume[instrument];
+		if (m_envelopeIndex->envelope[type][envelope])
+			delete m_envelopeIndex->envelope[type][envelope];
 
-		m_instrumentIndex->volume[instrument] = NULL;
+		m_envelopeIndex->envelope[type][envelope] = NULL;
 		return true;
 	}
 
 	return false;
 }
 
-bool CModule::InitialiseVolumeEnvelope(TEnvelope* pEnvelope)
+bool CModule::InitialiseEnvelope(TEnvelope* pEnvelope, UINT type)
 {
 	if (!pEnvelope)
 		return false;
 
 	// Set the default Envelope parameters
-	InitialiseEnvelopeParameter(&pEnvelope->parameter);
+	pEnvelope->length = 0x01;
+	pEnvelope->loop = 0x00;
+	pEnvelope->release = 0x01;
+	pEnvelope->speed = 0x01;
+	pEnvelope->isLooped = false;
+	pEnvelope->isReleased = false;
+	pEnvelope->isAbsolute = false;
+	pEnvelope->isAdditive = false;
 
 	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
+	for (UINT i = 0; i < ENVELOPE_STEP_COUNT; i++)
 	{
-		pEnvelope->volume[i].volumeLeft = 0x0F;
-		pEnvelope->volume[i].volumeRight = 0x0F;
+		switch (type)
+		{
+		case ET_VOLUME:
+			pEnvelope->volume[i].volumeLeft = 0x00;
+			pEnvelope->volume[i].volumeRight = 0x00;
+			continue;
+
+		case ET_TIMBRE:
+			(BYTE&)pEnvelope->timbre[i] = TIMBRE_PURE;
+			//pEnvelope->timbre[i].waveForm = 0x00;
+			//pEnvelope->timbre[i].isVolumeOnly = false;
+			//pEnvelope->timbre[i].distortion = 0x0A;
+			continue;
+
+		case ET_AUDCTL:
+			pEnvelope->audctl[i].is15KhzMode = false;
+			pEnvelope->audctl[i].isHighPassCh24 = false;
+			pEnvelope->audctl[i].isHighPassCh13 = false;
+			pEnvelope->audctl[i].isJoinedCh34 = false;
+			pEnvelope->audctl[i].isJoinedCh12 = false;
+			pEnvelope->audctl[i].is179MhzCh3 = false;
+			pEnvelope->audctl[i].is179MhzCh1 = false;
+			pEnvelope->audctl[i].isPoly9Noise = false;
+			continue;
+
+		case ET_EFFECT:
+			pEnvelope->effect[i].auto15Khz = false;
+			pEnvelope->effect[i].autoFilter = false;
+			pEnvelope->effect[i].auto16Bit = false;
+			pEnvelope->effect[i].autoReverse16 = false;
+			pEnvelope->effect[i].auto179Mhz = false;
+			pEnvelope->effect[i].auto15Khz = false;
+			pEnvelope->effect[i].autoPoly9 = false;
+			pEnvelope->effect[i].autoTwoTone = false;
+			pEnvelope->effect[i].command_1 = IE_EMPTY;
+			pEnvelope->effect[i].command_2 = IE_EMPTY;
+			pEnvelope->effect[i].parameter_1 = EP_MIN;
+			pEnvelope->effect[i].parameter_2 = EP_MIN;
+			continue;
+
+		case ET_NOTE_TABLE:
+			pEnvelope->note[i].noteAbsolute = 0x00;
+			continue;
+
+		case ET_FREQ_TABLE:
+			pEnvelope->freq[i].freqAbsolute = 0x00;
+			continue;
+
+		default:
+			// If the Envelope Type is unknown, zeroes will be written by default
+			pEnvelope->rawData[i] = 0x00;
+		}
 	}
 
-	// Volume Envelope was initialised
-	return true;
-}
-
-
-//--
-
-bool CModule::CreateTimbreEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is no Envelope here, create it now and update the Instrument Index accordingly
-		if (!m_instrumentIndex->timbre[instrument])
-			m_instrumentIndex->timbre[instrument] = new TEnvelope();
-
-		return InitialiseTimbreEnvelope(m_instrumentIndex->timbre[instrument]);
-	}
-
-	return false;
-}
-
-bool CModule::DeleteTimbreEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is an Envelope here, don't waste any time and delete it without further ado
-		if (m_instrumentIndex->timbre[instrument])
-			delete m_instrumentIndex->timbre[instrument];
-
-		m_instrumentIndex->timbre[instrument] = NULL;
-		return true;
-	}
-
-	return false;
-}
-
-bool CModule::InitialiseTimbreEnvelope(TEnvelope* pEnvelope)
-{
-	if (!pEnvelope)
-		return false;
-
-	// Set the default Envelope parameters
-	InitialiseEnvelopeParameter(&pEnvelope->parameter);
-
-	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->timbre[i].parameters = TIMBRE_PURE;
-
-	// Timbre Envelope was initialised
-	return true;
-}
-
-
-//--
-
-bool CModule::CreateAudctlEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is no Envelope here, create it now and update the Instrument Index accordingly
-		if (!m_instrumentIndex->audctl[instrument])
-			m_instrumentIndex->audctl[instrument] = new TEnvelope();
-
-		return InitialiseAudctlEnvelope(m_instrumentIndex->audctl[instrument]);
-	}
-
-	return false;
-}
-
-bool CModule::DeleteAudctlEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is an Envelope here, don't waste any time and delete it without further ado
-		if (m_instrumentIndex->audctl[instrument])
-			delete m_instrumentIndex->audctl[instrument];
-
-		m_instrumentIndex->audctl[instrument] = NULL;
-		return true;
-	}
-
-	return false;
-}
-
-bool CModule::InitialiseAudctlEnvelope(TEnvelope* pEnvelope)
-{
-	if (!pEnvelope)
-		return false;
-
-	// Set the default Envelope parameters
-	InitialiseEnvelopeParameter(&pEnvelope->parameter);
-
-	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->audctl[i].parameters = 0x00;
-
-	// Audctl Envelope was initialised
-	return true;
-}
-
-
-//--
-
-bool CModule::CreateEffectEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is no Envelope here, create it now and update the Instrument Index accordingly
-		if (!m_instrumentIndex->effect[instrument])
-			m_instrumentIndex->effect[instrument] = new TEnvelope();
-
-		return InitialiseEffectEnvelope(m_instrumentIndex->effect[instrument]);
-	}
-
-	return false;
-}
-
-bool CModule::DeleteEffectEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is an Envelope here, don't waste any time and delete it without further ado
-		if (m_instrumentIndex->effect[instrument])
-			delete m_instrumentIndex->effect[instrument];
-
-		m_instrumentIndex->effect[instrument] = NULL;
-		return true;
-	}
-
-	return false;
-}
-
-bool CModule::InitialiseEffectEnvelope(TEnvelope* pEnvelope)
-{
-	if (!pEnvelope)
-		return false;
-
-	// Set the default Envelope parameters
-	InitialiseEnvelopeParameter(&pEnvelope->parameter);
-
-	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_EFFECT_STEP_COUNT; i++)
-	{
-		pEnvelope->effect[i].auto15Khz = false;
-		pEnvelope->effect[i].autoFilter = false;
-		pEnvelope->effect[i].auto16Bit = false;
-		pEnvelope->effect[i].autoReverse16= false;
-		pEnvelope->effect[i].auto179Mhz = false;
-		pEnvelope->effect[i].auto15Khz = false;
-		pEnvelope->effect[i].autoPoly9 = false;
-		pEnvelope->effect[i].autoTwoTone = false;
-		pEnvelope->effect[i].command_1 = IE_EMPTY;
-		pEnvelope->effect[i].command_2 = IE_EMPTY;
-		pEnvelope->effect[i].parameter_1 = 0x00;
-		pEnvelope->effect[i].parameter_2 = 0x00;
-	}
-
-	// Effect Envelope was initialised
-	return true;
-}
-
-
-//--
-
-bool CModule::CreateNoteTableEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is no Envelope here, create it now and update the Instrument Index accordingly
-		if (!m_instrumentIndex->note[instrument])
-			m_instrumentIndex->note[instrument] = new TEnvelope();
-
-		return InitialiseNoteTableEnvelope(m_instrumentIndex->note[instrument]);
-	}
-
-	return false;
-}
-
-bool CModule::DeleteNoteTableEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is an Envelope here, don't waste any time and delete it without further ado
-		if (m_instrumentIndex->note[instrument])
-			delete m_instrumentIndex->note[instrument];
-
-		m_instrumentIndex->note[instrument] = NULL;
-		return true;
-	}
-
-	return false;
-}
-
-bool CModule::InitialiseNoteTableEnvelope(TEnvelope* pEnvelope)
-{
-	if (!pEnvelope)
-		return false;
-
-	// Set the default Envelope parameters
-	InitialiseEnvelopeParameter(&pEnvelope->parameter);
-
-	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_STEP_COUNT; i++)
-		pEnvelope->note[i].noteAbsolute = 0x00;
-
-	// Note Table Envelope was initialised
-	return true;
-}
-
-
-//--
-
-bool CModule::CreateFreqTableEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is no Envelope here, create it now and update the Instrument Index accordingly
-		if (!m_instrumentIndex->freq[instrument])
-			m_instrumentIndex->freq[instrument] = new TEnvelope();
-
-		return InitialiseFreqTableEnvelope(m_instrumentIndex->freq[instrument]);
-	}
-
-	return false;
-}
-
-bool CModule::DeleteFreqTableEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-	{
-		// If there is an Envelope here, don't waste any time and delete it without further ado
-		if (m_instrumentIndex->freq[instrument])
-			delete m_instrumentIndex->freq[instrument];
-
-		m_instrumentIndex->freq[instrument] = NULL;
-		return true;
-	}
-
-	return false;
-}
-
-bool CModule::InitialiseFreqTableEnvelope(TEnvelope* pEnvelope)
-{
-	if (!pEnvelope)
-		return false;
-
-	// Set the default Envelope parameters
-	InitialiseEnvelopeParameter(&pEnvelope->parameter);
-
-	// Set the default Envelope values
-	for (int i = 0; i < ENVELOPE_FREQ_STEP_COUNT; i++)
-		pEnvelope->freq[i].freqAbsolute = 0x0000;
-
-	// Freq Table Envelope was initialised
+	// Envelope was initialised
 	return true;
 }
 
@@ -745,7 +551,7 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 				if (GetShortestPatternLength(i, j) < GetPatternLength(i))
 				{
 					SetPatternRowEffectCommand(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, PE_END_PATTERN);
-					SetPatternRowEffectParameter(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EFFECT_PARAMETER_MIN);
+					SetPatternRowEffectParameter(i, CH1, GetPatternInSongline(i, CH1, j), GetShortestPatternLength(i, j) - 1, CMD2, EP_MIN);
 				}
 
 				// Set the final Goto Songline Command Bxx to the Songline found at the loop point
@@ -765,7 +571,7 @@ bool CModule::ImportLegacyRMT(std::ifstream& in)
 						for (UINT m = CMD2; m < PATTERN_EFFECT_COUNT; m++)
 						{
 							SetPatternRowEffectCommand(i, k, GetPatternInSongline(i, k, j), l, m, PE_EMPTY);
-							SetPatternRowEffectParameter(i, k, GetPatternInSongline(i, k, j), l, m, EFFECT_PARAMETER_MIN);
+							SetPatternRowEffectParameter(i, k, GetPatternInSongline(i, k, j), l, m, EP_MIN);
 						}
 					}
 				}
@@ -1096,7 +902,7 @@ bool CModule::ImportLegacyPatterns(TSubtune* pSubtune, BYTE* sourceMemory, WORD 
 				{
 					// End of Pattern, set a Dxx command here, no extra data to process
 					SetPatternRowEffectCommand(pSubtune, CH1, pattern, row - 1, CMD2, PE_END_PATTERN);
-					SetPatternRowEffectParameter(pSubtune, CH1, pattern, row - 1, CMD2, EFFECT_PARAMETER_MIN);
+					SetPatternRowEffectParameter(pSubtune, CH1, pattern, row - 1, CMD2, EP_MIN);
 					src = patternSize;
 				}
 				break;
@@ -1223,34 +1029,25 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		CreateInstrument(i);
 		TInstrumentV2* pInstrument = GetInstrument(i);
 
-		// Create all Envelopes and Tables, unique for each Instruments
-		CreateVolumeEnvelope(i);
-		CreateTimbreEnvelope(i);		
-		CreateAudctlEnvelope(i);
-		CreateEffectEnvelope(i);
-		CreateNoteTableEnvelope(i);		
-		CreateFreqTableEnvelope(i);
+		// Create all Envelopes, unique for each Instruments
+		for (UINT j = 0; j < ET_COUNT; j++)
+			CreateEnvelope(i, j);
 
-		// Get the pointers to all Envelopes and Tables used in the Instrument
-		TEnvelope* pVolumeEnvelope = GetVolumeEnvelope(i);
-		TEnvelope* pTimbreEnvelope = GetTimbreEnvelope(i);
-		TEnvelope* pAudctlEnvelope = GetAudctlEnvelope(i);
-		TEnvelope* pEffectEnvelope = GetEffectEnvelope(i);
-		TEnvelope* pNoteTableEnvelope = GetNoteTableEnvelope(i);
-		TEnvelope* pFreqTableEnvelope = GetFreqTableEnvelope(i);
+		// Get the pointers to all Envelopes once they were initialised
+		TEnvelope* pVolumeEnvelope = GetEnvelope(i, ET_VOLUME);
+		TEnvelope* pTimbreEnvelope = GetEnvelope(i, ET_TIMBRE);
+		TEnvelope* pAudctlEnvelope = GetEnvelope(i, ET_AUDCTL);
+		TEnvelope* pEffectEnvelope = GetEnvelope(i, ET_EFFECT);
+		TEnvelope* pNoteTableEnvelope = GetEnvelope(i, ET_NOTE_TABLE);
+		TEnvelope* pFreqTableEnvelope = GetEnvelope(i, ET_FREQ_TABLE);
 
 		// Assign everything in the Instrument Index once the data was initialised
-		TMacro macro{};
-		macro.index = i;
-		macro.isEnabled = true;
-		macro.isReversed = false;
-
-		pInstrument->parameter.envelope.volume = macro;
-		pInstrument->parameter.envelope.timbre = macro;
-		pInstrument->parameter.envelope.audctl = macro;
-		pInstrument->parameter.envelope.effect = macro;
-		pInstrument->parameter.envelope.note = macro;
-		pInstrument->parameter.envelope.freq = macro;
+		for (UINT j = 0; j < ET_COUNT; j++)
+		{
+			pInstrument->envelope[j].index = i;
+			pInstrument->envelope[j].isEnabled = true;
+			pInstrument->envelope[j].isReversed = false;
+		}
 
 		// Get the Envelopes, Tables, and other parameters from the original RMT instrument data
 		BYTE* memInstrument = sourceMemory + ptrOneInstrument;
@@ -1292,9 +1089,9 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		BYTE vibrato = memInstrument[9] & 0x03;							// Vibrato
 		BYTE freqShift = memInstrument[10];								// Freq Shift
 
-		pInstrument->parameter.volumeFade = memInstrument[6];			// Volume Slide
-		pInstrument->parameter.volumeSustain = memInstrument[7] >> 4;	// Volume Minimum
-		pInstrument->parameter.volumeDelay = envelopeLength;			// Volume Slide delay, RMT originally processed this at Envelope Loop point
+		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
+		pInstrument->volumeSustain = memInstrument[7] >> 4;				// Volume Minimum
+		pInstrument->volumeDelay = envelopeLength;						// Volume Slide delay, RMT originally processed this at Envelope Loop point
 
 		// Import the Vibrato with adjustments to make sound similar to the original implementation
 		// FIXME: Not a proper Vibrato Command conversion, this is a SineVibrato hack, the Pitch itself was used for calculations
@@ -1314,39 +1111,18 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		}
 
 		// Overwrite the Delay, Vibrato and Freqshift parameters with updated values if changes were needed
-		pInstrument->parameter.vibrato = delay && vibrato ? vibrato : 0x00;
-		pInstrument->parameter.vibratoDelay = delay && vibrato ? delay - 1 : 0x00;
-		pInstrument->parameter.freqShift = delay && freqShift ? freqShift : 0x00;
-		pInstrument->parameter.freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
+		pInstrument->vibrato = delay && vibrato ? vibrato : 0x00;
+		pInstrument->vibratoDelay = delay && vibrato ? delay - 1 : 0x00;
+		pInstrument->freqShift = delay && freqShift ? freqShift : 0x00;
+		pInstrument->freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
 
-		// Create the Envelope and Table Parameters
-		TEnvelopeParameter envelopeParameter{};
-		envelopeParameter.length = envelopeLength;
-		envelopeParameter.loop = envelopeLoop;
-		envelopeParameter.release = envelopeLength;
-		envelopeParameter.speed = envelopeSpeed;
-		envelopeParameter.isLooped = true;
-		envelopeParameter.isReleased = false;
-		envelopeParameter.isAbsolute = false;
-		envelopeParameter.isAdditive = false;
-
-		TEnvelopeParameter tableParameter{};
-		tableParameter.length = tableLength;
-		tableParameter.loop = tableLoop;
-		tableParameter.release = tableLength;
-		tableParameter.speed = tableSpeed;
-		tableParameter.isLooped = true;
-		tableParameter.isReleased = false;
-		tableParameter.isAbsolute = false;
-		tableParameter.isAdditive = tableMode;
-		
-		// Apply to the respective Envelopes and Tables
-		pVolumeEnvelope->parameter = envelopeParameter;
-		pTimbreEnvelope->parameter = envelopeParameter;
-		pAudctlEnvelope->parameter = envelopeParameter;
-		pEffectEnvelope->parameter = envelopeParameter;
-		pNoteTableEnvelope->parameter = tableParameter;
-		pFreqTableEnvelope->parameter = tableParameter;
+		// Apply the Envelope and Table Parameters to the equivalent Envelopes
+		*pVolumeEnvelope = { envelopeLength, envelopeLoop, envelopeLength, envelopeSpeed, true, false, false, false };
+		*pTimbreEnvelope = { envelopeLength, envelopeLoop, envelopeLength, envelopeSpeed, true, false, false, false };
+		*pAudctlEnvelope = { envelopeLength, envelopeLoop, envelopeLength, envelopeSpeed, true, false, false, false };
+		*pEffectEnvelope = { envelopeLength, envelopeLoop, envelopeLength, envelopeSpeed, true, false, false, false };
+		*pNoteTableEnvelope = { tableLength, tableLoop, tableLength, tableSpeed, true, false, false, tableMode };
+		*pFreqTableEnvelope = { tableLength, tableLoop, tableLength, tableSpeed, true, false, false, tableMode };
 
 		// Table Type is either Freq or Note, so pick whichever is suitable and fill it accordingly
 		for (UINT j = 0; j < tableLength; j++)
@@ -1486,17 +1262,16 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 			}
 
 			// Envelope Timbre, based on the Distortion parameter
-			pTimbreEnvelope->timbre[j].parameters = distortion;
+			(BYTE&)pTimbreEnvelope->timbre[j] = distortion;
 
 			// Envelope Volume, technically only the Left POKEY Volume is needed but that's just for compatibility's sake
-			pVolumeEnvelope->volume[j].volumeLeft = envelopeVolume & 0x0F;
-			pVolumeEnvelope->volume[j].volumeRight = envelopeVolume & 0xF0;
+			(BYTE&)pVolumeEnvelope->volume[j] = envelopeVolume;
 
 			// Set the Volume Only Mode as well if needed
-			pVolumeEnvelope->timbre[j].isVolumeOnly = isVolumeOnly;
+			pTimbreEnvelope->timbre[j].isVolumeOnly = isVolumeOnly;
 
 			// Envelope AUDCTL
-			pAudctlEnvelope->audctl[j].parameters = initialAudctl;
+			(BYTE&)pAudctlEnvelope->audctl[j] = initialAudctl;
 
 			// AutoFilter Trigger
 			pEffectEnvelope->effect[j].autoFilter = autoFilter;
@@ -1971,7 +1746,7 @@ const UINT CModule::GetSongLength(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT songLength = pSubtune->parameter.songLength;
+		UINT songLength = pSubtune->songLength;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (songLength == 0)
@@ -1992,7 +1767,7 @@ const UINT CModule::GetPatternLength(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT patternLength = pSubtune->parameter.patternLength;
+		UINT patternLength = pSubtune->patternLength;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (patternLength == 0)
@@ -2013,7 +1788,7 @@ const UINT CModule::GetChannelCount(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT channelCount = pSubtune->parameter.channelCount;
+		UINT channelCount = pSubtune->channelCount;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (channelCount == 0)
@@ -2034,7 +1809,7 @@ const UINT CModule::GetSongSpeed(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT songSpeed = pSubtune->parameter.songSpeed;
+		UINT songSpeed = pSubtune->songSpeed;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (songSpeed == 0)
@@ -2055,7 +1830,7 @@ const UINT CModule::GetInstrumentSpeed(TSubtune* pSubtune)
 {
 	if (pSubtune)
 	{
-		UINT instrumentSpeed = pSubtune->parameter.instrumentSpeed;
+		UINT instrumentSpeed = pSubtune->instrumentSpeed;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (instrumentSpeed == 0)
@@ -2081,7 +1856,7 @@ const UINT CModule::GetEffectCommandCount(TChannel* pChannel)
 {
 	if (pChannel)
 	{
-		UINT effectCount = pChannel->parameter.effectCount;
+		UINT effectCount = pChannel->effectCount;
 
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (effectCount == 0)
@@ -2119,13 +1894,13 @@ bool CModule::SetSongLength(UINT subtune, UINT length)
 
 bool CModule::SetSongLength(TSubtune* pSubtune, UINT length)
 {
-	if (pSubtune)// && length <= SONGLINE_COUNT)
+	if (pSubtune)
 	{
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (length >= SONGLINE_COUNT)
 			length = 0;
 
-		pSubtune->parameter.songLength = length;
+		pSubtune->songLength = length;
 		return true;
 	}
 
@@ -2139,13 +1914,13 @@ bool CModule::SetPatternLength(UINT subtune, UINT length)
 
 bool CModule::SetPatternLength(TSubtune* pSubtune, UINT length)
 {
-	if (pSubtune)// && length <= ROW_COUNT)
+	if (pSubtune)
 	{
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (length >= ROW_COUNT)
 			length = 0;
 
-		pSubtune->parameter.patternLength = length;
+		pSubtune->patternLength = length;
 		return true;
 	}
 
@@ -2159,13 +1934,13 @@ bool CModule::SetChannelCount(UINT subtune, UINT count)
 
 bool CModule::SetChannelCount(TSubtune* pSubtune, UINT count)
 {
-	if (pSubtune)// && count <= CHANNEL_COUNT)
+	if (pSubtune)
 	{
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (count >= CHANNEL_COUNT)
 			count = 0;
 
-		pSubtune->parameter.channelCount = count;
+		pSubtune->channelCount = count;
 		return true;
 	}
 
@@ -2179,13 +1954,13 @@ bool CModule::SetSongSpeed(UINT subtune, UINT speed)
 
 bool CModule::SetSongSpeed(TSubtune* pSubtune, UINT speed)
 {
-	if (pSubtune)// && speed <= SONG_SPEED_MAX)
+	if (pSubtune)
 	{
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (speed >= SONG_SPEED_MAX)
 			speed = 0;
 
-		pSubtune->parameter.songSpeed = speed;
+		pSubtune->songSpeed = speed;
 		return true;
 	}
 
@@ -2199,13 +1974,13 @@ bool CModule::SetInstrumentSpeed(UINT subtune, UINT speed)
 
 bool CModule::SetInstrumentSpeed(TSubtune* pSubtune, UINT speed)
 {
-	if (pSubtune)// && speed <= INSTRUMENT_SPEED_MAX)
+	if (pSubtune)
 	{
 		// 0 is actually the highest possible value due to base 0 indexing
 		if (speed >= INSTRUMENT_SPEED_MAX)
 			speed = 0;
 
-		pSubtune->parameter.instrumentSpeed = speed;
+		pSubtune->instrumentSpeed = speed;
 		return true;
 	}
 
@@ -2234,7 +2009,7 @@ bool CModule::SetEffectCommandCount(TChannel* pChannel, UINT column)
 		else if (column == 0)
 			column++;
 
-		pChannel->parameter.effectCount = column;
+		pChannel->effectCount = column;
 		return true;
 	}
 
@@ -2244,12 +2019,49 @@ bool CModule::SetEffectCommandCount(TChannel* pChannel, UINT column)
 
 //--
 
+// Get the count of all Subtunes currently in memory
 const UINT CModule::GetSubtuneCount()
 {
 	UINT count = 0;
 
 	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
 		count += GetSubtune(i) != NULL;
+
+	return count;
+}
+
+// Get the count of all Non-Empty Patterns currently in memory
+const UINT CModule::GetPatternCount()
+{
+	UINT count = 0;
+
+	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+		for (UINT j = 0; j < CHANNEL_COUNT; j++)
+			for (UINT k = 0; k < PATTERN_COUNT; k++)
+				count += !IsEmptyPattern(i, j, k);
+
+	return count;
+}
+
+// Get the count of all Instruments currently in memory
+const UINT CModule::GetInstrumentCount()
+{
+	UINT count = 0;
+
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+		count += GetInstrument(i) != NULL;
+
+	return count;
+}
+
+// Get the count of all Envelopes currently in memory
+const UINT CModule::GetEnvelopeCount()
+{
+	UINT count = 0;
+
+	for (UINT i = 0; i < ET_COUNT; i++)
+		for (UINT j = 0; j < ENVELOPE_COUNT; j++)
+			count += GetEnvelope(j, i) != NULL;
 
 	return count;
 }
@@ -2281,50 +2093,10 @@ const char* CModule::GetInstrumentName(TInstrumentV2* pInstrument)
 
 //--
 
-TEnvelope* CModule::GetVolumeEnvelope(UINT instrument)
+TEnvelope* CModule::GetEnvelope(UINT envelope, UINT type)
 {
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-		return m_instrumentIndex->volume[instrument];
-
-	return NULL;
-}
-
-TEnvelope* CModule::GetTimbreEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-		return m_instrumentIndex->timbre[instrument];
-
-	return NULL;
-}
-
-TEnvelope* CModule::GetAudctlEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-		return m_instrumentIndex->audctl[instrument];
-
-	return NULL;
-}
-
-TEnvelope* CModule::GetEffectEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-		return m_instrumentIndex->effect[instrument];
-
-	return NULL;
-}
-
-TEnvelope* CModule::GetNoteTableEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-		return m_instrumentIndex->note[instrument];
-
-	return NULL;
-}
-
-TEnvelope* CModule::GetFreqTableEnvelope(UINT instrument)
-{
-	if (m_instrumentIndex && IsValidInstrument(instrument))
-		return m_instrumentIndex->freq[instrument];
+	if (m_envelopeIndex && IsValidEnvelope(envelope) && IsValidEnvelopeType(type))
+		return m_envelopeIndex->envelope[type][envelope];
 
 	return NULL;
 }
@@ -2731,10 +2503,10 @@ bool CModule::CopyChannel(TChannel* pFromChannel, TChannel* pToChannel)
 	if (!pFromChannel || !pToChannel)
 		return false;
 
-	pToChannel->parameter.isMuted = pFromChannel->parameter.isMuted;
-	pToChannel->parameter.isEffectEnabled = pFromChannel->parameter.isEffectEnabled;
-	pToChannel->parameter.effectCount = pFromChannel->parameter.effectCount;
-	pToChannel->parameter.channelVolume = pFromChannel->parameter.channelVolume;
+	pToChannel->isMuted = pFromChannel->isMuted;
+	pToChannel->isEffectEnabled = pFromChannel->isEffectEnabled;
+	pToChannel->effectCount = pFromChannel->effectCount;
+	pToChannel->channelVolume = pFromChannel->channelVolume;
 
 	for (int i = 0; i < SONGLINE_COUNT; i++)
 		pToChannel->songline[i] = pFromChannel->songline[i];
@@ -2765,11 +2537,11 @@ bool CModule::CopySubtune(TSubtune* pFromSubtune, TSubtune* pToSubtune)
 
 	SetSubtuneName(pToSubtune, pFromSubtune->name);
 
-	pToSubtune->parameter.songLength = pFromSubtune->parameter.songLength;
-	pToSubtune->parameter.patternLength = pFromSubtune->parameter.patternLength;
-	pToSubtune->parameter.songSpeed = pFromSubtune->parameter.songSpeed;
-	pToSubtune->parameter.instrumentSpeed = pFromSubtune->parameter.instrumentSpeed;
-	pToSubtune->parameter.channelCount = pFromSubtune->parameter.channelCount;
+	pToSubtune->songLength = pFromSubtune->songLength;
+	pToSubtune->patternLength = pFromSubtune->patternLength;
+	pToSubtune->songSpeed = pFromSubtune->songSpeed;
+	pToSubtune->instrumentSpeed = pFromSubtune->instrumentSpeed;
+	pToSubtune->channelCount = pFromSubtune->channelCount;
 
 	for (int i = 0; i < CHANNEL_COUNT; i++)
 	{

@@ -4,6 +4,7 @@
 
 typedef signed char SBYTE;
 typedef signed short SWORD;
+typedef unsigned long long UINT64;
 
 #define INVALID						-1
 #define EMPTY						0
@@ -40,6 +41,7 @@ typedef signed short SWORD;
 #define COL_BLOCK					56
 #define RGB_MUTE					RGB(120, 160, 240)			// Channel is muted
 #define RGB_NORMAL					RGB(255, 255, 255)			// Volume bar in white
+#define RGB_DISABLED				RGB(54, 69, 79)				// Volume bar in gray
 #define RGB_VOLUME_ONLY				RGB(128, 255, 255)			// Turquoise for volume only channel
 #define RGB_TWO_TONE				RGB(128, 255, 0)			// Green for two tone channel
 #define RGB_BACKGROUND				RGB(34, 50, 80)				// Dark blue

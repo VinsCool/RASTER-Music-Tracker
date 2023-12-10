@@ -1921,6 +1921,7 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 // Create a RMTE Module file
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
+/*
 	UINT moduleSize = EMPTY;
 	BYTE* moduleData = NULL;
 	TModuleHeader moduleHeader{};
@@ -1975,7 +1976,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			// Increment Size based on the Subtune Parameters and Metadata
 			moduleSize += sizeof(TSubtuneParameter) + SUBTUNE_NAME_MAX;
 
-/*
+//
 			// Increment Size based on the Channel data
 			for (UINT j = 0; j < channelCount; j++)
 			{
@@ -2067,7 +2068,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					}
 				}
 			}
-*/
+//
 		}
 	}
 
@@ -2110,6 +2111,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 	// Delete the temporary data once it is written
 	delete moduleData;
+*/
 
 	// RMTE Module file should have been successfully created
 	return true;
