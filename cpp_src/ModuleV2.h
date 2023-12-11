@@ -428,7 +428,7 @@ typedef struct envelopeIndex_t
 //
 
 // High Header, used to identify the Module File Format, Version and Region, as well as the Data Integrity
-typedef struct HiHeader_t
+typedef struct hiHeader_t
 {
 	char identifier[4];						// RMTE Module Identifier
 	BYTE version : 7;						// 0 = Prototype, 1+ = Release, up to 127 revisions
@@ -437,7 +437,7 @@ typedef struct HiHeader_t
 } THiHeader;
 
 // Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists for a specific entry
-typedef struct LoHeader_t
+typedef struct loHeader_t
 {
 	UINT subtuneIndex;						// Offset to Subtune data
 	UINT patternIndex;						// Offset to Pattern data
@@ -449,44 +449,61 @@ typedef struct LoHeader_t
 // Most of the Module Parameters, Metadata and other properties will be located in the Header
 // The padding bytes are reserved for future format revisions, and should not be used otherwise
 // None of the defined data should be moved or edited either, unless it is absolutely necessary for a format revision!
-typedef struct ModuleHeader_t
+typedef struct moduleHeader_t
 {
 	// Module Header
-	THiHeader hiHeader;								// High Header
-	TLoHeader loHeader;								// Low Header
+	THiHeader hiHeader;						// High Header
+	TLoHeader loHeader;						// Low Header
 
 	// Module Parameters
-	UINT subtuneCount : 7;							// Total number of Subtunes
-	UINT instrumentCount : 7;						// Total number of Instruments
-	UINT patternCount : 19;							// Total number of Patterns
-	UINT envelopeCount : 10;						// Total number of Envelopes
+	UINT subtuneCount : 7;					// Total number of Subtunes
+	UINT instrumentCount : 7;				// Total number of Instruments
+	UINT patternCount : 19;					// Total number of Patterns
+	UINT envelopeCount : 10;				// Total number of Envelopes
 
 	// Row Highlight
-	BYTE highlightPrimary;							// 1st Row Highlight
-	BYTE highlightSecondary;						// 2nd Row Highlight
+	BYTE highlightPrimary;					// 1st Row Highlight
+	BYTE highlightSecondary;				// 2nd Row Highlight
 
 	// Tuning
-	double baseTuning;								// A-4 Tuning in Hz, eg: 440, 432, etc
-	BYTE baseNote : 4;								// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
-	SBYTE baseOctave : 4;							// Base Octave used for Transposition, eg: 4 for no transposition
+	double baseTuning;						// A-4 Tuning in Hz, eg: 440, 432, etc
+	BYTE baseNote : 4;						// Base Note used for Transposition, eg: 0 = A-, 3 = C-, etc
+	SBYTE baseOctave : 4;					// Base Octave used for Transposition, eg: 4 for no transposition
 
 	// Reserved bytes are not defined further below, but still implied here for future format revisions
 	// Most data could be shifted further down upon file creation, if new parameters are then created later
 	// The actual Module data is indexed in the Low Header, and may be offset anywhere else very easily too
 	// As long as nothing is scrambled around later, forward and backward compatibility will be the priority
+} TModuleHeader;
 
-	// Module Metadata, Null terminated
+// Module Metadata, Null terminated
+typedef struct moduleMetadata_t
+{
 	char* name;
 	char* author;
 	char* copyright;
+} TModuleMetadata;
 
-	// End of Module Header
-	// 
-	// The Data Section is assumed to begin immediately after this point, unless specified otherwise
-	// Any changes and/or additions to the Module Format should automatically increment the Module Format Version
-	// The risk of breaking previous format versions should be greatly reduced this way!
-	// If a parameter checks for specific format revision, it will be much easier to skip it or process it correctly
-} TModuleHeader;
+// End of Module Header
+// 
+// The Data Section is assumed to begin immediately after this point, unless specified otherwise
+// Any changes and/or additions to the Module Format should automatically increment the Module Format Version
+// The risk of breaking previous format versions should be greatly reduced this way!
+// If a parameter checks for specific format revision, it will be much easier to skip it or process it correctly
+
+// Subtune Data Block Struct for Saving/Load RMTE Module Data from file
+typedef struct subtuneDataBlock_t
+{
+	BYTE subtuneIndex;						// Subtune Index
+	BYTE songLength;						// Song Length, in Songlines
+	BYTE patternLength;						// Pattern Length, in Rows
+	BYTE songSpeed;							// Song Speed, in Frames per Row
+	BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
+	BYTE channelCount : 4;					// Number of Channels used in Subtune
+	TChannel* channel;						// Pointer to Channel Data
+	BYTE* songline;							// Pointer to Songline Index
+	char* name;								// Pointer to Subtune Name
+} TSubtuneDataBlock;
 
 
 // ----------------------------------------------------------------------------
@@ -500,7 +517,7 @@ typedef struct ModuleHeader_t
 // Reminder: Bitwise order goes from 0 to 7, the leftmost bits are the last entries added in the Struct!
 // If I wanted to specifically check Bit 7 for a parameter, I must remember that it will be at the bottom, not the top!
 //
-struct TRowEncoding
+typedef struct rowEncoding_t
 {
 	bool isEmptyCmd4 : 1;			// Empty CMD4? Skip next 2 bytes
 	bool isEmptyCmd3 : 1;			// Empty CMD3? Skip next 2 bytes
@@ -511,7 +528,23 @@ struct TRowEncoding
 	bool isEmptyNote : 1;			// Empty Note? Skip next byte
 	bool isEndOfPattern : 1;		// Pattern Terminator?, Skip next byte and set Infinite Pause Length
 	BYTE pauseLength;				// Skip next 0-255 Rows, overridden by the Pattern Terminator Bit
-};
+} TRowEncoding;
+
+/*
+// General Data Block Struct for Saving/Load RMTE Module Data from file
+typedef struct moduleDataBlock_t
+{
+	UINT size;						// Size of Data Block
+	BYTE* data;						// Pointer to Data Block
+	BYTE subtuneIndex;				// Subtune Index (Optional)
+	BYTE channelIndex;				// Channel Index (Optional)
+	BYTE patternIndex;				// Pattern Index (Optional)
+	BYTE instrumentIndex;			// Instrument Index (Optional)
+	BYTE envelopeIndex;				// Envelope Index (Optional)
+	BYTE envelopeType;				// Envelope Type (Optional)
+	TRowEncoding rowEncoding;		// Row Encoding (Optional)
+} TModuleDataBlock;
+*/
 
 
 // ----------------------------------------------------------------------------

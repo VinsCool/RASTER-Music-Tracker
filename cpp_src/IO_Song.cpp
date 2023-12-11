@@ -1921,6 +1921,119 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 // Create a RMTE Module file
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
+	UINT64 moduleSize = EMPTY;
+
+	BYTE* moduleData = NULL;
+	BYTE* moduleOffset = NULL;
+
+	TModuleHeader moduleHeader{};
+	memset(&moduleHeader, EMPTY, sizeof(TModuleHeader));
+
+	TModuleMetadata moduleMetadata{};
+	memset(&moduleMetadata, EMPTY, sizeof(TModuleMetadata));
+
+	// Create High Header, Low Header is constructed using the Module data offsets	
+	strncpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER, 4);
+	moduleHeader.hiHeader.version = MODULE_VERSION;
+	moduleHeader.hiHeader.region = MODULE_REGION;
+
+	// Create Module Parameters
+	moduleHeader.subtuneCount = g_Module.GetSubtuneCount();
+	moduleHeader.instrumentCount = g_Module.GetInstrumentCount();
+	moduleHeader.patternCount = g_Module.GetPatternCount();
+	moduleHeader.envelopeCount = g_Module.GetEnvelopeCount();
+	moduleHeader.highlightPrimary = MODULE_PRIMARY_HIGHLIGHT;
+	moduleHeader.highlightSecondary = MODULE_SECONDARY_HIGHLIGHT;
+	moduleHeader.baseTuning = MODULE_BASE_TUNING;
+	moduleHeader.baseNote = MODULE_BASE_NOTE;
+	moduleHeader.baseOctave = MODULE_BASE_OCTAVE;
+
+	// Create Module Metadata
+	moduleMetadata.name = (char*)g_Module.GetModuleName();
+	moduleMetadata.author = (char*)g_Module.GetModuleAuthor();
+	moduleMetadata.copyright = (char*)g_Module.GetModuleCopyright();
+
+	// Initial Module size is constant, beginning with the Header itself
+	moduleSize += sizeof(TModuleHeader);
+
+	// Increment size with the Module Metadata, including the Null terminators
+	moduleSize += strlen(moduleMetadata.name) + 1;
+	moduleSize += strlen(moduleMetadata.author) + 1;
+	moduleSize += strlen(moduleMetadata.copyright) + 1;
+
+	// Increment size with all the Subtune data to be saved if there is at least 1 Subtune in memory
+	if (moduleHeader.subtuneCount > 0)
+	{
+		// Set the Subtune Index offset to match the current Module Size
+		moduleHeader.loHeader.subtuneIndex = moduleSize;
+
+		// Analyse all Subtunes, the Count that was calculated earlier should be exact
+		for (UINT i = 0; i < moduleHeader.subtuneCount; i++)
+		{
+			TSubtune* pSubtune = g_Module.GetSubtune(i);
+
+			// If the Subtune pointer is NULL, skip it
+			if (!pSubtune)
+				continue;
+
+
+		}
+
+	}
+
+
+	// ------------------------------------------------------------------------
+	// Do everything here for all the data to be processed...
+	// 
+
+
+	// Create Encoded Module data in 1 block using the calculated size
+	moduleData = new BYTE[moduleSize];
+	memset(moduleData, EMPTY, moduleSize);
+
+
+	// Copy the Module Header
+	//memcpy(moduleData, &moduleHeader, sizeof(TModuleHeader));
+
+	// Move the Module Offset to the start of the Module data that was just created
+	//moduleOffset = moduleData + sizeof(TModuleHeader);
+
+
+	// Move the Module Offset to the start of the Module data that was just created
+	moduleOffset = moduleData;
+
+	// Copy the Module Header
+	for (UINT i = 0; i < sizeof(TModuleHeader); i++)
+	{
+		*moduleOffset++ = (&(BYTE&)moduleHeader)[i];
+	}
+
+	// Copy the Module Metadata, including the Null terminators
+	for (UINT i = 0; i <= strlen(moduleMetadata.name); i++)
+		*moduleOffset++ = moduleMetadata.name[i];
+
+	for (UINT i = 0; i <= strlen(moduleMetadata.author); i++)
+		*moduleOffset++ = moduleMetadata.author[i];
+
+	for (UINT i = 0; i <= strlen(moduleMetadata.copyright); i++)
+		*moduleOffset++ = moduleMetadata.copyright[i];
+
+
+	// ------------------------------------------------------------------------
+	// Do everything here for all the data to be processed...
+	// 
+
+	
+	// Write the fully constructed Module data to file once it is ready
+	ou.seekp(0, std::ios_base::beg);
+	ou.write((char*)moduleData, moduleSize);
+
+	// Delete the temporary data once it is written
+	delete moduleData;
+
+	// RMTE Module file should have been successfully created
+	return true;
+
 /*
 	UINT moduleSize = EMPTY;
 	BYTE* moduleData = NULL;
@@ -2111,10 +2224,10 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 	// Delete the temporary data once it is written
 	delete moduleData;
-*/
 
 	// RMTE Module file should have been successfully created
 	return true;
+*/
 }
 
 // Load a RMTE Module file
