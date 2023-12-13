@@ -221,27 +221,47 @@ typedef struct pattern_t
 	TRow row[ROW_COUNT];					// Row data is contained withn its associated Pattern index
 } TPattern;
 
-// Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
-typedef struct channel_t
+typedef struct channelParameter_t
 {
 	BYTE channelVolume : 4;					// Channel Volume, currently placeholder bits, not sure how that would work out...
 	BYTE effectCount : 2;					// Number of Effect Commands enabled per Track Channel, overriden by the next bit possibly...?
 	bool isEffectEnabled : 1;				// Channel is using Effect Commands? Placeholder bit for now
 	bool isMuted : 1;						// Channel is muted? Placeholder bit for now
+} TChannelParameter;
+
+// Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
+typedef struct channel_t
+{
+	//BYTE channelVolume : 4;					// Channel Volume, currently placeholder bits, not sure how that would work out...
+	//BYTE effectCount : 2;					// Number of Effect Commands enabled per Track Channel, overriden by the next bit possibly...?
+	//bool isEffectEnabled : 1;				// Channel is using Effect Commands? Placeholder bit for now
+	//bool isMuted : 1;						// Channel is muted? Placeholder bit for now
+	TChannelParameter parameter;			// Channel Parameters
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
 	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
 } TChannel;
 
-// Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
-typedef struct subtune_t
+typedef struct subtuneParameter_t
 {
-	char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
 	BYTE songLength;						// Song Length, in Songlines
 	BYTE patternLength;						// Pattern Length, in Rows
 	BYTE songSpeed;							// Song Speed, in Frames per Row
 	BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
 	BYTE channelCount : 4;					// Number of Channels used in Subtune
+} TSubtuneParameter;
+
+// Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
+typedef struct subtune_t
+{
+	//char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
+	//BYTE songLength;						// Song Length, in Songlines
+	//BYTE patternLength;						// Pattern Length, in Rows
+	//BYTE songSpeed;							// Song Speed, in Frames per Row
+	//BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
+	//BYTE channelCount : 4;					// Number of Channels used in Subtune
+	TSubtuneParameter parameter;			// Subtune Parameters
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
+	char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
 } TSubtune;
 
 
@@ -527,7 +547,7 @@ typedef struct rowEncoding_t
 	bool isEmptyInstrument : 1;		// Empty Instrument? Skip next byte
 	bool isEmptyNote : 1;			// Empty Note? Skip next byte
 	bool isEndOfPattern : 1;		// Pattern Terminator?, Skip next byte and set Infinite Pause Length
-	BYTE pauseLength;				// Skip next 0-255 Rows, overridden by the Pattern Terminator Bit
+	//BYTE pauseLength;				// Skip next 0-255 Rows, overridden by the Pattern Terminator Bit
 } TRowEncoding;
 
 /*

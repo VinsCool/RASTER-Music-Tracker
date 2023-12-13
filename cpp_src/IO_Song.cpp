@@ -1921,7 +1921,7 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 // Create a RMTE Module file
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
-	UINT64 moduleSize = EMPTY;
+	UINT moduleSize = EMPTY;
 
 	BYTE* moduleData = NULL;
 	BYTE* moduleOffset = NULL;
@@ -1957,9 +1957,9 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	moduleSize += sizeof(TModuleHeader);
 
 	// Increment size with the Module Metadata, including the Null terminators
-	moduleSize += strlen(moduleMetadata.name) + 1;
-	moduleSize += strlen(moduleMetadata.author) + 1;
-	moduleSize += strlen(moduleMetadata.copyright) + 1;
+	moduleSize += ((UINT)strlen(moduleMetadata.name) + 1);
+	moduleSize += ((UINT)strlen(moduleMetadata.author) + 1);
+	moduleSize += ((UINT)strlen(moduleMetadata.copyright) + 1);
 
 	// Increment size with all the Subtune data to be saved if there is at least 1 Subtune in memory
 	if (moduleHeader.subtuneCount > 0)
@@ -1968,7 +1968,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		moduleHeader.loHeader.subtuneIndex = moduleSize;
 
 		// Analyse all Subtunes, the Count that was calculated earlier should be exact
-		for (UINT i = 0; i < moduleHeader.subtuneCount; i++)
+		for (UINT i = 0; i < SUBTUNE_COUNT; i++)
 		{
 			TSubtune* pSubtune = g_Module.GetSubtune(i);
 
@@ -1976,147 +1976,43 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			if (!pSubtune)
 				continue;
 
+			// Get the Subtune parameters needed for calculations
+			UINT channelCount = g_Module.GetChannelCount(pSubtune);
+			UINT songLength = g_Module.GetSongLength(pSubtune);
 
+			// Increment size using the Subtune Parameter Struct size, + 1 byte for the Subtune Index
+			moduleSize += (sizeof(TSubtuneParameter) + 1);
+
+			// Increment size using the Channel Parameter Struct size, multiplied to the number of Channels
+			moduleSize += (sizeof(TChannelParameter) * channelCount);
+
+			// Increment size using the Song Length multiplied to the number of Channels
+			moduleSize += (songLength * channelCount);
+
+			// Increment size with the Subtune Metadata, including the Null terminator
+			moduleSize += ((UINT)strlen(pSubtune->name) + 1);
 		}
-
 	}
 
-
-	// ------------------------------------------------------------------------
-	// Do everything here for all the data to be processed...
-	// 
-
-
-	// Create Encoded Module data in 1 block using the calculated size
-	moduleData = new BYTE[moduleSize];
-	memset(moduleData, EMPTY, moduleSize);
-
-
-	// Copy the Module Header
-	//memcpy(moduleData, &moduleHeader, sizeof(TModuleHeader));
-
-	// Move the Module Offset to the start of the Module data that was just created
-	//moduleOffset = moduleData + sizeof(TModuleHeader);
-
-
-	// Move the Module Offset to the start of the Module data that was just created
-	moduleOffset = moduleData;
-
-	// Copy the Module Header
-	for (UINT i = 0; i < sizeof(TModuleHeader); i++)
+	// Increment size with all the Pattern data to be saved if there is at least 1 non-empty Pattern in memory
+	if (moduleHeader.patternCount > 0)
 	{
-		*moduleOffset++ = (&(BYTE&)moduleHeader)[i];
-	}
+		// Set the Pattern Index offset to match the current Module Size
+		moduleHeader.loHeader.patternIndex = moduleSize;
 
-	// Copy the Module Metadata, including the Null terminators
-	for (UINT i = 0; i <= strlen(moduleMetadata.name); i++)
-		*moduleOffset++ = moduleMetadata.name[i];
-
-	for (UINT i = 0; i <= strlen(moduleMetadata.author); i++)
-		*moduleOffset++ = moduleMetadata.author[i];
-
-	for (UINT i = 0; i <= strlen(moduleMetadata.copyright); i++)
-		*moduleOffset++ = moduleMetadata.copyright[i];
-
-
-	// ------------------------------------------------------------------------
-	// Do everything here for all the data to be processed...
-	// 
-
-	
-	// Write the fully constructed Module data to file once it is ready
-	ou.seekp(0, std::ios_base::beg);
-	ou.write((char*)moduleData, moduleSize);
-
-	// Delete the temporary data once it is written
-	delete moduleData;
-
-	// RMTE Module file should have been successfully created
-	return true;
-
-/*
-	UINT moduleSize = EMPTY;
-	BYTE* moduleData = NULL;
-	TModuleHeader moduleHeader{};
-	memset(&moduleHeader, EMPTY, sizeof(TModuleHeader));
-
-	// Create High Header, Low Header is constructed using the Module data offsets	
-	strncpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER, 4);
-	moduleHeader.hiHeader.version = MODULE_VERSION;
-	moduleHeader.hiHeader.subtuneCount = g_Module.GetSubtuneCount();
-	//moduleHeader.hiHeader.channelCount = g_Module.GetChannelCount();
-	//moduleHeader.hiHeader.patternCount = g_Module.GetPatternCount();
-	//moduleHeader.hiHeader.instrumentCount = g_Module.GetInstrumentCount();
-	//moduleHeader.hiHeader.envelopeCount = g_Module.GetEnvelopeCount();
-
-	// Create Module Metadata
-	strncpy(moduleHeader.name, g_Module.GetModuleName(), MODULE_SONG_NAME_MAX);
-	strncpy(moduleHeader.author, g_Module.GetModuleAuthor(), MODULE_AUTHOR_NAME_MAX);
-	strncpy(moduleHeader.copyright, g_Module.GetModuleCopyright(), MODULE_COPYRIGHT_INFO_MAX);
-
-	// Create Module Parameters
-	moduleHeader.region = MODULE_REGION;
-	moduleHeader.highlightPrimary = MODULE_PRIMARY_HIGHLIGHT;
-	moduleHeader.highlightSecondary = MODULE_SECONDARY_HIGHLIGHT;
-	moduleHeader.baseTuning = MODULE_BASE_TUNING;
-	moduleHeader.baseNote = MODULE_BASE_NOTE;
-	moduleHeader.baseOctave = MODULE_BASE_OCTAVE;
-
-	// Initial Module size is constant, beginning with the Header itself
-	moduleSize += sizeof(TModuleHeader);
-
-	// If the subtune count isn't empty, the offset to Subtune data will be written to the Low Header
-	if (moduleHeader.hiHeader.subtuneCount != EMPTY)
-	{
-		moduleHeader.loHeader.subtuneIndex = moduleSize;
-
-		// Analyse Subtune data
+		// Analyse all Patterns, the Count that was calculated earlier should be exact
 		for (UINT i = 0; i < SUBTUNE_COUNT; i++)
-		{
-			TSubtune* pSubtune = g_Module.GetSubtune(i);
-
-			// If it is an Empty Subtune, it will be skipped
-			if (!pSubtune)
-				continue;
-
-			// Get the maximum data variables, nothing beyond that point would be saved, unless specified otherwise
-			//UINT songLength = g_Module.GetSongLength(pSubtune);
-			//UINT channelCount = g_Module.GetChannelCount(pSubtune);
-
-			// Set the Subtune Index number if it isn't already set
-			pSubtune->parameter.subtuneIndex = i;
-
-			// Increment Size based on the Subtune Parameters and Metadata
-			moduleSize += sizeof(TSubtuneParameter) + SUBTUNE_NAME_MAX;
-
-//
-			// Increment Size based on the Channel data
-			for (UINT j = 0; j < channelCount; j++)
-			{
-				TChannel* pChannel = &pSubtune->channel[j];
-
-				// Set the Subtune Index number and Channel Index numbers if they aren't already set
-				pChannel->parameter.subtuneIndex = i;
-				pChannel->parameter.channelIndex = j;
-				
-				// Increment Size based on the Channel Parameters
-				moduleSize += sizeof(TChannelParameter);
-
-				// Increment Size with the Songline Count, unreferenced Songline data will be lost
-				moduleSize += songLength;
-
-				// Increment Size with the Pattern data, unreferenced Pattern data will be saved
+			for (UINT j = 0; j < CHANNEL_COUNT; j++)
 				for (UINT k = 0; k < PATTERN_COUNT; k++)
 				{
-					TPattern* pPattern = &pChannel->pattern[k];
+					TPattern* pPattern = g_Module.GetPattern(i, j, k);
 
-					// Set the Subtune Index number, Channel Index number and Pattern Index numbers if they aren't already set
-					pPattern->parameter.subtuneIndex = i;
-					pPattern->parameter.channelIndex = j;
-					pPattern->parameter.patternIndex = k;
+					// If the Pattern is Empty, skip it
+					if (g_Module.IsEmptyPattern(pPattern))
+						continue;
 
-					// Increment Size based on the Pattern Parameters
-					moduleSize += sizeof(TPatternParameter);
+					// Increment size by 3 bytes for the Subtune Index, Channel Index and Pattern Index, respectively
+					moduleSize += 3;
 
 					// Increment Size with the Row data
 					for (UINT l = 0; l < ROW_COUNT; l++)
@@ -2144,7 +2040,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 						}
 
 						// Row encoding data is written first
-						moduleSize += sizeof(BYTE);
+						moduleSize += sizeof(TRowEncoding);
 
 						// The Pause Length is written only when the Pattern Terminator bit is not set
 						if (!isEndOfPattern)
@@ -2180,44 +2076,206 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 							break;
 					}
 				}
-			}
-//
-		}
 	}
+
+
+	// ------------------------------------------------------------------------
+	// Do everything here for all the data to be processed...
+	// 
+
 
 	// Create Encoded Module data in 1 block using the calculated size
 	moduleData = new BYTE[moduleSize];
 	memset(moduleData, EMPTY, moduleSize);
 
-	// Copy the Module Header
-	memcpy(moduleData, &moduleHeader, sizeof(TModuleHeader));
+	// Move the Module Offset to the start of the Module data that was just created
+	moduleOffset = moduleData;
 
-	// If the offset to Subtune data is not NULL, data will be created accordingly
-	if (moduleHeader.loHeader.subtuneIndex != NULL)
+	// Write the Module Header
+	for (UINT i = 0; i < sizeof(TModuleHeader); i++)
+		*moduleOffset++ = (&(BYTE&)moduleHeader)[i];
+
+	// Write the Module Metadata, including the Null terminators
+	for (UINT i = 0; i <= strlen(moduleMetadata.name); i++)
+		*moduleOffset++ = moduleMetadata.name[i];
+
+	for (UINT i = 0; i <= strlen(moduleMetadata.author); i++)
+		*moduleOffset++ = moduleMetadata.author[i];
+
+	for (UINT i = 0; i <= strlen(moduleMetadata.copyright); i++)
+		*moduleOffset++ = moduleMetadata.copyright[i];
+
+	// Write the Encoded Subtune data if there is at least 1 Subtune to process
+	if (moduleHeader.subtuneCount > 0)
 	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader.loHeader.subtuneIndex;
+		// Move the Module Offset to the start of the Subtune data block
+		moduleOffset = moduleData + moduleHeader.loHeader.subtuneIndex;
 
-		// Construct all the encoded Subtune data based on the analysis done a bit earlier
+		// Seek through all Subtunes, the Count that was calculated earlier should be exact
 		for (UINT i = 0; i < SUBTUNE_COUNT; i++)
 		{
-			// Get the pointer to the actual Subtune data to process
 			TSubtune* pSubtune = g_Module.GetSubtune(i);
 
-			// If it is an Empty Subtune, it will be skipped
+			// If the Subtune pointer is NULL, skip it
 			if (!pSubtune)
 				continue;
 
-			// Write the Subtune Parameters
-			memcpy(moduleOffset, &pSubtune->parameter, sizeof(TSubtuneParameter));
-			moduleOffset += sizeof(TSubtuneParameter);
-			
-			// Write the Subtune Metadata
-			strncpy((char*)moduleOffset, pSubtune->name, SUBTUNE_NAME_MAX);
-			moduleOffset += SUBTUNE_NAME_MAX;
+			// Get the Subtune parameters needed for calculations
+			UINT channelCount = g_Module.GetChannelCount(pSubtune);
+			UINT songLength = g_Module.GetSongLength(pSubtune);
+
+			// Write 1 byte for the Subtune Index
+			*moduleOffset++ = i;
+
+			// Write the Subtune Parameter Struct
+			for (UINT j = 0; j < sizeof(TSubtuneParameter); j++)
+				*moduleOffset++ = (&(BYTE&)pSubtune->parameter)[j];
+
+			// Write the Channel Parameter Struct, multiplied to the number of Channels
+			for (UINT j = 0; j < channelCount; j++)
+			{
+				TChannel* pChannel = &pSubtune->channel[j];
+
+				for (UINT k = 0; k < sizeof(TChannelParameter); k++)
+					*moduleOffset++ = (&(BYTE&)pChannel->parameter)[k];
+			}
+
+			// Write the Songline Index, sized to the Song Length multiplied to the number of Channels
+			for (UINT k = 0; k < songLength; k++)
+			{
+				for (UINT j = 0; j < channelCount; j++)
+				{
+					TChannel* pChannel = &pSubtune->channel[j];
+					*moduleOffset++ = pChannel->songline[k];
+				}
+			}
+
+			// Write the Subtune Metadata, including the Null terminator
+			for (UINT j = 0; j <= strlen(pSubtune->name); j++)
+				*moduleOffset++ = pSubtune->name[j];
 		}
 	}
 
+	// Write the Encoded Pattern data if there is at least 1 Pattern to process
+	if (moduleHeader.patternCount > 0)
+	{
+		// Move the Module Offset to the start of the Subtune data block
+		moduleOffset = moduleData + moduleHeader.loHeader.patternIndex;
+
+		// Seek through all Patterns, the Count that was calculated earlier should be exact
+		for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+			for (UINT j = 0; j < CHANNEL_COUNT; j++)
+				for (UINT k = 0; k < PATTERN_COUNT; k++)
+				{
+					TPattern* pPattern = g_Module.GetPattern(i, j, k);
+
+					// If the Pattern is Empty, skip it
+					if (g_Module.IsEmptyPattern(pPattern))
+						continue;
+
+					// Write 3 bytes for the Subtune Index, Channel Index and Pattern Index, respectively
+					*moduleOffset++ = i;
+					*moduleOffset++ = j;
+					*moduleOffset++ = k;
+
+					// Write the Encoded Row data
+					for (UINT l = 0; l < ROW_COUNT; l++)
+					{
+						// Get the pointer to the current Row position
+						TRow* pRowFrom = &pPattern->row[l];
+
+						// For data encoding, assume it is the End of Pattern unless it is not
+						TRowEncoding rowEncoding{};
+						rowEncoding.isEndOfPattern = true;
+
+						// Initial Pause Length is always 0
+						BYTE pauseLength = EMPTY;
+
+						// We need to identify the number of empty Rows ahead of the current position
+						for (UINT m = l + 1; m < ROW_COUNT; m++)
+						{
+							// Get the pointer to the target Row position
+							TRow* pRowTo = &pPattern->row[m];
+
+							// If the Row is not Empty, there is more data to process
+							if (!g_Module.IsEmptyRow(pRowTo))
+							{
+								// Empty Rows between l and m will be skipped with the Pause Length
+								l = m - 1;
+								rowEncoding.isEndOfPattern = false;
+								break;
+							}
+
+							// Increment the Pause Length by 1
+							pauseLength += 1;
+						}
+
+						// Encode the Row data based on the Empty values
+						rowEncoding.isEmptyNote = (pRowFrom->note == NOTE_EMPTY);
+						rowEncoding.isEmptyInstrument = (pRowFrom->instrument == INSTRUMENT_EMPTY);
+						rowEncoding.isEmptyVolume = (pRowFrom->volume == VOLUME_EMPTY);
+						rowEncoding.isEmptyCmd1 = (pRowFrom->effect[CMD1].command == PE_EMPTY);
+						rowEncoding.isEmptyCmd2 = (pRowFrom->effect[CMD2].command == PE_EMPTY);
+						rowEncoding.isEmptyCmd3 = (pRowFrom->effect[CMD3].command == PE_EMPTY);
+						rowEncoding.isEmptyCmd4 = (pRowFrom->effect[CMD4].command == PE_EMPTY);
+
+						// Write the Encoding byte
+						*moduleOffset++ = (BYTE&)rowEncoding;
+
+						// Write the Pause Length if the Pattern Terminator bit is not set
+						if (!rowEncoding.isEndOfPattern)
+							*moduleOffset++ = pauseLength;
+
+						// Write the Non-Empty Note
+						if (!rowEncoding.isEmptyNote)
+							*moduleOffset++ = pRowFrom->note;
+
+						// Write the Non-Empty Instrument
+						if (!rowEncoding.isEmptyInstrument)
+							*moduleOffset++ = pRowFrom->instrument;
+
+						// Write the Non-Empty Volume
+						if (!rowEncoding.isEmptyVolume)
+							*moduleOffset++ = pRowFrom->volume;
+
+						// Write the Non-Empty Effect Commands
+						if (!rowEncoding.isEmptyCmd1)
+						{
+							*moduleOffset++ = pRowFrom->effect[CMD1].command;
+							*moduleOffset++ = pRowFrom->effect[CMD1].parameter;
+						}
+
+						if (!rowEncoding.isEmptyCmd2)
+						{
+							*moduleOffset++ = pRowFrom->effect[CMD2].command;
+							*moduleOffset++ = pRowFrom->effect[CMD2].parameter;
+						}
+
+						if (!rowEncoding.isEmptyCmd3)
+						{
+							*moduleOffset++ = pRowFrom->effect[CMD3].command;
+							*moduleOffset++ = pRowFrom->effect[CMD3].parameter;
+						}
+
+						if (!rowEncoding.isEmptyCmd4)
+						{
+							*moduleOffset++ = pRowFrom->effect[CMD4].command;
+							*moduleOffset++ = pRowFrom->effect[CMD4].parameter;
+						}
+
+						// If the Pattern Terminator Bit is set, there is no more Row data to process
+						if (rowEncoding.isEndOfPattern)
+							break;
+					}
+				}
+	}
+
+
+	// ------------------------------------------------------------------------
+	// Do everything here for all the data to be processed...
+	// 
+
+	
 	// Write the fully constructed Module data to file once it is ready
 	ou.seekp(0, std::ios_base::beg);
 	ou.write((char*)moduleData, moduleSize);
@@ -2227,7 +2285,6 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 	// RMTE Module file should have been successfully created
 	return true;
-*/
 }
 
 // Load a RMTE Module file
