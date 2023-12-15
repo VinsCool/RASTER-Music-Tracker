@@ -232,10 +232,6 @@ typedef struct channelParameter_t
 // Channel Index, used for indexing the Songline and Pattern data, similar to the CSong Class
 typedef struct channel_t
 {
-	//BYTE channelVolume : 4;					// Channel Volume, currently placeholder bits, not sure how that would work out...
-	//BYTE effectCount : 2;					// Number of Effect Commands enabled per Track Channel, overriden by the next bit possibly...?
-	//bool isEffectEnabled : 1;				// Channel is using Effect Commands? Placeholder bit for now
-	//bool isMuted : 1;						// Channel is muted? Placeholder bit for now
 	TChannelParameter parameter;			// Channel Parameters
 	BYTE songline[SONGLINE_COUNT];			// Pattern Index for each songline within the Track Channel
 	TPattern pattern[PATTERN_COUNT];		// Pattern Data for the Track Channel
@@ -253,12 +249,6 @@ typedef struct subtuneParameter_t
 // Subtune Index, used for indexing all of the Module data, indexed by the TIndex Struct
 typedef struct subtune_t
 {
-	//char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
-	//BYTE songLength;						// Song Length, in Songlines
-	//BYTE patternLength;						// Pattern Length, in Rows
-	//BYTE songSpeed;							// Song Speed, in Frames per Row
-	//BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
-	//BYTE channelCount : 4;					// Number of Channels used in Subtune
 	TSubtuneParameter parameter;			// Subtune Parameters
 	TChannel channel[CHANNEL_COUNT];		// Channel Index assigned to the Subtune
 	char name[SUBTUNE_NAME_MAX + 1];		// Subtune Name
@@ -511,20 +501,6 @@ typedef struct moduleMetadata_t
 // The risk of breaking previous format versions should be greatly reduced this way!
 // If a parameter checks for specific format revision, it will be much easier to skip it or process it correctly
 
-// Subtune Data Block Struct for Saving/Load RMTE Module Data from file
-typedef struct subtuneDataBlock_t
-{
-	BYTE subtuneIndex;						// Subtune Index
-	BYTE songLength;						// Song Length, in Songlines
-	BYTE patternLength;						// Pattern Length, in Rows
-	BYTE songSpeed;							// Song Speed, in Frames per Row
-	BYTE instrumentSpeed : 4;				// Instrument Speed, in Frames per VBI
-	BYTE channelCount : 4;					// Number of Channels used in Subtune
-	TChannel* channel;						// Pointer to Channel Data
-	BYTE* songline;							// Pointer to Songline Index
-	char* name;								// Pointer to Subtune Name
-} TSubtuneDataBlock;
-
 
 // ----------------------------------------------------------------------------
 // RMTE Module Data encoding Structs
@@ -536,35 +512,24 @@ typedef struct subtuneDataBlock_t
 // 
 // Reminder: Bitwise order goes from 0 to 7, the leftmost bits are the last entries added in the Struct!
 // If I wanted to specifically check Bit 7 for a parameter, I must remember that it will be at the bottom, not the top!
-//
 typedef struct rowEncoding_t
 {
-	bool isEmptyCmd4 : 1;			// Empty CMD4? Skip next 2 bytes
-	bool isEmptyCmd3 : 1;			// Empty CMD3? Skip next 2 bytes
-	bool isEmptyCmd2 : 1;			// Empty CMD2? Skip next 2 bytes
-	bool isEmptyCmd1 : 1;			// Empty CMD1? Skip next 2 bytes
-	bool isEmptyVolume : 1;			// Empty Volume? Skip next byte
-	bool isEmptyInstrument : 1;		// Empty Instrument? Skip next byte
-	bool isEmptyNote : 1;			// Empty Note? Skip next byte
-	bool isEndOfPattern : 1;		// Pattern Terminator?, Skip next byte and set Infinite Pause Length
-	//BYTE pauseLength;				// Skip next 0-255 Rows, overridden by the Pattern Terminator Bit
+	union
+	{
+		struct
+		{
+			bool isValidCmd4 : 1;			// Empty CMD4? Skip next 2 bytes
+			bool isValidCmd3 : 1;			// Empty CMD3? Skip next 2 bytes
+			bool isValidCmd2 : 1;			// Empty CMD2? Skip next 2 bytes
+			bool isValidCmd1 : 1;			// Empty CMD1? Skip next 2 bytes
+			bool isValidVolume : 1;			// Empty Volume? Skip next byte
+			bool isValidInstrument : 1;		// Empty Instrument? Skip next byte
+			bool isValidNote : 1;			// Empty Note? Skip next byte
+			bool isPauseOrTerminator : 1;	// Row Pause or Pattern Terminator?
+		};
+		BYTE pauseLength : 7;				// Skip next 0-126 + 1 Rows
+	};
 } TRowEncoding;
-
-/*
-// General Data Block Struct for Saving/Load RMTE Module Data from file
-typedef struct moduleDataBlock_t
-{
-	UINT size;						// Size of Data Block
-	BYTE* data;						// Pointer to Data Block
-	BYTE subtuneIndex;				// Subtune Index (Optional)
-	BYTE channelIndex;				// Channel Index (Optional)
-	BYTE patternIndex;				// Pattern Index (Optional)
-	BYTE instrumentIndex;			// Instrument Index (Optional)
-	BYTE envelopeIndex;				// Envelope Index (Optional)
-	BYTE envelopeType;				// Envelope Type (Optional)
-	TRowEncoding rowEncoding;		// Row Encoding (Optional)
-} TModuleDataBlock;
-*/
 
 
 // ----------------------------------------------------------------------------

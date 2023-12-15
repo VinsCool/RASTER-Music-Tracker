@@ -2017,34 +2017,57 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					// Increment Size with the Row data
 					for (UINT l = 0; l < ROW_COUNT; l++)
 					{
-						// Get the pointer to the current Row position
-						TRow* pRowFrom = &pPattern->row[l];
-
-						// For data encoding, assume it is the End of Pattern unless it is not
-						bool isEndOfPattern = true;
-
-						// We need to identify the number of empty Rows ahead of the current position
-						for (UINT m = l + 1; m < ROW_COUNT; m++)
-						{
-							// Get the pointer to the target Row position
-							TRow* pRowTo = &pPattern->row[m];
-
-							// If the Row is not Empty, there is more data to process
-							if (!g_Module.IsEmptyRow(pRowTo))
-							{
-								// Empty Rows between l and m will be skipped with the Pause Length
-								l = m - 1;
-								isEndOfPattern = false;
-								break;
-							}
-						}
-
 						// Row encoding data is written first
 						moduleSize += sizeof(TRowEncoding);
 
-						// The Pause Length is written only when the Pattern Terminator bit is not set
-						if (!isEndOfPattern)
-							moduleSize += sizeof(BYTE);
+						// Get the pointer to the current Row position
+						TRow* pRowFrom = &pPattern->row[l];
+
+						// If the Row is Empty, the Pause Length will be derived from it
+						if (g_Module.IsEmptyRow(pRowFrom))
+						{
+							// For data encoding, assume it is the End of Pattern unless it is not
+							bool isEndOfPattern = true;
+
+							// Initial Pause Length is always 0
+							BYTE pauseLength = EMPTY;
+
+							// We need to identify the number of Empty Rows ahead of the current position
+							for (UINT m = l + 1; m < ROW_COUNT; m++)
+							{
+								// Get the pointer to the target Row position
+								TRow* pRowTo = &pPattern->row[m];
+
+								// If the Row is not Empty, there is more data to process
+								if (!g_Module.IsEmptyRow(pRowTo))
+								{
+									isEndOfPattern = false;
+									break;
+								}
+
+								// Increment the Pause Length by 1
+								pauseLength += 1;
+							}
+
+							// At least 1 Empty Row must follow in order to set the Row Pause bit
+							if (pauseLength > EMPTY || isEndOfPattern)
+							{
+								// If the Pattern Terminator Bit is set, there is no more Row data to process for this Pattern
+								if (isEndOfPattern)
+									break;
+
+								// Up to 128 Rows may be skipped at once, however!
+								if (pauseLength >= 0x7F)
+									pauseLength = 0x7E;
+
+								else
+									pauseLength -= 1;
+
+								// Empty Rows between l and m will be skipped with the Pause Length
+								l += pauseLength + 1;
+								continue;
+							}
+						}
 
 						// Check if there is a Non-Empty Note
 						if (pRowFrom->note != NOTE_EMPTY)
@@ -2070,10 +2093,6 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 						if (pRowFrom->effect[CMD4].command != PE_EMPTY)
 							moduleSize += sizeof(TEffect);
-
-						// If the Pattern Terminator Bit is set, there is no more Row data to process
-						if (isEndOfPattern)
-							break;
 					}
 				}
 	}
@@ -2181,91 +2200,116 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					// Write the Encoded Row data
 					for (UINT l = 0; l < ROW_COUNT; l++)
 					{
+						TRowEncoding rowEncoding{};
+						rowEncoding.isPauseOrTerminator = false;
+
 						// Get the pointer to the current Row position
 						TRow* pRowFrom = &pPattern->row[l];
 
-						// For data encoding, assume it is the End of Pattern unless it is not
-						TRowEncoding rowEncoding{};
-						rowEncoding.isEndOfPattern = true;
-
-						// Initial Pause Length is always 0
-						BYTE pauseLength = EMPTY;
-
-						// We need to identify the number of empty Rows ahead of the current position
-						for (UINT m = l + 1; m < ROW_COUNT; m++)
+						// If the Row is Empty, the Pause Length will be derived from it
+						if (g_Module.IsEmptyRow(pRowFrom))
 						{
-							// Get the pointer to the target Row position
-							TRow* pRowTo = &pPattern->row[m];
+							// For data encoding, assume it is the End of Pattern unless it is not
+							bool isEndOfPattern = true;
 
-							// If the Row is not Empty, there is more data to process
-							if (!g_Module.IsEmptyRow(pRowTo))
+							// Initial Pause Length is always 0
+							BYTE pauseLength = EMPTY;
+
+							// We need to identify the number of Empty Rows ahead of the current position
+							for (UINT m = l + 1; m < ROW_COUNT; m++)
 							{
-								// Empty Rows between l and m will be skipped with the Pause Length
-								l = m - 1;
-								rowEncoding.isEndOfPattern = false;
-								break;
+								// Get the pointer to the target Row position
+								TRow* pRowTo = &pPattern->row[m];
+
+								// If the Row is not Empty, there is more data to process
+								if (!g_Module.IsEmptyRow(pRowTo))
+								{
+									isEndOfPattern = false;
+									break;
+								}
+
+								// Increment the Pause Length by 1
+								pauseLength += 1;
 							}
 
-							// Increment the Pause Length by 1
-							pauseLength += 1;
+							// At least 1 Empty Row must follow in order to set the Row Pause bit
+							if (pauseLength > EMPTY || isEndOfPattern)
+							{
+								rowEncoding.isPauseOrTerminator = true;
+
+								// Set the Pause Length to 127 if the End of Pattern was reached
+								if (isEndOfPattern)
+									rowEncoding.pauseLength = 0x7F;
+
+								// Up to 128 Rows may be skipped at once, however!
+								else if (pauseLength >= 0x7F)
+									rowEncoding.pauseLength = 0x7E;
+
+								// Set the Pause Length to the number of Empty Rows counted
+								else
+									rowEncoding.pauseLength = pauseLength - 1;
+
+								// Write the Encoding byte first
+								*moduleOffset++ = (BYTE&)rowEncoding;
+
+								// If the Pattern Terminator Bit is set, there is no more Row data to process for this Pattern
+								if (isEndOfPattern)
+									break;
+
+								// Empty Rows between l and m will be skipped with the Pause Length
+								l += rowEncoding.pauseLength + 1;
+								continue;
+							}
 						}
 
-						// Encode the Row data based on the Empty values
-						rowEncoding.isEmptyNote = (pRowFrom->note == NOTE_EMPTY);
-						rowEncoding.isEmptyInstrument = (pRowFrom->instrument == INSTRUMENT_EMPTY);
-						rowEncoding.isEmptyVolume = (pRowFrom->volume == VOLUME_EMPTY);
-						rowEncoding.isEmptyCmd1 = (pRowFrom->effect[CMD1].command == PE_EMPTY);
-						rowEncoding.isEmptyCmd2 = (pRowFrom->effect[CMD2].command == PE_EMPTY);
-						rowEncoding.isEmptyCmd3 = (pRowFrom->effect[CMD3].command == PE_EMPTY);
-						rowEncoding.isEmptyCmd4 = (pRowFrom->effect[CMD4].command == PE_EMPTY);
+						// Encode the Row data based on the Non-Empty values
+						rowEncoding.isValidNote = (pRowFrom->note != NOTE_EMPTY);
+						rowEncoding.isValidInstrument = (pRowFrom->instrument != INSTRUMENT_EMPTY);
+						rowEncoding.isValidVolume = (pRowFrom->volume != VOLUME_EMPTY);
+						rowEncoding.isValidCmd1 = (pRowFrom->effect[CMD1].command != PE_EMPTY);
+						rowEncoding.isValidCmd2 = (pRowFrom->effect[CMD2].command != PE_EMPTY);
+						rowEncoding.isValidCmd3 = (pRowFrom->effect[CMD3].command != PE_EMPTY);
+						rowEncoding.isValidCmd4 = (pRowFrom->effect[CMD4].command != PE_EMPTY);
 
-						// Write the Encoding byte
+						// Write the Encoding byte first
 						*moduleOffset++ = (BYTE&)rowEncoding;
 
-						// Write the Pause Length if the Pattern Terminator bit is not set
-						if (!rowEncoding.isEndOfPattern)
-							*moduleOffset++ = pauseLength;
-
 						// Write the Non-Empty Note
-						if (!rowEncoding.isEmptyNote)
+						if (rowEncoding.isValidNote)
 							*moduleOffset++ = pRowFrom->note;
 
 						// Write the Non-Empty Instrument
-						if (!rowEncoding.isEmptyInstrument)
+						if (rowEncoding.isValidInstrument)
 							*moduleOffset++ = pRowFrom->instrument;
 
 						// Write the Non-Empty Volume
-						if (!rowEncoding.isEmptyVolume)
+						if (rowEncoding.isValidVolume)
 							*moduleOffset++ = pRowFrom->volume;
 
 						// Write the Non-Empty Effect Commands
-						if (!rowEncoding.isEmptyCmd1)
+						if (rowEncoding.isValidCmd1)
 						{
 							*moduleOffset++ = pRowFrom->effect[CMD1].command;
 							*moduleOffset++ = pRowFrom->effect[CMD1].parameter;
 						}
 
-						if (!rowEncoding.isEmptyCmd2)
+						if (rowEncoding.isValidCmd2)
 						{
 							*moduleOffset++ = pRowFrom->effect[CMD2].command;
 							*moduleOffset++ = pRowFrom->effect[CMD2].parameter;
 						}
 
-						if (!rowEncoding.isEmptyCmd3)
+						if (rowEncoding.isValidCmd3)
 						{
 							*moduleOffset++ = pRowFrom->effect[CMD3].command;
 							*moduleOffset++ = pRowFrom->effect[CMD3].parameter;
 						}
 
-						if (!rowEncoding.isEmptyCmd4)
+						if (rowEncoding.isValidCmd4)
 						{
 							*moduleOffset++ = pRowFrom->effect[CMD4].command;
 							*moduleOffset++ = pRowFrom->effect[CMD4].parameter;
 						}
-
-						// If the Pattern Terminator Bit is set, there is no more Row data to process
-						if (rowEncoding.isEndOfPattern)
-							break;
 					}
 				}
 	}
