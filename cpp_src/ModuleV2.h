@@ -443,6 +443,7 @@ typedef struct hiHeader_t
 	char identifier[4];						// RMTE Module Identifier
 	BYTE version : 7;						// 0 = Prototype, 1+ = Release, up to 127 revisions
 	bool region : 1;						// 0 = PAL, 1 = NTSC
+
 	// TODO: Add a Checksum, or something that could test for Data Integrity...
 } THiHeader;
 
@@ -464,12 +465,6 @@ typedef struct moduleHeader_t
 	// Module Header
 	THiHeader hiHeader;						// High Header
 	TLoHeader loHeader;						// Low Header
-
-	// Module Parameters
-	UINT subtuneCount : 7;					// Total number of Subtunes
-	UINT instrumentCount : 7;				// Total number of Instruments
-	UINT patternCount : 19;					// Total number of Patterns
-	UINT envelopeCount : 10;				// Total number of Envelopes
 
 	// Row Highlight
 	BYTE highlightPrimary;					// 1st Row Highlight
