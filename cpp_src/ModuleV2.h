@@ -267,10 +267,8 @@ typedef struct envelopeMacro_t
 	bool isEnabled : 1;						// Envelope is used if True, otherwise it will be skipped, but still displayed on screen for reference
 } TEnvelopeMacro;
 
-// Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
-typedef struct instrument_t
+typedef struct instrumentParameter_t
 {
-	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
 	BYTE volumeFade;						// Volume Fadeout parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
 	BYTE volumeSustain;						// Volume Sustain parameter, taking priority over EFFECT_VOLUME_FADEOUT for Legacy RMT Instrument compatibility
 	BYTE volumeDelay;						// Volume Delay parameter, used when VolumeFade is a non-zero parameter, a delay of 0x00 is immediate
@@ -280,7 +278,14 @@ typedef struct instrument_t
 	BYTE freqShiftDelay;					// Freq Shift Delay parameter, used when FreqShift is a non-zero parameter, a delay of 0x00 is immediate
 	BYTE autoFilter;						// AutoFilter parameter, taking priority over EFFECT_AUTOFILTER for Legacy RMT Instrument compatibility
 	bool autoFilterMode : 1;				// AutoFilter Mode parameter, Additive Mode if True, otherwise it is Absolute
+} TInstrumentParameter;
+
+// Instrument Data, due to the Legacy TInstrument struct still in the codebase, this is temporarily defined as TInstrumentV2
+typedef struct instrument_t
+{
+	TInstrumentParameter parameter;			// Instrument Parameters
 	TEnvelopeMacro envelope[ET_COUNT];		// Envelope Macros associated to the Instrument, taking priority over certain Pattern Effect Commands
+	char name[INSTRUMENT_NAME_MAX + 1];		// Instrument Name
 } TInstrumentV2;
 
 // Instrument Volume Envelope
@@ -386,8 +391,7 @@ typedef struct freqTableEnvelope_t
 	};
 } TFreqTableEnvelope;
 
-// Instrument Envelope data, with all the data structures unified, making virtually any Envelope compatible between each others
-typedef struct envelope_t
+typedef struct envelopeParameter_t
 {
 	BYTE length;							// Envelope Length, in frames
 	BYTE loop;								// Envelope Loop point
@@ -397,6 +401,12 @@ typedef struct envelope_t
 	bool isReleased : 1;					// Release point is used if True, could also be combined to Loop Point, useful for sustaining a Note Release
 	bool isAbsolute : 1;					// Absolute Mode is used if True, otherwise Relative Mode is used (Note and Freq Tables only)
 	bool isAdditive : 1;					// Additive Mode is used if True, could also be combined to Absolute Mode if desired (Note and Freq Tables only)
+} TEnvelopeParameter;
+
+// Instrument Envelope data, with all the data structures unified, making virtually any Envelope compatible between each others
+typedef struct envelope_t
+{
+	TEnvelopeParameter parameter;			// Envelope Parameters
 	union
 	{
 		TVolumeEnvelope volume[ENVELOPE_STEP_COUNT];

@@ -4490,19 +4490,19 @@ void CSong::DrawInstrumentEditor()
 		TextXY(s, x, y);
 
 		TextMiniXY("PARAMETERS", x, y + z * ++++m);
-		s.Format(" VOLUMEFADE:     %02X", pInstrument->volumeFade);
+		s.Format(" VOLUMEFADE:     %02X", pInstrument->parameter.volumeFade);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VOLUMESUSTAIN:  %02X", pInstrument->volumeSustain);
+		s.Format(" VOLUMESUSTAIN:  %02X", pInstrument->parameter.volumeSustain);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VOLUMEDELAY:    %02X", pInstrument->volumeDelay);
+		s.Format(" VOLUMEDELAY:    %02X", pInstrument->parameter.volumeDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VIBRATO:        %02X", pInstrument->vibrato);
+		s.Format(" VIBRATO:        %02X", pInstrument->parameter.vibrato);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" VIBRATODELAY:   %02X", pInstrument->vibratoDelay);
+		s.Format(" VIBRATODELAY:   %02X", pInstrument->parameter.vibratoDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" FREQSHIFT:      %02X", pInstrument->freqShift);
+		s.Format(" FREQSHIFT:      %02X", pInstrument->parameter.freqShift);
 		TextMiniXY(s, x, y + z * ++m, c);
-		s.Format(" FREQSHIFTDELAY: %02X", pInstrument->freqShiftDelay);
+		s.Format(" FREQSHIFTDELAY: %02X", pInstrument->parameter.freqShiftDelay);
 		TextMiniXY(s, x, y + z * ++m, c);
 
 		// Volume Envelope
@@ -4521,21 +4521,21 @@ void CSong::DrawInstrumentEditor()
 		if (pEnvelope)
 		{
 			c = pMacro->isEnabled ? TEXT_MINI_COLOR_WHITE : TEXT_MINI_COLOR_GRAY;
-			s.Format(" LENGTH:     %02X", pEnvelope->length);
+			s.Format(" LENGTH:     %02X", pEnvelope->parameter.length);
 			TextMiniXY(s, x, y + z * ++++m, c);
-			s.Format(" LOOP:       %02X", pEnvelope->loop);
+			s.Format(" LOOP:       %02X", pEnvelope->parameter.loop);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" RELEASE:    %02X", pEnvelope->release);
+			s.Format(" RELEASE:    %02X", pEnvelope->parameter.release);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" SPEED:      %02X", pEnvelope->speed);
+			s.Format(" SPEED:      %02X", pEnvelope->parameter.speed);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" ISLOOPED:    %1X", pEnvelope->isLooped);
+			s.Format(" ISLOOPED:    %1X", pEnvelope->parameter.isLooped);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" ISRELEASED:  %1X", pEnvelope->isReleased);
+			s.Format(" ISRELEASED:  %1X", pEnvelope->parameter.isReleased);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" ISABSOLUTE:  %1X", pEnvelope->isAbsolute);
+			s.Format(" ISABSOLUTE:  %1X", pEnvelope->parameter.isAbsolute);
 			TextMiniXY(s, x, y + z * ++m, c);
-			s.Format(" ISADDITIVE:  %1X", pEnvelope->isAdditive);
+			s.Format(" ISADDITIVE:  %1X", pEnvelope->parameter.isAdditive);
 			TextMiniXY(s, x, y + z * ++m, c);
 
 			px = x + 18 * z;
@@ -4543,12 +4543,12 @@ void CSong::DrawInstrumentEditor()
 
 			// Delimitation of the Volume Envelope
 			g_mem_dc->MoveTo(px - 1, py - 2);
-			g_mem_dc->LineTo(px + pEnvelope->length * 8, py - 2);
+			g_mem_dc->LineTo(px + pEnvelope->parameter.length * 8, py - 2);
 
 			// Volume Envelope markers
 			TextDownXY("\x0E\x0E\x0E\x0E", px - 8 - 1, py - 4 * 16 - 1, TEXT_COLOR_GRAY);
 
-			for (UINT i = 0; i < pEnvelope->length; i++)
+			for (UINT i = 0; i < pEnvelope->parameter.length; i++)
 			{
 				vx = px - 1 + i * z;
 				vy = py - 4 * 16 + 1;
@@ -4558,9 +4558,9 @@ void CSong::DrawInstrumentEditor()
 				//bool isActiveInstrument = false;// m_activeInstrument == m_channelVariables[channel]->channelInstrument;
 				//bool isPlayingFrame = false;// i == m_channelVariables[channel]->instrumentEnvelopeOffset;
 
-				bool isLoopPoint = i == pEnvelope->loop;
-				bool isReleasePoint = i == pEnvelope->release;
-				bool isEndPoint = i + 1 == pEnvelope->length;
+				bool isLoopPoint = i == pEnvelope->parameter.loop;
+				bool isReleasePoint = i == pEnvelope->parameter.release;
+				bool isEndPoint = i + 1 == pEnvelope->parameter.length;
 
 				COLORREF fillColour = pMacro->isEnabled ? RGB_NORMAL : RGB_DISABLED;
 				//COLORREF playColour = RGB(253, 236, 117);

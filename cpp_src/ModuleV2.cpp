@@ -284,15 +284,15 @@ bool CModule::InitialiseInstrument(TInstrumentV2* pInstrument)
 	// Set the default Instrument name
 	SetInstrumentName(pInstrument, "New Instrument");
 
-	pInstrument->volumeFade = 0x00;
-	pInstrument->volumeSustain = 0x00;
-	pInstrument->volumeDelay = 0x00;
-	pInstrument->vibrato = 0x00;
-	pInstrument->vibratoDelay = 0x00;
-	pInstrument->freqShift = 0x00;
-	pInstrument->freqShiftDelay = 0x00;
-	pInstrument->autoFilter = 0x00;
-	pInstrument->autoFilterMode = false;
+	pInstrument->parameter.volumeFade = 0x00;
+	pInstrument->parameter.volumeSustain = 0x00;
+	pInstrument->parameter.volumeDelay = 0x00;
+	pInstrument->parameter.vibrato = 0x00;
+	pInstrument->parameter.vibratoDelay = 0x00;
+	pInstrument->parameter.freqShift = 0x00;
+	pInstrument->parameter.freqShiftDelay = 0x00;
+	pInstrument->parameter.autoFilter = 0x00;
+	pInstrument->parameter.autoFilterMode = false;
 
 	// Set the default Envelope Macro parameters, always disabled for newly created Instruments
 	for (UINT i = 0; i < ET_COUNT; i++)
@@ -344,14 +344,14 @@ bool CModule::InitialiseEnvelope(TEnvelope* pEnvelope, UINT type)
 		return false;
 
 	// Set the default Envelope parameters
-	pEnvelope->length = 0x01;
-	pEnvelope->loop = 0x00;
-	pEnvelope->release = 0x01;
-	pEnvelope->speed = 0x01;
-	pEnvelope->isLooped = false;
-	pEnvelope->isReleased = false;
-	pEnvelope->isAbsolute = false;
-	pEnvelope->isAdditive = false;
+	pEnvelope->parameter.length = 0x01;
+	pEnvelope->parameter.loop = 0x00;
+	pEnvelope->parameter.release = 0x01;
+	pEnvelope->parameter.speed = 0x01;
+	pEnvelope->parameter.isLooped = false;
+	pEnvelope->parameter.isReleased = false;
+	pEnvelope->parameter.isAbsolute = false;
+	pEnvelope->parameter.isAdditive = false;
 
 	// Set the default Envelope values
 	for (UINT i = 0; i < ENVELOPE_STEP_COUNT; i++)
@@ -1089,9 +1089,9 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		BYTE vibrato = memInstrument[9] & 0x03;							// Vibrato
 		BYTE freqShift = memInstrument[10];								// Freq Shift
 
-		pInstrument->volumeFade = memInstrument[6];						// Volume Slide
-		pInstrument->volumeSustain = memInstrument[7] >> 4;				// Volume Minimum
-		pInstrument->volumeDelay = envelopeLength;						// Volume Slide delay, RMT originally processed this at Envelope Loop point
+		pInstrument->parameter.volumeFade = memInstrument[6];			// Volume Slide
+		pInstrument->parameter.volumeSustain = memInstrument[7] >> 4;	// Volume Minimum
+		pInstrument->parameter.volumeDelay = envelopeLength;			// Volume Slide delay, RMT originally processed this at Envelope Loop point
 
 		// Import the Vibrato with adjustments to make sound similar to the original implementation
 		// FIXME: Not a proper Vibrato Command conversion, this is a SineVibrato hack, the Pitch itself was used for calculations
@@ -1111,10 +1111,10 @@ bool CModule::ImportLegacyInstruments(TSubtune* pSubtune, BYTE* sourceMemory, WO
 		}
 
 		// Overwrite the Delay, Vibrato and Freqshift parameters with updated values if changes were needed
-		pInstrument->vibrato = delay && vibrato ? vibrato : 0x00;
-		pInstrument->vibratoDelay = delay && vibrato ? delay - 1 : 0x00;
-		pInstrument->freqShift = delay && freqShift ? freqShift : 0x00;
-		pInstrument->freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
+		pInstrument->parameter.vibrato = delay && vibrato ? vibrato : 0x00;
+		pInstrument->parameter.vibratoDelay = delay && vibrato ? delay - 1 : 0x00;
+		pInstrument->parameter.freqShift = delay && freqShift ? freqShift : 0x00;
+		pInstrument->parameter.freqShiftDelay = delay && freqShift ? delay - 1 : 0x00;
 
 		// Apply the Envelope and Table Parameters to the equivalent Envelopes
 		*pVolumeEnvelope = { envelopeLength, envelopeLoop, envelopeLength, envelopeSpeed, true, false, false, false };

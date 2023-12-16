@@ -2091,6 +2091,31 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	// Increment size for 1 byte to mark the End of Pattern data
 	moduleSize += 1;
 
+	// Set the Instrument Index offset to match the current Module Size
+	moduleHeader.loHeader.instrumentIndex = moduleSize;
+
+	// Increment size with all the Instrument data to be saved if there is at least 1 Instrument in memory
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
+
+		// If the Instrument pointer is NULL, skip it
+		if (!pInstrument)
+			continue;
+
+		// Increment size using the Instrument Parameter Struct size, + 1 byte for the Instrument Index
+		moduleSize += (sizeof(TInstrumentParameter) + 1);
+
+		// Increment size using the Envelope Macro Struct size, multiplied to the number of Envelope Types
+		moduleSize += (sizeof(TEnvelopeMacro) * ET_COUNT);
+
+		// Increment size with the Instrument Metadata, including the Null terminator
+		moduleSize += ((UINT)strlen(pInstrument->name) + 1);
+	}
+
+	// Increment size for 1 byte to mark the End of Instrument data
+	moduleSize += 1;
+
 
 	// ------------------------------------------------------------------------
 	// Do everything here for all the data to be analysed before writing...
