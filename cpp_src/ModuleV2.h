@@ -830,10 +830,14 @@ public:
 	const char* GetInstrumentName(UINT instrument);
 	const char* GetInstrumentName(TInstrumentV2* pInstrument);
 
-	TEnvelope* GetEnvelope(UINT envelope, UINT type);
-
 	bool SetInstrumentName(UINT instrument, const char* name);
 	bool SetInstrumentName(TInstrumentV2* instrument, const char* name);
+
+	//-- Getters and Setters for Envelope Data --//
+
+	TEnvelope* GetEnvelope(UINT envelope, UINT type);
+	const UINT GetEnvelopeLength(UINT envelope, UINT type);
+	const UINT GetEnvelopeLength(TEnvelope* pEnvelope);
 
 	//-- Other functions --//
 

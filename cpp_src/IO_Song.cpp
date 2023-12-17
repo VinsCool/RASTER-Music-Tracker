@@ -2116,11 +2116,60 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	// Increment size for 1 byte to mark the End of Instrument data
 	moduleSize += 1;
 
+	// Set the Envelope Index offset to match the current Module Size
+	moduleHeader.loHeader.envelopeIndex = moduleSize;
 
-	// ------------------------------------------------------------------------
-	// Do everything here for all the data to be analysed before writing...
-	// 
+	// Increment size with all the Envelope data to be saved if there is at least 1 Envelope in memory
+	for (UINT i = 0; i < ENVELOPE_COUNT; i++)
+		for (UINT j = 0; j < ET_COUNT; j++)
+		{
+			TEnvelope* pEnvelope = g_Module.GetEnvelope(i, j);
 
+			// If the Envelope pointer is NULL, skip it
+			if (!pEnvelope)
+				continue;
+
+			// Get the Envelope parameters needed for calculations
+			UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
+
+			// Increment size using the Envelope Parameter Struct size, + 2 bytes for the Envelope Index and Envelope Type
+			moduleSize += (sizeof(TEnvelopeParameter) + 2);
+
+			// Increment size using the Envelope Data Struct size, multiplied to the Envelope Length, relative to the Envelope Type
+			switch (j)
+			{
+			case ET_VOLUME:
+				moduleSize += (sizeof(TVolumeEnvelope) * envelopeLength);
+				continue;
+
+			case ET_TIMBRE:
+				moduleSize += (sizeof(TTimbreEnvelope) * envelopeLength);
+				continue;
+
+			case ET_AUDCTL:
+				moduleSize += (sizeof(TAudctlEnvelope) * envelopeLength);
+				continue;
+
+			case ET_EFFECT:
+				moduleSize += (sizeof(TEffectEnvelope) * envelopeLength);
+				continue;
+
+			case ET_NOTE_TABLE:
+				moduleSize += (sizeof(TNoteTableEnvelope) * envelopeLength);
+				continue;
+
+			case ET_FREQ_TABLE:
+				moduleSize += (sizeof(TFreqTableEnvelope) * envelopeLength);
+				continue;
+
+			default:
+				// This should never happen, but still added for failsafe sake
+				moduleSize += (sizeof(UINT) * envelopeLength);
+			}
+		}
+
+	// Increment size for 1 byte to mark the End of Envelope data
+	moduleSize += 1;
 
 	// Create Encoded Module data in 1 block using the calculated size
 	moduleData = new BYTE[moduleSize];
@@ -2193,7 +2242,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	// Write 1 byte to mark the End of Subtune data
 	*moduleOffset++ = INVALID;
 
-	// Move the Module Offset to the start of the Subtune data block
+	// Move the Module Offset to the start of the Pattern data block
 	moduleOffset = moduleData + moduleHeader.loHeader.patternIndex;
 
 	// Write the Encoded Pattern data if there is at least 1 Pattern to process
@@ -2331,11 +2380,143 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	// Write 1 byte to mark the End of Pattern data
 	*moduleOffset++ = INVALID;
 
+	// Move the Module Offset to the start of the Instrument data block
+	moduleOffset = moduleData + moduleHeader.loHeader.instrumentIndex;
 
-	// ------------------------------------------------------------------------
-	// Do everything here for all the data to be written to a file...
-	// 
+	// Write the Encoded Instrument data if there is at least 1 Instrument to process
+	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
+	{
+		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
 
+		// If the Instrument pointer is NULL, skip it
+		if (!pInstrument)
+			continue;
+
+		// Write 1 byte for the Instrument Index
+		*moduleOffset++ = i;
+
+		// Write the Instrument Parameter Struct
+		for (UINT j = 0; j < sizeof(TInstrumentParameter); j++)
+			*moduleOffset++ = (&(BYTE&)pInstrument->parameter)[j];
+
+		// Write the Instrument Envelope Macro Struct, multiplied to the number of Envelope Types
+		for (UINT j = 0; j < ET_COUNT; j++)
+		{
+			TEnvelopeMacro* pMacro = &pInstrument->envelope[j];
+
+			for (UINT k = 0; k < sizeof(TEnvelopeMacro); k++)
+				*moduleOffset++ = (BYTE&)pMacro[k];
+		}
+
+		// Write the Instrument Metadata, including the Null terminator
+		for (UINT j = 0; j <= strlen(pInstrument->name); j++)
+			*moduleOffset++ = pInstrument->name[j];
+	}
+
+	// Write 1 byte to mark the End of Instrument data
+	*moduleOffset++ = INVALID;
+
+	// Move the Module Offset to the start of the Envelope data block
+	moduleOffset = moduleData + moduleHeader.loHeader.envelopeIndex;
+
+	// Write the Encoded Envelope data if there is at least 1 Envelope to process
+	for (UINT i = 0; i < ENVELOPE_COUNT; i++)
+		for (UINT j = 0; j < ET_COUNT; j++)
+		{
+			TEnvelope* pEnvelope = g_Module.GetEnvelope(i, j);
+
+			// If the Envelope pointer is NULL, skip it
+			if (!pEnvelope)
+				continue;
+
+			// Get the Envelope parameters needed for calculations
+			UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
+
+			// Write 1 byte for the Envelope Index and Envelope Type
+			*moduleOffset++ = i;
+			*moduleOffset++ = j;
+
+			// Write the Envelope Parameter Struct
+			for (UINT k = 0; k < sizeof(TEnvelopeParameter); k++)
+				*moduleOffset++ = (&(BYTE&)pEnvelope->parameter)[k];
+
+			// Write the Envelope Data Struct, sized to the Envelope Length, relative to the Envelope Type
+			switch (j)
+			{
+			case ET_VOLUME:
+				for (UINT k = 0; k < envelopeLength; k++)
+				{
+					TVolumeEnvelope* pEnvelopeData = &pEnvelope->volume[k];
+
+					for (UINT l = 0; l < sizeof(TVolumeEnvelope); l++)
+						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+				}
+				continue;
+
+			case ET_TIMBRE:
+				for (UINT k = 0; k < envelopeLength; k++)
+				{
+					TTimbreEnvelope* pEnvelopeData = &pEnvelope->timbre[k];
+
+					for (UINT l = 0; l < sizeof(TTimbreEnvelope); l++)
+						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+				}
+				continue;
+
+			case ET_AUDCTL:
+				for (UINT k = 0; k < envelopeLength; k++)
+				{
+					TAudctlEnvelope* pEnvelopeData = &pEnvelope->audctl[k];
+
+					for (UINT l = 0; l < sizeof(TAudctlEnvelope); l++)
+						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+				}
+				continue;
+
+			case ET_EFFECT:
+				for (UINT k = 0; k < envelopeLength; k++)
+				{
+					TEffectEnvelope* pEnvelopeData = &pEnvelope->effect[k];
+
+					for (UINT l = 0; l < sizeof(TEffectEnvelope); l++)
+						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+				}
+				continue;
+
+			case ET_NOTE_TABLE:
+				for (UINT k = 0; k < envelopeLength; k++)
+				{
+					TNoteTableEnvelope* pEnvelopeData = &pEnvelope->note[k];
+
+					for (UINT l = 0; l < sizeof(TNoteTableEnvelope); l++)
+						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+				}
+				continue;
+
+			case ET_FREQ_TABLE:
+				for (UINT k = 0; k < envelopeLength; k++)
+				{
+					TFreqTableEnvelope* pEnvelopeData = &pEnvelope->freq[k];
+
+					for (UINT l = 0; l < sizeof(TFreqTableEnvelope); l++)
+						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+				}
+				continue;
+
+			default:
+				// This should never happen, but still added for failsafe sake
+				for (UINT k = 0; k < envelopeLength; k++)
+				{
+					UINT* pEnvelopeData = &pEnvelope->rawData[k];
+
+					for (UINT l = 0; l < sizeof(UINT); l++)
+						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+				}
+			}
+		}
+
+	// Write 1 byte to mark the End of Envelope data
+	*moduleOffset++ = INVALID;
 
 	// Write the fully constructed Module data to file once it is ready
 	ou.seekp(0, std::ios_base::beg);

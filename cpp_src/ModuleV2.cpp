@@ -2093,17 +2093,6 @@ const char* CModule::GetInstrumentName(TInstrumentV2* pInstrument)
 
 //--
 
-TEnvelope* CModule::GetEnvelope(UINT envelope, UINT type)
-{
-	if (m_envelopeIndex && IsValidEnvelope(envelope) && IsValidEnvelopeType(type))
-		return m_envelopeIndex->envelope[type][envelope];
-
-	return NULL;
-}
-
-
-//--
-
 bool CModule::SetInstrumentName(UINT instrument, const char* name)
 {
 	return SetInstrumentName(GetInstrument(instrument), name);
@@ -2118,6 +2107,61 @@ bool CModule::SetInstrumentName(TInstrumentV2* pInstrument, const char* name)
 	}
 
 	return false;
+}
+
+
+//--
+
+TEnvelope* CModule::GetEnvelope(UINT envelope, UINT type)
+{
+	if (m_envelopeIndex && IsValidEnvelope(envelope) && IsValidEnvelopeType(type))
+		return m_envelopeIndex->envelope[type][envelope];
+
+	return NULL;
+}
+
+/*
+const UINT CModule::GetPatternLength(UINT subtune)
+{
+	return GetPatternLength(GetSubtune(subtune));
+}
+
+const UINT CModule::GetPatternLength(TSubtune* pSubtune)
+{
+	if (pSubtune)
+	{
+		UINT patternLength = pSubtune->parameter.patternLength;
+
+		// 0 is actually the highest possible value due to base 0 indexing
+		if (patternLength == 0)
+			patternLength = ROW_COUNT;
+
+		return patternLength;
+	}
+
+	return EMPTY;
+}
+*/
+
+const UINT CModule::GetEnvelopeLength(UINT envelope, UINT type)
+{
+	return GetEnvelopeLength(GetEnvelope(envelope, type));
+}
+
+const UINT CModule::GetEnvelopeLength(TEnvelope* pEnvelope)
+{
+	if (pEnvelope)
+	{
+		UINT envelopeLength = pEnvelope->parameter.length;
+
+		// 0 is actually the highest possible value due to base 0 indexing
+		if (envelopeLength == 0)
+			envelopeLength = ENVELOPE_STEP_COUNT;
+
+		return envelopeLength;
+	}
+
+	return EMPTY;
 }
 
 
