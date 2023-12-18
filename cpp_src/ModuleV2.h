@@ -453,8 +453,7 @@ typedef struct hiHeader_t
 	char identifier[4];						// RMTE Module Identifier
 	BYTE version : 7;						// 0 = Prototype, 1+ = Release, up to 127 revisions
 	bool region : 1;						// 0 = PAL, 1 = NTSC
-
-	// TODO: Add a Checksum, or something that could test for Data Integrity...
+	UINT crc32;								// CRC32 Checksum
 } THiHeader;
 
 // Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists for a specific entry

@@ -1932,7 +1932,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	TModuleMetadata moduleMetadata{};
 	memset(&moduleMetadata, EMPTY, sizeof(TModuleMetadata));
 
-	// Create High Header, Low Header is constructed using the Module data offsets	
+	// Create High Header, Low Header is constructed using the Module data offsets
 	strncpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER, 4);
 	moduleHeader.hiHeader.version = MODULE_VERSION;
 	moduleHeader.hiHeader.region = MODULE_REGION;
@@ -2180,7 +2180,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 	// Write the Module Header
 	for (UINT i = 0; i < sizeof(TModuleHeader); i++)
-		*moduleOffset++ = (&(BYTE&)moduleHeader)[i];
+		*moduleOffset++ = ((BYTE*)&moduleHeader)[i];
 
 	// Write the Module Metadata, including the Null terminators
 	for (UINT i = 0; i <= strlen(moduleMetadata.name); i++)
@@ -2213,7 +2213,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 		// Write the Subtune Parameter Struct
 		for (UINT j = 0; j < sizeof(TSubtuneParameter); j++)
-			*moduleOffset++ = (&(BYTE&)pSubtune->parameter)[j];
+			*moduleOffset++ = ((BYTE*)&pSubtune->parameter)[j];
 
 		// Write the Channel Parameter Struct, multiplied to the number of Channels
 		for (UINT j = 0; j < channelCount; j++)
@@ -2221,7 +2221,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			TChannel* pChannel = &pSubtune->channel[j];
 
 			for (UINT k = 0; k < sizeof(TChannelParameter); k++)
-				*moduleOffset++ = (&(BYTE&)pChannel->parameter)[k];
+				*moduleOffset++ = ((BYTE*)&pChannel->parameter)[k];
 		}
 
 		// Write the Songline Index, sized to the Song Length multiplied to the number of Channels
@@ -2397,7 +2397,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 		// Write the Instrument Parameter Struct
 		for (UINT j = 0; j < sizeof(TInstrumentParameter); j++)
-			*moduleOffset++ = (&(BYTE&)pInstrument->parameter)[j];
+			*moduleOffset++ = ((BYTE*)&pInstrument->parameter)[j];
 
 		// Write the Instrument Envelope Macro Struct, multiplied to the number of Envelope Types
 		for (UINT j = 0; j < ET_COUNT; j++)
@@ -2405,7 +2405,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			TEnvelopeMacro* pMacro = &pInstrument->envelope[j];
 
 			for (UINT k = 0; k < sizeof(TEnvelopeMacro); k++)
-				*moduleOffset++ = (BYTE&)pMacro[k];
+				*moduleOffset++ = ((BYTE*)pMacro)[k];
 		}
 
 		// Write the Instrument Metadata, including the Null terminator
@@ -2438,7 +2438,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 
 			// Write the Envelope Parameter Struct
 			for (UINT k = 0; k < sizeof(TEnvelopeParameter); k++)
-				*moduleOffset++ = (&(BYTE&)pEnvelope->parameter)[k];
+				*moduleOffset++ = ((BYTE*)&pEnvelope->parameter)[k];
 
 			// Write the Envelope Data Struct, sized to the Envelope Length, relative to the Envelope Type
 			switch (j)
@@ -2449,7 +2449,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					TVolumeEnvelope* pEnvelopeData = &pEnvelope->volume[k];
 
 					for (UINT l = 0; l < sizeof(TVolumeEnvelope); l++)
-						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
 				}
 				continue;
 
@@ -2459,7 +2459,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					TTimbreEnvelope* pEnvelopeData = &pEnvelope->timbre[k];
 
 					for (UINT l = 0; l < sizeof(TTimbreEnvelope); l++)
-						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
 				}
 				continue;
 
@@ -2469,7 +2469,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					TAudctlEnvelope* pEnvelopeData = &pEnvelope->audctl[k];
 
 					for (UINT l = 0; l < sizeof(TAudctlEnvelope); l++)
-						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
 				}
 				continue;
 
@@ -2479,7 +2479,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					TEffectEnvelope* pEnvelopeData = &pEnvelope->effect[k];
 
 					for (UINT l = 0; l < sizeof(TEffectEnvelope); l++)
-						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
 				}
 				continue;
 
@@ -2489,7 +2489,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					TNoteTableEnvelope* pEnvelopeData = &pEnvelope->note[k];
 
 					for (UINT l = 0; l < sizeof(TNoteTableEnvelope); l++)
-						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
 				}
 				continue;
 
@@ -2499,7 +2499,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					TFreqTableEnvelope* pEnvelopeData = &pEnvelope->freq[k];
 
 					for (UINT l = 0; l < sizeof(TFreqTableEnvelope); l++)
-						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
 				}
 				continue;
 
@@ -2510,13 +2510,16 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					UINT* pEnvelopeData = &pEnvelope->rawData[k];
 
 					for (UINT l = 0; l < sizeof(UINT); l++)
-						*moduleOffset++ = (BYTE&)pEnvelopeData[l];
+						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
 				}
 			}
 		}
 
 	// Write 1 byte to mark the End of Envelope data
 	*moduleOffset++ = INVALID;
+
+	// Compute the CRC32 checksum and write it to the Module Header
+	((TModuleHeader*)moduleData)->hiHeader.crc32 = CRC32(moduleData, moduleSize);
 
 	// Write the fully constructed Module data to file once it is ready
 	ou.seekp(0, std::ios_base::beg);
@@ -2532,6 +2535,60 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 // Load a RMTE Module file
 bool CSong::LoadRMTE(std::ifstream& in)
 {
+	CString s = "";
+	bool isRmteLoaded = false;
+
+	// Get the file size to load in memory
+	in.seekg(0, std::ios_base::end);
+	UINT moduleSize = (UINT)in.tellg();
+
+	// Create a temporary buffer the same size of the file
+	BYTE* moduleData = new BYTE[moduleSize];
+	memset(moduleData, EMPTY, moduleSize);
+
+	// Load the Module data directly into the buffer
+	in.seekg(0, std::ios_base::beg);
+	in.read((char*)moduleData, moduleSize);
+
+	// Close the file once it is loaded in memory
+	in.close();
+
+	// Get the pointer to the Module Header, located at the beginning of the file
+	TModuleHeader* moduleHeader = (TModuleHeader*)moduleData;
+
+	// Get the CRC32 Checksum from the Module Header and compare it to a new CRC32 Checksum for data integrity
+	UINT crc32From = moduleHeader->hiHeader.crc32;
+	moduleHeader->hiHeader.crc32 = EMPTY;
+	UINT crc32To = CRC32(moduleData, moduleSize);
+
+	// If the new CRC32 Checksum is not matching the CRC32 Checksum found in the Module Header, flag the entire file as invalid, regardless of its contents
+	if (crc32From != crc32To)
+	{
+		s.AppendFormat("CRC32 Checksum mismatch.\nExpected \"0x%04X\", but found \"0x%04X\" instead.\n", crc32From, crc32To);
+		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
+		goto RmteModuleWasNotLoaded;
+	}
+
+	////////----
+
+
+	// If everything went well, the full Module data should have been loaded and decoded in memory, ready to be used
+	isRmteLoaded = true;
+
+	// Jumping to this label will immediately unload any data left in memory before returning
+RmteModuleWasNotLoaded:
+
+	// Delete the temporary data once it is processed
+	if (moduleData)
+		delete moduleData;
+
+	// If an error occured, display a Message box to show what went wrong in the process
+	if (!isRmteLoaded)
+		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
+
+	// Module file should have been successfully loaded
+	return isRmteLoaded;
+
 /*
 	CString s = "";
 	bool isRmteLoaded = false;
@@ -2923,5 +2980,5 @@ RmteModuleWasNotLoaded:
 */
 
 	// Module file should have been successfully loaded
-	return true;
+	//return true;
 }

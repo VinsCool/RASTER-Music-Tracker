@@ -2120,29 +2120,6 @@ TEnvelope* CModule::GetEnvelope(UINT envelope, UINT type)
 	return NULL;
 }
 
-/*
-const UINT CModule::GetPatternLength(UINT subtune)
-{
-	return GetPatternLength(GetSubtune(subtune));
-}
-
-const UINT CModule::GetPatternLength(TSubtune* pSubtune)
-{
-	if (pSubtune)
-	{
-		UINT patternLength = pSubtune->parameter.patternLength;
-
-		// 0 is actually the highest possible value due to base 0 indexing
-		if (patternLength == 0)
-			patternLength = ROW_COUNT;
-
-		return patternLength;
-	}
-
-	return EMPTY;
-}
-*/
-
 const UINT CModule::GetEnvelopeLength(UINT envelope, UINT type)
 {
 	return GetEnvelopeLength(GetEnvelope(envelope, type));

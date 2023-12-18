@@ -81,3 +81,36 @@ int Hexstr(char* txt, int len)
 	if (i == 0) r = -1; //nothing
 	return r;
 }
+
+// A very rudimentary CRC32 algorithm designed for data integrity checks
+// Useful for the verification of Raster Music Tracker Extended (RMTE) Module files
+UINT CRC32(BYTE* data, UINT64 size)
+{
+	// Initialise the CRC32 with all bits set to 1
+	UINT crc = INVALID;
+	
+	// Run the calculations through the entire data size
+	for (UINT64 i = 0; i < size; i++)
+	{
+		// Fetch a byte from the current data offset
+		BYTE bitbyte = data[i];
+
+		// Cycle through all 8 bits within that byte
+		for (UINT j = 0; j < 8; j++)
+		{
+			// If the CRC32 inversion using the byte has bit 0 set, Shift Right 1 bit then invert it using the Magic Number
+			if ((crc ^ bitbyte) & 1)
+				crc = (crc >> 1) ^ 0xDEADCAFE;
+
+			// Otherwise, simply Shift Right 1 bit from it
+			else
+				crc >>= 1;
+
+			// Shift Right 1 bit from the byte and process the remaining bits
+			bitbyte >>= 1;
+		}
+	}
+
+	// Invert all bits and return the Checksum
+	return crc ^ INVALID;
+}
