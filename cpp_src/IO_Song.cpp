@@ -2546,6 +2546,9 @@ bool CSong::LoadRMTE(std::ifstream& in)
 	BYTE* moduleData = new BYTE[moduleSize];
 	memset(moduleData, EMPTY, moduleSize);
 
+	// Get the pointer to current Module data offset
+	BYTE* moduleOffset = moduleData;
+
 	// Load the Module data directly into the buffer
 	in.seekg(0, std::ios_base::beg);
 	in.read((char*)moduleData, moduleSize);
@@ -2555,64 +2558,15 @@ bool CSong::LoadRMTE(std::ifstream& in)
 
 	// Get the pointer to the Module Header, located at the beginning of the file
 	TModuleHeader* moduleHeader = (TModuleHeader*)moduleData;
+	TModuleMetadata moduleMetadata{};
 
 	// Get the CRC32 Checksum from the Module Header and compare it to a new CRC32 Checksum for data integrity
 	UINT crc32From = moduleHeader->hiHeader.crc32;
 	moduleHeader->hiHeader.crc32 = EMPTY;
 	UINT crc32To = CRC32(moduleData, moduleSize);
 
-	// If the new CRC32 Checksum is not matching the CRC32 Checksum found in the Module Header, flag the entire file as invalid, regardless of its contents
-	if (crc32From != crc32To)
-	{
-		s.AppendFormat("CRC32 Checksum mismatch.\nExpected \"0x%04X\", but found \"0x%04X\" instead.\n", crc32From, crc32To);
-		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
-		goto RmteModuleWasNotLoaded;
-	}
-
-	////////----
-
-
-	// If everything went well, the full Module data should have been loaded and decoded in memory, ready to be used
-	isRmteLoaded = true;
-
-	// Jumping to this label will immediately unload any data left in memory before returning
-RmteModuleWasNotLoaded:
-
-	// Delete the temporary data once it is processed
-	if (moduleData)
-		delete moduleData;
-
-	// If an error occured, display a Message box to show what went wrong in the process
-	if (!isRmteLoaded)
-		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
-
-	// Module file should have been successfully loaded
-	return isRmteLoaded;
-
-/*
-	CString s = "";
-	bool isRmteLoaded = false;
-
-	// Get the file size to load in memory
-	in.seekg(0, std::ios_base::end);
-	UINT moduleSize = (UINT)in.tellg();
-
-	// Create a temporary buffer the same size of the file
-	BYTE* moduleData = new BYTE[moduleSize];
-	memset(moduleData, EMPTY, moduleSize);
-
-	// Load the Module data directly into the buffer
-	in.seekg(0, std::ios_base::beg);
-	in.read((char*)moduleData, moduleSize);
-
-	// Close the file once it is loaded in memory
-	in.close();
-
-	// Get the pointer to the Module Header, located at the beginning of the file
-	TModuleHeader* moduleHeader = (TModuleHeader*)moduleData;
-
 	// Compare the file format identifier from with "RMTE", any mismatch will flag the entire file as invalid, regardless of its contents
-	if (strncmp(moduleHeader->hiHeader.identifier, MODULE_IDENTIFIER, MODULE_IDENTIFIER_MAX) != 0)
+	if (strncmp(moduleHeader->hiHeader.identifier, MODULE_IDENTIFIER, 4) != 0)
 	{
 		s.AppendFormat("Invalid identifier from file header.\nExpected \"%s\", but found \"%s\" instead.\n", MODULE_IDENTIFIER, moduleHeader->hiHeader.identifier);
 		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
@@ -2627,339 +2581,159 @@ RmteModuleWasNotLoaded:
 		goto RmteModuleWasNotLoaded;
 	}
 
-	// Read the Module Parameters from the High Header
-	MODULE_REGION = moduleHeader->hiHeader.region;
-	MODULE_PRIMARY_HIGHLIGHT = moduleHeader->hiHeader.highlightPrimary;
-	MODULE_SECONDARY_HIGHLIGHT = moduleHeader->hiHeader.highlightSecondary;
-	MODULE_BASE_TUNING = moduleHeader->hiHeader.baseTuning;
-	MODULE_BASE_NOTE = moduleHeader->hiHeader.baseNote;
-	MODULE_BASE_OCTAVE = moduleHeader->hiHeader.baseOctave;
+	// If the new CRC32 Checksum is not matching the CRC32 Checksum found in the Module Header, flag the entire file as invalid, regardless of its contents
+	else if (crc32From != crc32To)
+	{
+		s.AppendFormat("CRC32 Checksum mismatch.\nExpected \"0x%04X\", but found \"0x%04X\" instead.\n", crc32From, crc32To);
+		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
+		goto RmteModuleWasNotLoaded;
+	}
 
-	// Read the Module Metadata from the Low Header
-	g_Module.SetModuleName(moduleHeader->name);
-	g_Module.SetModuleAuthor(moduleHeader->author);
-	g_Module.SetModuleCopyright(moduleHeader->copyright);
+	// Read the Module Parameters
+	MODULE_REGION = moduleHeader->hiHeader.region;
+	MODULE_PRIMARY_HIGHLIGHT = moduleHeader->highlightPrimary;
+	MODULE_SECONDARY_HIGHLIGHT = moduleHeader->highlightSecondary;
+	MODULE_BASE_TUNING = moduleHeader->baseTuning;
+	MODULE_BASE_NOTE = moduleHeader->baseNote;
+	MODULE_BASE_OCTAVE = moduleHeader->baseOctave;
+
+	// Read the Module Metadata
+	moduleOffset += sizeof(TModuleHeader);
+	moduleMetadata.name = (char*)moduleOffset;
+	g_Module.SetModuleName(moduleMetadata.name);
+	while (*moduleOffset++);
+	moduleMetadata.author = (char*)moduleOffset;
+	g_Module.SetModuleAuthor(moduleMetadata.author);
+	while (*moduleOffset++);
+	moduleMetadata.copyright = (char*)moduleOffset;
+	g_Module.SetModuleCopyright(moduleMetadata.copyright);
+
+	// Move the Module Offset to the start of the Subtune data block
+	moduleOffset = moduleData + moduleHeader->loHeader.subtuneIndex;
 
 	// Decode the Subtune data from the Module file
-	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
+	while (*moduleOffset != (BYTE)INVALID)
 	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.subtuneIndex[i];
-
-		// A NULL offset means there is no Subtune data, skip it
-		if (moduleOffset == moduleData)
-			continue;
+		// Read the Subtune Index number from the Module data
+		UINT i = *moduleOffset++;
 
 		// Create a new Subtune if it doesn't already exist in memory, and get its pointer once it's initialised
 		g_Module.CreateSubtune(i);
 		TSubtune* pSubtune = g_Module.GetSubtune(i);
 
-		// Read the Subtune Metadata
-		g_Module.SetSubtuneName(pSubtune, (char*)moduleOffset);
-		moduleOffset += SUBTUNE_NAME_MAX;
-				
-		// Read the Subtune Parameters
-		for (UINT j = 0; j < MODULE_PADDING; j++)
-			pSubtune->parameters[j] = *moduleOffset++;
+		// Read the Subtune Parameter Struct
+		for (UINT j = 0; j < sizeof(TSubtuneParameter); j++)
+			((BYTE*)&pSubtune->parameter)[j] = *moduleOffset++;
 
-		// Get the maximum data variables from the Getter Functions once the values were copied over to make things easier to handle
-		UINT songLength = g_Module.GetSongLength(pSubtune);
+		// Get the Subtune parameters needed for calculations
 		UINT channelCount = g_Module.GetChannelCount(pSubtune);
+		UINT songLength = g_Module.GetSongLength(pSubtune);
 
-		// Read the Channel data
+		// Read the Channel Parameter Struct, multiplied to the number of Channels
 		for (UINT j = 0; j < channelCount; j++)
 		{
-			// Get the pointer to Channel data
 			TChannel* pChannel = &pSubtune->channel[j];
 
-			// Read the Channel Parameters
-			for (UINT k = 0; k < MODULE_PADDING; k++)
-				pChannel->parameters[k] = *moduleOffset++;
+			for (UINT k = 0; k < sizeof(TChannelParameter); k++)
+				((BYTE*)&pChannel->parameter)[k] = *moduleOffset++;
+		}
 
-			// Read the Songline data and fill the entire Song Length with it
-			for (UINT k = 0; k < songLength; k++)
-				pChannel->songline[k] = *moduleOffset++;
-
-			// Read the Pattern data, for all indexed Patterns
-			for (UINT k = 0; k < PATTERN_COUNT; k++)
+		// Read the Songline Index, sized to the Song Length multiplied to the number of Channels
+		for (UINT k = 0; k < songLength; k++)
+		{
+			for (UINT j = 0; j < channelCount; j++)
 			{
-				// Decode the Row data, for all Rows that may be used in a Pattern
-				for (UINT l = 0; l < ROW_COUNT; l++)
-				{
-					// Get the pointer to the current Row position
-					TRow* pRow = &pChannel->pattern[k].row[l];
+				TChannel* pChannel = &pSubtune->channel[j];
+				pChannel->songline[k] = *moduleOffset++;
+			}
+		}
 
-					// Create the Row encoding data
-					TRowEncoding rowEncoding{};
+		// Read the Subtune Metadata, including the Null terminator
+		char* name = (char*)moduleOffset;
+		for (UINT j = 0; j <= strlen(name); j++)
+			pSubtune->name[j] = *moduleOffset++;
+	}
 
-					// Get bitwise decoding parameters first
-					rowEncoding.parameters = *moduleOffset++;
+	// Move the Module Offset to the start of the Pattern data block
+	moduleOffset = moduleData + moduleHeader->loHeader.patternIndex;
 
-					// Get the Pause Length if the Pattern Terminator bit is not set
-					if (!rowEncoding.isEndOfPattern)
-						rowEncoding.pauseLength = *moduleOffset++;
+	// Decode the Pattern data from the Module file
+	while (*moduleOffset != (BYTE)INVALID)
+	{
+		// Read 3 bytes for the Subtune Index, Channel Index and Pattern Index, respectively
+		UINT i = *moduleOffset++;
+		UINT j = *moduleOffset++;
+		UINT k = *moduleOffset++;
 
-					// Check if there is a Non-Empty Note
-					if (!rowEncoding.isEmptyNote)
-						pRow->note = *moduleOffset++;
+		// Get the pointer to Pattern data
+		TPattern* pPattern = g_Module.GetPattern(i, j, k);
 
-					// Check if there is a Non-Empty Instrument
-					if (!rowEncoding.isEmptyInstrument)
-						pRow->instrument = *moduleOffset++;
+		// Read the Encoded Row data
+		for (UINT l = 0; l < ROW_COUNT; l++)
+		{
+			TRowEncoding rowEncoding{};
 
-					// Check if there is a Non-Empty Volume
-					if (!rowEncoding.isEmptyVolume)
-						pRow->volume = *moduleOffset++;
+			// Get the pointer to the current Row position
+			TRow* pRowFrom = &pPattern->row[l];
 
-					// Check if there are Non-Empty Effect Commands
-					if (!rowEncoding.isEmptyCmd1)
-					{
-						pRow->effect[CMD1].command = *moduleOffset++;
-						pRow->effect[CMD1].parameter = *moduleOffset++;
-					}
+			// Read the Encoding byte first
+			(BYTE&)rowEncoding = *moduleOffset++;
 
-					if (!rowEncoding.isEmptyCmd2)
-					{
-						pRow->effect[CMD2].command = *moduleOffset++;
-						pRow->effect[CMD2].parameter = *moduleOffset++;
-					}
+			// If this is a Row Pause or Pattern Terminator, skip further ahead
+			if (rowEncoding.isPauseOrTerminator)
+			{
+				// If the End of Pattern was reached, there is no more Row data to process for this Pattern
+				if (rowEncoding.pauseLength == 0x7F)
+					break;
 
-					if (!rowEncoding.isEmptyCmd3)
-					{
-						pRow->effect[CMD3].command = *moduleOffset++;
-						pRow->effect[CMD3].parameter = *moduleOffset++;
-					}
+				// Empty Rows will be skipped with the Pause Length
+				l += rowEncoding.pauseLength + 1;
+				continue;
+			}
 
-					if (!rowEncoding.isEmptyCmd4)
-					{
-						pRow->effect[CMD4].command = *moduleOffset++;
-						pRow->effect[CMD4].parameter = *moduleOffset++;
-					}
+			// Read the Non-Empty Note
+			if (rowEncoding.isValidNote)
+				pRowFrom->note = *moduleOffset++;
 
-					// If the Pattern Terminator Bit is set, there is no more Row data to process
-					if (rowEncoding.isEndOfPattern)
-						break;
+			// Read the Non-Empty Instrument
+			if (rowEncoding.isValidInstrument)
+				pRowFrom->instrument = *moduleOffset++;
 
-					// Otherwise, add the Pause Length to l, and skip the same number of Rows doing so
-					l += rowEncoding.pauseLength;
-				}
+			// Read the Non-Empty Volume
+			if (rowEncoding.isValidVolume)
+				pRowFrom->volume = *moduleOffset++;
+
+			// Read the Non-Empty Effect Commands
+			if (rowEncoding.isValidCmd1)
+			{
+				pRowFrom->effect[CMD1].command = *moduleOffset++;
+				pRowFrom->effect[CMD1].parameter = *moduleOffset++;
+			}
+
+			if (rowEncoding.isValidCmd2)
+			{
+				pRowFrom->effect[CMD2].command = *moduleOffset++;
+				pRowFrom->effect[CMD2].parameter = *moduleOffset++;
+			}
+
+			if (rowEncoding.isValidCmd3)
+			{
+				pRowFrom->effect[CMD3].command = *moduleOffset++;
+				pRowFrom->effect[CMD3].parameter = *moduleOffset++;
+			}
+
+			if (rowEncoding.isValidCmd4)
+			{
+				pRowFrom->effect[CMD4].command = *moduleOffset++;
+				pRowFrom->effect[CMD4].parameter = *moduleOffset++;
 			}
 		}
 	}
-	
-	// Decode the Instrument data from the Module file
-	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
-	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.instrumentIndex[i];
 
-		// A NULL offset means there is no Instrument data, skip it
-		if (moduleOffset == moduleData)
-			continue;
 
-		// Create a new Instrument if it doesn't already exist in memory, and get its pointer once it's initialised
-		g_Module.CreateInstrument(i);
-		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
+	////////----
+	// TODO: Decode Instrument and Envelope data blocks after some sleep...
 
-		// Read the Instrument Metadata
-		g_Module.SetInstrumentName(pInstrument, (char*)moduleOffset);
-		moduleOffset += INSTRUMENT_NAME_MAX;
-		
-		// Read the Instrument Parameters
-		for (UINT j = 0; j < MODULE_PADDING; j++)
-			pInstrument->parameters[j] = *moduleOffset++;
-	}
-
-	// Decode the Envelope data from the Module file
-	//
-
-	// Decode the Volume Envelope data
-	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
-	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.volumeEnvelope[i];
-
-		// A NULL offset means there is no Envelope data, skip it
-		if (moduleOffset == moduleData)
-			continue;
-
-		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
-		g_Module.CreateVolumeEnvelope(i);
-		TEnvelope* pEnvelope = g_Module.GetVolumeEnvelope(i);
-		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
-
-		// Read the Envelope Parameters
-		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
-			pParameter->parameters[j] = *moduleOffset++;
-
-		// Get the maximum data variables once the parameters were copied over
-		UINT envelopeLength = pParameter->length;
-
-		// Wrap around for maximum, TODO: Move to a proper getter function later
-		if (envelopeLength == 0)
-			envelopeLength = ENVELOPE_STEP_COUNT;
-
-		// Read the Envelope Data
-		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->volume[j].parameters = *moduleOffset++;
-	}
-
-	// Decode the Timbre Envelope data
-	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
-	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.timbreEnvelope[i];
-
-		// A NULL offset means there is no Envelope data, skip it
-		if (moduleOffset == moduleData)
-			continue;
-
-		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
-		g_Module.CreateTimbreEnvelope(i);
-		TEnvelope* pEnvelope = g_Module.GetTimbreEnvelope(i);
-		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
-
-		// Read the Envelope Parameters
-		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
-			pParameter->parameters[j] = *moduleOffset++;
-
-		// Get the maximum data variables once the parameters were copied over
-		UINT envelopeLength = pParameter->length;
-
-		// Wrap around for maximum, TODO: Move to a proper getter function later
-		if (envelopeLength == 0)
-			envelopeLength = ENVELOPE_STEP_COUNT;
-
-		// Read the Envelope Data
-		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->timbre[j].parameters = *moduleOffset++;
-	}
-
-	// Decode the AUDCTL Envelope data
-	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
-	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.audctlEnvelope[i];
-
-		// A NULL offset means there is no Envelope data, skip it
-		if (moduleOffset == moduleData)
-			continue;
-
-		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
-		g_Module.CreateAudctlEnvelope(i);
-		TEnvelope* pEnvelope = g_Module.GetAudctlEnvelope(i);
-		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
-
-		// Read the Envelope Parameters
-		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
-			pParameter->parameters[j] = *moduleOffset++;
-
-		// Get the maximum data variables once the parameters were copied over
-		UINT envelopeLength = pParameter->length;
-
-		// Wrap around for maximum, TODO: Move to a proper getter function later
-		if (envelopeLength == 0)
-			envelopeLength = ENVELOPE_STEP_COUNT;
-
-		// Read the Envelope Data
-		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->audctl[j].parameters = *moduleOffset++;
-	}
-
-	// Decode the Effect Envelope data
-	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
-	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.effectEnvelope[i];
-
-		// A NULL offset means there is no Envelope data, skip it
-		if (moduleOffset == moduleData)
-			continue;
-
-		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
-		g_Module.CreateEffectEnvelope(i);
-		TEnvelope* pEnvelope = g_Module.GetEffectEnvelope(i);
-		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
-
-		// Read the Envelope Parameters
-		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
-			pParameter->parameters[j] = *moduleOffset++;
-
-		// Get the maximum data variables once the parameters were copied over
-		UINT envelopeLength = pParameter->length;
-
-		// Wrap around for maximum, TODO: Move to a proper getter function later
-		if (envelopeLength == 0)
-			envelopeLength = ENVELOPE_EFFECT_STEP_COUNT;
-
-		// Read the Envelope Data
-		for (UINT j = 0; j < envelopeLength; j++)
-			for (UINT k = 0; k < EFFECT_BYTE_COUNT; k++)
-				pEnvelope->effect[j].parameters[k] = *moduleOffset++;
-	}
-
-	// Decode the Note Table Envelope data
-	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
-	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.noteTableEnvelope[i];
-
-		// A NULL offset means there is no Envelope data, skip it
-		if (moduleOffset == moduleData)
-			continue;
-
-		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
-		g_Module.CreateNoteTableEnvelope(i);
-		TEnvelope* pEnvelope = g_Module.GetNoteTableEnvelope(i);
-		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
-
-		// Read the Envelope Parameters
-		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
-			pParameter->parameters[j] = *moduleOffset++;
-
-		// Get the maximum data variables once the parameters were copied over
-		UINT envelopeLength = pParameter->length;
-
-		// Wrap around for maximum, TODO: Move to a proper getter function later
-		if (envelopeLength == 0)
-			envelopeLength = ENVELOPE_STEP_COUNT;
-
-		// Read the Envelope Data
-		for (UINT j = 0; j < envelopeLength; j++)
-			pEnvelope->note[j].parameters = *moduleOffset++;
-	}
-
-	// Decode the Freq Table Envelope data
-	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
-	{
-		// Get the pointer to current Module data offset
-		BYTE* moduleOffset = moduleData + moduleHeader->loHeader.freqTableEnvelope[i];
-
-		// A NULL offset means there is no Envelope data, skip it
-		if (moduleOffset == moduleData)
-			continue;
-
-		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
-		g_Module.CreateFreqTableEnvelope(i);
-		TEnvelope* pEnvelope = g_Module.GetFreqTableEnvelope(i);
-		TEnvelopeParameter* pParameter = &pEnvelope->parameter;
-
-		// Read the Envelope Parameters
-		for (UINT j = 0; j < ENVELOPE_PADDING; j++)
-			pParameter->parameters[j] = *moduleOffset++;
-
-		// Get the maximum data variables once the parameters were copied over
-		UINT envelopeLength = pParameter->length;
-
-		// Wrap around for maximum, TODO: Move to a proper getter function later
-		if (envelopeLength == 0)
-			envelopeLength = ENVELOPE_FREQ_STEP_COUNT;
-
-		// Read the Envelope Data
-		for (UINT j = 0; j < envelopeLength; j++)
-			for (UINT k = 0; k < FREQ_BYTE_COUNT; k++)
-				pEnvelope->freq[j].parameters[k] = *moduleOffset++;
-	}
 
 	// If everything went well, the full Module data should have been loaded and decoded in memory, ready to be used
 	isRmteLoaded = true;
@@ -2977,8 +2751,4 @@ RmteModuleWasNotLoaded:
 
 	// Module file should have been successfully loaded
 	return isRmteLoaded;
-*/
-
-	// Module file should have been successfully loaded
-	//return true;
 }
