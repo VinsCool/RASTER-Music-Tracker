@@ -2432,7 +2432,7 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			// Get the Envelope parameters needed for calculations
 			UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
 
-			// Write 1 byte for the Envelope Index and Envelope Type
+			// Write 2 bytes for the Envelope Index and Envelope Type
 			*moduleOffset++ = i;
 			*moduleOffset++ = j;
 
@@ -2674,7 +2674,7 @@ bool CSong::LoadRMTE(std::ifstream& in)
 			TRowEncoding rowEncoding{};
 
 			// Get the pointer to the current Row position
-			TRow* pRowFrom = &pPattern->row[l];
+			TRow* pRow = &pPattern->row[l];
 
 			// Read the Encoding byte first
 			(BYTE&)rowEncoding = *moduleOffset++;
@@ -2693,47 +2693,170 @@ bool CSong::LoadRMTE(std::ifstream& in)
 
 			// Read the Non-Empty Note
 			if (rowEncoding.isValidNote)
-				pRowFrom->note = *moduleOffset++;
+				pRow->note = *moduleOffset++;
 
 			// Read the Non-Empty Instrument
 			if (rowEncoding.isValidInstrument)
-				pRowFrom->instrument = *moduleOffset++;
+				pRow->instrument = *moduleOffset++;
 
 			// Read the Non-Empty Volume
 			if (rowEncoding.isValidVolume)
-				pRowFrom->volume = *moduleOffset++;
+				pRow->volume = *moduleOffset++;
 
 			// Read the Non-Empty Effect Commands
 			if (rowEncoding.isValidCmd1)
 			{
-				pRowFrom->effect[CMD1].command = *moduleOffset++;
-				pRowFrom->effect[CMD1].parameter = *moduleOffset++;
+				pRow->effect[CMD1].command = *moduleOffset++;
+				pRow->effect[CMD1].parameter = *moduleOffset++;
 			}
 
 			if (rowEncoding.isValidCmd2)
 			{
-				pRowFrom->effect[CMD2].command = *moduleOffset++;
-				pRowFrom->effect[CMD2].parameter = *moduleOffset++;
+				pRow->effect[CMD2].command = *moduleOffset++;
+				pRow->effect[CMD2].parameter = *moduleOffset++;
 			}
 
 			if (rowEncoding.isValidCmd3)
 			{
-				pRowFrom->effect[CMD3].command = *moduleOffset++;
-				pRowFrom->effect[CMD3].parameter = *moduleOffset++;
+				pRow->effect[CMD3].command = *moduleOffset++;
+				pRow->effect[CMD3].parameter = *moduleOffset++;
 			}
 
 			if (rowEncoding.isValidCmd4)
 			{
-				pRowFrom->effect[CMD4].command = *moduleOffset++;
-				pRowFrom->effect[CMD4].parameter = *moduleOffset++;
+				pRow->effect[CMD4].command = *moduleOffset++;
+				pRow->effect[CMD4].parameter = *moduleOffset++;
 			}
 		}
 	}
 
+	// Move the Module Offset to the start of the Instrument data block
+	moduleOffset = moduleData + moduleHeader->loHeader.instrumentIndex;
 
-	////////----
-	// TODO: Decode Instrument and Envelope data blocks after some sleep...
+	// Decode the Instrument data from the Module file
+	while (*moduleOffset != (BYTE)INVALID)
+	{
+		// Read the Instrument Index number from the Module data
+		UINT i = *moduleOffset++;
 
+		// Create a new Instrument if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateInstrument(i);
+		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
+
+		// Read the Instrument Parameter Struct
+		for (UINT j = 0; j < sizeof(TInstrumentParameter); j++)
+			((BYTE*)&pInstrument->parameter)[j] = *moduleOffset++;
+
+		// Read the Instrument Envelope Macro Struct, multiplied to the number of Envelope Types
+		for (UINT j = 0; j < ET_COUNT; j++)
+		{
+			TEnvelopeMacro* pMacro = &pInstrument->envelope[j];
+
+			for (UINT k = 0; k < sizeof(TEnvelopeMacro); k++)
+				((BYTE*)pMacro)[k] = *moduleOffset++;
+		}
+
+		// Read the Instrument Metadata, including the Null terminator
+		char* name = (char*)moduleOffset;
+		for (UINT j = 0; j <= strlen(name); j++)
+			pInstrument->name[j] = *moduleOffset++;
+	}
+
+	// Move the Module Offset to the start of the Envelope data block
+	moduleOffset = moduleData + moduleHeader->loHeader.envelopeIndex;
+
+	// Decode the Envelope data from the Module file
+	while (*moduleOffset != (BYTE)INVALID)
+	{
+		// Read 2 bytes for the Envelope Index and Envelope Type
+		UINT i = *moduleOffset++;
+		UINT j = *moduleOffset++;
+
+		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
+		g_Module.CreateEnvelope(i, j);
+		TEnvelope* pEnvelope = g_Module.GetEnvelope(i, j);
+
+		// Read the Envelope Parameter Struct
+		for (UINT k = 0; k < sizeof(TEnvelopeParameter); k++)
+			((BYTE*)&pEnvelope->parameter)[k] = *moduleOffset++;
+
+		// Get the Envelope parameters needed for calculations
+		UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
+
+		// Read the Envelope Data Struct, sized to the Envelope Length, relative to the Envelope Type
+		switch (j)
+		{
+		case ET_VOLUME:
+			for (UINT k = 0; k < envelopeLength; k++)
+			{
+				TVolumeEnvelope* pEnvelopeData = &pEnvelope->volume[k];
+
+				for (UINT l = 0; l < sizeof(TVolumeEnvelope); l++)
+					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
+			}
+			continue;
+
+		case ET_TIMBRE:
+			for (UINT k = 0; k < envelopeLength; k++)
+			{
+				TTimbreEnvelope* pEnvelopeData = &pEnvelope->timbre[k];
+
+				for (UINT l = 0; l < sizeof(TTimbreEnvelope); l++)
+					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
+			}
+			continue;
+
+		case ET_AUDCTL:
+			for (UINT k = 0; k < envelopeLength; k++)
+			{
+				TAudctlEnvelope* pEnvelopeData = &pEnvelope->audctl[k];
+
+				for (UINT l = 0; l < sizeof(TAudctlEnvelope); l++)
+					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
+			}
+			continue;
+
+		case ET_EFFECT:
+			for (UINT k = 0; k < envelopeLength; k++)
+			{
+				TEffectEnvelope* pEnvelopeData = &pEnvelope->effect[k];
+
+				for (UINT l = 0; l < sizeof(TEffectEnvelope); l++)
+					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
+			}
+			continue;
+
+		case ET_NOTE_TABLE:
+			for (UINT k = 0; k < envelopeLength; k++)
+			{
+				TNoteTableEnvelope* pEnvelopeData = &pEnvelope->note[k];
+
+				for (UINT l = 0; l < sizeof(TNoteTableEnvelope); l++)
+					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
+			}
+			continue;
+
+		case ET_FREQ_TABLE:
+			for (UINT k = 0; k < envelopeLength; k++)
+			{
+				TFreqTableEnvelope* pEnvelopeData = &pEnvelope->freq[k];
+
+				for (UINT l = 0; l < sizeof(TFreqTableEnvelope); l++)
+					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
+			}
+			continue;
+
+		default:
+			// This should never happen, but still added for failsafe sake
+			for (UINT k = 0; k < envelopeLength; k++)
+			{
+				UINT* pEnvelopeData = &pEnvelope->rawData[k];
+
+				for (UINT l = 0; l < sizeof(UINT); l++)
+					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
+			}
+		}
+	}
 
 	// If everything went well, the full Module data should have been loaded and decoded in memory, ready to be used
 	isRmteLoaded = true;
