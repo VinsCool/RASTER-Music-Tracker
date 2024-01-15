@@ -9,6 +9,7 @@
 #include "Instruments.h"
 #include "Tracks.h"
 #include "ModuleV2.h"
+#include "Memory.h"
 
 struct TBookmark
 {
@@ -477,11 +478,53 @@ public:
 	bool SaveRMW(std::ofstream& ou);
 
 	bool SaveRMTE(std::ofstream& ou);
+
+	void CreateModule(CMemory* buffer);
+
+	void EncodeHeader(CMemory* buffer);
+
+	void EncodeAllSubtunes(CMemory* buffer);
+	void EncodeAllPatterns(CMemory* buffer);
+	void EncodeAllInstruments(CMemory* buffer);
+	void EncodeAllEnvelopes(CMemory* buffer);
+
+	void EncodeSubtune(CMemory* buffer, TSubtune* pSubtune);
+	void EncodePattern(CMemory* buffer, TPattern* pPattern);
+	void EncodeInstrument(CMemory* buffer, TInstrumentV2* pInstrument);
+	void EncodeEnvelope(CMemory* buffer, TEnvelope* pEnvelope, UINT envelopeType);
+
+/*
+	void CreateModule(BYTE*& moduleData, UINT64& moduleSize);
+
+	void EncodeHeader(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+
+	void EncodeAllSubtunes(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+	void EncodeAllPatterns(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+	void EncodeAllInstruments(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+	void EncodeAllEnvelopes(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+
+	void EncodeSubtune(BYTE*& moduleOffset, TSubtune* pSubtune);
+	void EncodePattern(BYTE*& moduleOffset, TPattern* pPattern);
+	void EncodeInstrument(BYTE*& moduleOffset, TInstrumentV2* pInstrument);
+	void EncodeEnvelope(BYTE*& moduleOffset, TEnvelope* pEnvelope, UINT envelopeType);
+*/
+
 	bool LoadRMTE(std::ifstream& in);
 
-	//bool MakeModuleHeader(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, int& addressOfDataBlock);
+	void DecodeModule(BYTE*& moduleData, UINT64& moduleSize);
 
-	//bool DecodeRMTE(BYTE* pMem, int& addressOfModuleIndex, int& addressOfSubtuneIndex, int& addressOfInstrumentIndex, BYTE& moduleVersion);
+	void DecodeHeader(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+
+	void DecodeAllSubtunes(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+	void DecodeAllPatterns(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+	void DecodeAllInstruments(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+	void DecodeAllEnvelopes(TModuleHeader* moduleHeader, BYTE*& moduleOffset);
+
+	void DecodeSubtune(BYTE*& moduleOffset, TSubtune* pSubtune);
+	void DecodePattern(BYTE*& moduleOffset, TPattern* pPattern);
+	void DecodeInstrument(BYTE*& moduleOffset, TInstrumentV2* pInstrument);
+	void DecodeEnvelope(BYTE*& moduleOffset, TEnvelope* pEnvelope, UINT envelopeType);
+
 
 	bool LoadRMT(std::ifstream& in);
 	bool LoadTxt(std::ifstream& in);

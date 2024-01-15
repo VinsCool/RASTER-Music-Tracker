@@ -423,6 +423,7 @@
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</BrowseInformation>
       <BrowseInformation Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</BrowseInformation>
     </ClCompile>
+    <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Midi_Song.cpp" />
     <ClCompile Include="ModuleV2.cpp" />
     <ClCompile Include="PokeyStream.cpp" />
@@ -542,6 +543,7 @@
     <ClInclude Include="Atari6502.h" />
     <ClInclude Include="Clipboard.h" />
     <ClInclude Include="ConfigDlg.h" />
+    <ClInclude Include="Memory.h" />
     <ClInclude Include="ModuleV2.h" />
     <ClInclude Include="RmtAtariBinaries.h" />
     <ClInclude Include="EffectsDlg.h" />

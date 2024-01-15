@@ -1921,21 +1921,45 @@ bool CSong::ExportWav(std::ofstream& ou, LPCTSTR filename)
 // Create a RMTE Module file
 bool CSong::SaveRMTE(std::ofstream& ou)
 {
-	UINT moduleSize = EMPTY;
+	CMemory moduleBuffer;
 
-	BYTE* moduleData = NULL;
-	BYTE* moduleOffset = NULL;
+	CreateModule(&moduleBuffer);
 
+	// Write the fully constructed Module data to file once it is ready
+	ou.seekp(0, std::ios_base::beg);
+	ou.write((char*)moduleBuffer.GetBuffer(), moduleBuffer.GetSize());
+
+	// RMTE Module file should have been successfully created
+	return true;
+}
+
+void CSong::CreateModule(CMemory* buffer)
+{
+	// Create the Encoded Module data, processing each section individually
+	EncodeHeader(buffer);
+	EncodeAllSubtunes(buffer);
+	EncodeAllPatterns(buffer);
+	EncodeAllInstruments(buffer);
+	EncodeAllEnvelopes(buffer);
+
+	// Trim off the extra bytes from the effective buffer size
+	buffer->TruncateBuffer();
+
+	// Compute the CRC32 checksum and write it to the Module Header
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	moduleHeader->hiHeader.crc32 = CRC32(buffer->GetBuffer(), buffer->GetSize());
+}
+
+void CSong::EncodeHeader(CMemory* buffer)
+{
+	// Create Module Header
 	TModuleHeader moduleHeader{};
-	memset(&moduleHeader, EMPTY, sizeof(TModuleHeader));
-
-	TModuleMetadata moduleMetadata{};
-	memset(&moduleMetadata, EMPTY, sizeof(TModuleMetadata));
 
 	// Create High Header, Low Header is constructed using the Module data offsets
-	strncpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER, 4);
+	strcpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER);
 	moduleHeader.hiHeader.version = MODULE_VERSION;
 	moduleHeader.hiHeader.region = MODULE_REGION;
+	moduleHeader.hiHeader.crc32 = EMPTY;
 
 	// Create Module Parameters
 	moduleHeader.highlightPrimary = MODULE_PRIMARY_HIGHLIGHT;
@@ -1945,255 +1969,25 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	moduleHeader.baseOctave = MODULE_BASE_OCTAVE;
 
 	// Create Module Metadata
+	TModuleMetadata moduleMetadata{};
 	moduleMetadata.name = (char*)g_Module.GetModuleName();
 	moduleMetadata.author = (char*)g_Module.GetModuleAuthor();
 	moduleMetadata.copyright = (char*)g_Module.GetModuleCopyright();
 
-	// Initial Module size is constant, beginning with the Header itself
-	moduleSize += sizeof(TModuleHeader);
-
-	// Increment size with the Module Metadata, including the Null terminators
-	moduleSize += ((UINT)strlen(moduleMetadata.name) + 1);
-	moduleSize += ((UINT)strlen(moduleMetadata.author) + 1);
-	moduleSize += ((UINT)strlen(moduleMetadata.copyright) + 1);
-
-	// Set the Subtune Index offset to match the current Module Size
-	moduleHeader.loHeader.subtuneIndex = moduleSize;
-
-	// Increment size with all the Subtune data to be saved if there is at least 1 Subtune in memory
-	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
-	{
-		TSubtune* pSubtune = g_Module.GetSubtune(i);
-
-		// If the Subtune pointer is NULL, skip it
-		if (!pSubtune)
-			continue;
-
-		// Get the Subtune parameters needed for calculations
-		UINT channelCount = g_Module.GetChannelCount(pSubtune);
-		UINT songLength = g_Module.GetSongLength(pSubtune);
-
-		// Increment size using the Subtune Parameter Struct size, + 1 byte for the Subtune Index
-		moduleSize += (sizeof(TSubtuneParameter) + 1);
-
-		// Increment size using the Channel Parameter Struct size, multiplied to the number of Channels
-		moduleSize += (sizeof(TChannelParameter) * channelCount);
-
-		// Increment size using the Song Length multiplied to the number of Channels
-		moduleSize += (songLength * channelCount);
-
-		// Increment size with the Subtune Metadata, including the Null terminator
-		moduleSize += ((UINT)strlen(pSubtune->name) + 1);
-	}
-
-	// Increment size for 1 byte to mark the End of Subtune data
-	moduleSize += 1;
-
-	// Set the Pattern Index offset to match the current Module Size
-	moduleHeader.loHeader.patternIndex = moduleSize;
-
-	// Increment size with all the Pattern data to be saved if there is at least 1 non-empty Pattern in memory
-	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
-		for (UINT j = 0; j < CHANNEL_COUNT; j++)
-			for (UINT k = 0; k < PATTERN_COUNT; k++)
-			{
-				TPattern* pPattern = g_Module.GetPattern(i, j, k);
-
-				// If the Pattern is Empty, skip it
-				if (g_Module.IsEmptyPattern(pPattern))
-					continue;
-
-				// Increment size by 3 bytes for the Subtune Index, Channel Index and Pattern Index, respectively
-				moduleSize += 3;
-
-				// Increment Size with the Row data
-				for (UINT l = 0; l < ROW_COUNT; l++)
-				{
-					// Row encoding data is written first
-					moduleSize += sizeof(TRowEncoding);
-
-					// Get the pointer to the current Row position
-					TRow* pRowFrom = &pPattern->row[l];
-
-					// If the Row is Empty, the Pause Length will be derived from it
-					if (g_Module.IsEmptyRow(pRowFrom))
-					{
-						// For data encoding, assume it is the End of Pattern unless it is not
-						bool isEndOfPattern = true;
-
-						// Initial Pause Length is always 0
-						BYTE pauseLength = EMPTY;
-
-						// We need to identify the number of Empty Rows ahead of the current position
-						for (UINT m = l + 1; m < ROW_COUNT; m++)
-						{
-							// Get the pointer to the target Row position
-							TRow* pRowTo = &pPattern->row[m];
-
-							// If the Row is not Empty, there is more data to process
-							if (!g_Module.IsEmptyRow(pRowTo))
-							{
-								isEndOfPattern = false;
-								break;
-							}
-
-							// Increment the Pause Length by 1
-							pauseLength += 1;
-						}
-
-						// At least 1 Empty Row must follow in order to set the Row Pause bit
-						if (pauseLength > EMPTY || isEndOfPattern)
-						{
-							// If the Pattern Terminator Bit is set, there is no more Row data to process for this Pattern
-							if (isEndOfPattern)
-								break;
-
-							// Up to 128 Rows may be skipped at once, however!
-							if (pauseLength >= 0x7F)
-								pauseLength = 0x7E;
-
-							else
-								pauseLength -= 1;
-
-							// Empty Rows between l and m will be skipped with the Pause Length
-							l += pauseLength + 1;
-							continue;
-						}
-					}
-
-					// Check if there is a Non-Empty Note
-					if (pRowFrom->note != NOTE_EMPTY)
-						moduleSize += sizeof(BYTE);
-
-					// Check if there is a Non-Empty Instrument
-					if (pRowFrom->instrument != INSTRUMENT_EMPTY)
-						moduleSize += sizeof(BYTE);
-
-					// Check if there is a Non-Empty Volume
-					if (pRowFrom->volume != VOLUME_EMPTY)
-						moduleSize += sizeof(BYTE);
-
-					// Check if there are Non-Empty Effect Commands
-					if (pRowFrom->effect[CMD1].command != PE_EMPTY)
-						moduleSize += sizeof(TEffect);
-
-					if (pRowFrom->effect[CMD2].command != PE_EMPTY)
-						moduleSize += sizeof(TEffect);
-
-					if (pRowFrom->effect[CMD3].command != PE_EMPTY)
-						moduleSize += sizeof(TEffect);
-
-					if (pRowFrom->effect[CMD4].command != PE_EMPTY)
-						moduleSize += sizeof(TEffect);
-				}
-			}
-
-	// Increment size for 1 byte to mark the End of Pattern data
-	moduleSize += 1;
-
-	// Set the Instrument Index offset to match the current Module Size
-	moduleHeader.loHeader.instrumentIndex = moduleSize;
-
-	// Increment size with all the Instrument data to be saved if there is at least 1 Instrument in memory
-	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
-	{
-		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
-
-		// If the Instrument pointer is NULL, skip it
-		if (!pInstrument)
-			continue;
-
-		// Increment size using the Instrument Parameter Struct size, + 1 byte for the Instrument Index
-		moduleSize += (sizeof(TInstrumentParameter) + 1);
-
-		// Increment size using the Envelope Macro Struct size, multiplied to the number of Envelope Types
-		moduleSize += (sizeof(TEnvelopeMacro) * ET_COUNT);
-
-		// Increment size with the Instrument Metadata, including the Null terminator
-		moduleSize += ((UINT)strlen(pInstrument->name) + 1);
-	}
-
-	// Increment size for 1 byte to mark the End of Instrument data
-	moduleSize += 1;
-
-	// Set the Envelope Index offset to match the current Module Size
-	moduleHeader.loHeader.envelopeIndex = moduleSize;
-
-	// Increment size with all the Envelope data to be saved if there is at least 1 Envelope in memory
-	for (UINT i = 0; i < ENVELOPE_COUNT; i++)
-		for (UINT j = 0; j < ET_COUNT; j++)
-		{
-			TEnvelope* pEnvelope = g_Module.GetEnvelope(i, j);
-
-			// If the Envelope pointer is NULL, skip it
-			if (!pEnvelope)
-				continue;
-
-			// Get the Envelope parameters needed for calculations
-			UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
-
-			// Increment size using the Envelope Parameter Struct size, + 2 bytes for the Envelope Index and Envelope Type
-			moduleSize += (sizeof(TEnvelopeParameter) + 2);
-
-			// Increment size using the Envelope Data Struct size, multiplied to the Envelope Length, relative to the Envelope Type
-			switch (j)
-			{
-			case ET_VOLUME:
-				moduleSize += (sizeof(TVolumeEnvelope) * envelopeLength);
-				continue;
-
-			case ET_TIMBRE:
-				moduleSize += (sizeof(TTimbreEnvelope) * envelopeLength);
-				continue;
-
-			case ET_AUDCTL:
-				moduleSize += (sizeof(TAudctlEnvelope) * envelopeLength);
-				continue;
-
-			case ET_EFFECT:
-				moduleSize += (sizeof(TEffectEnvelope) * envelopeLength);
-				continue;
-
-			case ET_NOTE_TABLE:
-				moduleSize += (sizeof(TNoteTableEnvelope) * envelopeLength);
-				continue;
-
-			case ET_FREQ_TABLE:
-				moduleSize += (sizeof(TFreqTableEnvelope) * envelopeLength);
-				continue;
-
-			default:
-				// This should never happen, but still added for failsafe sake
-				moduleSize += (sizeof(UINT) * envelopeLength);
-			}
-		}
-
-	// Increment size for 1 byte to mark the End of Envelope data
-	moduleSize += 1;
-
-	// Create Encoded Module data in 1 block using the calculated size
-	moduleData = new BYTE[moduleSize];
-	memset(moduleData, EMPTY, moduleSize);
-
-	// Move the Module Offset to the start of the Module data that was just created
-	moduleOffset = moduleData;
-
 	// Write the Module Header
-	for (UINT i = 0; i < sizeof(TModuleHeader); i++)
-		*moduleOffset++ = ((BYTE*)&moduleHeader)[i];
+	buffer->PushBytes((BYTE*)&moduleHeader, sizeof(TModuleHeader));
 
 	// Write the Module Metadata, including the Null terminators
-	for (UINT i = 0; i <= strlen(moduleMetadata.name); i++)
-		*moduleOffset++ = moduleMetadata.name[i];
+	buffer->PushBytes((BYTE*)moduleMetadata.name, strlen(moduleMetadata.name) + 1);
+	buffer->PushBytes((BYTE*)moduleMetadata.author, strlen(moduleMetadata.author) + 1);
+	buffer->PushBytes((BYTE*)moduleMetadata.copyright, strlen(moduleMetadata.copyright) + 1);
+}
 
-	for (UINT i = 0; i <= strlen(moduleMetadata.author); i++)
-		*moduleOffset++ = moduleMetadata.author[i];
-
-	for (UINT i = 0; i <= strlen(moduleMetadata.copyright); i++)
-		*moduleOffset++ = moduleMetadata.copyright[i];
-
-	// Move the Module Offset to the start of the Subtune data block
-	moduleOffset = moduleData + moduleHeader.loHeader.subtuneIndex;
+void CSong::EncodeAllSubtunes(CMemory* buffer)
+{
+	// Set the Subtune Index to the current Module Offset
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	moduleHeader->loHeader.subtuneIndex = (UINT)buffer->GetOffset();
 
 	// Write the Encoded Subtune data if there is at least 1 Subtune to process
 	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
@@ -2204,46 +1998,21 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 		if (!pSubtune)
 			continue;
 
-		// Get the Subtune parameters needed for calculations
-		UINT channelCount = g_Module.GetChannelCount(pSubtune);
-		UINT songLength = g_Module.GetSongLength(pSubtune);
-
 		// Write 1 byte for the Subtune Index
-		*moduleOffset++ = i;
+		buffer->PutByte(i);
 
-		// Write the Subtune Parameter Struct
-		for (UINT j = 0; j < sizeof(TSubtuneParameter); j++)
-			*moduleOffset++ = ((BYTE*)&pSubtune->parameter)[j];
-
-		// Write the Channel Parameter Struct, multiplied to the number of Channels
-		for (UINT j = 0; j < channelCount; j++)
-		{
-			TChannel* pChannel = &pSubtune->channel[j];
-
-			for (UINT k = 0; k < sizeof(TChannelParameter); k++)
-				*moduleOffset++ = ((BYTE*)&pChannel->parameter)[k];
-		}
-
-		// Write the Songline Index, sized to the Song Length multiplied to the number of Channels
-		for (UINT k = 0; k < songLength; k++)
-		{
-			for (UINT j = 0; j < channelCount; j++)
-			{
-				TChannel* pChannel = &pSubtune->channel[j];
-				*moduleOffset++ = pChannel->songline[k];
-			}
-		}
-
-		// Write the Subtune Metadata, including the Null terminator
-		for (UINT j = 0; j <= strlen(pSubtune->name); j++)
-			*moduleOffset++ = pSubtune->name[j];
+		EncodeSubtune(buffer, pSubtune);
 	}
 
 	// Write 1 byte to mark the End of Subtune data
-	*moduleOffset++ = INVALID;
+	buffer->PutByte(INVALID);
+}
 
-	// Move the Module Offset to the start of the Pattern data block
-	moduleOffset = moduleData + moduleHeader.loHeader.patternIndex;
+void CSong::EncodeAllPatterns(CMemory* buffer)
+{
+	// Set the Pattern Index to the current Module Offset
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	moduleHeader->loHeader.patternIndex = (UINT)buffer->GetOffset();
 
 	// Write the Encoded Pattern data if there is at least 1 Pattern to process
 	for (UINT i = 0; i < SUBTUNE_COUNT; i++)
@@ -2257,131 +2026,22 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 					continue;
 
 				// Write 3 bytes for the Subtune Index, Channel Index and Pattern Index, respectively
-				*moduleOffset++ = i;
-				*moduleOffset++ = j;
-				*moduleOffset++ = k;
+				buffer->PutByte(i);
+				buffer->PutByte(j);
+				buffer->PutByte(k);
 
-				// Write the Encoded Row data
-				for (UINT l = 0; l < ROW_COUNT; l++)
-				{
-					TRowEncoding rowEncoding{};
-					rowEncoding.isPauseOrTerminator = false;
-
-					// Get the pointer to the current Row position
-					TRow* pRowFrom = &pPattern->row[l];
-
-					// If the Row is Empty, the Pause Length will be derived from it
-					if (g_Module.IsEmptyRow(pRowFrom))
-					{
-						// For data encoding, assume it is the End of Pattern unless it is not
-						bool isEndOfPattern = true;
-
-						// Initial Pause Length is always 0
-						BYTE pauseLength = EMPTY;
-
-						// We need to identify the number of Empty Rows ahead of the current position
-						for (UINT m = l + 1; m < ROW_COUNT; m++)
-						{
-							// Get the pointer to the target Row position
-							TRow* pRowTo = &pPattern->row[m];
-
-							// If the Row is not Empty, there is more data to process
-							if (!g_Module.IsEmptyRow(pRowTo))
-							{
-								isEndOfPattern = false;
-								break;
-							}
-
-							// Increment the Pause Length by 1
-							pauseLength += 1;
-						}
-
-						// At least 1 Empty Row must follow in order to set the Row Pause bit
-						if (pauseLength > EMPTY || isEndOfPattern)
-						{
-							rowEncoding.isPauseOrTerminator = true;
-
-							// Set the Pause Length to 127 if the End of Pattern was reached
-							if (isEndOfPattern)
-								rowEncoding.pauseLength = 0x7F;
-
-							// Up to 128 Rows may be skipped at once, however!
-							else if (pauseLength >= 0x7F)
-								rowEncoding.pauseLength = 0x7E;
-
-							// Set the Pause Length to the number of Empty Rows counted
-							else
-								rowEncoding.pauseLength = pauseLength - 1;
-
-							// Write the Encoding byte first
-							*moduleOffset++ = (BYTE&)rowEncoding;
-
-							// If the Pattern Terminator Bit is set, there is no more Row data to process for this Pattern
-							if (isEndOfPattern)
-								break;
-
-							// Empty Rows between l and m will be skipped with the Pause Length
-							l += rowEncoding.pauseLength + 1;
-							continue;
-						}
-					}
-
-					// Encode the Row data based on the Non-Empty values
-					rowEncoding.isValidNote = (pRowFrom->note != NOTE_EMPTY);
-					rowEncoding.isValidInstrument = (pRowFrom->instrument != INSTRUMENT_EMPTY);
-					rowEncoding.isValidVolume = (pRowFrom->volume != VOLUME_EMPTY);
-					rowEncoding.isValidCmd1 = (pRowFrom->effect[CMD1].command != PE_EMPTY);
-					rowEncoding.isValidCmd2 = (pRowFrom->effect[CMD2].command != PE_EMPTY);
-					rowEncoding.isValidCmd3 = (pRowFrom->effect[CMD3].command != PE_EMPTY);
-					rowEncoding.isValidCmd4 = (pRowFrom->effect[CMD4].command != PE_EMPTY);
-
-					// Write the Encoding byte first
-					*moduleOffset++ = (BYTE&)rowEncoding;
-
-					// Write the Non-Empty Note
-					if (rowEncoding.isValidNote)
-						*moduleOffset++ = pRowFrom->note;
-
-					// Write the Non-Empty Instrument
-					if (rowEncoding.isValidInstrument)
-						*moduleOffset++ = pRowFrom->instrument;
-
-					// Write the Non-Empty Volume
-					if (rowEncoding.isValidVolume)
-						*moduleOffset++ = pRowFrom->volume;
-
-					// Write the Non-Empty Effect Commands
-					if (rowEncoding.isValidCmd1)
-					{
-						*moduleOffset++ = pRowFrom->effect[CMD1].command;
-						*moduleOffset++ = pRowFrom->effect[CMD1].parameter;
-					}
-
-					if (rowEncoding.isValidCmd2)
-					{
-						*moduleOffset++ = pRowFrom->effect[CMD2].command;
-						*moduleOffset++ = pRowFrom->effect[CMD2].parameter;
-					}
-
-					if (rowEncoding.isValidCmd3)
-					{
-						*moduleOffset++ = pRowFrom->effect[CMD3].command;
-						*moduleOffset++ = pRowFrom->effect[CMD3].parameter;
-					}
-
-					if (rowEncoding.isValidCmd4)
-					{
-						*moduleOffset++ = pRowFrom->effect[CMD4].command;
-						*moduleOffset++ = pRowFrom->effect[CMD4].parameter;
-					}
-				}
+				EncodePattern(buffer, pPattern);
 			}
 
 	// Write 1 byte to mark the End of Pattern data
-	*moduleOffset++ = INVALID;
+	buffer->PutByte(INVALID);
+}
 
-	// Move the Module Offset to the start of the Instrument data block
-	moduleOffset = moduleData + moduleHeader.loHeader.instrumentIndex;
+void CSong::EncodeAllInstruments(CMemory* buffer)
+{
+	// Set the Instrument Index to the current Module Offset
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	moduleHeader->loHeader.instrumentIndex = (UINT)buffer->GetOffset();
 
 	// Write the Encoded Instrument data if there is at least 1 Instrument to process
 	for (UINT i = 0; i < INSTRUMENT_COUNT; i++)
@@ -2393,31 +2053,20 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			continue;
 
 		// Write 1 byte for the Instrument Index
-		*moduleOffset++ = i;
+		buffer->PutByte(i);
 
-		// Write the Instrument Parameter Struct
-		for (UINT j = 0; j < sizeof(TInstrumentParameter); j++)
-			*moduleOffset++ = ((BYTE*)&pInstrument->parameter)[j];
-
-		// Write the Instrument Envelope Macro Struct, multiplied to the number of Envelope Types
-		for (UINT j = 0; j < ET_COUNT; j++)
-		{
-			TEnvelopeMacro* pMacro = &pInstrument->envelope[j];
-
-			for (UINT k = 0; k < sizeof(TEnvelopeMacro); k++)
-				*moduleOffset++ = ((BYTE*)pMacro)[k];
-		}
-
-		// Write the Instrument Metadata, including the Null terminator
-		for (UINT j = 0; j <= strlen(pInstrument->name); j++)
-			*moduleOffset++ = pInstrument->name[j];
+		EncodeInstrument(buffer, pInstrument);
 	}
 
 	// Write 1 byte to mark the End of Instrument data
-	*moduleOffset++ = INVALID;
+	buffer->PutByte(INVALID);
+}
 
-	// Move the Module Offset to the start of the Envelope data block
-	moduleOffset = moduleData + moduleHeader.loHeader.envelopeIndex;
+void CSong::EncodeAllEnvelopes(CMemory* buffer)
+{
+	// Set the Envelope Index to the current Module Offset
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	moduleHeader->loHeader.envelopeIndex = (UINT)buffer->GetOffset();
 
 	// Write the Encoded Envelope data if there is at least 1 Envelope to process
 	for (UINT i = 0; i < ENVELOPE_COUNT; i++)
@@ -2429,108 +2078,217 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 			if (!pEnvelope)
 				continue;
 
-			// Get the Envelope parameters needed for calculations
-			UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
-
 			// Write 2 bytes for the Envelope Index and Envelope Type
-			*moduleOffset++ = i;
-			*moduleOffset++ = j;
+			buffer->PutByte(i);
+			buffer->PutByte(j);
 
-			// Write the Envelope Parameter Struct
-			for (UINT k = 0; k < sizeof(TEnvelopeParameter); k++)
-				*moduleOffset++ = ((BYTE*)&pEnvelope->parameter)[k];
-
-			// Write the Envelope Data Struct, sized to the Envelope Length, relative to the Envelope Type
-			switch (j)
-			{
-			case ET_VOLUME:
-				for (UINT k = 0; k < envelopeLength; k++)
-				{
-					TVolumeEnvelope* pEnvelopeData = &pEnvelope->volume[k];
-
-					for (UINT l = 0; l < sizeof(TVolumeEnvelope); l++)
-						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
-				}
-				continue;
-
-			case ET_TIMBRE:
-				for (UINT k = 0; k < envelopeLength; k++)
-				{
-					TTimbreEnvelope* pEnvelopeData = &pEnvelope->timbre[k];
-
-					for (UINT l = 0; l < sizeof(TTimbreEnvelope); l++)
-						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
-				}
-				continue;
-
-			case ET_AUDCTL:
-				for (UINT k = 0; k < envelopeLength; k++)
-				{
-					TAudctlEnvelope* pEnvelopeData = &pEnvelope->audctl[k];
-
-					for (UINT l = 0; l < sizeof(TAudctlEnvelope); l++)
-						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
-				}
-				continue;
-
-			case ET_EFFECT:
-				for (UINT k = 0; k < envelopeLength; k++)
-				{
-					TEffectEnvelope* pEnvelopeData = &pEnvelope->effect[k];
-
-					for (UINT l = 0; l < sizeof(TEffectEnvelope); l++)
-						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
-				}
-				continue;
-
-			case ET_NOTE_TABLE:
-				for (UINT k = 0; k < envelopeLength; k++)
-				{
-					TNoteTableEnvelope* pEnvelopeData = &pEnvelope->note[k];
-
-					for (UINT l = 0; l < sizeof(TNoteTableEnvelope); l++)
-						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
-				}
-				continue;
-
-			case ET_FREQ_TABLE:
-				for (UINT k = 0; k < envelopeLength; k++)
-				{
-					TFreqTableEnvelope* pEnvelopeData = &pEnvelope->freq[k];
-
-					for (UINT l = 0; l < sizeof(TFreqTableEnvelope); l++)
-						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
-				}
-				continue;
-
-			default:
-				// This should never happen, but still added for failsafe sake
-				for (UINT k = 0; k < envelopeLength; k++)
-				{
-					UINT* pEnvelopeData = &pEnvelope->rawData[k];
-
-					for (UINT l = 0; l < sizeof(UINT); l++)
-						*moduleOffset++ = ((BYTE*)pEnvelopeData)[l];
-				}
-			}
+			EncodeEnvelope(buffer, pEnvelope, j);
 		}
 
 	// Write 1 byte to mark the End of Envelope data
-	*moduleOffset++ = INVALID;
-
-	// Compute the CRC32 checksum and write it to the Module Header
-	((TModuleHeader*)moduleData)->hiHeader.crc32 = CRC32(moduleData, moduleSize);
-
-	// Write the fully constructed Module data to file once it is ready
-	ou.seekp(0, std::ios_base::beg);
-	ou.write((char*)moduleData, moduleSize);
-
-	// Delete the temporary data once it is written
-	delete moduleData;
-
-	// RMTE Module file should have been successfully created
-	return true;
+	buffer->PutByte(INVALID);
 }
+
+void CSong::EncodeSubtune(CMemory* buffer, TSubtune* pSubtune)
+{
+	// Get the Subtune parameters needed for calculations
+	UINT channelCount = g_Module.GetChannelCount(pSubtune);
+	UINT songLength = g_Module.GetSongLength(pSubtune);
+
+	// Write the Subtune Parameter Struct
+	buffer->PushBytes((BYTE*)&pSubtune->parameter, sizeof(TSubtuneParameter));
+
+	// Write the Channel Parameter Struct, multiplied to the number of Channels
+	for (UINT i = 0; i < channelCount; i++)
+		buffer->PushBytes((BYTE*)&pSubtune->channel[i].parameter, sizeof(TChannelParameter));
+
+	// Write the Songline Index, sized to the Song Length multiplied to the number of Channels
+	for (UINT j = 0; j < songLength; j++)
+		for (UINT i = 0; i < channelCount; i++)
+			buffer->PushBytes((BYTE*)&pSubtune->channel[i].songline[j], sizeof(BYTE));
+
+	// Write the Subtune Metadata, including the Null terminator
+	buffer->PushBytes((BYTE*)&pSubtune->name, strlen(pSubtune->name) + 1);
+}
+
+void CSong::EncodePattern(CMemory* buffer, TPattern* pPattern)
+{
+	TRowEncoding rowEncoding{};
+
+	// Write the Encoded Row data
+	for (UINT i = 0; i < ROW_COUNT; i++)
+	{
+		rowEncoding.isPauseOrTerminator = false;
+
+		// Get the pointer to the current Row position
+		TRow* pRowFrom = &pPattern->row[i];
+
+		// If the Row is Empty, the Pause Length will be derived from it
+		if (g_Module.IsEmptyRow(pRowFrom))
+		{
+			// For data encoding, assume it is the End of Pattern unless it is not
+			bool isEndOfPattern = true;
+
+			// Initial Pause Length is always 0
+			BYTE pauseLength = EMPTY;
+
+			// We need to identify the number of Empty Rows ahead of the current position
+			for (UINT j = i + 1; j < ROW_COUNT; j++)
+			{
+				// Get the pointer to the target Row position
+				TRow* pRowTo = &pPattern->row[j];
+
+				// If the Row is not Empty, there is more data to process
+				if (!g_Module.IsEmptyRow(pRowTo))
+				{
+					isEndOfPattern = false;
+					break;
+				}
+
+				// Increment the Pause Length by 1
+				pauseLength += 1;
+			}
+
+			// At least 1 Empty Row must follow in order to set the Row Pause bit
+			if (pauseLength > EMPTY || isEndOfPattern)
+			{
+				rowEncoding.isPauseOrTerminator = true;
+
+				// Set the Pause Length to 127 if the End of Pattern was reached
+				if (isEndOfPattern)
+					rowEncoding.pauseLength = 0x7F;
+
+				// Up to 128 Rows may be skipped at once, however!
+				else if (pauseLength >= 0x7F)
+					rowEncoding.pauseLength = 0x7E;
+
+				// Set the Pause Length to the number of Empty Rows counted
+				else
+					rowEncoding.pauseLength = pauseLength - 1;
+
+				// Write the Encoding byte first
+				buffer->PutByte((BYTE&)rowEncoding);
+
+				// If the Pattern Terminator Bit is set, there is no more Row data to process for this Pattern
+				if (isEndOfPattern)
+					break;
+
+				// Empty Rows between l and m will be skipped with the Pause Length
+				i += rowEncoding.pauseLength + 1;
+				continue;
+			}
+		}
+
+		// Encode the Row data based on the Non-Empty values
+		rowEncoding.isValidNote = (pRowFrom->note != NOTE_EMPTY);
+		rowEncoding.isValidInstrument = (pRowFrom->instrument != INSTRUMENT_EMPTY);
+		rowEncoding.isValidVolume = (pRowFrom->volume != VOLUME_EMPTY);
+		rowEncoding.isValidCmd1 = (pRowFrom->effect[CMD1].command != PE_EMPTY);
+		rowEncoding.isValidCmd2 = (pRowFrom->effect[CMD2].command != PE_EMPTY);
+		rowEncoding.isValidCmd3 = (pRowFrom->effect[CMD3].command != PE_EMPTY);
+		rowEncoding.isValidCmd4 = (pRowFrom->effect[CMD4].command != PE_EMPTY);
+
+		// Write the Encoding byte first
+		buffer->PutByte((BYTE&)rowEncoding);
+
+		// Write the Non-Empty Note
+		if (rowEncoding.isValidNote)
+			buffer->PutByte(pRowFrom->note);
+
+		// Write the Non-Empty Instrument
+		if (rowEncoding.isValidInstrument)
+			buffer->PutByte(pRowFrom->instrument);
+
+		// Write the Non-Empty Volume
+		if (rowEncoding.isValidVolume)
+			buffer->PutByte(pRowFrom->volume);
+
+		// Write the Non-Empty Effect Commands
+		if (rowEncoding.isValidCmd1)
+		{
+			buffer->PutByte(pRowFrom->effect[CMD1].command);
+			buffer->PutByte(pRowFrom->effect[CMD1].parameter);
+		}
+
+		if (rowEncoding.isValidCmd2)
+		{
+			buffer->PutByte(pRowFrom->effect[CMD2].command);
+			buffer->PutByte(pRowFrom->effect[CMD2].parameter);
+		}
+
+		if (rowEncoding.isValidCmd3)
+		{
+			buffer->PutByte(pRowFrom->effect[CMD3].command);
+			buffer->PutByte(pRowFrom->effect[CMD3].parameter);
+		}
+
+		if (rowEncoding.isValidCmd4)
+		{
+			buffer->PutByte(pRowFrom->effect[CMD4].command);
+			buffer->PutByte(pRowFrom->effect[CMD4].parameter);
+		}
+	}
+}
+
+void CSong::EncodeInstrument(CMemory* buffer, TInstrumentV2* pInstrument)
+{
+	// Write the Instrument Parameter Struct
+	buffer->PushBytes((BYTE*)&pInstrument->parameter, sizeof(TInstrumentParameter));
+
+	// Write the Instrument Envelope Macro Struct, multiplied to the number of Envelope Types
+	for (UINT i = 0; i < ET_COUNT; i++)
+		buffer->PushBytes((BYTE*)&pInstrument->envelope[i], sizeof(TEnvelopeMacro));
+	
+	// Write the Instrument Metadata, including the Null terminator
+	buffer->PushBytes((BYTE*)&pInstrument->name, strlen(pInstrument->name) + 1);
+}
+
+void CSong::EncodeEnvelope(CMemory* buffer, TEnvelope* pEnvelope, UINT envelopeType)
+{
+	// Get the Envelope parameters needed for calculations
+	UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
+
+	// Write the Envelope Parameter Struct
+	buffer->PushBytes((BYTE*)&pEnvelope->parameter, sizeof(TEnvelopeParameter));
+
+	// Write the Envelope Data Struct, sized to the Envelope Length, relative to the Envelope Type
+	for (UINT i = 0; i < envelopeLength; i++)
+	{
+		switch (envelopeType)
+		{
+		case ET_VOLUME:
+			buffer->PushBytes((BYTE*)&pEnvelope->volume[i], sizeof(TVolumeEnvelope));
+			continue;
+
+		case ET_TIMBRE:
+			buffer->PushBytes((BYTE*)&pEnvelope->timbre[i], sizeof(TTimbreEnvelope));
+			continue;
+
+		case ET_AUDCTL:
+			buffer->PushBytes((BYTE*)&pEnvelope->audctl[i], sizeof(TAudctlEnvelope));
+			continue;
+
+		case ET_EFFECT:
+			buffer->PushBytes((BYTE*)&pEnvelope->effect[i], sizeof(TEffectEnvelope));
+			continue;
+
+		case ET_NOTE_TABLE:
+			buffer->PushBytes((BYTE*)&pEnvelope->note[i], sizeof(TNoteTableEnvelope));
+			continue;
+
+		case ET_FREQ_TABLE:
+			buffer->PushBytes((BYTE*)&pEnvelope->freq[i], sizeof(TFreqTableEnvelope));
+			continue;
+
+		default:
+			// This should never happen, but still added for failsafe sake
+			buffer->PushBytes((BYTE*)&pEnvelope->rawData[i], sizeof(UINT));
+		}
+	}
+}
+
+
+//--
 
 // Load a RMTE Module file
 bool CSong::LoadRMTE(std::ifstream& in)
@@ -2874,4 +2632,54 @@ RmteModuleWasNotLoaded:
 
 	// Module file should have been successfully loaded
 	return isRmteLoaded;
+}
+
+void CSong::DecodeModule(BYTE*& moduleData, UINT64& moduleSize)
+{
+
+}
+
+void CSong::DecodeHeader(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
+{
+
+}
+
+void CSong::DecodeAllSubtunes(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
+{
+
+}
+
+void CSong::DecodeAllPatterns(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
+{
+
+}
+
+void CSong::DecodeAllInstruments(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
+{
+
+}
+
+void CSong::DecodeAllEnvelopes(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
+{
+
+}
+
+void CSong::DecodeSubtune(BYTE*& moduleOffset, TSubtune* pSubtune)
+{
+
+}
+
+void CSong::DecodePattern(BYTE*& moduleOffset, TPattern* pPattern)
+{
+
+}
+
+void CSong::DecodeInstrument(BYTE*& moduleOffset, TInstrumentV2* pInstrument)
+{
+
+}
+
+void CSong::DecodeEnvelope(BYTE*& moduleOffset, TEnvelope* pEnvelope, UINT envelopeType)
+{
+
 }
