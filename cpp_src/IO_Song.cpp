@@ -236,7 +236,9 @@ void CSong::FileOpen(const char* filename, BOOL warnOfUnsavedChanges)
 			break;
 		}
 
-		in.close();
+		// Close the file if it is still open
+		if (in.is_open())
+			in.close();
 
 		if (!loadedOk)
 		{
@@ -1926,9 +1928,8 @@ bool CSong::SaveRMTE(std::ofstream& ou)
 	CreateModule(&moduleBuffer);
 
 	// Write the fully constructed Module data to file once it is ready
-	ou.seekp(0, std::ios_base::beg);
-	ou.write((char*)moduleBuffer.GetBuffer(), moduleBuffer.GetSize());
-
+	moduleBuffer.WriteFile(ou);
+	
 	// RMTE Module file should have been successfully created
 	return true;
 }
@@ -1942,8 +1943,9 @@ void CSong::CreateModule(CMemory* buffer)
 	EncodeAllInstruments(buffer);
 	EncodeAllEnvelopes(buffer);
 
-	// Trim off the extra bytes from the effective buffer size
+	// Trim off the extra bytes from the effective buffer size and move the offset to the beginning
 	buffer->TruncateBuffer();
+	buffer->SeekOffset(0);
 
 	// Compute the CRC32 checksum and write it to the Module Header
 	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
@@ -2293,393 +2295,329 @@ void CSong::EncodeEnvelope(CMemory* buffer, TEnvelope* pEnvelope, UINT envelopeT
 // Load a RMTE Module file
 bool CSong::LoadRMTE(std::ifstream& in)
 {
+	CMemory moduleBuffer;
+
+	moduleBuffer.ReadFile(in);
+
+	DecodeModule(&moduleBuffer);
+
+	// Module file should have been successfully loaded
+	return true;
+}
+
+void CSong::DecodeModule(CMemory* buffer)
+{
 	CString s = "";
-	bool isRmteLoaded = false;
-
-	// Get the file size to load in memory
-	in.seekg(0, std::ios_base::end);
-	UINT moduleSize = (UINT)in.tellg();
-
-	// Create a temporary buffer the same size of the file
-	BYTE* moduleData = new BYTE[moduleSize];
-	memset(moduleData, EMPTY, moduleSize);
-
-	// Get the pointer to current Module data offset
-	BYTE* moduleOffset = moduleData;
-
-	// Load the Module data directly into the buffer
-	in.seekg(0, std::ios_base::beg);
-	in.read((char*)moduleData, moduleSize);
-
-	// Close the file once it is loaded in memory
-	in.close();
 
 	// Get the pointer to the Module Header, located at the beginning of the file
-	TModuleHeader* moduleHeader = (TModuleHeader*)moduleData;
-	TModuleMetadata moduleMetadata{};
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
 
 	// Get the CRC32 Checksum from the Module Header and compare it to a new CRC32 Checksum for data integrity
 	UINT crc32From = moduleHeader->hiHeader.crc32;
 	moduleHeader->hiHeader.crc32 = EMPTY;
-	UINT crc32To = CRC32(moduleData, moduleSize);
+	UINT crc32To = CRC32(buffer->GetBuffer(), buffer->GetSize());
 
 	// Compare the file format identifier from with "RMTE", any mismatch will flag the entire file as invalid, regardless of its contents
 	if (strncmp(moduleHeader->hiHeader.identifier, MODULE_IDENTIFIER, 4) != 0)
 	{
 		s.AppendFormat("Invalid identifier from file header.\nExpected \"%s\", but found \"%s\" instead.\n", MODULE_IDENTIFIER, moduleHeader->hiHeader.identifier);
 		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
-		goto RmteModuleWasNotLoaded;
+		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
+		return;
 	}
 
 	// Check the Module version number, if it is higher than current, it will not be loaded since it might be decoded incorrectly
-	else if (moduleHeader->hiHeader.version > MODULE_VERSION)
+	if (moduleHeader->hiHeader.version > MODULE_VERSION)
 	{
 		s.AppendFormat("Module version is higher than expected.\nExpected \"%i\" or lower, but found \"%i\" instead.\n", MODULE_VERSION, moduleHeader->hiHeader.version);
 		s.AppendFormat("Maybe the file was created using a newer RMT version?\n\n");
-		goto RmteModuleWasNotLoaded;
+		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
+		return;
 	}
 
 	// If the new CRC32 Checksum is not matching the CRC32 Checksum found in the Module Header, flag the entire file as invalid, regardless of its contents
-	else if (crc32From != crc32To)
+	if (crc32From != crc32To)
 	{
 		s.AppendFormat("CRC32 Checksum mismatch.\nExpected \"0x%04X\", but found \"0x%04X\" instead.\n", crc32From, crc32To);
 		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
-		goto RmteModuleWasNotLoaded;
+		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
+		return;
 	}
 
+	// Decode the Module data by processing each section individually
+	DecodeHeader(buffer);
+	DecodeAllSubtunes(buffer);
+	DecodeAllPatterns(buffer);
+	DecodeAllInstruments(buffer);
+	DecodeAllEnvelopes(buffer);
+}
+
+void CSong::DecodeHeader(CMemory* buffer)
+{
+	// Read the Module Header
+	TModuleHeader moduleHeader{};
+
+	buffer->SeekOffset(0);
+	buffer->PullBytes((BYTE*)&moduleHeader, sizeof(TModuleHeader));
+
 	// Read the Module Parameters
-	MODULE_REGION = moduleHeader->hiHeader.region;
-	MODULE_PRIMARY_HIGHLIGHT = moduleHeader->highlightPrimary;
-	MODULE_SECONDARY_HIGHLIGHT = moduleHeader->highlightSecondary;
-	MODULE_BASE_TUNING = moduleHeader->baseTuning;
-	MODULE_BASE_NOTE = moduleHeader->baseNote;
-	MODULE_BASE_OCTAVE = moduleHeader->baseOctave;
+	MODULE_REGION = moduleHeader.hiHeader.region;
+	MODULE_PRIMARY_HIGHLIGHT = moduleHeader.highlightPrimary;
+	MODULE_SECONDARY_HIGHLIGHT = moduleHeader.highlightSecondary;
+	MODULE_BASE_TUNING = moduleHeader.baseTuning;
+	MODULE_BASE_NOTE = moduleHeader.baseNote;
+	MODULE_BASE_OCTAVE = moduleHeader.baseOctave;
 
-	// Read the Module Metadata
-	moduleOffset += sizeof(TModuleHeader);
-	moduleMetadata.name = (char*)moduleOffset;
+	// Read the Module Metadata, including the Null terminators
+	TModuleMetadata moduleMetadata{};
+
+	moduleMetadata.name = (char*)buffer->GetBuffer() + buffer->GetOffset();
+	while (buffer->GetByte() != NULL);
+	moduleMetadata.author = (char*)buffer->GetBuffer() + buffer->GetOffset();
+	while (buffer->GetByte() != NULL);
+	moduleMetadata.copyright = (char*)buffer->GetBuffer() + buffer->GetOffset();
+	while (buffer->GetByte() != NULL);
+
 	g_Module.SetModuleName(moduleMetadata.name);
-	while (*moduleOffset++);
-	moduleMetadata.author = (char*)moduleOffset;
 	g_Module.SetModuleAuthor(moduleMetadata.author);
-	while (*moduleOffset++);
-	moduleMetadata.copyright = (char*)moduleOffset;
 	g_Module.SetModuleCopyright(moduleMetadata.copyright);
+}
 
-	// Move the Module Offset to the start of the Subtune data block
-	moduleOffset = moduleData + moduleHeader->loHeader.subtuneIndex;
+void CSong::DecodeAllSubtunes(CMemory* buffer)
+{
+	// Move the Module Offset to the Subtune Index
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	buffer->SeekOffset(moduleHeader->loHeader.subtuneIndex);
 
-	// Decode the Subtune data from the Module file
-	while (*moduleOffset != (BYTE)INVALID)
+	while (true)
 	{
 		// Read the Subtune Index number from the Module data
-		UINT i = *moduleOffset++;
+		UINT i = buffer->GetByte();
+
+		// End of Subtune data
+		if (i == (BYTE)INVALID)
+			break;
 
 		// Create a new Subtune if it doesn't already exist in memory, and get its pointer once it's initialised
 		g_Module.CreateSubtune(i);
 		TSubtune* pSubtune = g_Module.GetSubtune(i);
 
-		// Read the Subtune Parameter Struct
-		for (UINT j = 0; j < sizeof(TSubtuneParameter); j++)
-			((BYTE*)&pSubtune->parameter)[j] = *moduleOffset++;
-
-		// Get the Subtune parameters needed for calculations
-		UINT channelCount = g_Module.GetChannelCount(pSubtune);
-		UINT songLength = g_Module.GetSongLength(pSubtune);
-
-		// Read the Channel Parameter Struct, multiplied to the number of Channels
-		for (UINT j = 0; j < channelCount; j++)
-		{
-			TChannel* pChannel = &pSubtune->channel[j];
-
-			for (UINT k = 0; k < sizeof(TChannelParameter); k++)
-				((BYTE*)&pChannel->parameter)[k] = *moduleOffset++;
-		}
-
-		// Read the Songline Index, sized to the Song Length multiplied to the number of Channels
-		for (UINT k = 0; k < songLength; k++)
-		{
-			for (UINT j = 0; j < channelCount; j++)
-			{
-				TChannel* pChannel = &pSubtune->channel[j];
-				pChannel->songline[k] = *moduleOffset++;
-			}
-		}
-
-		// Read the Subtune Metadata, including the Null terminator
-		char* name = (char*)moduleOffset;
-		for (UINT j = 0; j <= strlen(name); j++)
-			pSubtune->name[j] = *moduleOffset++;
+		DecodeSubtune(buffer, pSubtune);
 	}
+}
 
-	// Move the Module Offset to the start of the Pattern data block
-	moduleOffset = moduleData + moduleHeader->loHeader.patternIndex;
+void CSong::DecodeAllPatterns(CMemory* buffer)
+{
+	// Move the Module Offset to the Pattern Index
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	buffer->SeekOffset(moduleHeader->loHeader.patternIndex);
 
-	// Decode the Pattern data from the Module file
-	while (*moduleOffset != (BYTE)INVALID)
+	while (true)
 	{
 		// Read 3 bytes for the Subtune Index, Channel Index and Pattern Index, respectively
-		UINT i = *moduleOffset++;
-		UINT j = *moduleOffset++;
-		UINT k = *moduleOffset++;
+		UINT i = buffer->GetByte();
+		UINT j = buffer->GetByte();
+		UINT k = buffer->GetByte();
+
+		// End of Pattern data
+		if (i == (BYTE)INVALID)
+			break;
 
 		// Get the pointer to Pattern data
 		TPattern* pPattern = g_Module.GetPattern(i, j, k);
 
-		// Read the Encoded Row data
-		for (UINT l = 0; l < ROW_COUNT; l++)
-		{
-			TRowEncoding rowEncoding{};
-
-			// Get the pointer to the current Row position
-			TRow* pRow = &pPattern->row[l];
-
-			// Read the Encoding byte first
-			(BYTE&)rowEncoding = *moduleOffset++;
-
-			// If this is a Row Pause or Pattern Terminator, skip further ahead
-			if (rowEncoding.isPauseOrTerminator)
-			{
-				// If the End of Pattern was reached, there is no more Row data to process for this Pattern
-				if (rowEncoding.pauseLength == 0x7F)
-					break;
-
-				// Empty Rows will be skipped with the Pause Length
-				l += rowEncoding.pauseLength + 1;
-				continue;
-			}
-
-			// Read the Non-Empty Note
-			if (rowEncoding.isValidNote)
-				pRow->note = *moduleOffset++;
-
-			// Read the Non-Empty Instrument
-			if (rowEncoding.isValidInstrument)
-				pRow->instrument = *moduleOffset++;
-
-			// Read the Non-Empty Volume
-			if (rowEncoding.isValidVolume)
-				pRow->volume = *moduleOffset++;
-
-			// Read the Non-Empty Effect Commands
-			if (rowEncoding.isValidCmd1)
-			{
-				pRow->effect[CMD1].command = *moduleOffset++;
-				pRow->effect[CMD1].parameter = *moduleOffset++;
-			}
-
-			if (rowEncoding.isValidCmd2)
-			{
-				pRow->effect[CMD2].command = *moduleOffset++;
-				pRow->effect[CMD2].parameter = *moduleOffset++;
-			}
-
-			if (rowEncoding.isValidCmd3)
-			{
-				pRow->effect[CMD3].command = *moduleOffset++;
-				pRow->effect[CMD3].parameter = *moduleOffset++;
-			}
-
-			if (rowEncoding.isValidCmd4)
-			{
-				pRow->effect[CMD4].command = *moduleOffset++;
-				pRow->effect[CMD4].parameter = *moduleOffset++;
-			}
-		}
+		DecodePattern(buffer, pPattern);
 	}
+}
 
-	// Move the Module Offset to the start of the Instrument data block
-	moduleOffset = moduleData + moduleHeader->loHeader.instrumentIndex;
+void CSong::DecodeAllInstruments(CMemory* buffer)
+{
+	// Move the Module Offset to the Instrument Index
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	buffer->SeekOffset(moduleHeader->loHeader.instrumentIndex);
 
-	// Decode the Instrument data from the Module file
-	while (*moduleOffset != (BYTE)INVALID)
+	while (true)
 	{
 		// Read the Instrument Index number from the Module data
-		UINT i = *moduleOffset++;
+		UINT i = buffer->GetByte();
+
+		// End of Instrument data
+		if (i == (BYTE)INVALID)
+			break;
 
 		// Create a new Instrument if it doesn't already exist in memory, and get its pointer once it's initialised
 		g_Module.CreateInstrument(i);
 		TInstrumentV2* pInstrument = g_Module.GetInstrument(i);
 
-		// Read the Instrument Parameter Struct
-		for (UINT j = 0; j < sizeof(TInstrumentParameter); j++)
-			((BYTE*)&pInstrument->parameter)[j] = *moduleOffset++;
-
-		// Read the Instrument Envelope Macro Struct, multiplied to the number of Envelope Types
-		for (UINT j = 0; j < ET_COUNT; j++)
-		{
-			TEnvelopeMacro* pMacro = &pInstrument->envelope[j];
-
-			for (UINT k = 0; k < sizeof(TEnvelopeMacro); k++)
-				((BYTE*)pMacro)[k] = *moduleOffset++;
-		}
-
-		// Read the Instrument Metadata, including the Null terminator
-		char* name = (char*)moduleOffset;
-		for (UINT j = 0; j <= strlen(name); j++)
-			pInstrument->name[j] = *moduleOffset++;
+		DecodeInstrument(buffer, pInstrument);
 	}
+}
 
-	// Move the Module Offset to the start of the Envelope data block
-	moduleOffset = moduleData + moduleHeader->loHeader.envelopeIndex;
+void CSong::DecodeAllEnvelopes(CMemory* buffer)
+{
+	// Move the Module Offset to the Envelope Index
+	TModuleHeader* moduleHeader = (TModuleHeader*)buffer->GetBuffer();
+	buffer->SeekOffset(moduleHeader->loHeader.envelopeIndex);
 
-	// Decode the Envelope data from the Module file
-	while (*moduleOffset != (BYTE)INVALID)
+	while (true)
 	{
 		// Read 2 bytes for the Envelope Index and Envelope Type
-		UINT i = *moduleOffset++;
-		UINT j = *moduleOffset++;
+		UINT i = buffer->GetByte();
+		UINT j = buffer->GetByte();
+
+		// End of Envelope data
+		if (i == (BYTE)INVALID)
+			break;
 
 		// Create a new Envelope if it doesn't already exist in memory, and get its pointer once it's initialised
 		g_Module.CreateEnvelope(i, j);
 		TEnvelope* pEnvelope = g_Module.GetEnvelope(i, j);
 
-		// Read the Envelope Parameter Struct
-		for (UINT k = 0; k < sizeof(TEnvelopeParameter); k++)
-			((BYTE*)&pEnvelope->parameter)[k] = *moduleOffset++;
+		DecodeEnvelope(buffer, pEnvelope, j);
+	}
+}
 
-		// Get the Envelope parameters needed for calculations
-		UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
+void CSong::DecodeSubtune(CMemory* buffer, TSubtune* pSubtune)
+{
+	// Read the Subtune Parameter Struct
+	buffer->PullBytes((BYTE*)&pSubtune->parameter, sizeof(TSubtuneParameter));
 
-		// Read the Envelope Data Struct, sized to the Envelope Length, relative to the Envelope Type
-		switch (j)
+	// Get the Subtune parameters needed for calculations
+	UINT channelCount = g_Module.GetChannelCount(pSubtune);
+	UINT songLength = g_Module.GetSongLength(pSubtune);
+
+	// Read the Channel Parameter Struct, multiplied to the number of Channels
+	for (UINT i = 0; i < channelCount; i++)
+		buffer->PullBytes((BYTE*)&pSubtune->channel[i].parameter, sizeof(TChannelParameter));
+
+	// Read the Songline Index, sized to the Song Length multiplied to the number of Channels
+	for (UINT j = 0; j < songLength; j++)
+		for (UINT i = 0; i < channelCount; i++)
+			buffer->PullBytes((BYTE*)&pSubtune->channel[i].songline[j], sizeof(BYTE));
+
+	// Read the Subtune Metadata, including the Null terminator
+	const char* name = (char*)buffer->GetBuffer() + buffer->GetOffset();
+	buffer->PullBytes((BYTE*)&pSubtune->name, strlen(name) + 1);
+}
+
+void CSong::DecodePattern(CMemory* buffer, TPattern* pPattern)
+{
+	TRowEncoding rowEncoding{};
+
+	// Read the Encoded Row data
+	for (UINT i = 0; i < ROW_COUNT; i++)
+	{
+		// Read the Encoding byte first
+		(BYTE&)rowEncoding = buffer->GetByte();
+
+		// If this is a Row Pause or Pattern Terminator, skip further ahead
+		if (rowEncoding.isPauseOrTerminator)
+		{
+			// If the End of Pattern was reached, there is no more Row data to process for this Pattern
+			if (rowEncoding.pauseLength == 0x7F)
+				break;
+
+			// Empty Rows will be skipped with the Pause Length
+			i += rowEncoding.pauseLength + 1;
+			continue;
+		}
+
+		// Get the pointer to the current Row position
+		TRow* pRow = &pPattern->row[i];
+
+		// Read the Non-Empty Note
+		if (rowEncoding.isValidNote)
+			pRow->note = buffer->GetByte();
+
+		// Read the Non-Empty Instrument
+		if (rowEncoding.isValidInstrument)
+			pRow->instrument = buffer->GetByte();
+
+		// Read the Non-Empty Volume
+		if (rowEncoding.isValidVolume)
+			pRow->volume = buffer->GetByte();
+
+		// Read the Non-Empty Effect Commands
+		if (rowEncoding.isValidCmd1)
+		{
+			pRow->effect[CMD1].command = buffer->GetByte();
+			pRow->effect[CMD1].parameter = buffer->GetByte();
+		}
+
+		if (rowEncoding.isValidCmd2)
+		{
+			pRow->effect[CMD2].command = buffer->GetByte();
+			pRow->effect[CMD2].parameter = buffer->GetByte();
+		}
+
+		if (rowEncoding.isValidCmd3)
+		{
+			pRow->effect[CMD3].command = buffer->GetByte();
+			pRow->effect[CMD3].parameter = buffer->GetByte();
+		}
+
+		if (rowEncoding.isValidCmd4)
+		{
+			pRow->effect[CMD4].command = buffer->GetByte();
+			pRow->effect[CMD4].parameter = buffer->GetByte();
+		}
+	}
+}
+
+void CSong::DecodeInstrument(CMemory* buffer, TInstrumentV2* pInstrument)
+{
+	// Read the Instrument Parameter Struct
+	buffer->PullBytes((BYTE*)&pInstrument->parameter, sizeof(TInstrumentParameter));
+
+	// Read the Instrument Envelope Macro Struct, multiplied to the number of Envelope Types
+	for (UINT j = 0; j < ET_COUNT; j++)
+		buffer->PullBytes((BYTE*)&pInstrument->envelope[j], sizeof(TEnvelopeMacro));
+
+	// Read the Instrument Metadata, including the Null terminator
+	const char* name = (char*)buffer->GetBuffer() + buffer->GetOffset();
+	buffer->PullBytes((BYTE*)&pInstrument->name, strlen(name) + 1);
+}
+
+void CSong::DecodeEnvelope(CMemory* buffer, TEnvelope* pEnvelope, UINT envelopeType)
+{
+	// Read the Envelope Parameter Struct
+	buffer->PullBytes((BYTE*)&pEnvelope->parameter, sizeof(TEnvelopeParameter));
+
+	// Get the Envelope parameters needed for calculations
+	UINT envelopeLength = g_Module.GetEnvelopeLength(pEnvelope);
+
+	// Read the Envelope Data Struct, sized to the Envelope Length, relative to the Envelope Type
+	for (UINT i = 0; i < envelopeLength; i++)
+	{
+		switch (envelopeType)
 		{
 		case ET_VOLUME:
-			for (UINT k = 0; k < envelopeLength; k++)
-			{
-				TVolumeEnvelope* pEnvelopeData = &pEnvelope->volume[k];
-
-				for (UINT l = 0; l < sizeof(TVolumeEnvelope); l++)
-					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
-			}
+			buffer->PullBytes((BYTE*)&pEnvelope->volume[i], sizeof(TVolumeEnvelope));
 			continue;
 
 		case ET_TIMBRE:
-			for (UINT k = 0; k < envelopeLength; k++)
-			{
-				TTimbreEnvelope* pEnvelopeData = &pEnvelope->timbre[k];
-
-				for (UINT l = 0; l < sizeof(TTimbreEnvelope); l++)
-					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
-			}
+			buffer->PullBytes((BYTE*)&pEnvelope->timbre[i], sizeof(TTimbreEnvelope));
 			continue;
 
 		case ET_AUDCTL:
-			for (UINT k = 0; k < envelopeLength; k++)
-			{
-				TAudctlEnvelope* pEnvelopeData = &pEnvelope->audctl[k];
-
-				for (UINT l = 0; l < sizeof(TAudctlEnvelope); l++)
-					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
-			}
+			buffer->PullBytes((BYTE*)&pEnvelope->audctl[i], sizeof(TAudctlEnvelope));
 			continue;
 
 		case ET_EFFECT:
-			for (UINT k = 0; k < envelopeLength; k++)
-			{
-				TEffectEnvelope* pEnvelopeData = &pEnvelope->effect[k];
-
-				for (UINT l = 0; l < sizeof(TEffectEnvelope); l++)
-					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
-			}
+			buffer->PullBytes((BYTE*)&pEnvelope->effect[i], sizeof(TEffectEnvelope));
 			continue;
 
 		case ET_NOTE_TABLE:
-			for (UINT k = 0; k < envelopeLength; k++)
-			{
-				TNoteTableEnvelope* pEnvelopeData = &pEnvelope->note[k];
-
-				for (UINT l = 0; l < sizeof(TNoteTableEnvelope); l++)
-					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
-			}
+			buffer->PullBytes((BYTE*)&pEnvelope->note[i], sizeof(TNoteTableEnvelope));
 			continue;
 
 		case ET_FREQ_TABLE:
-			for (UINT k = 0; k < envelopeLength; k++)
-			{
-				TFreqTableEnvelope* pEnvelopeData = &pEnvelope->freq[k];
-
-				for (UINT l = 0; l < sizeof(TFreqTableEnvelope); l++)
-					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
-			}
+			buffer->PullBytes((BYTE*)&pEnvelope->freq[i], sizeof(TFreqTableEnvelope));
 			continue;
 
 		default:
 			// This should never happen, but still added for failsafe sake
-			for (UINT k = 0; k < envelopeLength; k++)
-			{
-				UINT* pEnvelopeData = &pEnvelope->rawData[k];
-
-				for (UINT l = 0; l < sizeof(UINT); l++)
-					((BYTE*)pEnvelopeData)[l] = *moduleOffset++;
-			}
+			buffer->PullBytes((BYTE*)&pEnvelope->rawData[i], sizeof(UINT));
 		}
 	}
-
-	// If everything went well, the full Module data should have been loaded and decoded in memory, ready to be used
-	isRmteLoaded = true;
-
-	// Jumping to this label will immediately unload any data left in memory before returning
-RmteModuleWasNotLoaded:
-
-	// Delete the temporary data once it is processed
-	if (moduleData)
-		delete moduleData;
-
-	// If an error occured, display a Message box to show what went wrong in the process
-	if (!isRmteLoaded)
-		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
-
-	// Module file should have been successfully loaded
-	return isRmteLoaded;
-}
-
-void CSong::DecodeModule(BYTE*& moduleData, UINT64& moduleSize)
-{
-
-}
-
-void CSong::DecodeHeader(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
-{
-
-}
-
-void CSong::DecodeAllSubtunes(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
-{
-
-}
-
-void CSong::DecodeAllPatterns(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
-{
-
-}
-
-void CSong::DecodeAllInstruments(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
-{
-
-}
-
-void CSong::DecodeAllEnvelopes(TModuleHeader* moduleHeader, BYTE*& moduleOffset)
-{
-
-}
-
-void CSong::DecodeSubtune(BYTE*& moduleOffset, TSubtune* pSubtune)
-{
-
-}
-
-void CSong::DecodePattern(BYTE*& moduleOffset, TPattern* pPattern)
-{
-
-}
-
-void CSong::DecodeInstrument(BYTE*& moduleOffset, TInstrumentV2* pInstrument)
-{
-
-}
-
-void CSong::DecodeEnvelope(BYTE*& moduleOffset, TEnvelope* pEnvelope, UINT envelopeType)
-{
-
 }

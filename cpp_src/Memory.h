@@ -3,10 +3,10 @@
 
 #pragma once
 
-//#include "General.h"
-//#include "global.h"
+#include "General.h"
+#include "global.h"
 
-#define MIN_SIZE	0xFFF
+#define MIN_SIZE	0xFF
 #define MAX_SIZE	0xFFFFFF
 
 // ----------------------------------------------------------------------------
@@ -25,11 +25,15 @@ public:
 	UINT64 GetSize() { return m_size; };
 
 	void SeekOffset(UINT64 offset);
-	void ResizeBuffer();
+	void ResizeBuffer(UINT64 size);
 	void TruncateBuffer();
 	void PutByte(BYTE data);
+	BYTE GetByte();
 	void PushBytes(BYTE* data, UINT64 size);
 	void PullBytes(BYTE* data, UINT64 size);
+
+	void ReadFile(std::ifstream& in);
+	void WriteFile(std::ofstream& ou);
 
 private:
 	BYTE* m_buffer;
