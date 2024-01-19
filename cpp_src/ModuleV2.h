@@ -451,9 +451,8 @@ typedef struct envelopeIndex_t
 typedef struct hiHeader_t
 {
 	char identifier[4];						// RMTE Module Identifier
-	BYTE version : 7;						// 0 = Prototype, 1+ = Release, up to 127 revisions
-	bool region : 1;						// 0 = PAL, 1 = NTSC
 	UINT crc32;								// CRC32 Checksum
+	BYTE reserved[8];
 } THiHeader;
 
 // Low Header, used to index Pointers to Module Data, a NULL pointer means no data exists for a specific entry
@@ -463,6 +462,7 @@ typedef struct loHeader_t
 	UINT patternIndex;						// Offset to Pattern data
 	UINT instrumentIndex;					// Offset to Instrument data
 	UINT envelopeIndex;						// Offset to Envelope data
+	BYTE reserved[16];
 } TLoHeader;
 
 // RMTE Module Header, used to define the RMTE Module File Format as easily as possible
@@ -474,6 +474,9 @@ typedef struct moduleHeader_t
 	// Module Header
 	THiHeader hiHeader;						// High Header
 	TLoHeader loHeader;						// Low Header
+
+	BYTE version : 7;						// 0 = Prototype, 1+ = Release, up to 127 revisions
+	bool region : 1;						// 0 = PAL, 1 = NTSC
 
 	// Row Highlight
 	BYTE highlightPrimary;					// 1st Row Highlight

@@ -1956,14 +1956,14 @@ void CSong::EncodeHeader(CMemory* buffer)
 {
 	// Create Module Header
 	TModuleHeader moduleHeader{};
+	memset(&moduleHeader, EMPTY, sizeof(TModuleHeader));
 
 	// Create High Header, Low Header is constructed using the Module data offsets
 	strcpy(moduleHeader.hiHeader.identifier, MODULE_IDENTIFIER);
-	moduleHeader.hiHeader.version = MODULE_VERSION;
-	moduleHeader.hiHeader.region = MODULE_REGION;
-	moduleHeader.hiHeader.crc32 = EMPTY;
 
 	// Create Module Parameters
+	moduleHeader.version = MODULE_VERSION;
+	moduleHeader.region = MODULE_REGION;
 	moduleHeader.highlightPrimary = MODULE_PRIMARY_HIGHLIGHT;
 	moduleHeader.highlightSecondary = MODULE_SECONDARY_HIGHLIGHT;
 	moduleHeader.baseTuning = MODULE_BASE_TUNING;
@@ -2320,16 +2320,16 @@ void CSong::DecodeModule(CMemory* buffer)
 	// Compare the file format identifier from with "RMTE", any mismatch will flag the entire file as invalid, regardless of its contents
 	if (strncmp(moduleHeader->hiHeader.identifier, MODULE_IDENTIFIER, 4) != 0)
 	{
-		s.AppendFormat("Invalid identifier from file header.\nExpected \"%s\", but found \"%s\" instead.\n", MODULE_IDENTIFIER, moduleHeader->hiHeader.identifier);
+		s.AppendFormat("Invalid identifier from file header.\nExpected \"%.*s\", but found \"%.*s\" instead.\n", 4, MODULE_IDENTIFIER, 4, moduleHeader->hiHeader.identifier);
 		s.AppendFormat("This is not a valid RMT Module, or the file was corrupted.\n\n");
 		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
 		return;
 	}
 
 	// Check the Module version number, if it is higher than current, it will not be loaded since it might be decoded incorrectly
-	if (moduleHeader->hiHeader.version > MODULE_VERSION)
+	if (moduleHeader->version > MODULE_VERSION)
 	{
-		s.AppendFormat("Module version is higher than expected.\nExpected \"%i\" or lower, but found \"%i\" instead.\n", MODULE_VERSION, moduleHeader->hiHeader.version);
+		s.AppendFormat("Module version is higher than expected.\nExpected \"%i\" or lower, but found \"%i\" instead.\n", MODULE_VERSION, moduleHeader->version);
 		s.AppendFormat("Maybe the file was created using a newer RMT version?\n\n");
 		MessageBox(g_hwnd, s, "CSong::LoadRMTE()", MB_ICONERROR);
 		return;
@@ -2357,16 +2357,19 @@ void CSong::DecodeHeader(CMemory* buffer)
 	// Read the Module Header
 	TModuleHeader moduleHeader{};
 
+	// Header is always starting at the first byte
 	buffer->SeekOffset(0);
 	buffer->PullBytes((BYTE*)&moduleHeader, sizeof(TModuleHeader));
 
 	// Read the Module Parameters
-	MODULE_REGION = moduleHeader.hiHeader.region;
+	MODULE_REGION = moduleHeader.region;
 	MODULE_PRIMARY_HIGHLIGHT = moduleHeader.highlightPrimary;
 	MODULE_SECONDARY_HIGHLIGHT = moduleHeader.highlightSecondary;
 	MODULE_BASE_TUNING = moduleHeader.baseTuning;
 	MODULE_BASE_NOTE = moduleHeader.baseNote;
 	MODULE_BASE_OCTAVE = moduleHeader.baseOctave;
+
+	//-- Insert additional parameters here --//
 
 	// Read the Module Metadata, including the Null terminators
 	TModuleMetadata moduleMetadata{};
